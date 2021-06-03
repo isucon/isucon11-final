@@ -1,0 +1,106 @@
+dsn: mysql://root:password@localhost:3306/isucholar
+docPath: docs/schema
+format:
+  adjust: true
+er:
+  format: svg
+  distance: 2
+  font: M+
+lint:
+  requireTableComment:
+    enabled: true
+  requireColumnComment:
+    enabled: true
+    exclude:
+      - id
+      - created_at
+      - updated_at
+      - deleted_at
+detectVirtualRelations:
+  enabled: true
+
+comments:
+  - table: phase
+    tableComment: 単一のレコードに現在のフェーズを保持する。
+    columnComments:
+      phase: 履修登録期間(Registration)、授業期間(term-time)、試験期間(exam-period)のいずれか
+  - table: users
+    tableComment: ユーザー一覧
+    columnComments:
+      name: ユーザー名
+      mail_address: メールアドレス
+      hashed_password: 暗号化されたパスワード
+      type: 学生・教員
+  - table: courses
+    tableComment: 科目一覧
+    columnComments:
+      name: 科目名
+      description: 科目の説明
+      credit: 単位数
+      classroom: 開講場所
+      capacity: 履修定員
+  - table: course_requirements
+    tableComment: 受講に必要な科目一覧
+    columnComments:
+      course_id: 履修科目
+      required_course_id: 先に履修する必要がある科目
+  - table: schedules
+    tableComment: 時間割で使用する単位区分
+    columnComments:
+      period: 時限(1限〜5限)
+      day_of_week: 曜日
+      semester: 学期(前期・後期)
+      year: 年度
+  - table: course_schedules
+    tableComment: 科目の時間割対応一覧
+    columnComments:
+      course_id: 科目のID
+      schedule_id: 時間割のID
+  - table: registrations
+    tableComment: 履修登録一覧
+    columnComments:
+      course_id: 履修科目のID
+      user_id: 学生のID
+      delete_at: 履修取り消し時のタイムスタンプ
+  - table: classes
+    tableComment: 講義一覧
+    columnComments:
+      title: 講義のタイトル
+      description: 講義の説明
+      attendance_code: 出席確認用コード
+  - table: documents
+    tableComment: 講義資料一覧
+    columnComments:
+      class_id: 講義のID
+      name:
+        資料のファイル名
+  - table: attendances
+    tableComment: 出席履歴
+    columnComments:
+      class_id: 講義のID
+      user_id: 出席した学生のID
+  - table: assignment
+    tableComment: 課題一覧
+    columnComments:
+      class_id: 講義のID
+      name: 課題名
+      description: 課題の説明
+      deadline: 提出期限
+  - table: submissions
+    tableComment: 提出された課題一覧
+    columnComments:
+      assignment_id: 対象課題のID
+      user_id: 提出した学生のID
+      name: 提出したファイル名
+  - table: announcements
+    tableComment: お知らせ一覧
+    columnComments:
+      course_id: 科目のID
+      title: お知らせのタイトル
+      message: お知らせの内容
+  - table: unread_announcements
+    tableComment: 未読お知らせ一覧
+    columnComments:
+      announcement_id: お知らせのID
+      user_id: 未読の学生
+      delete_at: 既読時のタイムスタンプ
