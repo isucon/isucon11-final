@@ -31,7 +31,7 @@
 <text text-anchor="start" x="114.9502" y="-98.9" font-family="Arial" font-size="14.00" fill="#666666">[enum(&#39;first&#39;,&#39;second&#39;)]</text>
 <polygon fill="none" stroke="#000000" points="46.5,-57.5 46.5,-87.5 621.5,-87.5 621.5,-57.5 46.5,-57.5"/>
 <text text-anchor="start" x="53.5" y="-68.9" font-family="Arial" font-size="14.00" fill="#000000">year </text>
-<text text-anchor="start" x="84.6164" y="-68.9" font-family="Arial" font-size="14.00" fill="#666666">[smallint unsigned]</text>
+<text text-anchor="start" x="84.6164" y="-68.9" font-family="Arial" font-size="14.00" fill="#666666">[int unsigned]</text>
 <polygon fill="none" stroke="#000000" stroke-width="3" points="44.5,-56.5 44.5,-244.5 622.5,-244.5 622.5,-56.5 44.5,-56.5"/>
 </g>
 <!-- course_schedules -->

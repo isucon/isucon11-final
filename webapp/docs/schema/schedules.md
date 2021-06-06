@@ -13,7 +13,7 @@ CREATE TABLE `schedules` (
   `period` tinyint unsigned NOT NULL,
   `day_of_week` enum('sunday','monday','tuesday','wednesday','thursday','friday','saturday') COLLATE utf8mb4_bin NOT NULL,
   `semester` enum('first','second') COLLATE utf8mb4_bin NOT NULL,
-  `year` smallint unsigned NOT NULL,
+  `year` int unsigned NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
@@ -28,7 +28,7 @@ CREATE TABLE `schedules` (
 | period      | tinyint unsigned                                                             |         | false    |                                         |         | 時限(1限〜5限)        |
 | day_of_week | enum('sunday','monday','tuesday','wednesday','thursday','friday','saturday') |         | false    |                                         |         | 曜日               |
 | semester    | enum('first','second')                                                       |         | false    |                                         |         | 学期(前期・後期)        |
-| year        | smallint unsigned                                                            |         | false    |                                         |         | 年度               |
+| year        | int unsigned                                                                 |         | false    |                                         |         | 年度               |
 
 ## Constraints
 

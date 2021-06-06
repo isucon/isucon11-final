@@ -23,14 +23,14 @@ CREATE TABLE `courses` (
 
 ## Columns
 
-| Name        | Type             | Default | Nullable | Children                                                                                                                                                  | Parents | Comment    |
-| ----------- | ---------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------- |
-| id          | char(36)         |         | false    | [announcements](announcements.md) [course_requirements](course_requirements.md) [course_schedules](course_schedules.md) [registrations](registrations.md) |         |            |
-| name        | varchar(255)     |         | false    |                                                                                                                                                           |         | 科目名        |
-| description | text             |         | false    |                                                                                                                                                           |         | 科目の説明      |
-| credit      | tinyint unsigned |         | false    |                                                                                                                                                           |         | 単位数        |
-| classroom   | varchar(255)     |         | false    |                                                                                                                                                           |         | 開講場所       |
-| capacity    | int unsigned     |         | true     |                                                                                                                                                           |         | 履修定員       |
+| Name        | Type             | Default | Nullable | Children                                                                                                                                                                                            | Parents | Comment    |
+| ----------- | ---------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------- |
+| id          | char(36)         |         | false    | [announcements](announcements.md) [classes](classes.md) [course_requirements](course_requirements.md) [course_schedules](course_schedules.md) [grades](grades.md) [registrations](registrations.md) |         |            |
+| name        | varchar(255)     |         | false    |                                                                                                                                                                                                     |         | 科目名        |
+| description | text             |         | false    |                                                                                                                                                                                                     |         | 科目の説明      |
+| credit      | tinyint unsigned |         | false    |                                                                                                                                                                                                     |         | 単位数        |
+| classroom   | varchar(255)     |         | false    |                                                                                                                                                                                                     |         | 開講場所       |
+| capacity    | int unsigned     |         | true     |                                                                                                                                                                                                     |         | 履修定員       |
 
 ## Constraints
 

@@ -62,6 +62,12 @@ comments:
       course_id: 履修科目のID
       user_id: 学生のID
       delete_at: 履修取り消し時のタイムスタンプ
+  - table: grades
+    tableComment: 学生の科目別成績一覧
+    columnComments:
+      course_id: 履修科目のID
+      user_id: 学生のID
+      grade: 成績
   - table: classes
     tableComment: 講義一覧
     columnComments:

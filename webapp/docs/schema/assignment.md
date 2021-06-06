@@ -25,14 +25,14 @@ CREATE TABLE `assignment` (
 
 ## Columns
 
-| Name        | Type         | Default | Nullable | Children | Parents               | Comment    |
-| ----------- | ------------ | ------- | -------- | -------- | --------------------- | ---------- |
-| id          | char(36)     |         | false    |          |                       |            |
-| class_id    | char(36)     |         | false    |          | [classes](classes.md) | 講義のID      |
-| name        | varchar(255) |         | false    |          |                       | 課題名        |
-| description | text         |         | false    |          |                       | 課題の説明      |
-| deadline    | datetime(6)  |         | false    |          |                       | 提出期限       |
-| created_at  | datetime(6)  |         | false    |          |                       |            |
+| Name        | Type         | Default | Nullable | Children                      | Parents               | Comment    |
+| ----------- | ------------ | ------- | -------- | ----------------------------- | --------------------- | ---------- |
+| id          | char(36)     |         | false    | [submissions](submissions.md) |                       |            |
+| class_id    | char(36)     |         | false    |                               | [classes](classes.md) | 講義のID      |
+| name        | varchar(255) |         | false    |                               |                       | 課題名        |
+| description | text         |         | false    |                               |                       | 課題の説明      |
+| deadline    | datetime(6)  |         | false    |                               |                       | 提出期限       |
+| created_at  | datetime(6)  |         | false    |                               |                       |            |
 
 ## Constraints
 

@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS `assignment`;
 DROP TABLE IF EXISTS `attendances`;
 DROP TABLE IF EXISTS `documents`;
 DROP TABLE IF EXISTS `classes`;
+DROP TABLE IF EXISTS `grades`;
 DROP TABLE IF EXISTS `registrations`;
 DROP TABLE IF EXISTS `course_schedules`;
 DROP TABLE IF EXISTS `schedules`;
@@ -53,7 +54,7 @@ CREATE TABLE `schedules`
     `period`      TINYINT UNSIGNED                                                                    NOT NULL,
     `day_of_week` ENUM ('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday') NOT NULL,
     `semester`    ENUM ('first', 'second')                                                            NOT NULL,
-    `year`        SMALLINT UNSIGNED                                                                   NOT NULL
+    `year`        INT UNSIGNED                                                                        NOT NULL
 );
 
 CREATE TABLE `course_schedules`
@@ -76,12 +77,24 @@ CREATE TABLE `registrations`
     FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`)
 );
 
+CREATE TABLE `grades`
+(
+    `id`        CHAR(36) PRIMARY KEY,
+    `user_id`   CHAR(36)     NOT NULL,
+    `course_id` CHAR(36)     NOT NULL,
+    `grade`     INT UNSIGNED NOT NULL,
+    FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`),
+    FOREIGN KEY FK_course_id (`course_id`) REFERENCES `courses` (`id`)
+);
+
 CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
-    `title`           VARCHAR(255) NOT NULL,
-    `description`     TEXT         NOT NULL,
-    `attendance_code` TINYINT      NOT NULL
+    `course_id`       CHAR(36)         NOT NULL,
+    `title`           VARCHAR(255)     NOT NULL,
+    `description`     TEXT             NOT NULL,
+    `attendance_code` TINYINT UNSIGNED NOT NULL,
+    FOREIGN KEY FK_course_id (`course_id`) REFERENCES `courses` (`id`)
 );
 
 CREATE TABLE `documents`
@@ -121,7 +134,8 @@ CREATE TABLE `submissions`
     `assignment_id` CHAR(36)     NOT NULL,
     `name`          VARCHAR(255) NOT NULL,
     `created_at`    DATETIME(6)  NOT NULL,
-    FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`)
+    FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`),
+    FOREIGN KEY FK_assignment_id (`assignment_id`) REFERENCES `assignment` (`id`)
 );
 
 CREATE TABLE `announcements`

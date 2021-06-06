@@ -7,11 +7,12 @@
 | [announcements](announcements.md)               | 5       | お知らせ一覧                                     | BASE TABLE |
 | [assignment](assignment.md)                     | 6       | 課題一覧                                       | BASE TABLE |
 | [attendances](attendances.md)                   | 3       | 出席履歴                                       | BASE TABLE |
-| [classes](classes.md)                           | 4       | 講義一覧                                       | BASE TABLE |
+| [classes](classes.md)                           | 5       | 講義一覧                                       | BASE TABLE |
 | [course_requirements](course_requirements.md)   | 2       | 受講に必要な科目一覧                                 | BASE TABLE |
 | [course_schedules](course_schedules.md)         | 2       | 科目の時間割対応一覧                                 | BASE TABLE |
 | [courses](courses.md)                           | 6       | 科目一覧                                       | BASE TABLE |
 | [documents](documents.md)                       | 4       | 講義資料一覧                                     | BASE TABLE |
+| [grades](grades.md)                             | 4       | 学生の科目別成績一覧                                 | BASE TABLE |
 | [phase](phase.md)                               | 1       | 単一のレコードに現在のフェーズを保持する。                      | BASE TABLE |
 | [registrations](registrations.md)               | 4       | 履修登録一覧                                     | BASE TABLE |
 | [schedules](schedules.md)                       | 5       | 時間割で使用する単位区分                               | BASE TABLE |
