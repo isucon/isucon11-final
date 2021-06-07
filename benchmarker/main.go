@@ -21,6 +21,11 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 )
 
+const (
+	benchTimeout   string = "70s"
+	errorThreshold int64  = 100
+)
+
 var (
 	COMMIT           string
 	targetAddress    string
@@ -144,7 +149,11 @@ func main() {
 	s.BaseURL = fmt.Sprintf("%s://%s/", scheme, targetAddress)
 	s.NoLoad = noLoad
 
-	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(70 * time.Second))
+	benchTimeout, err := time.ParseDuration(benchTimeout)
+	if err != nil {
+		panic(err)
+	}
+	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(benchTimeout))
 	if err != nil {
 		panic(err)
 	}
@@ -163,7 +172,7 @@ func main() {
 
 		critical, _, deduction := checkError(err)
 
-		if critical || (deduction && atomic.AddInt64(&errorCount, 1) >= 100) {
+		if critical || (deduction && atomic.AddInt64(&errorCount, 1) >= errorThreshold) {
 			step.Cancel()
 		}
 
