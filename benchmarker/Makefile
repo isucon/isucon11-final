@@ -6,7 +6,7 @@ GOLDFLAGS=-X main.COMMIT=$(COMMIT)$(DIRTY)
 
 GOFILES=$(wildcard *.go **/*.go)
 
-EXE=./bin/benchmarker
+BINARY=./bin/benchmarker
 
 .PHONY: all
 all: build ## Execute all tasks
@@ -16,7 +16,7 @@ build: $(EXE) ## Build benchmarker
 
 .PHONY: clean
 clean: ## Cleanup working directory
-	@$(RM) $(EXE)
+	@$(RM) $(BINARY)
 	@go clean
 
 .PHONY: help
@@ -25,4 +25,4 @@ help: ## Display this help screen
 
 
 $(EXE): Makefile go.mod $(GOFILES)
-	GOPRIVATE=$(GOPRIVATES) go build -ldflags "$(GOLDFLAGS)" -o $(EXE) -v github.com/isucon/isucon11-final/benchmarker
+	GOPRIVATE=$(GOPRIVATES) go build -ldflags "$(GOLDFLAGS)" -o $(BINARY) -v github.com/isucon/isucon11-final/benchmarker
