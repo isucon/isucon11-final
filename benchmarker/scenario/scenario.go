@@ -2,17 +2,16 @@ package scenario
 
 import (
 	"context"
-	"sync"
 
 	"github.com/isucon/isucandar"
 )
 
 type Scenario struct {
-	mu       sync.RWMutex
 	BaseURL  string
 	UseTLS   bool
-	Language string
 	NoLoad   bool
+
+	language string
 }
 
 func NewScenario() (*Scenario, error) {
@@ -21,6 +20,8 @@ func NewScenario() (*Scenario, error) {
 
 func (s *Scenario) Prepare(context.Context, *isucandar.BenchmarkStep) error {
 	ContestantLogger.Printf("===> PREPARE")
+
+	s.language = "" // TODO: set from /initialize
 
 	return nil
 }
@@ -43,4 +44,8 @@ func (s *Scenario) Validation(context.Context, *isucandar.BenchmarkStep) error {
 	ContestantLogger.Printf("===> VALIDATION")
 
 	return nil
+}
+
+func (s *Scenario) Language() string {
+	return s.language
 }

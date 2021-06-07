@@ -94,7 +94,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 
 	err := reporter.Report(&isuxportalResources.BenchmarkResult{
 		SurveyResponse: &isuxportalResources.SurveyResponse{
-			Language: s.Language,
+			Language: s.Language(),
 		},
 		Finished: finish,
 		Passed:   passed,
