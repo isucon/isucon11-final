@@ -29,6 +29,7 @@ var (
 	exitStatusOnFail bool
 	noLoad           bool
 	showVersion      bool
+	timeoutDuration  string
 
 	reporter benchrun.Reporter
 )
@@ -46,13 +47,11 @@ func init() {
 
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
+	flag.StringVar(&timeoutDuration, "timeout", "10s", "request timeout duration")
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
-
-	timeoutDuration := ""
-	flag.StringVar(&timeoutDuration, "timeout", "10s", "request timeout duration")
 
 	flag.Parse()
 
@@ -175,7 +174,7 @@ func main() {
 
 	wg := sync.WaitGroup{}
 	b.Load(func(ctx context.Context, step *isucandar.BenchmarkStep) error {
-		if s.NoLoad {
+		if noLoad {
 			return nil
 		}
 
@@ -183,14 +182,14 @@ func main() {
 		defer wg.Done()
 
 		startAt := time.Now()
+		// 途中経過を3秒毎に送信
+		ticker := time.NewTicker(3 * time.Second)
 		for {
-			// 途中経過を3秒毎に送信
-			timer := time.After(3 * time.Second)
-
 			select {
-			case <-timer:
+			case <-ticker.C:
 				scenario.AdminLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
 			case <-ctx.Done():
+				ticker.Stop()
 				return nil
 			}
 		}
