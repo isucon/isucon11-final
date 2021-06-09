@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"runtime/pprof"
 	"sync"
@@ -146,7 +147,10 @@ func main() {
 	if useTLS {
 		scheme = "https"
 	}
-	s.BaseURL = fmt.Sprintf("%s://%s/", scheme, targetAddress)
+	s.BaseURL, err = url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
+	if err != nil {
+		panic(err)
+	}
 	s.NoLoad = noLoad
 
 	benchTimeout, err := time.ParseDuration(benchTimeout)

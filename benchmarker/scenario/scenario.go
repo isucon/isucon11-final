@@ -2,14 +2,15 @@ package scenario
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/isucon/isucandar"
 )
 
 type Scenario struct {
-	BaseURL  string
-	UseTLS   bool
-	NoLoad   bool
+	BaseURL *url.URL
+	UseTLS  bool
+	NoLoad  bool
 
 	language string
 }
