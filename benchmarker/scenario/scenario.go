@@ -5,6 +5,19 @@ import (
 	"net/url"
 
 	"github.com/isucon/isucandar"
+	"github.com/isucon/isucandar/failure"
+)
+
+var (
+	// Prepare, Load, Validationが返すエラー
+	// Benchmarkが中断されたかどうか確認用
+	Cancel failure.StringCode = "scenario-cancel"
+
+	// BenchmarkStepにAddErrorしていくエラー郡
+	// 最終的にエラースコア計算に利用
+	ErrCritical          failure.StringCode = "critical" // スコア0点
+	ErrInvalidStatusCode failure.StringCode = "invalid-status-code"
+	ErrInvalidResponse   failure.StringCode = "invalid-response"
 )
 
 type Scenario struct {
@@ -19,13 +32,6 @@ func NewScenario() (*Scenario, error) {
 	return &Scenario{}, nil
 }
 
-func (s *Scenario) Prepare(context.Context, *isucandar.BenchmarkStep) error {
-	ContestantLogger.Printf("===> PREPARE")
-
-	s.language = "" // TODO: set from /initialize
-
-	return nil
-}
 func (s *Scenario) Load(parent context.Context, _ *isucandar.BenchmarkStep) error {
 	if s.NoLoad {
 		return nil
