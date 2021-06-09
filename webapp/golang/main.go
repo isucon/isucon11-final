@@ -213,6 +213,17 @@ func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 }
 
 func (h *handlers) RegisterCourses(context echo.Context) error {
+	// request body: [{ "id": string }]
+	// response:
+	//   - 成功時： 204
+	//   - バリデーション失敗時： 400
+
+	// バリデーション（講義一つでも失敗したら全部登録されない）
+	// - 指定idの講義が存在しない（年度違いの扱いは？）
+	// - 同じ時限の重複禁止
+	// - 前提講義を取っていないといけない
+	// - 受講者数制限（先着順？）
+	// - 取得可能単位上限（一旦保留？）
 	panic("implement me")
 }
 
