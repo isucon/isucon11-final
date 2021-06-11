@@ -176,9 +176,11 @@ func (h *handlers) Login(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
 	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if !sess.IsNew && uuid.Equal(userID, req.ID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "You are already logged in.")
+	if s, ok := sess.Values["userID"].(string); ok {
+		userID := uuid.Parse(s)
+		if !sess.IsNew && uuid.Equal(userID, req.ID) {
+			return echo.NewHTTPError(http.StatusBadRequest, "You are already logged in.")
+		}
 	}
 
 	var user User
