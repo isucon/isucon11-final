@@ -151,6 +151,10 @@ type LoginRequest struct {
 	Password string    `json:"password,omitempty"`
 }
 
+type RegisterCoursesRequestContent struct {
+	ID string `json:"id"`
+}
+
 type UserType string
 
 const (
@@ -164,6 +168,23 @@ type User struct {
 	MailAddress    string    `db:"mail_address"`
 	HashedPassword []byte    `db:"hashed_password"`
 	Type           UserType  `db:"type"`
+}
+
+type Course struct {
+	ID          string `db:"id"`
+	Name        string `db:"name"`
+	Description string `db:"description"`
+	Credit      int32  `db:"credit"`
+	Classroom   string `db:"classroom"`
+	Capacity    int32  `db:"capacity"`
+}
+
+type Schedule struct {
+	ID        string `db:"id"`
+	Period    int32  `db:"period"`
+	DayOfWeek string `db:"day_of_week"`
+	Semester  string `db:"semester"`
+	Year      int32  `db:"year"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -213,18 +234,96 @@ func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 }
 
 func (h *handlers) RegisterCourses(context echo.Context) error {
-	// request body: [{ "id": string }]
-	// response:
-	//   - 成功時： 204
-	//   - バリデーション失敗時： 400
+	userID, err := getUser(context)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get user: %v", err))
+	}
 
-	// バリデーション（講義一つでも失敗したら全部登録されない）
-	// - 指定idの講義が存在しない（年度違いの扱いは？）
-	// - 同じ時限の重複禁止
-	// - 前提講義を取っていないといけない
-	// - 受講者数制限（先着順？）
-	// - 取得可能単位上限（一旦保留？）
-	panic("implement me")
+	var req []RegisterCoursesRequestContent
+	if err := context.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	_, err = h.DB.Exec("LOCK TABLES registrations WRITE, courses READ, course_requirements READ, grades READ, schedules READ, course_schedules READ")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("lock table: %v", err))
+	}
+	defer h.DB.Exec("UNLOCK TABLES")
+
+	var courseList []Course
+	for _, content := range req {
+		var course Course
+		// MEMO: TODO: 年度、学期の扱い
+		err := h.DB.Get(&course, "SELECT * FROM courses WHERE id = ?", content.ID)
+		if err == sql.ErrNoRows {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Not found course. id: %v", content.ID))
+		} else if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get course: %v", err))
+		}
+		courseList = append(courseList, course)
+	}
+
+	// MEMO: LOGIC: 前提講義/受講者数制限バリデーション
+	for _, course := range courseList {
+		var requiredCourseIDList []string
+		err = h.DB.Select(&requiredCourseIDList, "SELECT required_course_id FROM course_requirements WHERE course_id = ?", course.ID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get required courses: %v", err))
+		}
+		for _, requiredCourseID := range requiredCourseIDList {
+			var grade int
+			err = h.DB.Get(&grade, "SELECT grade FROM grades WHERE user_id = ? AND course_id = ?", userID, requiredCourseID)
+			if err == sql.ErrNoRows {
+				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have not taken required course. required course id: %v", requiredCourseID))
+			} else if err != nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get grade: %v", err))
+			}
+			// MEMO: TODO: gradeが一定以下は履修済みとみなさない？（落単）
+		}
+
+		var registerCount int32
+		h.DB.Get(&registerCount, "SELECT COUNT(*) FROM registrations WHERE course_id = ?", course.ID)
+		if registerCount >= course.Capacity {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Course capacity exceeded. course id: %v", course.ID))
+		}
+	}
+
+	// MEMO: LOGIC: スケジュールの重複バリデーション
+	// MEMO: さすがに二重ループはやりすぎな気もする
+	for i := 0; i < len(courseList); i++ {
+		for j := i+1; j < len(courseList); j++ {
+			schedule1, err := getSchedule(h.DB, courseList[i].ID)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
+			}
+			schedule2, err := getSchedule(h.DB, courseList[j].ID)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
+			}
+			if schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
+				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You cannot take courses held on same schedule. course id: %v and %v", courseList[i].ID, courseList[j].ID))
+			}
+		}
+	}
+
+	// MEMO: LOGIC: 履修登録
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
+	}
+	defer tx.Rollback()
+	for _, course := range courseList {
+		_, err := tx.Exec("INSERT INTO registrations(course_id, user_id, created_at) VALUES (?, ?, NOW(6))", course.ID, userID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("insert registrations: %v", err))
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("commit tx: %v", err))
+	}
+
+	return context.NoContent(http.StatusOK)
 }
 
 func (h *handlers) GetGrades(context echo.Context) error {
@@ -301,4 +400,22 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 
 func (h *handlers) CheckAttendanceCode(context echo.Context) error {
 	panic("implement me")
+}
+
+func getUser(context echo.Context) (string, error) {
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		return "", err
+	}
+	return sess.Values["userID"].(string), nil
+}
+
+func getSchedule(DB *sqlx.DB, courseID string) (Schedule, error) {
+	var schedule Schedule
+	err := DB.Get(&schedule, "SELECT id, period, day_of_week, semester, year " +
+		"FROM schedules JOIN course_schedules ON schedules.id = course_schedules.schedule_id WHERE course_id = ?", courseID)
+	if err != nil {
+		return schedule, err
+	}
+	return schedule, nil
 }
