@@ -195,7 +195,7 @@ func (h *handlers) Login(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "ID or Password is wrong.")
 	}
 
-	sess.Values["userID"] = user.ID
+	sess.Values["userID"] = user.ID.String()
 	sess.Values["userName"] = user.Name
 	sess.Values["isAdmin"] = user.Type == Faculty
 	sess.Options = &sessions.Options{
