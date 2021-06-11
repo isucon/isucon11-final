@@ -178,7 +178,7 @@ func (h *handlers) Login(c echo.Context) error {
 	}
 	if s, ok := sess.Values["userID"].(string); ok {
 		userID := uuid.Parse(s)
-		if !sess.IsNew && uuid.Equal(userID, req.ID) {
+		if uuid.Equal(userID, req.ID) {
 			return echo.NewHTTPError(http.StatusBadRequest, "You are already logged in.")
 		}
 	}
