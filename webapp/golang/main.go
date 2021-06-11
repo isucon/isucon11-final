@@ -154,7 +154,7 @@ type LoginRequest struct {
 type UserType string
 
 const (
-	Student UserType = "student"
+	_ UserType = "student" /* FIXME: use Student */
 	Faculty UserType = "faculty"
 )
 
