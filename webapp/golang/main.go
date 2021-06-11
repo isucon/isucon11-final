@@ -176,9 +176,11 @@ func (h *handlers) Login(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
 	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if !sess.IsNew && uuid.Equal(userID, req.ID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "You are already logged in.")
+	if s, ok := sess.Values["userID"].(string); ok {
+		userID := uuid.Parse(s)
+		if uuid.Equal(userID, req.ID) {
+			return echo.NewHTTPError(http.StatusBadRequest, "You are already logged in.")
+		}
 	}
 
 	var user User
@@ -193,7 +195,7 @@ func (h *handlers) Login(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "ID or Password is wrong.")
 	}
 
-	sess.Values["userID"] = user.ID
+	sess.Values["userID"] = user.ID.String()
 	sess.Values["userName"] = user.Name
 	sess.Values["isAdmin"] = user.Type == Faculty
 	sess.Options = &sessions.Options{
