@@ -12,7 +12,7 @@ services:
     ports:
       - "7000:7000"
     depends_on:
-      - db
+      - mysql
     volumes:
       - ./sql:/sql:ro
 
