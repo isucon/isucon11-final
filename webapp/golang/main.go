@@ -3,8 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/pborman/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"net/http"
 
@@ -13,6 +11,8 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/pborman/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -151,10 +151,14 @@ type LoginRequest struct {
 	Password string    `json:"password,omitempty"`
 }
 
+type GetAttendanceCodeResponse struct {
+	Code string `json:"code"`
+}
+
 type UserType string
 
 const (
-	_ UserType = "student" /* FIXME: use Student */
+	_       UserType = "student" /* FIXME: use Student */
 	Faculty UserType = "faculty"
 )
 
@@ -263,7 +267,23 @@ func (h *handlers) DownloadSubmittedAssignment(context echo.Context) error {
 }
 
 func (h *handlers) GetAttendanceCode(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	var res GetAttendanceCodeResponse
+	if err := h.DB.Get(&res.Code, "SELECT `attendance_code` FROM `classes` WHERE `course_id` = ? AND `id` = ?", courseID, classID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "course or class not found")
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get attendance code: %v", err))
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) SetClassFlag(context echo.Context) error {
