@@ -90,10 +90,10 @@ CREATE TABLE `grades`
 CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
-    `course_id`       CHAR(36)         NOT NULL,
-    `title`           VARCHAR(255)     NOT NULL,
-    `description`     TEXT             NOT NULL,
-    `attendance_code` TINYINT UNSIGNED NOT NULL,
+    `course_id`       CHAR(36)     NOT NULL,
+    `title`           VARCHAR(255) NOT NULL,
+    `description`     TEXT         NOT NULL,
+    `attendance_code` VARCHAR(255) NOT NULL,
     FOREIGN KEY FK_course_id (`course_id`) REFERENCES `courses` (`id`)
 );
 
