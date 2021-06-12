@@ -34,32 +34,32 @@
 <!-- classes -->
 <g id="node2" class="node">
 <title>classes</title>
-<polygon fill="#efefef" stroke="transparent" points="339.5,-529.5 339.5,-564.5 569.5,-564.5 569.5,-529.5 339.5,-529.5"/>
-<polygon fill="none" stroke="#000000" points="339.5,-529.5 339.5,-564.5 569.5,-564.5 569.5,-529.5 339.5,-529.5"/>
+<polygon fill="#efefef" stroke="transparent" points="348.5,-529.5 348.5,-564.5 560.5,-564.5 560.5,-529.5 348.5,-529.5"/>
+<polygon fill="none" stroke="#000000" points="348.5,-529.5 348.5,-564.5 560.5,-564.5 560.5,-529.5 348.5,-529.5"/>
 <text text-anchor="start" x="375.8698" y="-542.3" font-family="Arial Bold" font-size="18.00" fill="#000000">classes</text>
 <text text-anchor="start" x="435.8764" y="-542.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
 <text text-anchor="start" x="439.767" y="-542.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
-<polygon fill="none" stroke="#000000" points="339.5,-499.5 339.5,-529.5 569.5,-529.5 569.5,-499.5 339.5,-499.5"/>
-<text text-anchor="start" x="346.5" y="-510.9" font-family="Arial" font-size="14.00" fill="#000000">id </text>
-<text text-anchor="start" x="361.2798" y="-510.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="339.5,-469.5 339.5,-499.5 569.5,-499.5 569.5,-469.5 339.5,-469.5"/>
-<text text-anchor="start" x="346.5" y="-480.9" font-family="Arial" font-size="14.00" fill="#000000">course_id </text>
-<text text-anchor="start" x="411.0708" y="-480.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="339.5,-439.5 339.5,-469.5 569.5,-469.5 569.5,-439.5 339.5,-439.5"/>
-<text text-anchor="start" x="346.5" y="-450.9" font-family="Arial" font-size="14.00" fill="#000000">title </text>
-<text text-anchor="start" x="372.1676" y="-450.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
-<polygon fill="none" stroke="#000000" points="339.5,-409.5 339.5,-439.5 569.5,-439.5 569.5,-409.5 339.5,-409.5"/>
-<text text-anchor="start" x="346.5" y="-420.9" font-family="Arial" font-size="14.00" fill="#000000">description </text>
-<text text-anchor="start" x="418.068" y="-420.9" font-family="Arial" font-size="14.00" fill="#666666">[text]</text>
-<polygon fill="none" stroke="#000000" points="339.5,-379.5 339.5,-409.5 569.5,-409.5 569.5,-379.5 339.5,-379.5"/>
-<text text-anchor="start" x="346.343" y="-390.9" font-family="Arial" font-size="14.00" fill="#000000">attendance_code </text>
-<text text-anchor="start" x="457.6234" y="-390.9" font-family="Arial" font-size="14.00" fill="#666666">[tinyint unsigned]</text>
+<polygon fill="none" stroke="#000000" points="348.5,-499.5 348.5,-529.5 560.5,-529.5 560.5,-499.5 348.5,-499.5"/>
+<text text-anchor="start" x="355.5" y="-510.9" font-family="Arial" font-size="14.00" fill="#000000">id </text>
+<text text-anchor="start" x="370.2798" y="-510.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="348.5,-469.5 348.5,-499.5 560.5,-499.5 560.5,-469.5 348.5,-469.5"/>
+<text text-anchor="start" x="355.5" y="-480.9" font-family="Arial" font-size="14.00" fill="#000000">course_id </text>
+<text text-anchor="start" x="420.0708" y="-480.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="348.5,-439.5 348.5,-469.5 560.5,-469.5 560.5,-439.5 348.5,-439.5"/>
+<text text-anchor="start" x="355.5" y="-450.9" font-family="Arial" font-size="14.00" fill="#000000">title </text>
+<text text-anchor="start" x="381.1676" y="-450.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
+<polygon fill="none" stroke="#000000" points="348.5,-409.5 348.5,-439.5 560.5,-439.5 560.5,-409.5 348.5,-409.5"/>
+<text text-anchor="start" x="355.5" y="-420.9" font-family="Arial" font-size="14.00" fill="#000000">description </text>
+<text text-anchor="start" x="427.068" y="-420.9" font-family="Arial" font-size="14.00" fill="#666666">[text]</text>
+<polygon fill="none" stroke="#000000" points="348.5,-379.5 348.5,-409.5 560.5,-409.5 560.5,-379.5 348.5,-379.5"/>
+<text text-anchor="start" x="355.3002" y="-390.9" font-family="Arial" font-size="14.00" fill="#000000">attendance_code </text>
+<text text-anchor="start" x="466.5806" y="-390.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
 </g>
 <!-- documents&#45;&gt;classes -->
 <g id="edge1" class="edge">
 <title>documents:class_id&#45;&gt;classes:id</title>
-<path fill="none" stroke="#000000" d="M255.5127,-790.89C366.6491,-776.5587 213.0482,-514.5 339.5,-514.5"/>
-<polygon fill="#000000" stroke="#000000" points="255.4815,-790.8918 245.2263,-787.0083 250.4907,-791.1959 245.5,-791.5 245.5,-791.5 245.5,-791.5 250.4907,-791.1959 245.7737,-795.9917 255.4815,-790.8918 255.4815,-790.8918"/>
+<path fill="none" stroke="#000000" d="M255.4617,-789.1053C308.3541,-762.0316 286.4182,-514.5 348.5,-514.5"/>
+<polygon fill="#000000" stroke="#000000" points="255.223,-789.1626 244.4482,-787.1246 250.3615,-790.3313 245.5,-791.5 245.5,-791.5 245.5,-791.5 250.3615,-790.3313 246.5518,-795.8754 255.223,-789.1626 255.223,-789.1626"/>
 <text text-anchor="start" x="252.3345" y="-801.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (class_id) REFERENCES classes (id)</text>
 </g>
 <!-- courses -->
@@ -92,9 +92,9 @@
 <!-- classes&#45;&gt;courses -->
 <g id="edge4" class="edge">
 <title>classes:course_id&#45;&gt;courses:id</title>
-<path fill="none" stroke="#000000" d="M579.6491,-483.8461C691.5758,-469.0327 661.7342,-207.5 541.5,-207.5"/>
-<polygon fill="#000000" stroke="#000000" points="579.4793,-483.8569 569.2106,-480.0093 574.4897,-484.1785 569.5,-484.5 569.5,-484.5 569.5,-484.5 574.4897,-484.1785 569.7894,-488.9907 579.4793,-483.8569 579.4793,-483.8569"/>
-<text text-anchor="start" x="576.886" y="-494.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (course_id) REFERENCES courses (id)</text>
+<path fill="none" stroke="#000000" d="M570.6424,-483.8461C682.7405,-469.0327 661.4056,-207.5 541.5,-207.5"/>
+<polygon fill="#000000" stroke="#000000" points="570.4793,-483.8565 560.2104,-480.0093 565.4896,-484.1783 560.5,-484.5 560.5,-484.5 560.5,-484.5 565.4896,-484.1783 560.7896,-488.9907 570.4793,-483.8565 570.4793,-483.8565"/>
+<text text-anchor="start" x="567.886" y="-494.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (course_id) REFERENCES courses (id)</text>
 </g>
 <!-- assignment -->
 <g id="node3" class="node">
@@ -126,8 +126,8 @@
 <!-- assignment&#45;&gt;classes -->
 <g id="edge2" class="edge">
 <title>assignment:class_id&#45;&gt;classes:id</title>
-<path fill="none" stroke="#000000" d="M565.4926,-820.8056C631.8359,-811.076 604.2012,-701.4898 555.5,-644 492.5921,-569.7397 402.4079,-682.2603 339.5,-608 312.6395,-576.2923 297.9444,-514.5 339.5,-514.5"/>
-<polygon fill="#000000" stroke="#000000" points="565.4759,-820.8067 555.188,-817.0108 560.488,-821.1534 555.5,-821.5 555.5,-821.5 555.5,-821.5 560.488,-821.1534 555.812,-825.9892 565.4759,-820.8067 565.4759,-820.8067"/>
+<path fill="none" stroke="#000000" d="M565.4914,-820.8067C631.8177,-811.0914 603.9984,-701.6609 555.5,-644 495.3922,-572.5364 408.6078,-679.4636 348.5,-608 321.7513,-576.1979 306.9444,-514.5 348.5,-514.5"/>
+<polygon fill="#000000" stroke="#000000" points="565.476,-820.8077 555.1884,-817.0108 560.488,-821.1538 555.5,-821.5 555.5,-821.5 555.5,-821.5 560.488,-821.1538 555.8116,-825.9892 565.476,-820.8077 565.476,-820.8077"/>
 <text text-anchor="start" x="310.3345" y="-831.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (class_id) REFERENCES classes (id)</text>
 </g>
 <!-- attendances -->
@@ -151,8 +151,8 @@
 <!-- attendances&#45;&gt;classes -->
 <g id="edge3" class="edge">
 <title>attendances:class_id&#45;&gt;classes:id</title>
-<path fill="none" stroke="#000000" d="M649.6731,-804.1496C596.1134,-776.5152 633.8204,-514.5 569.5,-514.5"/>
-<polygon fill="#000000" stroke="#000000" points="649.7743,-804.1737 658.4532,-810.8766 654.6372,-805.3369 659.5,-806.5 659.5,-806.5 659.5,-806.5 654.6372,-805.3369 660.5468,-802.1234 649.7743,-804.1737 649.7743,-804.1737"/>
+<path fill="none" stroke="#000000" d="M649.5181,-804.1496C594.6982,-776.5152 625.4037,-514.5 560.5,-514.5"/>
+<polygon fill="#000000" stroke="#000000" points="649.7662,-804.2079 658.4686,-810.8802 654.6331,-805.354 659.5,-806.5 659.5,-806.5 659.5,-806.5 654.6331,-805.354 660.5314,-802.1198 649.7662,-804.2079 649.7662,-804.2079"/>
 <text text-anchor="start" x="666.3345" y="-816.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (class_id) REFERENCES classes (id)</text>
 </g>
 </g>
