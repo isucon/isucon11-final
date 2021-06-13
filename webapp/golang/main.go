@@ -178,6 +178,14 @@ type User struct {
 	Type           UserType  `db:"type"`
 }
 
+type Class struct {
+	ID             uuid.UUID `db:"id"`
+	CourseID       uuid.UUID `db:"course_id"`
+	Title          string    `db:"title"`
+	Description    string    `db:"description"`
+	AttendanceCode string    `db:"attendance_code"`
+}
+
 type Attendance struct {
 	ClassID   uuid.UUID `db:"class_id"`
 	UserID    uuid.UUID `db:"user_id"`
