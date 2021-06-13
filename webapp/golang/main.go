@@ -80,9 +80,9 @@ func main() {
 			announcementsAPI.GET("", h.GetAnnouncementList)
 			announcementsAPI.GET("/:announcementID", h.GetAnnouncementDetail)
 		}
-		attendanceCodeAPI := API.Group("/code")
+		attendanceCodeAPI := API.Group("/attendance_codes")
 		{
-			attendanceCodeAPI.POST("", h.CheckAttendanceCode)
+			attendanceCodeAPI.POST("", h.PostAttendanceCode)
 		}
 	}
 
@@ -162,6 +162,10 @@ type GetAttendancesAttendance struct {
 }
 
 type GetAttendancesResponse []GetAttendancesAttendance
+
+type PostAttendanceCodeRequest struct {
+	Code string `json:"code"`
+}
 
 type UserType string
 
@@ -354,6 +358,52 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) CheckAttendanceCode(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) PostAttendanceCode(context echo.Context) error {
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if uuid.Equal(uuid.NIL, userID) {
+		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+	}
+
+	var req PostAttendanceCodeRequest
+	if err := context.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	// 出席コード確認
+	var class Class
+	if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `attendance_code` = ?", req.Code); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get class: %v", err))
+	}
+
+	// 履修確認
+	var registration int
+	if err := h.DB.Get(&registration, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ? AND `deleted_at` IS NULL", class.CourseID, userID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check registration: %v", err))
+	}
+	if registration == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "You are not registered in the course.")
+	}
+
+	// 既に出席しているか
+	var attendances int
+	if err := h.DB.Get(&attendances, "SELECT COUNT(*) FROM `attendances` WHERE `class_id` = ? AND `user_id` = ?", class.ID, userID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check attendance: %v", err))
+	}
+	if attendances > 0 {
+		// MEMO: 既に出席している場合は400を返すか？204を返すか？
+		return echo.NewHTTPError(http.StatusBadRequest, "You have already attended in this class.")
+	}
+
+	// 出席コード登録
+	if _, err := h.DB.Exec("INSERT INTO `attendances` (`class_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", class.ID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create attendance: %v", err))
+	}
+
+	return context.NoContent(http.StatusNoContent)
 }
