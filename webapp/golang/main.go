@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -155,6 +156,13 @@ type GetAttendanceCodeResponse struct {
 	Code string `json:"code"`
 }
 
+type GetAttendancesAttendance struct {
+	UserID     uuid.UUID `json:"user_id"`
+	AttendedAt int64     `json:"attended_at"`
+}
+
+type GetAttendancesResponse []GetAttendancesAttendance
+
 type UserType string
 
 const (
@@ -168,6 +176,12 @@ type User struct {
 	MailAddress    string    `db:"mail_address"`
 	HashedPassword []byte    `db:"hashed_password"`
 	Type           UserType  `db:"type"`
+}
+
+type Attendance struct {
+	ClassID   uuid.UUID `db:"class_id"`
+	UserID    uuid.UUID `db:"user_id"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -291,7 +305,29 @@ func (h *handlers) SetClassFlag(context echo.Context) error {
 }
 
 func (h *handlers) GetAttendances(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	var attendances []Attendance
+	if err := h.DB.Select(&attendances, "SELECT * FROM `attendances` WHERE `class_id` = ?", classID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get attendances: %v", err))
+	}
+
+	res := make(GetAttendancesResponse, len(attendances))
+	for i, attendance := range attendances {
+		res[i] = GetAttendancesAttendance{
+			UserID:     attendance.UserID,
+			AttendedAt: attendance.CreatedAt.UnixNano() / int64(time.Millisecond),
+		}
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) AddAnnouncements(context echo.Context) error {
