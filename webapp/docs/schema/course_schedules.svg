@@ -227,8 +227,8 @@
 <text text-anchor="start" x="1364.5" y="-435.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
 <text text-anchor="start" x="1434.528" y="-435.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 <polygon fill="none" stroke="#000000" points="1357.5,-394.5 1357.5,-424.5 1566.5,-424.5 1566.5,-394.5 1357.5,-394.5"/>
-<text text-anchor="start" x="1364.5" y="-405.9" font-family="Arial" font-size="14.00" fill="#000000">delete_at </text>
-<text text-anchor="start" x="1425.974" y="-405.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<text text-anchor="start" x="1364.5" y="-405.9" font-family="Arial" font-size="14.00" fill="#000000">deleted_at </text>
+<text text-anchor="start" x="1433.7566" y="-405.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 </g>
 <!-- registrations&#45;&gt;courses -->
 <g id="edge7" class="edge">

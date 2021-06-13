@@ -27,8 +27,8 @@
 <text text-anchor="start" x="340" y="-742.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
 <text text-anchor="start" x="410.028" y="-742.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 <polygon fill="none" stroke="#000000" points="333,-701.5 333,-731.5 638,-731.5 638,-701.5 333,-701.5"/>
-<text text-anchor="start" x="340" y="-712.9" font-family="Arial" font-size="14.00" fill="#000000">delete_at </text>
-<text text-anchor="start" x="401.474" y="-712.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<text text-anchor="start" x="340" y="-712.9" font-family="Arial" font-size="14.00" fill="#000000">deleted_at </text>
+<text text-anchor="start" x="409.2566" y="-712.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 <polygon fill="none" stroke="#000000" stroke-width="3" points="331,-700.5 331,-858.5 639,-858.5 639,-700.5 331,-700.5"/>
 </g>
 <!-- announcements -->
@@ -198,8 +198,8 @@
 <text text-anchor="start" x="1336" y="-742.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
 <text text-anchor="start" x="1406.028" y="-742.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 <polygon fill="none" stroke="#000000" points="1329,-701.5 1329,-731.5 1538,-731.5 1538,-701.5 1329,-701.5"/>
-<text text-anchor="start" x="1336" y="-712.9" font-family="Arial" font-size="14.00" fill="#000000">delete_at </text>
-<text text-anchor="start" x="1397.474" y="-712.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<text text-anchor="start" x="1336" y="-712.9" font-family="Arial" font-size="14.00" fill="#000000">deleted_at </text>
+<text text-anchor="start" x="1405.2566" y="-712.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 </g>
 <!-- registrations&#45;&gt;users -->
 <g id="edge6" class="edge">

@@ -86,8 +86,8 @@
 <text text-anchor="start" x="1827" y="-733.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
 <text text-anchor="start" x="1897.028" y="-733.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 <polygon fill="none" stroke="#000000" points="1820,-692.5 1820,-722.5 2125,-722.5 2125,-692.5 1820,-692.5"/>
-<text text-anchor="start" x="1827" y="-703.9" font-family="Arial" font-size="14.00" fill="#000000">delete_at </text>
-<text text-anchor="start" x="1888.474" y="-703.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<text text-anchor="start" x="1827" y="-703.9" font-family="Arial" font-size="14.00" fill="#000000">deleted_at </text>
+<text text-anchor="start" x="1896.2566" y="-703.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 </g>
 <!-- unread_announcements&#45;&gt;announcements -->
 <g id="edge1" class="edge">
@@ -255,8 +255,8 @@
 <text text-anchor="start" x="1381" y="-438.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
 <text text-anchor="start" x="1451.028" y="-438.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 <polygon fill="none" stroke="#000000" points="1374,-397.5 1374,-427.5 1583,-427.5 1583,-397.5 1374,-397.5"/>
-<text text-anchor="start" x="1381" y="-408.9" font-family="Arial" font-size="14.00" fill="#000000">delete_at </text>
-<text text-anchor="start" x="1442.474" y="-408.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<text text-anchor="start" x="1381" y="-408.9" font-family="Arial" font-size="14.00" fill="#000000">deleted_at </text>
+<text text-anchor="start" x="1450.2566" y="-408.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 </g>
 <!-- registrations&#45;&gt;courses -->
 <g id="edge9" class="edge">
