@@ -156,6 +156,8 @@ type RegisterCoursesRequestContent struct {
 	ID string `json:"id"`
 }
 
+type RegisterCoursesRequest []RegisterCoursesRequestContent
+
 type UserType string
 
 const (
@@ -242,7 +244,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get user: %v", err))
 	}
 
-	var req []RegisterCoursesRequestContent
+	var req RegisterCoursesRequest
 	if err := context.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
