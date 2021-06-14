@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -250,7 +251,12 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("lock table: %v", err))
 	}
-	defer h.DB.Exec("UNLOCK TABLES")
+	defer func() {
+		_, err = h.DB.Exec("UNLOCK TABLES")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unlock table: %v", err)
+		}
+	}()
 
 	var courseList []Course
 	for _, content := range req {
@@ -284,7 +290,10 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		}
 
 		var registerCount int32
-		h.DB.Get(&registerCount, "SELECT COUNT(*) FROM registrations WHERE course_id = ?", course.ID)
+		err = h.DB.Get(&registerCount, "SELECT COUNT(*) FROM registrations WHERE course_id = ?", course.ID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get register count: %v", err))
+		}
 		if registerCount >= course.Capacity {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Course capacity exceeded. course id: %v", course.ID))
 		}
@@ -313,7 +322,12 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
 	}
-	defer tx.Rollback()
+	defer func() {
+		err = tx.Rollback()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "rollback tx: %v", err)
+		}
+	}()
 	for _, course := range courseList {
 		_, err := tx.Exec("INSERT INTO registrations(course_id, user_id, created_at) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
