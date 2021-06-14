@@ -325,10 +325,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
 	}
 	defer func() {
-		err = tx.Rollback()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "rollback tx: %v", err)
-		}
+		_ = tx.Rollback()
 	}()
 	for _, course := range courseList {
 		// MEMO: LOGIC: 登録済みの場合はエラーにする
