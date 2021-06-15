@@ -308,13 +308,23 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 	// MEMO: LOGIC: スケジュールの重複バリデーション
 	// MEMO: さすがに二重ループはやりすぎな気もする
+	getSchedule := func(courseID string) (Schedule, error) {
+		var schedule Schedule
+		err := tx.Get(&schedule, "SELECT id, period, day_of_week, semester, year " +
+			"FROM schedules JOIN course_schedules ON schedules.id = course_schedules.schedule_id WHERE course_id = ?", courseID)
+		if err != nil {
+			return schedule, err
+		}
+		return schedule, nil
+	}
+
 	for i := 0; i < len(courseList); i++ {
 		for j := i+1; j < len(courseList); j++ {
-			schedule1, err := getSchedule(tx, courseList[i].ID)
+			schedule1, err := getSchedule(courseList[i].ID)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
 			}
-			schedule2, err := getSchedule(tx, courseList[j].ID)
+			schedule2, err := getSchedule(courseList[j].ID)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
 			}
@@ -436,14 +446,4 @@ func getUser(context echo.Context) (string, error) {
 		return "", err
 	}
 	return sess.Values["userID"].(string), nil
-}
-
-func getSchedule(DB *sqlx.Tx, courseID string) (Schedule, error) {
-	var schedule Schedule
-	err := DB.Get(&schedule, "SELECT id, period, day_of_week, semester, year " +
-		"FROM schedules JOIN course_schedules ON schedules.id = course_schedules.schedule_id WHERE course_id = ?", courseID)
-	if err != nil {
-		return schedule, err
-	}
-	return schedule, nil
 }
