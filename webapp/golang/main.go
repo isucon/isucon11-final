@@ -401,7 +401,7 @@ func (h *handlers) PostAttendanceCode(context echo.Context) error {
 	}
 
 	// 出席コード登録
-	if _, err := h.DB.Exec("INSERT INTO `attendances` (`class_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", class.ID); err != nil {
+	if _, err := h.DB.Exec("INSERT INTO `attendances` (`class_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", class.ID, userID); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create attendance: %v", err))
 	}
 
