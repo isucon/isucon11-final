@@ -7,7 +7,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -253,16 +252,14 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
 	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
 
 	_, err = tx.Exec("LOCK TABLES registrations WRITE, courses READ, course_requirements READ, grades READ, schedules READ, course_schedules READ")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("lock table: %v", err))
 	}
 	defer func() {
-		_, _ = tx.Exec("UNLOCK TABLES")
+		_ = tx.Rollback()
+		_, _ = h.DB.Exec("UNLOCK TABLES")
 	}()
 
 	var courseList []Course
@@ -352,10 +349,6 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		}
 	}
 
-	_, err = tx.Exec("UNLOCK TABLES")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "unlock table: %v", err)
-	}
 	err = tx.Commit()
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("commit tx: %v", err))
