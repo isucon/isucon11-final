@@ -283,7 +283,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get required courses: %v", err))
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
-			var grade int
+			var grade int32
 			err = tx.Get(&grade, "SELECT grade FROM grades WHERE user_id = ? AND course_id = ?", userID, requiredCourseID)
 			if err == sql.ErrNoRows {
 				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have not taken required course. required course id: %v", requiredCourseID))
@@ -334,7 +334,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	// MEMO: LOGIC: 履修登録
 	for _, course := range courseList {
 		// MEMO: LOGIC: 登録済みの場合はエラーにする
-		var count int
+		var count int32
 		err := tx.Get(&count, "SELECT COUNT(*) FROM registrations WHERE course_id = ? AND user_id = ?", course.ID, userID)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registrations: %v", err))
