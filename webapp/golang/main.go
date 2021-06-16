@@ -166,6 +166,15 @@ type User struct {
 	Type           UserType  `db:"type"`
 }
 
+type Course struct {
+	ID          string `json:"id" db:"id"`
+	Name        string `json:"name" db:"name"`
+	Description string `json:"description" db:"description"`
+	Credit      int32  `json:"credit" db:"credit"`
+	Classroom   string `json:"classroom" db:"classroom"`
+	Capacity    int32  `json:"capacity" db:"capacity"`
+}
+
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
@@ -210,8 +219,33 @@ func (h *handlers) Login(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func (h *handlers) GetRegisteredCourses(c echo.Context) error {
-	panic("implement me")
+func (h *handlers) GetRegisteredCourses(context echo.Context) error {
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if uuid.Equal(uuid.NIL, userID) {
+		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+	}
+	userIDParam := uuid.Parse(context.Param("userID"))
+	if uuid.Equal(uuid.NIL, userIDParam) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid userID")
+	}
+	if !uuid.Equal(userID, userIDParam) {
+		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
+	}
+
+	courses := make([]Course, 0)
+	query := "SELECT `id`, `name`, `description`, `credit`, `classroom`, `capacity`\n" +
+		"  FROM `courses` JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`\n" +
+		"  WHERE `user_id` = ?"
+	err = h.DB.Select(&courses, query, userID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registered courses: %v", err))
+	}
+
+	return context.JSON(http.StatusOK, courses)
 }
 
 func (h *handlers) RegisterCourses(context echo.Context) error {
