@@ -297,16 +297,16 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get required courses: %v", err))
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
-			var grade int32
-			err = tx.Get(&grade, "SELECT grade FROM grades WHERE user_id = ? AND course_id = ?", userID, requiredCourseID)
-			if err == sql.ErrNoRows {
-				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have not taken required course. required course id: %v", requiredCourseID))
-			} else if err != nil {
+			var gradeCount int32
+			err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM grades WHERE user_id = ? AND course_id = ?", userID, requiredCourseID)
+			if err != nil {
 				_ = tx.Rollback()
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get grade: %v", err))
 			}
-			// MEMO: TODO: gradeが一定以下は履修済みとみなさない？（落単）
+			if gradeCount == 0 {
+				_ = tx.Rollback()
+				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have not taken required course. required course id: %v", requiredCourseID))
+			}
 		}
 
 		var registerCount int32
