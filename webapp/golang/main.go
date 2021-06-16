@@ -396,7 +396,6 @@ func (h *handlers) PostAttendanceCode(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check attendance: %v", err))
 	}
 	if attendances > 0 {
-		// MEMO: 既に出席している場合は400を返すか？204を返すか？
 		return echo.NewHTTPError(http.StatusBadRequest, "You have already attended in this class.")
 	}
 
