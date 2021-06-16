@@ -264,7 +264,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
 	}
 
-	_, err = tx.Exec("LOCK TABLES registrations WRITE, courses READ, course_requirements READ, grades READ, schedules READ, course_schedules READ")
+	_, err = tx.Exec("LOCK TABLES `registrations` WRITE, `courses` READ, `course_requirements` READ, `grades` READ, `schedules` READ, `course_schedules` READ")
 	if err != nil {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("lock table: %v", err))
@@ -277,7 +277,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	for _, content := range req {
 		var course Course
 		// MEMO: TODO: 年度、学期の扱い
-		err := tx.Get(&course, "SELECT * FROM courses WHERE id = ?", content.ID)
+		err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", content.ID)
 		if err == sql.ErrNoRows {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Not found course. id: %v", content.ID))
@@ -291,14 +291,14 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	// MEMO: LOGIC: 前提講義/受講者数制限バリデーション
 	for _, course := range courseList {
 		var requiredCourseIDList []string
-		err = tx.Select(&requiredCourseIDList, "SELECT required_course_id FROM course_requirements WHERE course_id = ?", course.ID)
+		err = tx.Select(&requiredCourseIDList, "SELECT `required_course_id` FROM `course_requirements` WHERE `course_id` = ?", course.ID)
 		if err != nil {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get required courses: %v", err))
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
 			var gradeCount int32
-			err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM grades WHERE user_id = ? AND course_id = ?", userID, requiredCourseID)
+			err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM `grades` WHERE `user_id` = ? AND `course_id` = ?", userID, requiredCourseID)
 			if err != nil {
 				_ = tx.Rollback()
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get grade: %v", err))
@@ -310,7 +310,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		}
 
 		var registerCount int32
-		err = tx.Get(&registerCount, "SELECT COUNT(*) FROM registrations WHERE course_id = ?", course.ID)
+		err = tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ?", course.ID)
 		if err != nil {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get register count: %v", err))
@@ -325,8 +325,10 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	// MEMO: さすがに二重ループはやりすぎな気もする
 	getSchedule := func(courseID string) (Schedule, error) {
 		var schedule Schedule
-		err := tx.Get(&schedule, "SELECT id, period, day_of_week, semester, year " +
-			"FROM schedules JOIN course_schedules ON schedules.id = course_schedules.schedule_id WHERE course_id = ?", courseID)
+		query := "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n" +
+			"  FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n" +
+			"  WHERE `course_id` = ?"
+		err := tx.Get(&schedule, query, courseID)
 		if err != nil {
 			return schedule, err
 		}
@@ -355,7 +357,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	// MEMO: LOGIC: 履修登録
 	for _, course := range courseList {
 		var count int32
-		err := tx.Get(&count, "SELECT COUNT(*) FROM registrations WHERE course_id = ? AND user_id = ?", course.ID, userID)
+		err := tx.Get(&count, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID)
 		if err != nil {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registrations: %v", err))
@@ -364,7 +366,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			continue;
 		}
 
-		_, err = tx.Exec("INSERT INTO registrations(course_id, user_id, created_at) VALUES (?, ?, NOW(6))", course.ID, userID)
+		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("insert registrations: %v", err))
