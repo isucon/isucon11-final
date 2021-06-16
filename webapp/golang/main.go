@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -64,10 +65,10 @@ func main() {
 			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumetList)
 			coursesAPI.POST("/:courseID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
-			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
-			coursesAPI.POST("/:courseID/assignments", h.AddAssignment, h.IsAdmin)
-			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
-			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
+			coursesAPI.GET("/:courseID/classes/:classID/assignments", h.GetAssignmentList)
+			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.PostAssignment, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes/:classID/assignments/:assignmentID", h.SubmitAssignment)
+			coursesAPI.GET("/:courseID/classes/:classID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/code", h.GetAttendanceCode, h.IsAdmin)
 			coursesAPI.POST("/:courseID/classes/:classID", h.SetClassFlag, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/attendances", h.GetAttendances, h.IsAdmin)
@@ -154,7 +155,7 @@ type LoginRequest struct {
 type UserType string
 
 const (
-	_ UserType = "student" /* FIXME: use Student */
+	_       UserType = "student" /* FIXME: use Student */
 	Faculty UserType = "faculty"
 )
 
@@ -234,8 +235,34 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) AddAssignment(context echo.Context) error {
-	panic("implement me")
+type PostAssignmentRequest struct {
+	Name        string
+	Description string
+	Deadline    time.Time
+}
+
+func (h *handlers) PostAssignment(context echo.Context) error {
+	var req PostAssignmentRequest
+	if err := context.Bind(req); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("bind request: %v", err))
+	}
+
+	if req.Name == "" || req.Description == "" || req.Deadline.IsZero() {
+		return echo.NewHTTPError(http.StatusBadRequest, "Name or description or deadline must not be empty.")
+	}
+
+	classID := context.Get("classID")
+	var classes int
+	if err := h.DB.Get(&classes, "SELECT COUNT(*) FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get classes: %v", err))
+	}
+	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", uuid.New(), classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("insert assignment: %v", err))
+	}
+
+	return context.NoContent(http.StatusCreated)
 }
 
 func (h *handlers) GetCourseDocumetList(context echo.Context) error {
