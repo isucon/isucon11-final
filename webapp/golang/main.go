@@ -344,14 +344,13 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 	// MEMO: LOGIC: 履修登録
 	for _, course := range courseList {
-		// MEMO: LOGIC: 登録済みの場合はエラーにする
 		var count int32
 		err := tx.Get(&count, "SELECT COUNT(*) FROM registrations WHERE course_id = ? AND user_id = ?", course.ID, userID)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registrations: %v", err))
 		}
 		if (count > 0) {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have already registered course. course id: %v", course.ID))
+			continue;
 		}
 
 		_, err = tx.Exec("INSERT INTO registrations(course_id, user_id, created_at) VALUES (?, ?, NOW(6))", course.ID, userID)
