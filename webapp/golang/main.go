@@ -238,9 +238,20 @@ func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 }
 
 func (h *handlers) RegisterCourses(context echo.Context) error {
-	userID, err := getUser(context)
+	sess, err := session.Get(SessionName, context)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get user: %v", err))
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if uuid.Equal(uuid.NIL, userID) {
+		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+	}
+	userIDParam := uuid.Parse(context.Param("userID"))
+	if uuid.Equal(uuid.NIL, userIDParam) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid userID")
+	}
+	if !uuid.Equal(userID, userIDParam) {
+		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
 	}
 
 	var req RegisterCoursesRequest
@@ -431,12 +442,4 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 
 func (h *handlers) CheckAttendanceCode(context echo.Context) error {
 	panic("implement me")
-}
-
-func getUser(context echo.Context) (string, error) {
-	sess, err := session.Get(SessionName, context)
-	if err != nil {
-		return "", err
-	}
-	return sess.Values["userID"].(string), nil
 }
