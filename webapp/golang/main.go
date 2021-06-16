@@ -104,7 +104,10 @@ func (h *handlers) Initialize(c echo.Context) error {
 		}
 	}
 
-	return c.NoContent(http.StatusOK)
+	res := InitializeResponse{
+		Language: "go",
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) IsLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
@@ -144,6 +147,10 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 
 func (h *handlers) SetPhase(c echo.Context) error {
 	panic("implement me")
+}
+
+type InitializeResponse struct {
+	Language string `json:"language"`
 }
 
 type LoginRequest struct {
