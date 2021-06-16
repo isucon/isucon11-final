@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -17,8 +19,9 @@ import (
 )
 
 const (
-	SQLDirectory = "../sql/"
-	SessionName  = "session"
+	SQLDirectory  = "../sql/"
+	FileDirectory = "./files"
+	SessionName   = "session"
 )
 
 type handlers struct {
@@ -281,8 +284,48 @@ func (h *handlers) DownloadDocumentFile(context echo.Context) error {
 	panic("implement me")
 }
 
+// MEMO: PATH・Schemaの再検討
 func (h *handlers) SubmitAssignment(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+
+	assignmentID := context.Get("assignmentID")
+	var assignments int
+	if err := h.DB.Get(&assignments, "SELECT COUNT(*) FROM `assignments` WHERE `id` = ?", assignmentID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get assignments: %v", err))
+	}
+
+	file, err := context.FormFile("file")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get file: %v", err))
+	}
+	src, err := file.Open()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("open file: %v", err))
+	}
+	defer src.Close()
+
+	submissionID := uuid.New()
+	dst, err := os.Create(FileDirectory + file.Filename + submissionID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create file: %v", err))
+	}
+	defer dst.Close()
+
+	if _, err = io.Copy(dst, src); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("save submitted file: %v", err))
+	}
+
+	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `assignment_id`, `name`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", submissionID, userID, assignmentID, file.Filename); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("insert submission: %v", err))
+	}
+
+	return context.NoContent(http.StatusNoContent)
 }
 
 func (h *handlers) DownloadSubmittedAssignment(context echo.Context) error {
