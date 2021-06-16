@@ -1,10 +1,12 @@
-name: CI
+name: CI-webapp
 
 on:
   push:
     branches:
-      - 'master'
+      - 'main'
   pull_request:
+    paths:
+      'webapp/**'
 
 jobs:
   build:
@@ -20,7 +22,7 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('./webapp/**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
       - run: make
