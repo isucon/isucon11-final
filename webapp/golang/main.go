@@ -266,10 +266,10 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 	_, err = tx.Exec("LOCK TABLES registrations WRITE, courses READ, course_requirements READ, grades READ, schedules READ, course_schedules READ")
 	if err != nil {
+		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("lock table: %v", err))
 	}
 	defer func() {
-		_ = tx.Rollback()
 		_, _ = h.DB.Exec("UNLOCK TABLES")
 	}()
 
@@ -279,8 +279,10 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		// MEMO: TODO: 年度、学期の扱い
 		err := tx.Get(&course, "SELECT * FROM courses WHERE id = ?", content.ID)
 		if err == sql.ErrNoRows {
+			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Not found course. id: %v", content.ID))
 		} else if err != nil {
+			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get course: %v", err))
 		}
 		courseList = append(courseList, course)
@@ -291,14 +293,17 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		var requiredCourseIDList []string
 		err = tx.Select(&requiredCourseIDList, "SELECT required_course_id FROM course_requirements WHERE course_id = ?", course.ID)
 		if err != nil {
+			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get required courses: %v", err))
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
 			var grade int32
 			err = tx.Get(&grade, "SELECT grade FROM grades WHERE user_id = ? AND course_id = ?", userID, requiredCourseID)
 			if err == sql.ErrNoRows {
+				_ = tx.Rollback()
 				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have not taken required course. required course id: %v", requiredCourseID))
 			} else if err != nil {
+				_ = tx.Rollback()
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get grade: %v", err))
 			}
 			// MEMO: TODO: gradeが一定以下は履修済みとみなさない？（落単）
@@ -307,9 +312,11 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		var registerCount int32
 		err = tx.Get(&registerCount, "SELECT COUNT(*) FROM registrations WHERE course_id = ?", course.ID)
 		if err != nil {
+			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get register count: %v", err))
 		}
 		if registerCount >= course.Capacity {
+			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Course capacity exceeded. course id: %v", course.ID))
 		}
 	}
@@ -330,13 +337,16 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		for j := i+1; j < len(courseList); j++ {
 			schedule1, err := getSchedule(courseList[i].ID)
 			if err != nil {
+				_ = tx.Rollback()
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
 			}
 			schedule2, err := getSchedule(courseList[j].ID)
 			if err != nil {
+				_ = tx.Rollback()
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
 			}
 			if schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
+				_ = tx.Rollback()
 				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You cannot take courses held on same schedule. course id: %v and %v", courseList[i].ID, courseList[j].ID))
 			}
 		}
@@ -347,6 +357,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		var count int32
 		err := tx.Get(&count, "SELECT COUNT(*) FROM registrations WHERE course_id = ? AND user_id = ?", course.ID, userID)
 		if err != nil {
+			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registrations: %v", err))
 		}
 		if (count > 0) {
@@ -355,6 +366,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 		_, err = tx.Exec("INSERT INTO registrations(course_id, user_id, created_at) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
+			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("insert registrations: %v", err))
 		}
 	}
