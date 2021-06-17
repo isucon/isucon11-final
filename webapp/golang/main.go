@@ -325,10 +325,9 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	// MEMO: さすがに二重ループはやりすぎな気もする
 	getSchedule := func(courseID string) (Schedule, error) {
 		var schedule Schedule
-		query := "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n" +
-			"  FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n" +
-			"  WHERE `course_id` = ?"
-		err := tx.Get(&schedule, query, courseID)
+		err := tx.Get(&schedule, "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n" +
+			"	FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n" +
+			"	WHERE `course_id` = ?", courseID)
 		if err != nil {
 			return schedule, err
 		}
