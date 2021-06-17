@@ -1,17 +1,62 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
-type LoginRequest struct {
+type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-func Login(ctx context.Context, a *agent.Agent, req *LoginRequest) (*http.Response, error) {
-	return nil, nil
+const loginEndpoint = "/login"
+
+func Login(ctx context.Context, a *agent.Agent, id, pw string) error {
+	reqBody, _ := json.Marshal(&loginRequest{
+		Username: id,
+		Password: pw,
+	})
+	req, err := a.POST(loginEndpoint, bytes.NewBuffer(reqBody))
+	if err != nil {
+		// リクエスト生成に失敗はほぼありえないのでCritical
+		return failure.NewError(fails.ErrCritical, err)
+	}
+	res, err := a.Do(ctx, req)
+	if err != nil {
+		// net.Error.Timeoutなども雑にErrHTTPでwrapしちゃう
+		// 呼び出し側でいい感じに優先度をつけてエラー判定するので
+		return failure.NewError(fails.ErrHTTP, err)
+	}
+
+	if err := assertStatusCode(res, http.StatusOK); err != nil {
+		return err
+	}
+	return nil
+}
+
+func LoginFail(ctx context.Context, a *agent.Agent, id, pw string) error {
+	reqBody, _ := json.Marshal(&loginRequest{
+		Username: id,
+		Password: pw,
+	})
+	req, err := a.POST(loginEndpoint, bytes.NewBuffer(reqBody))
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
+	res, err := a.Do(ctx, req)
+	if err != nil {
+		return failure.NewError(fails.ErrHTTP, err)
+	}
+
+	if err := assertStatusCode(res, http.StatusForbidden); err != nil {
+		return err
+	}
+	return nil
 }
