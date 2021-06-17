@@ -13,7 +13,7 @@ CREATE TABLE `classes` (
   `course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `description` text COLLATE utf8mb4_bin NOT NULL,
-  `attendance_code` tinyint unsigned NOT NULL,
+  `attendance_code` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_course_id` (`course_id`),
   CONSTRAINT `classes_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
@@ -24,13 +24,13 @@ CREATE TABLE `classes` (
 
 ## Columns
 
-| Name            | Type             | Default | Nullable | Children                                                                            | Parents               | Comment          |
-| --------------- | ---------------- | ------- | -------- | ----------------------------------------------------------------------------------- | --------------------- | ---------------- |
-| id              | char(36)         |         | false    | [assignment](assignment.md) [attendances](attendances.md) [documents](documents.md) |                       |                  |
-| course_id       | char(36)         |         | false    |                                                                                     | [courses](courses.md) |                  |
-| title           | varchar(255)     |         | false    |                                                                                     |                       | 講義のタイトル          |
-| description     | text             |         | false    |                                                                                     |                       | 講義の説明            |
-| attendance_code | tinyint unsigned |         | false    |                                                                                     |                       | 出席確認用コード         |
+| Name            | Type         | Default | Nullable | Children                                                                            | Parents               | Comment          |
+| --------------- | ------------ | ------- | -------- | ----------------------------------------------------------------------------------- | --------------------- | ---------------- |
+| id              | char(36)     |         | false    | [assignment](assignment.md) [attendances](attendances.md) [documents](documents.md) |                       |                  |
+| course_id       | char(36)     |         | false    |                                                                                     | [courses](courses.md) |                  |
+| title           | varchar(255) |         | false    |                                                                                     |                       | 講義のタイトル          |
+| description     | text         |         | false    |                                                                                     |                       | 講義の説明            |
+| attendance_code | varchar(255) |         | false    |                                                                                     |                       | 出席確認用コード         |
 
 ## Constraints
 

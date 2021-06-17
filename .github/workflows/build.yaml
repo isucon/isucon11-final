@@ -3,7 +3,10 @@ name: Build
 on:
   push:
     branches:
-      - master
+      - 'main'
+  pull_request:
+    paths:
+      'webapp/**'
 
 env:
   IMAGE_NAME: isucon11-backend
