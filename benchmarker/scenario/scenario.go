@@ -12,12 +12,6 @@ var (
 	// Prepare, Load, Validationが返すエラー
 	// Benchmarkが中断されたかどうか確認用
 	Cancel failure.StringCode = "scenario-cancel"
-
-	// BenchmarkStepにAddErrorしていくエラー郡
-	// 最終的にエラースコア計算に利用
-	ErrCritical          failure.StringCode = "critical" // スコア0点
-	ErrInvalidStatusCode failure.StringCode = "invalid-status-code"
-	ErrInvalidResponse   failure.StringCode = "invalid-response"
 )
 
 type Scenario struct {
