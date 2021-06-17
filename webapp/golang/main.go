@@ -94,6 +94,7 @@ func (h *handlers) Initialize(c echo.Context) error {
 
 	files := []string{
 		"schema.sql",
+		"test_data.sql",
 	}
 	for _, file := range files {
 		data, err := ioutil.ReadFile(SQLDirectory + file)
