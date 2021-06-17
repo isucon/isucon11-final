@@ -3,16 +3,17 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/pborman/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/pborman/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -79,9 +80,9 @@ func main() {
 			announcementsAPI.GET("", h.GetAnnouncementList)
 			announcementsAPI.GET("/:announcementID", h.GetAnnouncementDetail)
 		}
-		attendanceCodeAPI := API.Group("/code")
+		attendanceCodeAPI := API.Group("/attendance_codes")
 		{
-			attendanceCodeAPI.POST("", h.CheckAttendanceCode)
+			attendanceCodeAPI.POST("", h.PostAttendanceCode)
 		}
 	}
 
@@ -104,7 +105,10 @@ func (h *handlers) Initialize(c echo.Context) error {
 		}
 	}
 
-	return c.NoContent(http.StatusOK)
+	res := InitializeResponse{
+		Language: "go",
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) IsLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
@@ -146,15 +150,34 @@ func (h *handlers) SetPhase(c echo.Context) error {
 	panic("implement me")
 }
 
+type InitializeResponse struct {
+	Language string `json:"language"`
+}
+
 type LoginRequest struct {
 	ID       uuid.UUID `json:"name,omitempty"` // TODO: やっぱり学籍番号を用意したほうが良さそうだけど教員の扱いどうしようかな
 	Password string    `json:"password,omitempty"`
 }
 
+type GetAttendanceCodeResponse struct {
+	Code string `json:"code"`
+}
+
+type GetAttendancesAttendance struct {
+	UserID     uuid.UUID `json:"user_id"`
+	AttendedAt int64     `json:"attended_at"`
+}
+
+type GetAttendancesResponse []GetAttendancesAttendance
+
+type PostAttendanceCodeRequest struct {
+	Code string `json:"code"`
+}
+
 type UserType string
 
 const (
-	_ UserType = "student" /* FIXME: use Student */
+	_       UserType = "student" /* FIXME: use Student */
 	Faculty UserType = "faculty"
 )
 
@@ -170,9 +193,23 @@ type Course struct {
 	ID          string `json:"id" db:"id"`
 	Name        string `json:"name" db:"name"`
 	Description string `json:"description" db:"description"`
-	Credit      int32  `json:"credit" db:"credit"`
+	Credit      uint8  `json:"credit" db:"credit"`
 	Classroom   string `json:"classroom" db:"classroom"`
-	Capacity    int32  `json:"capacity" db:"capacity"`
+	Capacity    uint32  `json:"capacity" db:"capacity"`
+}
+
+type Class struct {
+	ID             uuid.UUID `db:"id"`
+	CourseID       uuid.UUID `db:"course_id"`
+	Title          string    `db:"title"`
+	Description    string    `db:"description"`
+	AttendanceCode string    `db:"attendance_code"`
+}
+
+type Attendance struct {
+	ClassID   uuid.UUID `db:"class_id"`
+	UserID    uuid.UUID `db:"user_id"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -296,7 +333,23 @@ func (h *handlers) DownloadSubmittedAssignment(context echo.Context) error {
 }
 
 func (h *handlers) GetAttendanceCode(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	var res GetAttendanceCodeResponse
+	if err := h.DB.Get(&res.Code, "SELECT `attendance_code` FROM `classes` WHERE `course_id` = ? AND `id` = ?", courseID, classID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "course or class not found")
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get attendance code: %v", err))
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) SetClassFlag(context echo.Context) error {
@@ -304,7 +357,29 @@ func (h *handlers) SetClassFlag(context echo.Context) error {
 }
 
 func (h *handlers) GetAttendances(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	var attendances []Attendance
+	if err := h.DB.Select(&attendances, "SELECT * FROM `attendances` WHERE `class_id` = ?", classID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get attendances: %v", err))
+	}
+
+	res := make(GetAttendancesResponse, len(attendances))
+	for i, attendance := range attendances {
+		res[i] = GetAttendancesAttendance{
+			UserID:     attendance.UserID,
+			AttendedAt: attendance.CreatedAt.UnixNano() / int64(time.Millisecond),
+		}
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) AddAnnouncements(context echo.Context) error {
@@ -323,6 +398,51 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) CheckAttendanceCode(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) PostAttendanceCode(context echo.Context) error {
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if uuid.Equal(uuid.NIL, userID) {
+		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+	}
+
+	var req PostAttendanceCodeRequest
+	if err := context.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	// 出席コード確認
+	var class Class
+	if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `attendance_code` = ?", req.Code); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
+	} else if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get class: %v", err))
+	}
+
+	// 履修確認
+	var registration int
+	if err := h.DB.Get(&registration, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ? AND `deleted_at` IS NULL", class.CourseID, userID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check registration: %v", err))
+	}
+	if registration == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "You are not registered in the course.")
+	}
+
+	// 既に出席しているか
+	var attendances int
+	if err := h.DB.Get(&attendances, "SELECT COUNT(*) FROM `attendances` WHERE `class_id` = ? AND `user_id` = ?", class.ID, userID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check attendance: %v", err))
+	}
+	if attendances > 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "You have already attended in this class.")
+	}
+
+	// 出席コード登録
+	if _, err := h.DB.Exec("INSERT INTO `attendances` (`class_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", class.ID, userID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create attendance: %v", err))
+	}
+
+	return context.NoContent(http.StatusNoContent)
 }
