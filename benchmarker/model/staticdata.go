@@ -25,6 +25,6 @@ func init() {
 	}
 
 	StaticCoursesData = []*Course{
-		NewCourse("確率統計学", "120EA8A25E5D487BF68B5F7096440019"),
+		NewCourse("00000111", "確率統計学", 30, 1, 1, []string{"確率"}, "120EA8A25E5D487BF68B5F7096440019"),
 	}
 }
