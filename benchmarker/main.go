@@ -18,7 +18,6 @@ import (
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun"                            // TODO: modify to isucon11-portal
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources" // TODO: modify to isucon11-portal
-
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 )
 
@@ -132,7 +131,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		pprof.StartCPUProfile(fs)
+		_ = pprof.StartCPUProfile(fs)
 		defer pprof.StopCPUProfile()
 	}
 	if targetAddress == "" {
