@@ -3,62 +3,92 @@ package scenario
 import (
 	"context"
 	"fmt"
-	"net/http"
-
-	"github.com/isucon/isucandar"
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/model"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/api"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/isucon/isucon11-final/benchmarker/model"
 )
 
-const (
-	ScoreLogin = "login"
-)
-
-func errorInvalidStatusCode(res *http.Response) error {
-	return failure.NewError(ErrInvalidStatusCode, fmt.Errorf("期待する HTTP ステータスコード以外が返却されました: %d (%s: %s)", res.StatusCode, res.Request.Method, res.Request.URL.Path))
-}
-
-func errorInvalidResponse(message string, args ...interface{}) error {
-	return failure.NewError(ErrInvalidResponse, fmt.Errorf(message, args...))
-}
-
-func InitializeAction(ctx context.Context, a *agent.Agent, step *isucandar.BenchmarkStep) []error {
-	res, hres, err := api.Initialize(ctx, a)
+func InitializeAction(ctx context.Context, agent *agent.Agent) (string, error) {
+	language, err := api.Initialize(ctx, agent)
 	if err != nil {
-		return []error{failure.NewError(ErrCritical, err)}
+		return "", err
+	}
+	if language == "" {
+		return "", failure.NewError(fails.ErrCritical, fmt.Errorf("実装言語が返却されていません"))
 	}
 
-	var errors []error
-	if hres.StatusCode != 200 {
-		errors = append(errors, errorInvalidStatusCode(hres))
-	}
-	if res.Language == "" {
-		errors = append(errors, errorInvalidResponse("利用言語(language)が設定されていません"))
-	}
-
-	step.AddScore("initialize")
-	return errors
+	return language, nil
 }
 
-func LoginAction(ctx context.Context, u *model.User, step *isucandar.BenchmarkStep) error {
-	r := &api.LoginRequest{
-		Username: u.Name,
-		Password: u.RawPassword,
-	}
-	hres, err := api.Login(ctx, u.Agent, r)
+func LoginAction(ctx context.Context, agent *agent.Agent, u *model.UserData) error {
+	err := api.Login(ctx, agent, u.Number, u.RawPassword)
 	if err != nil {
-		// ログイン施行自体のアクションが失敗
-		return failure.NewError(ErrCritical, err)
+		return err
 	}
 
-	if hres.StatusCode != 200 && hres.StatusCode != 403 {
-		// ログイン施行自体は成功している
-		step.AddError(errorInvalidStatusCode(hres))
-	}
-
-	step.AddScore(ScoreLogin)
 	return nil
+}
+
+func SearchCoursesAction(ctx context.Context, agent *agent.Agent, course *model.Course) error {
+	syllabusIDs, err := api.SearchSyllabus(ctx, agent, course.Keyword[0])
+	if err != nil {
+		return err
+	}
+	// FIXME: pagingが実装されてないので修正
+
+	var isContain bool
+	for _, id := range syllabusIDs {
+		if id == course.ID {
+			isContain = true
+		}
+	}
+
+	if !isContain {
+		err := failure.NewError(fails.ErrApplication, fmt.Errorf(
+			"検索結果に期待する講義が含まれませんでした: 講義(%s), 検索キーワード(%s)",
+			course.Name, course.Keyword[0]),
+		)
+		return err
+	}
+
+	return nil
+}
+
+func RegisterCoursesAction(ctx context.Context, student *model.Student, courses []*model.Course) error {
+	var coursesID []string
+	for _, c := range courses {
+		coursesID = append(coursesID, c.ID)
+	}
+
+	registeredCoursesID, err := api.RegisterCourses(ctx, student.Agent, student.UserData.Number, coursesID)
+	if err != nil {
+		return err
+	}
+	// nolint:staticcheck
+	if len(registeredCoursesID) == 0 {
+		// FIXME:登録失敗した講義を除いて再登録したい
+	}
+
+	student.AddCourses(coursesID)
+	for _, c := range courses {
+		c.AddStudent(student)
+	}
+
+	return nil
+}
+
+func FetchRegisteredCoursesAction(ctx context.Context, student *model.Student) ([]string, error) {
+	registeredCoursesID, err := api.FetchRegisteredCourses(ctx, student.Agent, student.UserData.Number)
+	if err != nil {
+		return nil, err
+	}
+
+	return registeredCoursesID, nil
+}
+
+func AccessTopPageAction(ctx context.Context, agent *agent.Agent) []error {
+	return api.AccessTopPage(ctx, agent)
 }
