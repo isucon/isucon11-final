@@ -1,9 +1,7 @@
 package model
 
-import "github.com/isucon/isucandar/agent"
-
 // StaticFacultyData はアプリケーションが初期データとして持っているFaculty用Userデータ
-var StaticFacultyData *User
+var StaticFacultyData *Faculty
 
 // StaticStudentsData はアプリケーションが初期データとして持っているStudent用Userデータ
 var StaticStudentsData []*Student
@@ -12,13 +10,7 @@ var StaticStudentsData []*Student
 var StaticCoursesData []*Course
 
 func init() {
-	a, _ := agent.NewAgent()
-	StaticFacultyData = &User{
-		Name:        "APIForFaculty",
-		Number:      "99999999",
-		RawPassword: "piyopiyo",
-		Agent:       a,
-	}
+	StaticFacultyData = NewFaculty("APIForFaculty", "99999999", "piyopiyo")
 
 	StaticStudentsData = []*Student{
 		NewStudent("服部 夢二", "21020162", "hogehoge"),

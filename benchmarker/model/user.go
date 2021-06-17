@@ -6,16 +6,14 @@ import (
 	"github.com/isucon/isucandar/agent"
 )
 
-type User struct {
+type UserData struct {
 	Name        string
 	Number      string
 	RawPassword string
-
-	Agent *agent.Agent
 }
 
 type Student struct {
-	*User
+	*UserData
 
 	// ベンチの操作で変更されるデータ
 	registeredCourseIDs     []string
@@ -25,29 +23,59 @@ type Student struct {
 	submittedAssignmentIDs  []string
 	firstSemesterGrades     map[string]string
 
-	rmu sync.RWMutex
+	Agent *agent.Agent
+	rmu   sync.RWMutex
 }
 
-func NewUser(name, number, rawPW string) *User {
-	a, _ := agent.NewAgent()
+type Faculty struct {
+	*UserData
 
-	return &User{
+	Agent *agent.Agent
+}
+
+func newUserData(name, number, rawPW string) *UserData {
+	return &UserData{
 		Name:        name,
 		Number:      number,
 		RawPassword: rawPW,
-		Agent:       a,
+	}
+}
+
+func NewFaculty(name, number, rawPW string) *Faculty {
+	a, _ := agent.NewAgent()
+
+	return &Faculty{
+		UserData: newUserData(name, number, rawPW),
+		Agent:    a,
 	}
 }
 
 func NewStudent(name, number, rawPW string) *Student {
+	a, _ := agent.NewAgent()
+
 	return &Student{
-		User:                    NewUser(name, number, rawPW),
+		UserData:                newUserData(name, number, rawPW),
 		registeredCourseIDs:     []string{},
 		receivedAnnouncementIDs: []string{},
 		readAnnouncementIDs:     []string{},
 		receivedAssignmentIDs:   []string{},
 		submittedAssignmentIDs:  []string{},
 		firstSemesterGrades:     map[string]string{},
+		Agent:                   a,
 		rmu:                     sync.RWMutex{},
 	}
+}
+
+func (s *Student) AddCourses(courses []string) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.registeredCourseIDs = append(s.registeredCourseIDs, courses...)
+}
+
+func (s *Student) Courses() []string {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return s.registeredCourseIDs
 }
