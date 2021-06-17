@@ -237,10 +237,9 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	}
 
 	courses := make([]Course, 0)
-	query := "SELECT `id`, `name`, `description`, `credit`, `classroom`, `capacity`\n" +
-		"  FROM `courses` JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`\n" +
-		"  WHERE `user_id` = ?"
-	err = h.DB.Select(&courses, query, userID)
+	err = h.DB.Select(&courses, "SELECT `id`, `name`, `description`, `credit`, `classroom`, `capacity`\n" +
+		"	FROM `courses` JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`\n" +
+		"	WHERE `user_id` = ?", userID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registered courses: %v", err))
 	}
