@@ -264,6 +264,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
 	}
 
+
+	// MEMO: SELECT ... FOR UPDATE は今のDB構造だとデッドロックする
 	_, err = tx.Exec("LOCK TABLES `registrations` WRITE, `courses` READ, `course_requirements` READ, `grades` READ, `schedules` READ, `course_schedules` READ")
 	if err != nil {
 		_ = tx.Rollback()
