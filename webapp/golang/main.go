@@ -176,17 +176,17 @@ type Course struct {
 	ID          string `db:"id"`
 	Name        string `db:"name"`
 	Description string `db:"description"`
-	Credit      int32  `db:"credit"`
+	Credit      uint8  `db:"credit"`
 	Classroom   string `db:"classroom"`
-	Capacity    int32  `db:"capacity"`
+	Capacity    uint32 `db:"capacity"`
 }
 
 type Schedule struct {
 	ID        string `db:"id"`
-	Period    int32  `db:"period"`
+	Period    uint8  `db:"period"`
 	DayOfWeek string `db:"day_of_week"`
 	Semester  string `db:"semester"`
-	Year      int32  `db:"year"`
+	Year      uint32 `db:"year"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -299,7 +299,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get required courses: %v", err))
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
-			var gradeCount int32
+			var gradeCount uint32
 			err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM `grades` WHERE `user_id` = ? AND `course_id` = ?", userID, requiredCourseID)
 			if err != nil {
 				_ = tx.Rollback()
@@ -311,7 +311,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			}
 		}
 
-		var registerCount int32
+		var registerCount uint32
 		err = tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ?", course.ID)
 		if err != nil {
 			_ = tx.Rollback()
@@ -357,7 +357,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 	// MEMO: LOGIC: 履修登録
 	for _, course := range courseList {
-		var count int32
+		var count uint32
 		err := tx.Get(&count, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID)
 		if err != nil {
 			_ = tx.Rollback()
