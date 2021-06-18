@@ -24,13 +24,13 @@ CREATE TABLE `classes` (
 
 ## Columns
 
-| Name            | Type         | Default | Nullable | Children                                                                            | Parents               | Comment          |
-| --------------- | ------------ | ------- | -------- | ----------------------------------------------------------------------------------- | --------------------- | ---------------- |
-| id              | char(36)     |         | false    | [assignment](assignment.md) [attendances](attendances.md) [documents](documents.md) |                       |                  |
-| course_id       | char(36)     |         | false    |                                                                                     | [courses](courses.md) |                  |
-| title           | varchar(255) |         | false    |                                                                                     |                       | 講義のタイトル          |
-| description     | text         |         | false    |                                                                                     |                       | 講義の説明            |
-| attendance_code | varchar(255) |         | false    |                                                                                     |                       | 出席確認用コード         |
+| Name            | Type         | Default | Nullable | Children                                                                              | Parents               | Comment          |
+| --------------- | ------------ | ------- | -------- | ------------------------------------------------------------------------------------- | --------------------- | ---------------- |
+| id              | char(36)     |         | false    | [assignments](assignments.md) [attendances](attendances.md) [documents](documents.md) |                       |                  |
+| course_id       | char(36)     |         | false    |                                                                                       | [courses](courses.md) |                  |
+| title           | varchar(255) |         | false    |                                                                                       |                       | 講義のタイトル          |
+| description     | text         |         | false    |                                                                                       |                       | 講義の説明            |
+| attendance_code | varchar(255) |         | false    |                                                                                       |                       | 出席確認用コード         |
 
 ## Constraints
 

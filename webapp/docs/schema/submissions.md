@@ -18,7 +18,7 @@ CREATE TABLE `submissions` (
   KEY `FK_user_id` (`user_id`),
   KEY `FK_assignment_id` (`assignment_id`),
   CONSTRAINT `submissions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `submissions_ibfk_2` FOREIGN KEY (`assignment_id`) REFERENCES `assignment` (`id`)
+  CONSTRAINT `submissions_ibfk_2` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -26,21 +26,21 @@ CREATE TABLE `submissions` (
 
 ## Columns
 
-| Name          | Type         | Default | Nullable | Children | Parents                     | Comment            |
-| ------------- | ------------ | ------- | -------- | -------- | --------------------------- | ------------------ |
-| id            | char(36)     |         | false    |          |                             |                    |
-| user_id       | char(36)     |         | false    |          | [users](users.md)           | 提出した学生のID          |
-| assignment_id | char(36)     |         | false    |          | [assignment](assignment.md) | 対象課題のID            |
-| name          | varchar(255) |         | false    |          |                             | 提出したファイル名          |
-| created_at    | datetime(6)  |         | false    |          |                             |                    |
+| Name          | Type         | Default | Nullable | Children | Parents                       | Comment            |
+| ------------- | ------------ | ------- | -------- | -------- | ----------------------------- | ------------------ |
+| id            | char(36)     |         | false    |          |                               |                    |
+| user_id       | char(36)     |         | false    |          | [users](users.md)             | 提出した学生のID          |
+| assignment_id | char(36)     |         | false    |          | [assignments](assignments.md) | 対象課題のID            |
+| name          | varchar(255) |         | false    |          |                               | 提出したファイル名          |
+| created_at    | datetime(6)  |         | false    |          |                               |                    |
 
 ## Constraints
 
-| Name               | Type        | Definition                                             |
-| ------------------ | ----------- | ------------------------------------------------------ |
-| PRIMARY            | PRIMARY KEY | PRIMARY KEY (id)                                       |
-| submissions_ibfk_1 | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)            |
-| submissions_ibfk_2 | FOREIGN KEY | FOREIGN KEY (assignment_id) REFERENCES assignment (id) |
+| Name               | Type        | Definition                                              |
+| ------------------ | ----------- | ------------------------------------------------------- |
+| PRIMARY            | PRIMARY KEY | PRIMARY KEY (id)                                        |
+| submissions_ibfk_1 | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)             |
+| submissions_ibfk_2 | FOREIGN KEY | FOREIGN KEY (assignment_id) REFERENCES assignments (id) |
 
 ## Indexes
 

@@ -1,4 +1,4 @@
-# assignment
+# assignments
 
 ## Description
 
@@ -8,7 +8,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE `assignment` (
+CREATE TABLE `assignments` (
   `id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `class_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE `assignment` (
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_class_id` (`class_id`),
-  CONSTRAINT `assignment_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
+  CONSTRAINT `assignments_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -36,10 +36,10 @@ CREATE TABLE `assignment` (
 
 ## Constraints
 
-| Name              | Type        | Definition                                     |
-| ----------------- | ----------- | ---------------------------------------------- |
-| assignment_ibfk_1 | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
-| PRIMARY           | PRIMARY KEY | PRIMARY KEY (id)                               |
+| Name               | Type        | Definition                                     |
+| ------------------ | ----------- | ---------------------------------------------- |
+| assignments_ibfk_1 | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
+| PRIMARY            | PRIMARY KEY | PRIMARY KEY (id)                               |
 
 ## Indexes
 
@@ -50,7 +50,7 @@ CREATE TABLE `assignment` (
 
 ## Relations
 
-![er](assignment.svg)
+![er](assignments.svg)
 
 ---
 

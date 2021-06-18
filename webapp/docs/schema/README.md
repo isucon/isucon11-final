@@ -5,7 +5,7 @@
 | Name                                            | Columns | Comment                                    | Type       |
 | ----------------------------------------------- | ------- | ------------------------------------------ | ---------- |
 | [announcements](announcements.md)               | 5       | お知らせ一覧                                     | BASE TABLE |
-| [assignment](assignment.md)                     | 6       | 課題一覧                                       | BASE TABLE |
+| [assignments](assignments.md)                   | 6       | 課題一覧                                       | BASE TABLE |
 | [attendances](attendances.md)                   | 3       | 出席履歴                                       | BASE TABLE |
 | [classes](classes.md)                           | 5       | 講義一覧                                       | BASE TABLE |
 | [course_requirements](course_requirements.md)   | 2       | 受講に必要な科目一覧                                 | BASE TABLE |

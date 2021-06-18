@@ -68,70 +68,70 @@
 <polygon fill="#000000" stroke="#000000" points="1707.5346,-486.6682 1717.1257,-491.9844 1712.5173,-487.0841 1717.5,-487.5 1717.5,-487.5 1717.5,-487.5 1712.5173,-487.0841 1717.8743,-483.0156 1707.5346,-486.6682 1707.5346,-486.6682"/>
 <text text-anchor="start" x="1463.886" y="-497.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (course_id) REFERENCES courses (id)</text>
 </g>
-<!-- assignment -->
+<!-- assignments -->
 <g id="node2" class="node">
-<title>assignment</title>
-<polygon fill="#efefef" stroke="transparent" points="1417.5,-872.5 1417.5,-907.5 1620.5,-907.5 1620.5,-872.5 1417.5,-872.5"/>
-<polygon fill="none" stroke="#000000" points="1417.5,-872.5 1417.5,-907.5 1620.5,-907.5 1620.5,-872.5 1417.5,-872.5"/>
-<text text-anchor="start" x="1424.3633" y="-885.3" font-family="Arial Bold" font-size="18.00" fill="#000000">assignment</text>
-<text text-anchor="start" x="1516.3829" y="-885.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
-<text text-anchor="start" x="1520.2735" y="-885.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
-<polygon fill="none" stroke="#000000" points="1417.5,-842.5 1417.5,-872.5 1620.5,-872.5 1620.5,-842.5 1417.5,-842.5"/>
-<text text-anchor="start" x="1424.5" y="-853.9" font-family="Arial" font-size="14.00" fill="#000000">id </text>
-<text text-anchor="start" x="1439.2798" y="-853.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="1417.5,-812.5 1417.5,-842.5 1620.5,-842.5 1620.5,-812.5 1417.5,-812.5"/>
-<text text-anchor="start" x="1424.5" y="-823.9" font-family="Arial" font-size="14.00" fill="#000000">class_id </text>
-<text text-anchor="start" x="1478.9516" y="-823.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="1417.5,-782.5 1417.5,-812.5 1620.5,-812.5 1620.5,-782.5 1417.5,-782.5"/>
-<text text-anchor="start" x="1424.5" y="-793.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
-<text text-anchor="start" x="1463.399" y="-793.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
-<polygon fill="none" stroke="#000000" points="1417.5,-752.5 1417.5,-782.5 1620.5,-782.5 1620.5,-752.5 1417.5,-752.5"/>
-<text text-anchor="start" x="1424.5" y="-763.9" font-family="Arial" font-size="14.00" fill="#000000">description </text>
-<text text-anchor="start" x="1496.068" y="-763.9" font-family="Arial" font-size="14.00" fill="#666666">[text]</text>
-<polygon fill="none" stroke="#000000" points="1417.5,-722.5 1417.5,-752.5 1620.5,-752.5 1620.5,-722.5 1417.5,-722.5"/>
-<text text-anchor="start" x="1424.5" y="-733.9" font-family="Arial" font-size="14.00" fill="#000000">deadline </text>
-<text text-anchor="start" x="1481.2994" y="-733.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
-<polygon fill="none" stroke="#000000" points="1417.5,-692.5 1417.5,-722.5 1620.5,-722.5 1620.5,-692.5 1417.5,-692.5"/>
-<text text-anchor="start" x="1424.5" y="-703.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
-<text text-anchor="start" x="1494.528" y="-703.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<title>assignments</title>
+<polygon fill="#efefef" stroke="transparent" points="1407.5,-872.5 1407.5,-907.5 1619.5,-907.5 1619.5,-872.5 1407.5,-872.5"/>
+<polygon fill="none" stroke="#000000" points="1407.5,-872.5 1407.5,-907.5 1619.5,-907.5 1619.5,-872.5 1407.5,-872.5"/>
+<text text-anchor="start" x="1414.3633" y="-885.3" font-family="Arial Bold" font-size="18.00" fill="#000000">assignments</text>
+<text text-anchor="start" x="1515.3829" y="-885.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
+<text text-anchor="start" x="1519.2735" y="-885.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
+<polygon fill="none" stroke="#000000" points="1407.5,-842.5 1407.5,-872.5 1619.5,-872.5 1619.5,-842.5 1407.5,-842.5"/>
+<text text-anchor="start" x="1414.5" y="-853.9" font-family="Arial" font-size="14.00" fill="#000000">id </text>
+<text text-anchor="start" x="1429.2798" y="-853.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="1407.5,-812.5 1407.5,-842.5 1619.5,-842.5 1619.5,-812.5 1407.5,-812.5"/>
+<text text-anchor="start" x="1414.5" y="-823.9" font-family="Arial" font-size="14.00" fill="#000000">class_id </text>
+<text text-anchor="start" x="1468.9516" y="-823.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="1407.5,-782.5 1407.5,-812.5 1619.5,-812.5 1619.5,-782.5 1407.5,-782.5"/>
+<text text-anchor="start" x="1414.5" y="-793.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
+<text text-anchor="start" x="1453.399" y="-793.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
+<polygon fill="none" stroke="#000000" points="1407.5,-752.5 1407.5,-782.5 1619.5,-782.5 1619.5,-752.5 1407.5,-752.5"/>
+<text text-anchor="start" x="1414.5" y="-763.9" font-family="Arial" font-size="14.00" fill="#000000">description </text>
+<text text-anchor="start" x="1486.068" y="-763.9" font-family="Arial" font-size="14.00" fill="#666666">[text]</text>
+<polygon fill="none" stroke="#000000" points="1407.5,-722.5 1407.5,-752.5 1619.5,-752.5 1619.5,-722.5 1407.5,-722.5"/>
+<text text-anchor="start" x="1414.5" y="-733.9" font-family="Arial" font-size="14.00" fill="#000000">deadline </text>
+<text text-anchor="start" x="1471.2994" y="-733.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<polygon fill="none" stroke="#000000" points="1407.5,-692.5 1407.5,-722.5 1619.5,-722.5 1619.5,-692.5 1407.5,-692.5"/>
+<text text-anchor="start" x="1414.5" y="-703.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
+<text text-anchor="start" x="1484.528" y="-703.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 </g>
-<!-- assignment&#45;&gt;classes -->
+<!-- assignments&#45;&gt;classes -->
 <g id="edge1" class="edge">
-<title>assignment:class_id&#45;&gt;classes:id</title>
-<path fill="none" stroke="#000000" d="M1630.603,-825.183C1688.1803,-796.815 1648.983,-517.5 1717.5,-517.5"/>
-<polygon fill="#000000" stroke="#000000" points="1630.247,-825.2646 1619.494,-823.1139 1625.3735,-826.3823 1620.5,-827.5 1620.5,-827.5 1620.5,-827.5 1625.3735,-826.3823 1621.506,-831.8861 1630.247,-825.2646 1630.247,-825.2646"/>
-<text text-anchor="start" x="1627.3345" y="-837.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (class_id) REFERENCES classes (id)</text>
+<title>assignments:class_id&#45;&gt;classes:id</title>
+<path fill="none" stroke="#000000" d="M1629.6192,-825.183C1687.3329,-796.815 1648.9197,-517.5 1717.5,-517.5"/>
+<polygon fill="#000000" stroke="#000000" points="1629.2477,-825.2679 1618.4956,-823.1135 1624.3739,-826.384 1619.5,-827.5 1619.5,-827.5 1619.5,-827.5 1624.3739,-826.384 1620.5044,-831.8865 1629.2477,-825.2679 1629.2477,-825.2679"/>
+<text text-anchor="start" x="1626.3345" y="-837.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (class_id) REFERENCES classes (id)</text>
 </g>
 <!-- submissions -->
 <g id="node3" class="node">
 <title>submissions</title>
-<polygon fill="#efefef" stroke="transparent" points="1414.5,-1179.5 1414.5,-1214.5 1624.5,-1214.5 1624.5,-1179.5 1414.5,-1179.5"/>
-<polygon fill="none" stroke="#000000" points="1414.5,-1179.5 1414.5,-1214.5 1624.5,-1214.5 1624.5,-1179.5 1414.5,-1179.5"/>
-<text text-anchor="start" x="1421.3704" y="-1192.3" font-family="Arial Bold" font-size="18.00" fill="#000000">submissions</text>
-<text text-anchor="start" x="1520.3758" y="-1192.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
-<text text-anchor="start" x="1524.2664" y="-1192.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
-<polygon fill="none" stroke="#000000" points="1414.5,-1149.5 1414.5,-1179.5 1624.5,-1179.5 1624.5,-1149.5 1414.5,-1149.5"/>
-<text text-anchor="start" x="1421.5" y="-1160.9" font-family="Arial" font-size="14.00" fill="#000000">id </text>
-<text text-anchor="start" x="1436.2798" y="-1160.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="1414.5,-1119.5 1414.5,-1149.5 1624.5,-1149.5 1624.5,-1119.5 1414.5,-1119.5"/>
-<text text-anchor="start" x="1421.5" y="-1130.9" font-family="Arial" font-size="14.00" fill="#000000">user_id </text>
-<text text-anchor="start" x="1471.2882" y="-1130.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="1414.5,-1089.5 1414.5,-1119.5 1624.5,-1119.5 1624.5,-1089.5 1414.5,-1089.5"/>
-<text text-anchor="start" x="1421.5" y="-1100.9" font-family="Arial" font-size="14.00" fill="#000000">assignment_id </text>
-<text text-anchor="start" x="1515.6332" y="-1100.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="1414.5,-1059.5 1414.5,-1089.5 1624.5,-1089.5 1624.5,-1059.5 1414.5,-1059.5"/>
-<text text-anchor="start" x="1421.5" y="-1070.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
-<text text-anchor="start" x="1460.399" y="-1070.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
-<polygon fill="none" stroke="#000000" points="1414.5,-1029.5 1414.5,-1059.5 1624.5,-1059.5 1624.5,-1029.5 1414.5,-1029.5"/>
-<text text-anchor="start" x="1421.5" y="-1040.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
-<text text-anchor="start" x="1491.528" y="-1040.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<polygon fill="#efefef" stroke="transparent" points="1408.5,-1179.5 1408.5,-1214.5 1618.5,-1214.5 1618.5,-1179.5 1408.5,-1179.5"/>
+<polygon fill="none" stroke="#000000" points="1408.5,-1179.5 1408.5,-1214.5 1618.5,-1214.5 1618.5,-1179.5 1408.5,-1179.5"/>
+<text text-anchor="start" x="1415.3704" y="-1192.3" font-family="Arial Bold" font-size="18.00" fill="#000000">submissions</text>
+<text text-anchor="start" x="1514.3758" y="-1192.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
+<text text-anchor="start" x="1518.2664" y="-1192.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
+<polygon fill="none" stroke="#000000" points="1408.5,-1149.5 1408.5,-1179.5 1618.5,-1179.5 1618.5,-1149.5 1408.5,-1149.5"/>
+<text text-anchor="start" x="1415.5" y="-1160.9" font-family="Arial" font-size="14.00" fill="#000000">id </text>
+<text text-anchor="start" x="1430.2798" y="-1160.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="1408.5,-1119.5 1408.5,-1149.5 1618.5,-1149.5 1618.5,-1119.5 1408.5,-1119.5"/>
+<text text-anchor="start" x="1415.5" y="-1130.9" font-family="Arial" font-size="14.00" fill="#000000">user_id </text>
+<text text-anchor="start" x="1465.2882" y="-1130.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="1408.5,-1089.5 1408.5,-1119.5 1618.5,-1119.5 1618.5,-1089.5 1408.5,-1089.5"/>
+<text text-anchor="start" x="1415.5" y="-1100.9" font-family="Arial" font-size="14.00" fill="#000000">assignment_id </text>
+<text text-anchor="start" x="1509.6332" y="-1100.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="1408.5,-1059.5 1408.5,-1089.5 1618.5,-1089.5 1618.5,-1059.5 1408.5,-1059.5"/>
+<text text-anchor="start" x="1415.5" y="-1070.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
+<text text-anchor="start" x="1454.399" y="-1070.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
+<polygon fill="none" stroke="#000000" points="1408.5,-1029.5 1408.5,-1059.5 1618.5,-1059.5 1618.5,-1029.5 1408.5,-1029.5"/>
+<text text-anchor="start" x="1415.5" y="-1040.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
+<text text-anchor="start" x="1485.528" y="-1040.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 </g>
-<!-- submissions&#45;&gt;assignment -->
+<!-- submissions&#45;&gt;assignments -->
 <g id="edge2" class="edge">
-<title>submissions:assignment_id&#45;&gt;assignment:id</title>
-<path fill="none" stroke="#000000" d="M1404.5157,-1103.3902C1364.9708,-1093.7842 1383.2641,-1024.168 1414.5,-987 1474.2969,-915.847 1560.7031,-1022.153 1620.5,-951 1647.2356,-919.1869 1662.0556,-857.5 1620.5,-857.5"/>
-<polygon fill="#000000" stroke="#000000" points="1404.5612,-1103.3952 1414.0028,-1108.9725 1409.5306,-1103.9476 1414.5,-1104.5 1414.5,-1104.5 1414.5,-1104.5 1409.5306,-1103.9476 1414.9972,-1100.0275 1404.5612,-1103.3952 1404.5612,-1103.3952"/>
-<text text-anchor="start" x="1123.27" y="-1114.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (assignment_id) REFERENCES assignment (id)</text>
+<title>submissions:assignment_id&#45;&gt;assignments:id</title>
+<path fill="none" stroke="#000000" d="M1628.1597,-1101.7261C1673.296,-1074.5898 1670.9588,-857.5 1619.5,-857.5"/>
+<polygon fill="#000000" stroke="#000000" points="1628.1116,-1101.7398 1617.2579,-1100.1748 1623.3058,-1103.1199 1618.5,-1104.5 1618.5,-1104.5 1618.5,-1104.5 1623.3058,-1103.1199 1619.7421,-1108.8252 1628.1116,-1101.7398 1628.1116,-1101.7398"/>
+<text text-anchor="start" x="1625.77" y="-1114.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (assignment_id) REFERENCES assignments (id)</text>
 </g>
 <!-- attendances -->
 <g id="node4" class="node">
