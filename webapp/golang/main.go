@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -282,15 +283,15 @@ type PostAssignmentRequest struct {
 
 func (h *handlers) PostAssignment(context echo.Context) error {
 	var req PostAssignmentRequest
-	if err := context.Bind(req); err != nil {
+	if err := context.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("bind request: %v", err))
 	}
 
 	if req.Name == "" || req.Description == "" || req.Deadline.IsZero() {
-		return echo.NewHTTPError(http.StatusBadRequest, "Name or description or deadline must not be empty.")
+		return echo.NewHTTPError(http.StatusBadRequest, "Name, description and deadline must not be empty.")
 	}
 
-	classID := context.Get("classID")
+	classID := context.Param("classID")
 	var classes int
 	if err := h.DB.Get(&classes, "SELECT COUNT(*) FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
@@ -328,7 +329,7 @@ func (h *handlers) SubmitAssignment(context echo.Context) error {
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 
-	assignmentID := context.Get("assignmentID")
+	assignmentID := context.Param("assignmentID")
 	var assignments int
 	if err := h.DB.Get(&assignments, "SELECT COUNT(*) FROM `assignments` WHERE `id` = ?", assignmentID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
