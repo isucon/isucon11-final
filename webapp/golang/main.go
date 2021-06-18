@@ -66,7 +66,7 @@ func main() {
 		coursesAPI := API.Group("/courses")
 		{
 			coursesAPI.GET("/:courseID", h.GetCourseDetail)
-			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumetList)
+			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumentList)
 			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
 			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
