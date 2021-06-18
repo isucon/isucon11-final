@@ -12,7 +12,7 @@ CREATE TABLE `unread_announcements` (
   `announcement_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `user_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `created_at` datetime(6) NOT NULL,
-  `delete_at` datetime(6) DEFAULT NULL,
+  `deleted_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`announcement_id`,`user_id`),
   KEY `FK_user_id` (`user_id`),
   CONSTRAINT `unread_announcements_ibfk_1` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`),
@@ -29,7 +29,7 @@ CREATE TABLE `unread_announcements` (
 | announcement_id | char(36)    |         | false    |          | [announcements](announcements.md) | お知らせのID                |
 | user_id         | char(36)    |         | false    |          | [users](users.md)                 | 未読の学生                  |
 | created_at      | datetime(6) |         | false    |          |                                   |                        |
-| delete_at       | datetime(6) |         | true     |          |                                   | 既読時のタイムスタンプ            |
+| deleted_at      | datetime(6) |         | true     |          |                                   | 既読時のタイムスタンプ            |
 
 ## Constraints
 
