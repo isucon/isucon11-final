@@ -415,7 +415,27 @@ func (h *handlers) GetAssignmentList(context echo.Context) error {
 }
 
 func (h *handlers) DownloadDocumentFile(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	documentID := uuid.Parse(context.Param("documentID"))
+	if uuid.Equal(uuid.NIL, documentID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	var documentMeta DocumentsMeta
+	err := h.DB.Get(&documentMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.id = documents.class_id "+
+		"WHERE `documents`.`id` = ? AND `classes`.`course_id` = ?", documentID, courseID)
+	if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "file not found")
+	} else if err != nil {
+		log.Error(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	filePath := fmt.Sprintf("%s/%s", DocDirectory, documentMeta.Name)
+	return context.File(filePath)
 }
 
 func (h *handlers) SubmitAssignment(context echo.Context) error {
