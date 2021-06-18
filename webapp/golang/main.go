@@ -3,8 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -12,12 +14,14 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
 	SQLDirectory = "../sql/"
+	DocDirectory = "../documents"
 	SessionName  = "session"
 )
 
@@ -63,7 +67,7 @@ func main() {
 		{
 			coursesAPI.GET("/:courseID", h.GetCourseDetail)
 			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumetList)
-			coursesAPI.POST("/:courseID/documents", h.PostDocumentFile, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
 			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
 			coursesAPI.POST("/:courseID/assignments", h.AddAssignment, h.IsAdmin)
@@ -203,6 +207,13 @@ type Attendance struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
+type DocumentsMeta struct {
+	ID        uuid.UUID `db:"id"`
+	ClassID   uuid.UUID `db:"class_id"`
+	Name      string    `db:"name"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
@@ -280,7 +291,91 @@ func (h *handlers) GetCourseDocumetList(context echo.Context) error {
 }
 
 func (h *handlers) PostDocumentFile(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	form, err := context.MultipartForm()
+	if err != nil {
+		return err
+	}
+	files := form.File["files"]
+
+	// 作ったファイルの名前を格納しておく
+	dsts := make([]string, 0, len(files))
+
+	tx, err := h.DB.Begin()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
+	}
+
+	// 作成したファイルを削除する
+	deleteFiles := func(dsts []string) {
+		for _, file := range dsts {
+			os.Remove(file)
+		}
+	}
+
+	for _, file := range files {
+		src, err := file.Open()
+		if err != nil {
+			tx.Rollback()
+			deleteFiles(dsts)
+			return echo.NewHTTPError(http.StatusInternalServerError, "cannot create file")
+		}
+
+		filename := fmt.Sprintf("%s_%s", uuid.NewUUID(), file.Filename)
+
+		fileMeta := DocumentsMeta{
+			ID:      uuid.NewUUID(),
+			ClassID: classID,
+			Name:    filename,
+		}
+
+		filePath := fmt.Sprintf("%s/%s", DocDirectory, filename)
+
+		log.Print(filePath)
+		dst, err := os.Create(filePath)
+		if err != nil {
+			tx.Rollback()
+			deleteFiles(dsts)
+			log.Error(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		dsts = append(dsts, filePath)
+		_, err = tx.Exec("INSERT INTO `documents` (`id`, `class_id`, `name`, `created_at`) VALUES (?, ?, ?, NOW(6))",
+			fileMeta.ID,
+			fileMeta.ClassID,
+			fileMeta.Name,
+		)
+		if err != nil {
+			tx.Rollback()
+			deleteFiles(dsts)
+			log.Error(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		if _, err = io.Copy(dst, src); err != nil {
+			tx.Rollback()
+			deleteFiles(dsts)
+			log.Error(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Error(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.NoContent(http.StatusCreated)
 }
 
 func (h *handlers) GetAssignmentList(context echo.Context) error {
