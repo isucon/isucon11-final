@@ -178,6 +178,13 @@ type PostAttendanceCodeRequest struct {
 	Code string `json:"code"`
 }
 
+type GetDocumentResponse struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type GetDocumentsResponse []GetDocumentResponse
+
 type UserType string
 
 const (
@@ -286,8 +293,33 @@ func (h *handlers) AddAssignment(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) GetCourseDocumetList(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) GetCourseDocumentList(context echo.Context) error {
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	documentsMeta := make([]DocumentsMeta, 0)
+	err := h.DB.Select(&documentsMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` WHERE `classes`.`course_id` = ?", courseID)
+	if err != nil {
+		log.Error(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := make(GetDocumentsResponse, 0, len(documentsMeta))
+	for _, meta := range documentsMeta {
+		res = append(res, GetDocumentResponse{
+			ID:   meta.ID,
+			Name: meta.Name,
+		})
+	}
+
+	return context.JSON(http.StatusOK, res)
+
 }
 
 func (h *handlers) PostDocumentFile(context echo.Context) error {
