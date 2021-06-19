@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -306,7 +306,7 @@ func (h *handlers) GetCourseDocumentList(context echo.Context) error {
 	documentsMeta := make([]DocumentsMeta, 0)
 	err := h.DB.Select(&documentsMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` WHERE `classes`.`course_id` = ?", courseID)
 	if err != nil {
-		log.Error(err)
+		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
@@ -334,7 +334,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 
 	form, err := context.MultipartForm()
 	if err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest,"read request err")
 	}
 	files := form.File["files"]
 
@@ -343,7 +343,8 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 
 	// 作成したファイルを削除する
@@ -356,9 +357,10 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 	for _, file := range files {
 		src, err := file.Open()
 		if err != nil {
+			log.Println(err)
 			tx.Rollback()
 			deleteFiles(dsts)
-			return echo.NewHTTPError(http.StatusInternalServerError, "cannot create file")
+			return context.NoContent(http.StatusInternalServerError)
 		}
 
 
@@ -373,9 +375,9 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 
 		dst, err := os.Create(filePath)
 		if err != nil {
+			log.Println(err)
 			tx.Rollback()
 			deleteFiles(dsts)
-			log.Error(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
 
@@ -386,23 +388,23 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 			fileMeta.Name,
 		)
 		if err != nil {
+			log.Println(err)
 			tx.Rollback()
 			deleteFiles(dsts)
-			log.Error(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
 
 		if _, err = io.Copy(dst, src); err != nil {
+			log.Println(err)
 			tx.Rollback()
 			deleteFiles(dsts)
-			log.Error(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Error(err)
+		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
@@ -429,7 +431,7 @@ func (h *handlers) DownloadDocumentFile(context echo.Context) error {
 	if err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "file not found")
 	} else if err != nil {
-		log.Error(err)
+		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
