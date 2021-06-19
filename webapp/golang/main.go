@@ -426,7 +426,7 @@ func (h *handlers) DownloadDocumentFile(context echo.Context) error {
 	}
 
 	var documentMeta DocumentsMeta
-	err := h.DB.Get(&documentMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.id = documents.class_id "+
+	err := h.DB.Get(&documentMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` "+
 		"WHERE `documents`.`id` = ? AND `classes`.`course_id` = ?", documentID, courseID)
 	if err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "file not found")
