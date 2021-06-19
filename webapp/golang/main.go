@@ -334,7 +334,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 
 	form, err := context.MultipartForm()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest,"read request err")
+		return echo.NewHTTPError(http.StatusBadRequest, "read request err")
 	}
 	files := form.File["files"]
 
@@ -358,12 +358,10 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		src, err := file.Open()
 		if err != nil {
 			log.Println(err)
-			tx.Rollback()
+			_ = tx.Rollback()
 			deleteFiles(dsts)
 			return context.NoContent(http.StatusInternalServerError)
 		}
-
-
 
 		fileMeta := DocumentsMeta{
 			ID:      uuid.NewRandom(),
@@ -376,7 +374,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		dst, err := os.Create(filePath)
 		if err != nil {
 			log.Println(err)
-			tx.Rollback()
+			_ = tx.Rollback()
 			deleteFiles(dsts)
 			return context.NoContent(http.StatusInternalServerError)
 		}
@@ -389,14 +387,14 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		)
 		if err != nil {
 			log.Println(err)
-			tx.Rollback()
+			_ = tx.Rollback()
 			deleteFiles(dsts)
 			return context.NoContent(http.StatusInternalServerError)
 		}
 
 		if _, err = io.Copy(dst, src); err != nil {
 			log.Println(err)
-			tx.Rollback()
+			_ = tx.Rollback()
 			deleteFiles(dsts)
 			return context.NoContent(http.StatusInternalServerError)
 		}
