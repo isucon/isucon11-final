@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -284,6 +285,7 @@ type PostAssignmentRequest struct {
 func (h *handlers) PostAssignment(context echo.Context) error {
 	var req PostAssignmentRequest
 	if err := context.Bind(&req); err != nil {
+		log.Println()
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("bind request: %v", err))
 	}
 
@@ -348,7 +350,7 @@ func (h *handlers) SubmitAssignment(context echo.Context) error {
 	defer src.Close()
 
 	submissionID := uuid.New()
-	dst, err := os.Create(FileDirectory + file.Filename + submissionID)
+	dst, err := os.Create(FileDirectory + submissionID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create file: %v", err))
 	}
