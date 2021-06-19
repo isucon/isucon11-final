@@ -361,17 +361,16 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "cannot create file")
 		}
 
-		filename := fmt.Sprintf("%s_%s", uuid.NewUUID(), file.Filename)
+
 
 		fileMeta := DocumentsMeta{
-			ID:      uuid.NewUUID(),
+			ID:      uuid.NewRandom(),
 			ClassID: classID,
-			Name:    filename,
+			Name:    file.Filename,
 		}
 
-		filePath := fmt.Sprintf("%s/%s", DocDirectory, filename)
+		filePath := fmt.Sprintf("%s/%s", DocDirectory, fileMeta.ID)
 
-		log.Print(filePath)
 		dst, err := os.Create(filePath)
 		if err != nil {
 			tx.Rollback()
@@ -434,7 +433,7 @@ func (h *handlers) DownloadDocumentFile(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	filePath := fmt.Sprintf("%s/%s", DocDirectory, documentMeta.Name)
+	filePath := fmt.Sprintf("%s/%s", DocDirectory, documentMeta.ID)
 	return context.File(filePath)
 }
 
