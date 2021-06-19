@@ -3,8 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -18,6 +21,7 @@ import (
 
 const (
 	SQLDirectory = "../sql/"
+	DocDirectory = "../documents"
 	SessionName  = "session"
 )
 
@@ -62,8 +66,8 @@ func main() {
 		coursesAPI := API.Group("/courses")
 		{
 			coursesAPI.GET("/:courseID", h.GetCourseDetail)
-			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumetList)
-			coursesAPI.POST("/:courseID/documents", h.PostDocumentFile, h.IsAdmin)
+			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumentList)
+			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
 			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
 			coursesAPI.POST("/:courseID/assignments", h.AddAssignment, h.IsAdmin)
@@ -180,6 +184,13 @@ type PostAttendanceCodeRequest struct {
 	Code string `json:"code"`
 }
 
+type GetDocumentResponse struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type GetDocumentsResponse []GetDocumentResponse
+
 type UserType string
 
 const (
@@ -223,6 +234,13 @@ type Class struct {
 type Attendance struct {
 	ClassID   uuid.UUID `db:"class_id"`
 	UserID    uuid.UUID `db:"user_id"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
+type DocumentsMeta struct {
+	ID        uuid.UUID `db:"id"`
+	ClassID   uuid.UUID `db:"class_id"`
+	Name      string    `db:"name"`
 	CreatedAt time.Time `db:"created_at"`
 }
 
@@ -439,12 +457,120 @@ func (h *handlers) AddAssignment(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) GetCourseDocumetList(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) GetCourseDocumentList(context echo.Context) error {
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	documentsMeta := make([]DocumentsMeta, 0)
+	err := h.DB.Select(&documentsMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` WHERE `classes`.`course_id` = ?", courseID)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := make(GetDocumentsResponse, 0, len(documentsMeta))
+	for _, meta := range documentsMeta {
+		res = append(res, GetDocumentResponse{
+			ID:   meta.ID,
+			Name: meta.Name,
+		})
+	}
+
+	return context.JSON(http.StatusOK, res)
+
 }
 
 func (h *handlers) PostDocumentFile(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	classID := uuid.Parse(context.Param("classID"))
+	if uuid.Equal(uuid.NIL, classID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	form, err := context.MultipartForm()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "read request err")
+	}
+	files := form.File["files"]
+
+	// 作ったファイルの名前を格納しておく
+	dsts := make([]string, 0, len(files))
+
+	tx, err := h.DB.Begin()
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	// 作成したファイルを削除する
+	deleteFiles := func(dsts []string) {
+		for _, file := range dsts {
+			os.Remove(file)
+		}
+	}
+
+	for _, file := range files {
+		src, err := file.Open()
+		if err != nil {
+			log.Println(err)
+			_ = tx.Rollback()
+			deleteFiles(dsts)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		fileMeta := DocumentsMeta{
+			ID:      uuid.NewRandom(),
+			ClassID: classID,
+			Name:    file.Filename,
+		}
+
+		filePath := fmt.Sprintf("%s/%s", DocDirectory, fileMeta.ID)
+
+		dst, err := os.Create(filePath)
+		if err != nil {
+			log.Println(err)
+			_ = tx.Rollback()
+			deleteFiles(dsts)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		dsts = append(dsts, filePath)
+		_, err = tx.Exec("INSERT INTO `documents` (`id`, `class_id`, `name`, `created_at`) VALUES (?, ?, ?, NOW(6))",
+			fileMeta.ID,
+			fileMeta.ClassID,
+			fileMeta.Name,
+		)
+		if err != nil {
+			log.Println(err)
+			_ = tx.Rollback()
+			deleteFiles(dsts)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		if _, err = io.Copy(dst, src); err != nil {
+			log.Println(err)
+			_ = tx.Rollback()
+			deleteFiles(dsts)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.NoContent(http.StatusCreated)
 }
 
 func (h *handlers) GetAssignmentList(context echo.Context) error {
@@ -452,7 +578,27 @@ func (h *handlers) GetAssignmentList(context echo.Context) error {
 }
 
 func (h *handlers) DownloadDocumentFile(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	documentID := uuid.Parse(context.Param("documentID"))
+	if uuid.Equal(uuid.NIL, documentID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
+	}
+
+	var documentMeta DocumentsMeta
+	err := h.DB.Get(&documentMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` "+
+		"WHERE `documents`.`id` = ? AND `classes`.`course_id` = ?", documentID, courseID)
+	if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "file not found")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	filePath := fmt.Sprintf("%s/%s", DocDirectory, documentMeta.ID)
+	return context.File(filePath)
 }
 
 func (h *handlers) SubmitAssignment(context echo.Context) error {
