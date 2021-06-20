@@ -46,7 +46,7 @@ func main() {
 		DB: db,
 	}
 
-	//e.POST("/initialize", h.Initialize, h.IsLoggedIn, h.IsAdmin)
+	// e.POST("/initialize", h.Initialize, h.IsLoggedIn, h.IsAdmin)
 	e.POST("/initialize", h.Initialize)
 	e.PUT("/phase", h.SetPhase, h.IsLoggedIn, h.IsAdmin)
 
@@ -153,11 +153,42 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func (h *handlers) SetPhase(c echo.Context) error {
-	panic("implement me")
+	var req SetPhaseRequest
+	if err := c.Bind(&req); err != nil {
+		log.Println(err)
+		return echo.NewHTTPError(http.StatusBadRequest, err)
+	}
+
+	if req.Phase != "registration" && req.Phase != "term-time" && req.Phase != "exam-period" {
+		return echo.NewHTTPError(http.StatusBadRequest, "bad phase")
+	}
+	if req.Year < 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "bad year")
+	}
+	if req.Semester != "first" && req.Semester != "second" {
+		return echo.NewHTTPError(http.StatusBadRequest, "bad semester")
+	}
+
+	if _, err := h.DB.Exec("TRUNCATE TABLE `phase`"); err != nil {
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if _, err := h.DB.Exec("INSERT INTO `phase` (`phase`, `year`, `semester`) VALUES (?, ?, ?)", req.Phase, req.Year, req.Semester); err != nil {
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 type InitializeResponse struct {
 	Language string `json:"language"`
+}
+
+type SetPhaseRequest struct {
+	Phase    string `json:"phase"`
+	Year     int    `json:"year"`
+	Semester string `json:"semester"`
 }
 
 type LoginRequest struct {
