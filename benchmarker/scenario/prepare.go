@@ -146,8 +146,8 @@ func (s *Scenario) prepareFastCheckInRegister(ctx context.Context, student *mode
 	var semiRegCourses []*model.Course
 	for _, c := range wantRegCourses {
 		err := SearchCoursesAction(ctx, student.Agent, c)
-		step.AddError(err)
 		if err == nil {
+			step.AddError(err)
 			semiRegCourses = append(semiRegCourses, c)
 		}
 	}
