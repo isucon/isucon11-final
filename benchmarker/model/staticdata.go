@@ -10,13 +10,13 @@ var StaticStudentsData []*Student
 var StaticCoursesData []*Course
 
 func init() {
-	StaticFacultyData = NewFaculty("APIForFaculty", "99999999", "piyopiyo")
+	StaticFacultyData = NewFaculty("椅子昆", "01234567-89ab-cdef-0001-000000000004", "password")
 
 	StaticStudentsData = []*Student{
-		NewStudent("服部 夢二", "21020162", "hogehoge"),
+		NewStudent("佐藤太郎", "01234567-89ab-cdef-0001-000000000001", "password"),
 	}
 
 	StaticCoursesData = []*Course{
-		NewCourse("00000111", "確率統計学", 30, 1, 1, []string{"確率"}, "120EA8A25E5D487BF68B5F7096440019"),
+		NewCourse("01234567-89ab-cdef-0002-000000000001", "微分積分基礎", 100, 0, 1, []string{"微分積分"}, "TBD"),
 	}
 }
