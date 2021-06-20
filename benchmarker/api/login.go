@@ -55,7 +55,7 @@ func LoginFail(ctx context.Context, a *agent.Agent, id, pw string) error {
 		return failure.NewError(fails.ErrHTTP, err)
 	}
 
-	if err := assertStatusCode(res, http.StatusForbidden); err != nil {
+	if err := assertStatusCode(res, http.StatusUnauthorized); err != nil {
 		return err
 	}
 	return nil
