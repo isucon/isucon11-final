@@ -9,8 +9,17 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
-func AccessTopPage(ctx context.Context, a *agent.Agent) []error {
-	return browserAccess(ctx, a, "/")
+func AccessLoginPage(ctx context.Context, a *agent.Agent) []error {
+	return browserAccess(ctx, a, "/login")
+}
+func AccessMyPage(ctx context.Context, a *agent.Agent) []error {
+	return browserAccess(ctx, a, "/mypage")
+}
+func AccessCourseRegPage(ctx context.Context, a *agent.Agent) []error {
+	return browserAccess(ctx, a, "/mypage/registration")
+}
+func AccessSyllabusPage(ctx context.Context, a *agent.Agent, courseID string) []error {
+	return browserAccess(ctx, a, "/syllabus?id="+courseID)
 }
 
 func browserAccess(ctx context.Context, a *agent.Agent, path string) []error {
