@@ -149,6 +149,11 @@ func (s *Scenario) prepareFastCheckInRegister(ctx context.Context, student *mode
 	wantRegCourses := []*model.Course{model.StaticCoursesData[0]}
 
 	// 希望のコースを仮登録
+	if errs := AccessRegPageAction(ctx, student.Agent); len(errs) > 0 {
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行で履修登録ページの描画に失敗しました"))
+		step.AddError(err)
+		return err
+	}
 	var semiRegCourses []*model.Course
 	for _, c := range wantRegCourses {
 		err := SearchCoursesAction(ctx, student.Agent, c)

@@ -98,3 +98,6 @@ func FetchRegisteredCoursesAction(ctx context.Context, student *model.Student) (
 func AccessMyPageAction(ctx context.Context, agent *agent.Agent) []error {
 	return api.AccessMyPage(ctx, agent)
 }
+func AccessRegPageAction(ctx context.Context, agent *agent.Agent) []error {
+	return api.AccessCourseRegPage(ctx, agent)
+}
