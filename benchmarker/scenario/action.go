@@ -94,6 +94,7 @@ func FetchRegisteredCoursesAction(ctx context.Context, student *model.Student) (
 	return registeredCoursesID, nil
 }
 
-func AccessTopPageAction(ctx context.Context, agent *agent.Agent) []error {
-	return api.AccessTopPage(ctx, agent)
+// 他のアクションに付随しないページアクセス
+func AccessMyPageAction(ctx context.Context, agent *agent.Agent) []error {
+	return api.AccessMyPage(ctx, agent)
 }
