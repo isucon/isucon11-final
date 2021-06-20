@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,9 +11,6 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
-type syllabusSearchRequest struct {
-	Keyword string `json:"keyword"`
-}
 type syllabusSearchResponse []syllabusData
 type syllabusData struct {
 	ID          string `json:"id"`
@@ -31,10 +27,7 @@ type syllabusData struct {
 }
 
 func SearchSyllabus(ctx context.Context, a *agent.Agent, keyword string) ([]string, error) {
-	reqBody, _ := json.Marshal(&syllabusSearchRequest{
-		Keyword: keyword,
-	})
-	req, err := a.POST("/syllabus", bytes.NewBuffer(reqBody))
+	req, err := a.GET(fmt.Sprintf("/syllabus?keyword=%s", keyword))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
