@@ -7,9 +7,9 @@ import (
 )
 
 type Scenario struct {
-	BaseURL  string
-	UseTLS   bool
-	NoLoad   bool
+	BaseURL string
+	UseTLS  bool
+	NoLoad  bool
 
 	language string
 }

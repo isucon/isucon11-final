@@ -142,6 +142,9 @@ func main() {
 	defer cancel()
 
 	s, err := scenario.NewScenario()
+	if err != nil {
+		panic(err)
+	}
 	scheme := "http"
 	if useTLS {
 		scheme = "https"

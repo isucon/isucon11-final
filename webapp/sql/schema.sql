@@ -71,7 +71,7 @@ CREATE TABLE `registrations`
     `course_id`  CHAR(36),
     `user_id`    CHAR(36),
     `created_at` DATETIME(6) NOT NULL,
-    `delete_at`  DATETIME(6),
+    `deleted_at`  DATETIME(6),
     PRIMARY KEY (`course_id`, `user_id`),
     FOREIGN KEY FK_course_id (`course_id`) REFERENCES `courses` (`id`),
     FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`)
@@ -90,10 +90,10 @@ CREATE TABLE `grades`
 CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
-    `course_id`       CHAR(36)         NOT NULL,
-    `title`           VARCHAR(255)     NOT NULL,
-    `description`     TEXT             NOT NULL,
-    `attendance_code` TINYINT UNSIGNED NOT NULL,
+    `course_id`       CHAR(36)     NOT NULL,
+    `title`           VARCHAR(255) NOT NULL,
+    `description`     TEXT         NOT NULL,
+    `attendance_code` VARCHAR(255) NOT NULL,
     FOREIGN KEY FK_course_id (`course_id`) REFERENCES `courses` (`id`)
 );
 
@@ -153,7 +153,7 @@ CREATE TABLE `unread_announcements`
     `announcement_id` CHAR(36)    NOT NULL,
     `user_id`         CHAR(36)    NOT NULL,
     `created_at`      DATETIME(6) NOT NULL,
-    `delete_at`       DATETIME(6),
+    `deleted_at`       DATETIME(6),
     PRIMARY KEY (`announcement_id`, `user_id`),
     FOREIGN KEY FK_announcement_id (`announcement_id`) REFERENCES `announcements` (`id`),
     FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`)
