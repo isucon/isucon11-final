@@ -3,10 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/bcrypt"
-	"io/ioutil"
-	"net/http"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -152,31 +154,31 @@ type LoginRequest struct {
 }
 
 type GetGradesResponse struct {
-	Summary		Summary		`json:"Summary"`
-	Courses		[]*Courses	`json:"Courses"`
+	Summary      Summary        `json:"Summary"`
+	CourseGrades []*CourseGrade `json:"Courses"`
 }
-type Summary struct{
-//	Credits		int32	`json:"credits"`//MEMO: 問題ページAPIのこれが何かわからず
-	GPA			float64	`json:"gpa"`
+type Summary struct {
+	//	Credits		int32	`json:"credits"`//MEMO: 問題ページAPIのこれが何かわからず
+	GPA float64 `json:"gpa"`
 }
 
-type Courses struct {
-	ID 		uuid.UUID 	`json:"id"`
-	Name	string		`json:"name"`
-	Credits	int32		`json:"credits"`
-	Grade	int32		`json:"grade"`
+type CourseGrade struct {
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Credits uint8     `json:"credits"`
+	Grade   uint32    `json:"grade"`
 }
 
 //MEMO: S/A/B/Cと数値の話どうなったんだっけ？
 type PostGradeRequest struct {
-	user_id	 	uuid.UUID 	`json:"user_id"`
-	grade		int32 		`json:"grade"`
+	UserID uuid.UUID `json:"user_id"`
+	Grade  uint32    `json:"grade"`
 }
 
 type UserType string
 
 const (
-	_ UserType = "student" /* FIXME: use Student */
+	_       UserType = "student" /* FIXME: use Student */
 	Faculty UserType = "faculty"
 )
 
@@ -188,11 +190,11 @@ type User struct {
 	Type           UserType  `db:"type"`
 }
 
-type CourseGrade struct {
-	ID             uuid.UUID `db:"course_id"`
-	Name		   string	 `db:"name"`
-	Credit  	   int32     `db:"credit"`
-	Grade          string    `db:"grade"`
+type CourseGradeDb struct {
+	ID     uuid.UUID `db:"course_id"`
+	Name   string    `db:"name"`
+	Credit uint8     `db:"credit"`
+	Grade  uint32    `db:"grade"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -268,43 +270,40 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	}
 
 	//MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
-	var CourseGrades []CourseGrade
+	var CourseGradesDb []CourseGradeDb
 	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
 		"FROM `Grades`" +
 		"JOIN `Courses` ON `Grades.course_id` = `Courses.id`" +
 		"WHERE `user_id` = ?"
-	if err := h.DB.Select(&CourseGrades, query, userID); err != nil {
+	if err := h.DB.Select(&CourseGradesDb, query, userID); err != nil {
 		log.Println(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
 	//MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？単位数はどうしよう(ひとまずコース数で割っている)
-	gpa := 0
-	CourseGrades_len=len(CourseGrades)
+	gpa := 0.0
+	CourseGrades_len := len(CourseGradesDb)
 	if CourseGrades_len > 0 {
-		for _, Course := range CourseGrades {
-			gpa += Course.grade
+		for _, CourseGrade := range CourseGradesDb {
+			gpa += float64(CourseGrade.Grade)
 		}
-		gpa = gpa/CourseGrades_len
+		gpa = gpa / float64(CourseGrades_len)
 	}
 
 	//MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
-	res := make(GetGradesResponse, CourseGrades_len)
-	for i, coursegrade := range CourseGrades {
-		res.Course[i] = GetGradesResponse{
-			Summary: {
-				//Credits = coursegrade.Credits 
-				GPA 	= gpa
-			},
-			Courses: {
-				ID 		= coursegrade.ID
-				Name 	= coursegrade.Name
-				Credit	= coursegrade.Credits
-				Grade	= coursegrade.Grade
-			}
-		}
+	var res GetGradesResponse
+	res.Summary = Summary{
+		//		credits: ???
+		GPA: gpa,
 	}
-
+	for _, coursegrade := range CourseGradesDb {
+		res.CourseGrades = append(res.CourseGrades, &CourseGrade{
+			ID:      coursegrade.ID,
+			Name:    coursegrade.Name,
+			Credits: coursegrade.Credit,
+			Grade:   coursegrade.Grade,
+		})
+	}
 	return context.JSON(http.StatusOK, res)
 }
 
@@ -365,7 +364,7 @@ func (h *handlers) AddAnnouncements(context echo.Context) error {
 }
 
 func (h *handlers) SetUserGrades(context echo.Context) error {
-	var courseID := uuid.Parse(context.Param("courseID"))
+	courseID := uuid.Parse(context.Param("courseID"))
 	if uuid.Equal(uuid.NIL, courseID) {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
@@ -376,7 +375,7 @@ func (h *handlers) SetUserGrades(context echo.Context) error {
 	}
 
 	//MEMO: LOGIC: コース成績登録
-	if _, err := tx.Exec("INSERT INTO Grades(id, user_id, course_id, grade) VALUES (?, ?, ?)", uuid.New(), req.user_id, courseID, req.grade); err != nil {
+	if _, err := h.DB.Exec("INSERT INTO Grades(id, user_id, course_id, grade) VALUES (?, ?, ?)", uuid.New(), req.UserID, courseID, req.Grade); err != nil {
 		log.Println(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
