@@ -37,10 +37,10 @@ func LoginAction(ctx context.Context, agent *agent.Agent, u *model.UserData) []e
 	return nil
 }
 
-func SearchCoursesAction(ctx context.Context, agent *agent.Agent, course *model.Course) error {
+func SearchCoursesAction(ctx context.Context, agent *agent.Agent, course *model.Course) []error {
 	syllabusIDs, err := api.SearchSyllabus(ctx, agent, course.Keyword[0])
 	if err != nil {
-		return err
+		return []error{err}
 	}
 	// FIXME: pagingが実装されてないので修正
 
@@ -56,9 +56,12 @@ func SearchCoursesAction(ctx context.Context, agent *agent.Agent, course *model.
 			"検索結果に期待する講義が含まれませんでした: 講義(%s), 検索キーワード(%s)",
 			course.Name, course.Keyword[0]),
 		)
-		return err
+		return []error{err}
 	}
 
+	if errs := api.AccessSyllabusPage(ctx, agent, course.ID); len(errs) > 0 {
+		return errs
+	}
 	return nil
 }
 
