@@ -61,9 +61,11 @@ func (s *Scenario) prepareCheck(ctx context.Context, step *isucandar.BenchmarkSt
 	}
 	s.language = lang
 
-	err = LoginAction(ctx, initializeFaculty.Agent, initializeFaculty.UserData)
-	if err != nil {
-		step.AddError(err) // for LoginAction
+	errs := LoginAction(ctx, initializeFaculty.Agent, initializeFaculty.UserData)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			step.AddError(err) // for LoginAction
+		}
 		return Cancel
 	}
 
@@ -130,13 +132,11 @@ func (s *Scenario) prepareFastCheckInRegister(ctx context.Context, student *mode
 	// 履修登録期間での動作確認
 	student.Agent.ClearCookie()
 
-	if errs := AccessTopPageAction(ctx, student.Agent); len(errs) > 0 {
-		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行でトップページの描画に失敗しました"))
-		step.AddError(err)
-		return err
-	}
-	if err := LoginAction(ctx, student.Agent, student.UserData); err != nil {
-		step.AddError(err)
+	if errs := LoginAction(ctx, student.Agent, student.UserData); len(errs) > 0 {
+		for _, err := range errs {
+			step.AddError(err)
+		}
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行のログイン処理が失敗しました"))
 		return err
 	}
 

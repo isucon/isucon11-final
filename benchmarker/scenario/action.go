@@ -23,10 +23,15 @@ func InitializeAction(ctx context.Context, agent *agent.Agent) (string, error) {
 	return language, nil
 }
 
-func LoginAction(ctx context.Context, agent *agent.Agent, u *model.UserData) error {
+func LoginAction(ctx context.Context, agent *agent.Agent, u *model.UserData) []error {
+	errs := api.AccessLoginPage(ctx, agent)
+	if len(errs) > 0 {
+		return errs
+	}
+
 	err := api.Login(ctx, agent, u.Number, u.RawPassword)
 	if err != nil {
-		return err
+		return []error{err}
 	}
 
 	return nil
