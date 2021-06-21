@@ -291,11 +291,13 @@ func (h *handlers) Login(c echo.Context) error {
 func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if uuid.Equal(uuid.NIL, userID) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 	userIDParam := uuid.Parse(context.Param("userID"))
 	if uuid.Equal(uuid.NIL, userIDParam) {
@@ -306,11 +308,12 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	}
 
 	courses := make([]Course, 0)
-	err = h.DB.Select(&courses, "SELECT `id`, `name`, `description`, `credit`, `classroom`, `capacity`\n" +
-		"	FROM `courses` JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`\n" +
+	err = h.DB.Select(&courses, "SELECT `id`, `name`, `description`, `credit`, `classroom`, `capacity`\n"+
+		"	FROM `courses` JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`\n"+
 		"	WHERE `user_id` = ?", userID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registered courses: %v", err))
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 
 	return context.JSON(http.StatusOK, courses)
@@ -319,11 +322,13 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 func (h *handlers) RegisterCourses(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if uuid.Equal(uuid.NIL, userID) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 	userIDParam := uuid.Parse(context.Param("userID"))
 	if uuid.Equal(uuid.NIL, userIDParam) {
@@ -340,15 +345,16 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 	tx, err := h.DB.Beginx()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
-
 
 	// MEMO: SELECT ... FOR UPDATE は今のDB構造だとデッドロックする
 	_, err = tx.Exec("LOCK TABLES `registrations` WRITE, `courses` READ, `course_requirements` READ, `grades` READ, `schedules` READ, `course_schedules` READ")
 	if err != nil {
 		_ = tx.Rollback()
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("lock table: %v", err))
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 	defer func() {
 		_, _ = h.DB.Exec("UNLOCK TABLES")
@@ -364,7 +370,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Not found course. id: %v", content.ID))
 		} else if err != nil {
 			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get course: %v", err))
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
 		courseList = append(courseList, course)
 	}
@@ -375,14 +382,16 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		err = tx.Select(&requiredCourseIDList, "SELECT `required_course_id` FROM `course_requirements` WHERE `course_id` = ?", course.ID)
 		if err != nil {
 			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get required courses: %v", err))
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
 			var gradeCount uint32
 			err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM `grades` WHERE `user_id` = ? AND `course_id` = ?", userID, requiredCourseID)
 			if err != nil {
 				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get grade: %v", err))
+				log.Println(err)
+				return context.NoContent(http.StatusInternalServerError)
 			}
 			if gradeCount == 0 {
 				_ = tx.Rollback()
@@ -394,7 +403,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		err = tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ?", course.ID)
 		if err != nil {
 			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get register count: %v", err))
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
 		if registerCount >= course.Capacity {
 			_ = tx.Rollback()
@@ -406,8 +416,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	// MEMO: さすがに二重ループはやりすぎな気もする
 	getSchedule := func(courseID uuid.UUID) (Schedule, error) {
 		var schedule Schedule
-		err := tx.Get(&schedule, "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n" +
-			"	FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n" +
+		err := tx.Get(&schedule, "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n"+
+			"	FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n"+
 			"	WHERE `course_id` = ?", courseID)
 		if err != nil {
 			return schedule, err
@@ -416,16 +426,18 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	}
 
 	for i := 0; i < len(courseList); i++ {
-		for j := i+1; j < len(courseList); j++ {
+		for j := i + 1; j < len(courseList); j++ {
 			schedule1, err := getSchedule(courseList[i].ID)
 			if err != nil {
 				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
+				log.Println(err)
+				return context.NoContent(http.StatusInternalServerError)
 			}
 			schedule2, err := getSchedule(courseList[j].ID)
 			if err != nil {
 				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get schedule: %v", err))
+				log.Println(err)
+				return context.NoContent(http.StatusInternalServerError)
 			}
 			if schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
 				_ = tx.Rollback()
@@ -440,22 +452,25 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		err := tx.Get(&count, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID)
 		if err != nil {
 			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registrations: %v", err))
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
-		if (count > 0) {
-			continue;
+		if count > 0 {
+			continue
 		}
 
 		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
 			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("insert registrations: %v", err))
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("commit tx: %v", err))
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 
 	return context.NoContent(http.StatusOK)
