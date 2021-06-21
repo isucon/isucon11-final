@@ -207,20 +207,20 @@ type User struct {
 }
 
 type Course struct {
-	ID          string `db:"id"`
-	Name        string `db:"name"`
-	Description string `db:"description"`
-	Credit      uint8  `db:"credit"`
-	Classroom   string `db:"classroom"`
-	Capacity    uint32 `db:"capacity"`
+	ID          uuid.UUID `db:"id"`
+	Name        string    `db:"name"`
+	Description string    `db:"description"`
+	Credit      uint8     `db:"credit"`
+	Classroom   string    `db:"classroom"`
+	Capacity    uint32    `db:"capacity"`
 }
 
 type Schedule struct {
-	ID        string `db:"id"`
-	Period    uint8  `db:"period"`
-	DayOfWeek string `db:"day_of_week"`
-	Semester  string `db:"semester"`
-	Year      uint32 `db:"year"`
+	ID        uuid.UUID `db:"id"`
+	Period    uint8     `db:"period"`
+	DayOfWeek string    `db:"day_of_week"`
+	Semester  string    `db:"semester"`
+	Year      uint32    `db:"year"`
 }
 
 type Class struct {
@@ -404,7 +404,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 	// MEMO: LOGIC: スケジュールの重複バリデーション
 	// MEMO: さすがに二重ループはやりすぎな気もする
-	getSchedule := func(courseID string) (Schedule, error) {
+	getSchedule := func(courseID uuid.UUID) (Schedule, error) {
 		var schedule Schedule
 		err := tx.Get(&schedule, "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n" +
 			"	FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n" +
