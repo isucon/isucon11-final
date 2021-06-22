@@ -169,9 +169,11 @@ type GetGradesResponse struct {
 	CourseGrades []*CourseGrade `json:"Courses"`
 }
 
+type PostGradesRequest []PostGradeRequest
+
 type Summary struct {
-	//	Credits		int32	`json:"credits"`//MEMO: 問題ページAPIのこれが何かわからず
-	GPA float64 `json:"gpa"`
+	Credits int8    `json:"credits"`
+	GPA     float64 `json:"gpa"`
 }
 
 type CourseGrade struct {
@@ -192,6 +194,7 @@ type RegisterCoursesRequestContent struct {
 }
 
 type RegisterCoursesRequest []RegisterCoursesRequestContent
+
 type GetAttendanceCodeResponse struct {
 	Code string `json:"code"`
 }
@@ -470,12 +473,12 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
 		log.Println(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if uuid.Equal(uuid.NIL, userID) {
 		log.Println(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 
 	userIDParam := uuid.Parse(context.Param("userID"))
@@ -494,24 +497,26 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		"WHERE `user_id` = ?"
 	if err := h.DB.Select(&CourseGradesDb, query, userID); err != nil {
 		log.Println(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	//MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？単位数はどうしよう(ひとまずコース数で割っている)
-	gpa := 0.0
+	//MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
+	var gpa float64 = 0.0
+	var credits int8 = 0
 	CourseGrades_len := len(CourseGradesDb)
 	if CourseGrades_len > 0 {
 		for _, CourseGrade := range CourseGradesDb {
+			credits += int8(CourseGrade.Credit)
 			gpa += float64(CourseGrade.Grade)
 		}
-		gpa = gpa / float64(CourseGrades_len)
+		gpa = gpa / float64(credits)
 	}
 
 	//MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
 	var res GetGradesResponse
 	res.Summary = Summary{
-		//		credits: ???
-		GPA: gpa,
+		Credits: credits,
+		GPA:     gpa,
 	}
 	for _, coursegrade := range CourseGradesDb {
 		res.CourseGrades = append(res.CourseGrades, &CourseGrade{
@@ -752,15 +757,17 @@ func (h *handlers) SetUserGrades(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
-	var req PostGradeRequest
+	var req PostGradesRequest
 	if err := context.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
-	//MEMO: LOGIC: コース成績登録
-	if _, err := h.DB.Exec("INSERT INTO Grades(id, user_id, course_id, grade) VALUES (?, ?, ?)", uuid.New(), req.UserID, courseID, req.Grade); err != nil {
-		log.Println(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	//MEMO: LOGIC: 学生一人の全コース成績登録
+	for _, coursegrade := range req {
+		if _, err := h.DB.Exec("INSERT INTO `Grades` (`id`, `user_id`, `course_id`, `grade`) VALUES (?, ?, ?)", uuid.New(), coursegrade.UserID, courseID, coursegrade.Grade); err != nil {
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
 	}
 
 	return context.NoContent(http.StatusNoContent)
