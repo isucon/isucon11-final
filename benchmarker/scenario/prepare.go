@@ -150,6 +150,7 @@ func (s *Scenario) prepareFastCheckInRegister(ctx context.Context, student *mode
 			for _, err := range errs {
 				step.AddError(err)
 			}
+		} else {
 			semiRegCourses = append(semiRegCourses, c)
 		}
 	}
