@@ -59,7 +59,6 @@ func SearchCoursesAction(ctx context.Context, agent *agent.Agent, course *model.
 		return []error{err}
 	}
 
-	// 新規タブでアクセスされるためページアクセスを実施
 	if errs := api.AccessSyllabusPage(ctx, agent, course.ID); len(errs) > 0 {
 		return errs
 	}
@@ -96,4 +95,12 @@ func FetchRegisteredCoursesAction(ctx context.Context, student *model.Student) (
 	}
 
 	return registeredCoursesID, nil
+}
+
+// 他のアクションに付随しないページアクセス
+func AccessMyPageAction(ctx context.Context, agent *agent.Agent) []error {
+	return api.AccessMyPage(ctx, agent)
+}
+func AccessRegPageAction(ctx context.Context, agent *agent.Agent) []error {
+	return api.AccessCourseRegPage(ctx, agent)
 }
