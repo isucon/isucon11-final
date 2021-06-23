@@ -185,6 +185,10 @@ type PostAttendanceCodeRequest struct {
 	Code string `json:"code"`
 }
 
+type PostDocumentResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
 type GetDocumentResponse struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
@@ -587,6 +591,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		}
 	}
 
+	res := make([]PostDocumentResponse, len(files))
 	for _, file := range files {
 		src, err := file.Open()
 		if err != nil {
@@ -631,6 +636,8 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 			deleteFiles(dsts)
 			return context.NoContent(http.StatusInternalServerError)
 		}
+
+		res = append(res, PostDocumentResponse{ID: fileMeta.ID})
 	}
 
 	err = tx.Commit()
@@ -639,7 +646,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) GetAssignmentList(context echo.Context) error {
