@@ -746,7 +746,7 @@ func (h *handlers) AddAnnouncements(context echo.Context) error {
 
 func (h *handlers) SetUserGrades(context echo.Context) error {
 	courseID := uuid.Parse(context.Param("courseID"))
-	if uuid.Equal(uuid.NIL, courseID) {
+	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
