@@ -490,7 +490,20 @@ func (h *handlers) GetCourseSyllabus(context echo.Context) error {
 }
 
 func (h *handlers) GetCourseDetail(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var course Course
+	if err := h.DB.Get(&course, "SELECT * from `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.JSON(http.StatusOK, course)
 }
 
 type PostAssignmentRequest struct {
