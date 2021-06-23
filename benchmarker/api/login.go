@@ -28,12 +28,15 @@ func Login(ctx context.Context, a *agent.Agent, id, pw string) error {
 		// リクエスト生成に失敗はほぼありえないのでCritical
 		return failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
+
 	res, err := a.Do(ctx, req)
 	if err != nil {
 		// net.Error.Timeoutなども雑にErrHTTPでwrapしちゃう
 		// 呼び出し側でいい感じに優先度をつけてエラー判定するので
 		return failure.NewError(fails.ErrHTTP, err)
 	}
+	defer res.Body.Close()
 
 	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return err
@@ -50,10 +53,13 @@ func LoginFail(ctx context.Context, a *agent.Agent, id, pw string) error {
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
+
 	res, err := a.Do(ctx, req)
 	if err != nil {
 		return failure.NewError(fails.ErrHTTP, err)
 	}
+	defer res.Body.Close()
 
 	if err := assertStatusCode(res, http.StatusUnauthorized); err != nil {
 		return err

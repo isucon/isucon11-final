@@ -28,10 +28,13 @@ func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) 
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
+
 	res, err := a.Do(ctx, req)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
+	defer res.Body.Close()
 
 	var registeredCourses []usersCourseResponse
 	err = json.NewDecoder(res.Body).Decode(&registeredCourses)
@@ -54,10 +57,13 @@ func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
+
 	res, err := a.Do(ctx, req)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
+	defer res.Body.Close()
 
 	if err := assertStatusCode(res, http.StatusBadRequest); err == nil {
 		// 400エラー = 定員オーバーによる登録失敗。 FIXME: 他の400エラーと区別するためにエラーレスポンスを解析が必要っぽい

@@ -38,10 +38,13 @@ func changePhase(ctx context.Context, a *agent.Agent, phase string) error {
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
+
 	res, err := a.Do(ctx, req)
 	if err != nil {
 		return failure.NewError(fails.ErrHTTP, err)
 	}
+	defer res.Body.Close()
 
 	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil

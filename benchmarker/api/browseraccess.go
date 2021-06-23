@@ -21,10 +21,13 @@ func browserAccess(ctx context.Context, a *agent.Agent, path string) []error {
 	if err != nil {
 		return []error{failure.NewError(fails.ErrCritical, err)}
 	}
+
 	res, err := a.Do(ctx, req)
 	if err != nil {
 		return []error{failure.NewError(fails.ErrHTTP, err)}
 	}
+	defer res.Body.Close()
+
 	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		if err := assertStatusCode(res, http.StatusNotModified); err != nil {
 			return []error{err}
@@ -34,7 +37,7 @@ func browserAccess(ctx context.Context, a *agent.Agent, path string) []error {
 	// HTMLファイルから追加リソースを参照する
 	resources, perr := a.ProcessHTML(ctx, res, res.Body)
 	if perr != nil {
-		return []error{failure.NewError(fails.ErrCritical, err)}
+		return []error{failure.NewError(fails.ErrCritical, perr)}
 	}
 
 	var errs []error

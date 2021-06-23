@@ -35,6 +35,7 @@ func SearchSyllabus(ctx context.Context, a *agent.Agent, keyword string) ([]stri
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
+	defer res.Body.Close()
 
 	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
