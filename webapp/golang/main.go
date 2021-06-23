@@ -433,7 +433,7 @@ func (h *handlers) GetCourseSyllabus(context echo.Context) error {
 
 func (h *handlers) GetCourseDetail(context echo.Context) error {
 	courseID := uuid.Parse(context.Param("courseID"))
-	if uuid.Equal(uuid.NIL, courseID) {
+	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
