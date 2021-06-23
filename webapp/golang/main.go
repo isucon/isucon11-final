@@ -174,6 +174,16 @@ type GetAttendanceCodeResponse struct {
 	Code string `json:"code"`
 }
 
+type GetAnnouncementsResponse []GetAnnouncementResponse
+type GetAnnouncementResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	// MEMO: TODO: 既読機能
+	// Unread     bool      `json:"unread"`
+	CreatedAt int64 `json:"created_at"`
+}
+
 type PostAnnouncementsRequest struct {
 	Title   string `json:"title"`
 	Message string `json:"message"`
@@ -248,6 +258,14 @@ type DocumentsMeta struct {
 	ClassID   uuid.UUID `db:"class_id"`
 	Name      string    `db:"name"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type Announcement struct {
+	ID         uuid.UUID `db:"id"`
+	CourseName string    `db:"name"`
+	Title      string    `db:"title"`
+	Message    string    `db:"message"`
+	CreatedAt  time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -816,7 +834,39 @@ func (h *handlers) SetUserGrades(context echo.Context) error {
 }
 
 func (h *handlers) GetAnnouncementList(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if uuid.Equal(uuid.NIL, userID) {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	announcements := make([]Announcement, 0)
+	// MEMO: TODO: ページング実装
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
+		"FROM `announcements`"+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`"+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id`"+
+		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", userID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := make(GetAnnouncementsResponse, 0, len(announcements))
+	for _, announcement := range announcements {
+		res = append(res, GetAnnouncementResponse{
+			ID:         announcement.ID,
+			CourseName: announcement.CourseName,
+			Title:      announcement.Title,
+			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
+		})
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
