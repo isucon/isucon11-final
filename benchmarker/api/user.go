@@ -24,7 +24,7 @@ type usersCourseResponse struct {
 }
 
 func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) ([]string, error) {
-	req, err := a.GET(fmt.Sprintf("/users/%s/courses", userID))
+	req, err := a.GET(fmt.Sprintf("/api/users/%s/courses", userID))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
@@ -53,7 +53,7 @@ func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) 
 
 func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses []string) ([]string, error) {
 	reqBody, _ := json.Marshal(courses)
-	req, err := a.POST(fmt.Sprintf("/users/%s/courses", userID), bytes.NewBuffer(reqBody))
+	req, err := a.POST(fmt.Sprintf("/api/users/%s/courses", userID), bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}

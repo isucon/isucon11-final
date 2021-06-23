@@ -15,10 +15,8 @@ type initializeResponse struct {
 	Language string `json:"language"`
 }
 
-const initializeEndpoint = "/initialize"
-
 func Initialize(ctx context.Context, a *agent.Agent) (string, error) {
-	req, err := a.GET(initializeEndpoint)
+	req, err := a.GET("/initialize")
 	if err != nil {
 		return "", failure.NewError(fails.ErrCritical, err)
 	}

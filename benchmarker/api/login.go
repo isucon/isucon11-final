@@ -16,14 +16,12 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-const loginEndpoint = "/login"
-
 func Login(ctx context.Context, a *agent.Agent, id, pw string) error {
 	reqBody, _ := json.Marshal(&loginRequest{
 		Username: id,
 		Password: pw,
 	})
-	req, err := a.POST(loginEndpoint, bytes.NewBuffer(reqBody))
+	req, err := a.POST("/login", bytes.NewBuffer(reqBody))
 	if err != nil {
 		// リクエスト生成に失敗はほぼありえないのでCritical
 		return failure.NewError(fails.ErrCritical, err)
@@ -49,7 +47,7 @@ func LoginFail(ctx context.Context, a *agent.Agent, id, pw string) error {
 		Username: id,
 		Password: pw,
 	})
-	req, err := a.POST(loginEndpoint, bytes.NewBuffer(reqBody))
+	req, err := a.POST("/login", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
