@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
@@ -301,7 +302,6 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("begin tx: %v", err))
 	}
 
-
 	// MEMO: SELECT ... FOR UPDATE は今のDB構造だとデッドロックする
 	_, err = tx.Exec("LOCK TABLES `registrations` WRITE, `courses` READ, `course_requirements` READ, `grades` READ, `schedules` READ, `course_schedules` READ")
 	if err != nil {
@@ -364,8 +364,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	// MEMO: さすがに二重ループはやりすぎな気もする
 	getSchedule := func(courseID string) (Schedule, error) {
 		var schedule Schedule
-		err := tx.Get(&schedule, "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n" +
-			"	FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n" +
+		err := tx.Get(&schedule, "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n"+
+			"	FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n"+
 			"	WHERE `course_id` = ?", courseID)
 		if err != nil {
 			return schedule, err
@@ -374,7 +374,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	}
 
 	for i := 0; i < len(courseList); i++ {
-		for j := i+1; j < len(courseList); j++ {
+		for j := i + 1; j < len(courseList); j++ {
 			schedule1, err := getSchedule(courseList[i].ID)
 			if err != nil {
 				_ = tx.Rollback()
@@ -400,8 +400,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get registrations: %v", err))
 		}
-		if (count > 0) {
-			continue;
+		if count > 0 {
+			continue
 		}
 
 		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
@@ -432,7 +432,20 @@ func (h *handlers) GetCourseSyllabus(context echo.Context) error {
 }
 
 func (h *handlers) GetCourseDetail(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if uuid.Equal(uuid.NIL, courseID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var course Course
+	if err := h.DB.Get(&course, "SELECT * from `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.JSON(http.StatusOK, course)
 }
 
 func (h *handlers) AddAssignment(context echo.Context) error {
