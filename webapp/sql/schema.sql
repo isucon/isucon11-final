@@ -2,7 +2,7 @@
 DROP TABLE IF EXISTS `unread_announcements`;
 DROP TABLE IF EXISTS `announcements`;
 DROP TABLE IF EXISTS `submissions`;
-DROP TABLE IF EXISTS `assignment`;
+DROP TABLE IF EXISTS `assignments`;
 DROP TABLE IF EXISTS `attendances`;
 DROP TABLE IF EXISTS `documents`;
 DROP TABLE IF EXISTS `classes`;
@@ -116,7 +116,7 @@ CREATE TABLE `attendances`
     FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`)
 );
 
-CREATE TABLE `assignment`
+CREATE TABLE `assignments`
 (
     `id`          CHAR(36) PRIMARY KEY,
     `class_id`    CHAR(36)     NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE `submissions`
     `name`          VARCHAR(255) NOT NULL,
     `created_at`    DATETIME(6)  NOT NULL,
     FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`),
-    FOREIGN KEY FK_assignment_id (`assignment_id`) REFERENCES `assignment` (`id`)
+    FOREIGN KEY FK_assignment_id (`assignment_id`) REFERENCES `assignments` (`id`)
 );
 
 CREATE TABLE `announcements`

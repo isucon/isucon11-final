@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	SQLDirectory = "../sql/"
-	DocDirectory = "../documents"
-	SessionName  = "session"
+	SQLDirectory         = "../sql/"
+	AssignmentsDirectory = "../assignments/"
+	DocDirectory         = "../documents/"
+	SessionName          = "session"
 )
 
 type handlers struct {
@@ -70,7 +71,7 @@ func main() {
 			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
 			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
-			coursesAPI.POST("/:courseID/assignments", h.AddAssignment, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.PostAssignment, h.IsAdmin)
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/code", h.GetAttendanceCode, h.IsAdmin)
@@ -492,8 +493,37 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) AddAssignment(context echo.Context) error {
-	panic("implement me")
+type PostAssignmentRequest struct {
+	Name        string
+	Description string
+	Deadline    time.Time
+}
+
+func (h *handlers) PostAssignment(context echo.Context) error {
+	var req PostAssignmentRequest
+	if err := context.Bind(&req); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	if req.Name == "" || req.Description == "" || req.Deadline.IsZero() {
+		return echo.NewHTTPError(http.StatusBadRequest, "Name, description and deadline must not be empty.")
+	}
+
+	classID := context.Param("classID")
+	var classes int
+	if err := h.DB.Get(&classes, "SELECT COUNT(*) FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", uuid.New(), classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.NoContent(http.StatusCreated)
 }
 
 func (h *handlers) GetCourseDocumentList(context echo.Context) error {
@@ -572,7 +602,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 			Name:    file.Filename,
 		}
 
-		filePath := fmt.Sprintf("%s/%s", DocDirectory, fileMeta.ID)
+		filePath := fmt.Sprintf("%s%s", DocDirectory, fileMeta.ID)
 
 		dst, err := os.Create(filePath)
 		if err != nil {
@@ -636,12 +666,58 @@ func (h *handlers) DownloadDocumentFile(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	filePath := fmt.Sprintf("%s/%s", DocDirectory, documentMeta.ID)
+	filePath := fmt.Sprintf("%s%s", DocDirectory, documentMeta.ID)
 	return context.File(filePath)
 }
 
 func (h *handlers) SubmitAssignment(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+
+	assignmentID := context.Param("assignmentID")
+	var assignments int
+	if err := h.DB.Get(&assignments, "SELECT COUNT(*) FROM `assignments` WHERE `id` = ?", assignmentID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	file, err := context.FormFile("file")
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	src, err := file.Open()
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	defer src.Close()
+
+	submissionID := uuid.New()
+	dst, err := os.Create(AssignmentsDirectory + submissionID)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	defer dst.Close()
+
+	if _, err = io.Copy(dst, src); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `assignment_id`, `name`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", submissionID, userID, assignmentID, file.Filename); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	return context.NoContent(http.StatusNoContent)
 }
 
 func (h *handlers) DownloadSubmittedAssignment(context echo.Context) error {

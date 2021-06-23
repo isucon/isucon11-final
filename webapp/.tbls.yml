@@ -85,7 +85,7 @@ comments:
     columnComments:
       class_id: 講義のID
       user_id: 出席した学生のID
-  - table: assignment
+  - table: assignments
     tableComment: 課題一覧
     columnComments:
       class_id: 講義のID
