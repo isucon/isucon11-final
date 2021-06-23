@@ -6,7 +6,8 @@ on:
       - 'main'
   pull_request:
     paths:
-      'webapp/**'
+      - 'webapp/**'
+      - '!webapp/frontend/**'
 
 jobs:
   build:
