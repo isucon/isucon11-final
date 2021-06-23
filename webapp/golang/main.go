@@ -823,6 +823,14 @@ func (h *handlers) AddAnnouncements(context echo.Context) error {
 	if uuid.Equal(uuid.NIL, courseID) {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
+	}
 
 	var req PostAnnouncementsRequest
 	if err := context.Bind(&req); err != nil {
