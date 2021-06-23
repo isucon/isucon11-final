@@ -184,6 +184,14 @@ type GetAnnouncementResponse struct {
 	CreatedAt int64 `json:"created_at"`
 }
 
+type GetAnnouncementDetailResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	Message    string    `json:"message"`
+	CreatedAt  int64     `json:"created_at"`
+}
+
 type PostAnnouncementsRequest struct {
 	Title   string `json:"title"`
 	Message string `json:"message"`
@@ -870,7 +878,43 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 }
 
 func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if uuid.Equal(uuid.NIL, userID) {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := uuid.Parse(context.Param("announcementID"))
+	if uuid.Equal(uuid.NIL, announcementID) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid announcementID")
+	}
+
+	var announcement Announcement
+	err = h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
+		"FROM `announcements`"+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`"+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id`"+
+		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID)
+	if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "announcement not found.")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := GetAnnouncementDetailResponse{
+		ID:         announcement.ID,
+		CourseName: announcement.CourseName,
+		Title:      announcement.Title,
+		Message:    announcement.Message,
+		CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
+	}
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) PostAttendanceCode(context echo.Context) error {
