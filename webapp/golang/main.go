@@ -820,7 +820,7 @@ func (h *handlers) GetAttendances(context echo.Context) error {
 
 func (h *handlers) AddAnnouncements(context echo.Context) error {
 	courseID := uuid.Parse(context.Param("courseID"))
-	if uuid.Equal(uuid.NIL, courseID) {
+	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 	var count int
@@ -856,7 +856,7 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
-	if uuid.Equal(uuid.NIL, userID) {
+	if userID == nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
@@ -892,23 +892,22 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
-	if uuid.Equal(uuid.NIL, userID) {
+	if userID == nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
 	announcementID := uuid.Parse(context.Param("announcementID"))
-	if uuid.Equal(uuid.NIL, announcementID) {
+	if announcementID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid announcementID")
 	}
 
 	var announcement Announcement
-	err = h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
+	if err := h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
 		"FROM `announcements`"+
 		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`"+
 		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id`"+
-		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID)
-	if err == sql.ErrNoRows {
+		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "announcement not found.")
 	} else if err != nil {
 		log.Println(err)
