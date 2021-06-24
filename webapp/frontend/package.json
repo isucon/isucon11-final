@@ -10,6 +10,7 @@
     "lint:js": "eslint --ext \".js,.vue\" --ignore-path .gitignore .",
     "lint:style": "stylelint \"**/*.{vue,css}\" --ignore-path .gitignore",
     "lint": "yarn lint:js && yarn lint:style",
+    "lint:fix": "yarn lint:js --fix && yarn lint:style --fix",
     "test": "jest"
   },
   "lint-staged": {
