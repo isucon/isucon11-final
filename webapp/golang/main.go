@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -861,13 +863,27 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
+	// MEMO: ページングの初期実装はページ番号形式
+	var page int
+	if context.QueryParam("page") == "" {
+		page = 1
+	} else {
+		page, err = strconv.Atoi(context.QueryParam("page"))
+		if err != nil || page <= 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid page.")
+		}
+	}
+	limit := 20
+	offset := limit * (page - 1)
+
 	announcements := make([]Announcement, 0)
-	// MEMO: TODO: ページング実装
-	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
-		"FROM `announcements`"+
-		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`"+
-		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id`"+
-		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", userID); err != nil {
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at` "+
+		"FROM `announcements` "+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
+		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL "+
+		"ORDER BY `announcements`.`created_at` DESC "+
+		"LIMIT ? OFFSET ?", userID, limit, offset); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
@@ -880,6 +896,18 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 			Title:      announcement.Title,
 			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
 		})
+	}
+
+	if len(res) > 0 {
+		var links []string
+		path := fmt.Sprintf("%v://%v%v", context.Scheme(), context.Request().Host, context.Path())
+		if page > 1 {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
+		}
+		if len(res) == limit {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
+		}
+		context.Response().Header().Set("Link", strings.Join(links, ","))
 	}
 
 	return context.JSON(http.StatusOK, res)
