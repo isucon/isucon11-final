@@ -199,6 +199,10 @@ type PostAnnouncementsRequest struct {
 	Message string `json:"message"`
 }
 
+type PostAnnouncementsResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
 type GetAttendancesAttendance struct {
 	UserID     uuid.UUID `json:"user_id"`
 	AttendedAt int64     `json:"attended_at"`
@@ -839,12 +843,17 @@ func (h *handlers) AddAnnouncements(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
-	if _, err := h.DB.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", uuid.New(), courseID, req.Title, req.Message); err != nil {
+	announcementID := uuid.NewRandom()
+	if _, err := h.DB.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", announcementID, courseID, req.Title, req.Message); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusNoContent)
+	res := PostAnnouncementsResponse{
+		ID: announcementID,
+	}
+
+	return context.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) SetUserGrades(context echo.Context) error {
