@@ -64,7 +64,7 @@ func main() {
 		syllabusAPI := API.Group("/syllabus")
 		{
 			syllabusAPI.GET("", h.SearchCourses)
-			syllabusAPI.GET("/:courseID", h.GetCourseSyllabus)
+			syllabusAPI.GET("/:courseID", h.GetCourseDetail)
 		}
 		coursesAPI := API.Group("/courses")
 		{
@@ -673,16 +673,13 @@ func (h *handlers) SearchCourses(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) GetCourseSyllabus(context echo.Context) error {
-	panic("implement me")
-}
-
 func (h *handlers) GetCourseDetail(context echo.Context) error {
 	courseID := uuid.Parse(context.Param("courseID"))
 	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
+	// MEMO: TODO: 詳細情報の追加
 	var course Course
 	if err := h.DB.Get(&course, "SELECT * from `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course")
