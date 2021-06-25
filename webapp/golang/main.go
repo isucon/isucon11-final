@@ -378,6 +378,12 @@ type Announcement struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
+type Phase struct {
+	Phase    string `db:"phase"`
+	Year     int    `db:"year"`
+	Semester string `db:"semester"`
+}
+
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
@@ -477,6 +483,14 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
+	var phase Phase
+	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
+		context.Logger().Error(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: TODO: phaseがregistration以外ならここで弾く？
+
 	tx, err := h.DB.Beginx()
 	if err != nil {
 		log.Println(err)
@@ -497,8 +511,11 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	var courseList []Course
 	for _, content := range req {
 		var course Course
-		// MEMO: TODO: 年度、学期の扱い
-		err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", content.ID)
+		err := tx.Get(&course, "SELECT `courses`.`id`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`classroom`, `courses`.`capacity`"+
+			"FROM `courses` "+
+			"JOIN `course_schedules` ON `courses`.`id` = `course_schedules`.`course_id` "+
+			"JOIN `schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
+			"WHERE `courses`.`id` = ? AND `schedules`.`year` = ? AND `schedules`.`semester` = ?", content.ID, phase.Year, phase.Semester)
 		if err == sql.ErrNoRows {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Not found course. id: %v", content.ID))
