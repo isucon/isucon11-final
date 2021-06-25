@@ -459,6 +459,14 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	return context.JSON(http.StatusOK, courses)
 }
 
+type RegisterCoursesErrorResponse struct {
+	InvalidCourse          []string    `json:"invalid_course,omitempty"`
+	NotFoundCourse         []uuid.UUID `json:"not_found_course,omitempty"`
+	NotTakenRequiredCourse []uuid.UUID `json:"not_taken_required_course,omitempty"`
+	CapaticyExceeded       []uuid.UUID `json:"capacity_exceeded,omitempty"`
+	TimeslotDuplicated     []uuid.UUID `json:"timeslot_duplicated,omitempty"`
+}
+
 func (h *handlers) RegisterCourses(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
@@ -508,23 +516,32 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		_, _ = h.DB.Exec("UNLOCK TABLES")
 	}()
 
+	hasError := false
+	var errors RegisterCoursesErrorResponse
 	var courseList []Course
 	for _, content := range req {
+		courseID := uuid.Parse(content.ID)
+		if courseID == nil {
+			hasError = true
+			errors.InvalidCourse = append(errors.InvalidCourse, content.ID)
+			continue
+		}
+
 		var course Course
-		err := tx.Get(&course, "SELECT `courses`.`id`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`classroom`, `courses`.`capacity`"+
+		if err := tx.Get(&course, "SELECT `courses`.`id`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`classroom`, `courses`.`capacity`"+
 			"FROM `courses` "+
 			"JOIN `course_schedules` ON `courses`.`id` = `course_schedules`.`course_id` "+
 			"JOIN `schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
-			"WHERE `courses`.`id` = ? AND `schedules`.`year` = ? AND `schedules`.`semester` = ?", content.ID, phase.Year, phase.Semester)
-		if err == sql.ErrNoRows {
-			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Not found course. id: %v", content.ID))
+			"WHERE `courses`.`id` = ? AND `schedules`.`year` = ? AND `schedules`.`semester` = ?", courseID, phase.Year, phase.Semester); err == sql.ErrNoRows {
+			hasError = true
+			errors.NotFoundCourse = append(errors.NotFoundCourse, courseID)
 		} else if err != nil {
 			_ = tx.Rollback()
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
+		} else {
+			courseList = append(courseList, course)
 		}
-		courseList = append(courseList, course)
 	}
 
 	// MEMO: LOGIC: 前提講義/受講者数制限バリデーション
@@ -537,7 +554,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			return context.NoContent(http.StatusInternalServerError)
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
-			var gradeCount uint32
+			var gradeCount int
 			err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM `grades` WHERE `user_id` = ? AND `course_id` = ?", userID, requiredCourseID)
 			if err != nil {
 				_ = tx.Rollback()
@@ -545,8 +562,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 				return context.NoContent(http.StatusInternalServerError)
 			}
 			if gradeCount == 0 {
-				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have not taken required course. required course id: %v", requiredCourseID))
+				hasError = true
+				errors.NotTakenRequiredCourse = append(errors.NotTakenRequiredCourse, course.ID)
 			}
 		}
 
@@ -558,8 +575,8 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			return context.NoContent(http.StatusInternalServerError)
 		}
 		if registerCount >= course.Capacity {
-			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Course capacity exceeded. course id: %v", course.ID))
+			hasError = true
+			errors.CapaticyExceeded = append(errors.CapaticyExceeded, course.ID)
 		}
 	}
 
@@ -591,10 +608,15 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 				return context.NoContent(http.StatusInternalServerError)
 			}
 			if schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
-				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You cannot take courses held on same schedule. course id: %v and %v", courseList[i].ID, courseList[j].ID))
+				hasError = true
+				errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, courseList[i].ID)
 			}
 		}
+	}
+
+	if hasError {
+		_ = tx.Rollback()
+		return context.JSON(http.StatusBadRequest, errors)
 	}
 
 	// MEMO: LOGIC: 履修登録
