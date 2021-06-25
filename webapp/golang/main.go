@@ -67,6 +67,7 @@ func main() {
 		coursesAPI := API.Group("/courses")
 		{
 			coursesAPI.GET("/:courseID", h.GetCourseDetail)
+			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumentList)
 			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
@@ -221,6 +222,13 @@ type GetDocumentResponse struct {
 	Name string    `json:"name"`
 }
 
+type GetAssignmentResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Deadline    int64     `json:"deadline"`
+}
+
 type GetDocumentsResponse []GetDocumentResponse
 
 type UserType string
@@ -274,6 +282,15 @@ type DocumentsMeta struct {
 	ClassID   uuid.UUID `db:"class_id"`
 	Name      string    `db:"name"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type Assignment struct {
+	ID          uuid.UUID `db:"id"`
+	ClassID     uuid.UUID `db:"class_id"`
+	Name        string    `db:"name"`
+	Description string    `db:"description"`
+	Deadline    time.Time `db:"deadline"`
+	CreatedAt   time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -535,6 +552,71 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusOK, course)
+}
+
+type GetClassResponse struct {
+	ID          uuid.UUID               `json:"id"`
+	Title       string                  `json:"title"`
+	Description string                  `json:"description"`
+	Documents   []GetDocumentResponse   `json:"documents"`
+	Assignments []GetAssignmentResponse `json:"assignments"`
+}
+
+func (h *handlers) GetClasses(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	// MEMO: TODO: classに順序を入れてその順序で返す
+	var classes []Class
+	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ?", courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var res []GetClassResponse
+	for _, class := range classes {
+		var documents []DocumentsMeta
+		if err := h.DB.Select(&documents, "SELECT * FROM `documents` WHERE `class_id` = ?", class.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		var assignments []Assignment
+		if err := h.DB.Select(&assignments, "SELECT * FROM `assignments` WHERE `class_id` = ?", class.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		documentsRes := make([]GetDocumentResponse, 0)
+		for _, document := range documents {
+			documentsRes = append(documentsRes, GetDocumentResponse{
+				ID:   document.ID,
+				Name: document.Name,
+			})
+		}
+
+		assignmentsRes := make([]GetAssignmentResponse, 0)
+		for _, assignment := range assignments {
+			assignmentsRes = append(assignmentsRes, GetAssignmentResponse{
+				ID:          assignment.ID,
+				Name:        assignment.Name,
+				Description: assignment.Description,
+				Deadline:    assignment.Deadline.UnixNano() / int64(time.Millisecond),
+			})
+		}
+
+		res = append(res, GetClassResponse{
+			ID:          class.ID,
+			Title:       class.Title,
+			Description: class.Description,
+			Documents:   documentsRes,
+			Assignments: assignmentsRes,
+		})
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 type PostAssignmentRequest struct {
