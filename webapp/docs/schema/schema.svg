@@ -336,14 +336,20 @@
 <!-- phase -->
 <g id="node10" class="node">
 <title>phase</title>
-<polygon fill="#efefef" stroke="transparent" points="1321.5,-1113.5 1321.5,-1148.5 1661.5,-1148.5 1661.5,-1113.5 1321.5,-1113.5"/>
-<polygon fill="none" stroke="#000000" points="1321.5,-1113.5 1321.5,-1148.5 1661.5,-1148.5 1661.5,-1113.5 1321.5,-1113.5"/>
-<text text-anchor="start" x="1418.3607" y="-1126.3" font-family="Arial Bold" font-size="18.00" fill="#000000">phase</text>
-<text text-anchor="start" x="1467.3855" y="-1126.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
-<text text-anchor="start" x="1471.2761" y="-1126.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
+<polygon fill="#efefef" stroke="transparent" points="1321.5,-1143.5 1321.5,-1178.5 1661.5,-1178.5 1661.5,-1143.5 1321.5,-1143.5"/>
+<polygon fill="none" stroke="#000000" points="1321.5,-1143.5 1321.5,-1178.5 1661.5,-1178.5 1661.5,-1143.5 1321.5,-1143.5"/>
+<text text-anchor="start" x="1418.3607" y="-1156.3" font-family="Arial Bold" font-size="18.00" fill="#000000">phase</text>
+<text text-anchor="start" x="1467.3855" y="-1156.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
+<text text-anchor="start" x="1471.2761" y="-1156.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
+<polygon fill="none" stroke="#000000" points="1321.5,-1113.5 1321.5,-1143.5 1661.5,-1143.5 1661.5,-1113.5 1321.5,-1113.5"/>
+<text text-anchor="start" x="1328.2117" y="-1124.9" font-family="Arial" font-size="14.00" fill="#000000">phase </text>
+<text text-anchor="start" x="1370.2327" y="-1124.9" font-family="Arial" font-size="14.00" fill="#666666">[enum(&#39;registration&#39;,&#39;term&#45;time&#39;,&#39;exam&#45;period&#39;)]</text>
 <polygon fill="none" stroke="#000000" points="1321.5,-1083.5 1321.5,-1113.5 1661.5,-1113.5 1661.5,-1083.5 1321.5,-1083.5"/>
-<text text-anchor="start" x="1328.2117" y="-1094.9" font-family="Arial" font-size="14.00" fill="#000000">phase </text>
-<text text-anchor="start" x="1370.2327" y="-1094.9" font-family="Arial" font-size="14.00" fill="#666666">[enum(&#39;registration&#39;,&#39;term&#45;time&#39;,&#39;exam&#45;period&#39;)]</text>
+<text text-anchor="start" x="1328.5" y="-1094.9" font-family="Arial" font-size="14.00" fill="#000000">year </text>
+<text text-anchor="start" x="1359.6164" y="-1094.9" font-family="Arial" font-size="14.00" fill="#666666">[int unsigned]</text>
+<polygon fill="none" stroke="#000000" points="1321.5,-1053.5 1321.5,-1083.5 1661.5,-1083.5 1661.5,-1053.5 1321.5,-1053.5"/>
+<text text-anchor="start" x="1328.5" y="-1064.9" font-family="Arial" font-size="14.00" fill="#000000">semester </text>
+<text text-anchor="start" x="1389.9502" y="-1064.9" font-family="Arial" font-size="14.00" fill="#666666">[enum(&#39;first&#39;,&#39;second&#39;)]</text>
 </g>
 <!-- registrations -->
 <g id="node11" class="node">

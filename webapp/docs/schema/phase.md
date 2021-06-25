@@ -9,7 +9,9 @@
 
 ```sql
 CREATE TABLE `phase` (
-  `phase` enum('registration','term-time','exam-period') COLLATE utf8mb4_bin DEFAULT 'registration'
+  `phase` enum('registration','term-time','exam-period') COLLATE utf8mb4_bin NOT NULL DEFAULT 'registration',
+  `year` int unsigned NOT NULL,
+  `semester` enum('first','second') COLLATE utf8mb4_bin NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -17,9 +19,11 @@ CREATE TABLE `phase` (
 
 ## Columns
 
-| Name  | Type                                           | Default      | Nullable | Children | Parents | Comment                                                                          |
-| ----- | ---------------------------------------------- | ------------ | -------- | -------- | ------- | -------------------------------------------------------------------------------- |
-| phase | enum('registration','term-time','exam-period') | registration | true     |          |         | 履修登録期間(Registration)、授業期間(term-time)、試験期間(exam-period)のいずれか                      |
+| Name     | Type                                           | Default      | Nullable | Children | Parents | Comment                                                                          |
+| -------- | ---------------------------------------------- | ------------ | -------- | -------- | ------- | -------------------------------------------------------------------------------- |
+| phase    | enum('registration','term-time','exam-period') | registration | false    |          |         | 履修登録期間(Registration)、授業期間(term-time)、試験期間(exam-period)のいずれか                      |
+| year     | int unsigned                                   |              | false    |          |         | 年度                                                                               |
+| semester | enum('first','second')                         |              | false    |          |         | 学期(前期・後期)                                                                        |
 
 ## Relations
 
