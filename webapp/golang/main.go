@@ -892,13 +892,17 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
 		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL "+
 		"ORDER BY `announcements`.`created_at` DESC "+
-		"LIMIT ? OFFSET ?", userID, limit, offset); err != nil {
+		"LIMIT ? OFFSET ?", userID, limit+1, offset); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	res := make(GetAnnouncementsResponse, 0, len(announcements))
-	for _, announcement := range announcements {
+	lenRes := len(announcements)
+	if len(announcements) == limit+1 {
+		lenRes = limit
+	}
+	res := make(GetAnnouncementsResponse, 0, lenRes)
+	for _, announcement := range announcements[:lenRes] {
 		res = append(res, GetAnnouncementResponse{
 			ID:         announcement.ID,
 			CourseName: announcement.CourseName,
@@ -907,13 +911,13 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 		})
 	}
 
-	if len(res) > 0 {
+	if lenRes > 0 {
 		var links []string
 		path := fmt.Sprintf("%v://%v%v", context.Scheme(), context.Request().Host, context.Path())
 		if page > 1 {
 			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
 		}
-		if len(res) == limit {
+		if len(announcements) == limit+1 {
 			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
 		}
 		context.Response().Header().Set("Link", strings.Join(links, ","))
