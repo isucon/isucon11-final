@@ -152,6 +152,12 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+type SetPhaseRequest struct {
+	Phase    PhaseType `json:"phase"`
+	Year     uint32    `json:"year"`
+	Semester Semester  `json:"semester"`
+}
+
 func (h *handlers) SetPhase(c echo.Context) error {
 	var req SetPhaseRequest
 	if err := c.Bind(&req); err != nil {
@@ -159,10 +165,10 @@ func (h *handlers) SetPhase(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	if req.Phase != "registration" && req.Phase != "term-time" && req.Phase != "exam-period" {
+	if req.Phase != Registration && req.Phase != TermTime && req.Phase != ExamPeriod {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad phase")
 	}
-	if req.Semester != "first" && req.Semester != "second" {
+	if req.Semester != FirstSemester && req.Semester != SecondSemester {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad semester")
 	}
 
@@ -180,12 +186,6 @@ func (h *handlers) SetPhase(c echo.Context) error {
 
 type InitializeResponse struct {
 	Language string `json:"language"`
-}
-
-type SetPhaseRequest struct {
-	Phase    string `json:"phase"`
-	Year     uint32 `json:"year"`
-	Semester string `json:"semester"`
 }
 
 type LoginRequest struct {
@@ -220,10 +220,25 @@ type GetDocumentResponse struct {
 
 type GetDocumentsResponse []GetDocumentResponse
 
+type PhaseType string
+
+const (
+	Registration PhaseType = "registration"
+	TermTime     PhaseType = "term-time"
+	ExamPeriod   PhaseType = "exam-period"
+)
+
+type Semester string
+
+const (
+	FirstSemester  Semester = "first"
+	SecondSemester Semester = "second"
+)
+
 type Phase struct {
-	Phase    string `json:"phase"`
-	Year     uint32 `json:"year"`
-	Semester string `json:"semester"`
+	Phase    PhaseType `json:"phase"`
+	Year     uint32    `json:"year"`
+	Semester Semester  `json:"semester"`
 }
 
 type UserType string
@@ -254,7 +269,7 @@ type Schedule struct {
 	ID        uuid.UUID `db:"id"`
 	Period    uint8     `db:"period"`
 	DayOfWeek string    `db:"day_of_week"`
-	Semester  string    `db:"semester"`
+	Semester  Semester  `db:"semester"`
 	Year      uint32    `db:"year"`
 }
 
