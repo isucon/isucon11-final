@@ -3,9 +3,11 @@ package scenario
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucandar/worker"
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/model"
@@ -90,7 +92,7 @@ func (s *Scenario) prepareCheck(ctx context.Context, step *isucandar.BenchmarkSt
 	if hasErrors() {
 		return Cancel
 	}
-	if err := s.prepareFastCheckInClass(ctx, initializeStudent, initializeFaculty, step); err != nil {
+	if err := s.prepareFastCheckInClass(ctx, initializeFaculty, step); err != nil {
 		return Cancel
 	}
 
@@ -112,6 +114,7 @@ func (s *Scenario) prepareCheck(ctx context.Context, step *isucandar.BenchmarkSt
 }
 
 // TODO: 以下のTODOをaction.goあたりにまとめる
+// MEMO: 7/10までには実装不要
 func (s *Scenario) prepareAccessCheckInRegister(ctx context.Context, student *model.Student, faculty *model.Faculty, step *isucandar.BenchmarkStep) {
 	// 履修登録期間でのアクセス制御チェック
 	// TODO: goroutineで各エンドポイントへアクセス確認.
@@ -176,6 +179,8 @@ func (s *Scenario) prepareFastCheckInRegister(ctx context.Context, student *mode
 		step.AddError(err)
 		return err
 	}
+
+	// 初期走行の検証
 	registered, err := FetchRegisteredCoursesAction(ctx, student)
 	if err != nil {
 		step.AddError(err)
@@ -196,16 +201,89 @@ func (s *Scenario) prepareFastCheckInRegister(ctx context.Context, student *mode
 
 	return nil
 }
-func (s *Scenario) prepareFastCheckInClass(ctx context.Context, student *model.Student, faculty *model.Faculty, step *isucandar.BenchmarkStep) error {
+func (s *Scenario) prepareFastCheckInClass(ctx context.Context, faculty *model.Faculty, step *isucandar.BenchmarkStep) error {
 	// 講義期間での動作確認
-	// TODO: Facultyによる資料追加
-	// TODO: Facultyによるお知らせ追加
-	// TODO: Studentによるお知らせ確認
-	// TODO: Studentによる資料DL
-	// TODO: Facultyによる出席コード追加
-	// TODO: Studentによる出席コード入力
-	// TODO: Facultyによる課題追加
-	// TODO: Studentによる課題提出
+	course := model.StaticCoursesData[0]
+
+	// ここから1Class開始
+	var class *model.Class
+	var err error
+	if class, err = AddClass(ctx, faculty, course); err != nil {
+		step.AddError(err)
+		return err
+	}
+	if err = AddClassAnnouncement(ctx, faculty, course, class); err != nil {
+		step.AddError(err)
+		return err
+	}
+	if err = AddClassDocument(ctx, faculty, class); err != nil {
+		step.AddError(err)
+		return err
+	}
+	var attendanceCode string // Verificationシナリオではコード自体は検証しないのでmodel.Classに埋め込まない
+	if attendanceCode, err = AddAttendanceCode(ctx, faculty, class); err != nil {
+		step.AddError(err)
+		return err
+	}
+	if err = AddClassAssignments(ctx, faculty, class); err != nil {
+		step.AddError(err)
+		return err
+	}
+
+	// FIXME: 初期走行では1人しか学生を動かしていないのでWorkerを作る必要ない。
+	// Loadをどんな風に実装するかのお試しなのでLoadを実装したらこちらはシンプルにする
+	registeredStudents := course.Students()
+	studentTask := func(ctx context.Context, i int) {
+		student := registeredStudents[i]
+		if errs := AccessMyPageAction(ctx, student.Agent); len(errs) > 0 {
+			err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行でマイページの描画に失敗しました"))
+			step.AddError(err)
+			return // アクションに失敗したらこの学生の操作は終了
+		}
+
+		if err := CheckClassAnnouncementAction(ctx, student, class); err != nil {
+			step.AddError(err)
+			return
+		}
+		if err := VerifyClassDoc(ctx, student, class); err != nil {
+			step.AddError(err)
+			return
+		}
+		if err := PostAttendanceCode(ctx, student, class, attendanceCode); err != nil {
+			step.AddError(err)
+			return
+		}
+		if err := SubmitAssignment(ctx, student, class); err != nil {
+			step.AddError(err)
+			return
+		}
+	}
+	studentWorker, err := worker.NewWorker(studentTask,
+		worker.WithLoopCount(int32(len(registeredStudents))),
+		worker.WithMaxParallelism(1),
+	)
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 8*time.Second)
+	defer cancel()
+	studentWorker.Process(ctx)
+	studentWorker.Wait()
+
+	errs := step.Result().Errors
+	if len(errs.All()) > 0 {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行でエラーが発生しました"))
+	}
+
+	// 初期走行の検証
+	if err := VerifyAttendances(ctx, faculty, class); err != nil {
+		return err
+	}
+	if err := VerifySubmissions(ctx, faculty, class); err != nil {
+		return err
+	}
+
 	return nil
 }
 func (s *Scenario) prepareFastCheckInResult(ctx context.Context, student *model.Student, faculty *model.Faculty, step *isucandar.BenchmarkStep) error {
