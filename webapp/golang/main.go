@@ -589,7 +589,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		documentsRes := make([]GetDocumentResponse, 0)
+		documentsRes := make([]GetDocumentResponse, 0, len(documents))
 		for _, document := range documents {
 			documentsRes = append(documentsRes, GetDocumentResponse{
 				ID:   document.ID,
@@ -597,7 +597,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 			})
 		}
 
-		assignmentsRes := make([]GetAssignmentResponse, 0)
+		assignmentsRes := make([]GetAssignmentResponse, 0, len(assignments))
 		for _, assignment := range assignments {
 			assignmentsRes = append(assignmentsRes, GetAssignmentResponse{
 				ID:          assignment.ID,
