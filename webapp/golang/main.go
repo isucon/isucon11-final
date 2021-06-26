@@ -162,9 +162,6 @@ func (h *handlers) SetPhase(c echo.Context) error {
 	if req.Phase != "registration" && req.Phase != "term-time" && req.Phase != "exam-period" {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad phase")
 	}
-	if req.Year < 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad year")
-	}
 	if req.Semester != "first" && req.Semester != "second" {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad semester")
 	}
@@ -843,10 +840,12 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	sess, err := session.Get(SessionName, c)
 	if err != nil {
+		log.Println(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if uuid.Equal(uuid.NIL, userID) {
+		log.Println(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -860,6 +859,7 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `attendance_code` = ?", req.Code); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
 	} else if err != nil {
+		log.Println(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -873,10 +873,12 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 		"WHERE `courses`.`id` = ?" +
 		"LIMIT 1"
 	if err := h.DB.Get(&schedule, query, class.CourseID); err != nil {
+		log.Println(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	var phase Phase
 	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
+		log.Println(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if schedule.Year != phase.Year || schedule.Semester != phase.Semester {
@@ -886,7 +888,8 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	// 履修確認
 	var registration int
 	if err := h.DB.Get(&registration, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ? AND `deleted_at` IS NULL", class.CourseID, userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check registration: %v", err))
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	if registration == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "You are not registered in the course.")
@@ -895,7 +898,8 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	// 既に出席しているか
 	var attendances int
 	if err := h.DB.Get(&attendances, "SELECT COUNT(*) FROM `attendances` WHERE `class_id` = ? AND `user_id` = ?", class.ID, userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check attendance: %v", err))
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	if attendances > 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "You have already attended in this class.")
@@ -903,7 +907,8 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 
 	// 出席コード登録
 	if _, err := h.DB.Exec("INSERT INTO `attendances` (`class_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", class.ID, userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create attendance: %v", err))
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.NoContent(http.StatusNoContent)
