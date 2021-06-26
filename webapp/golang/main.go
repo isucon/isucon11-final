@@ -503,6 +503,10 @@ type PostAssignmentRequest struct {
 	Deadline    time.Time
 }
 
+type PostAssignmentResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
 func (h *handlers) PostAssignment(context echo.Context) error {
 	var req PostAssignmentRequest
 	if err := context.Bind(&req); err != nil {
@@ -522,12 +526,15 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
-	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", uuid.New(), classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
+	assignmentID := uuid.NewRandom()
+	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", assignmentID, classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusCreated, PostAssignmentResponse{
+		ID: assignmentID,
+	})
 }
 
 func (h *handlers) GetCourseDocumentList(context echo.Context) error {
@@ -591,7 +598,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		}
 	}
 
-	res := make([]PostDocumentResponse, len(files))
+	res := make([]PostDocumentResponse, 0, len(files))
 	for _, file := range files {
 		src, err := file.Open()
 		if err != nil {
