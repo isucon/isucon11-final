@@ -52,7 +52,10 @@ func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) 
 }
 
 func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses []string) ([]string, error) {
-	reqBody, _ := json.Marshal(courses)
+	reqBody, err := json.Marshal(courses)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
 	req, err := a.POST(fmt.Sprintf("/api/users/%s/courses", userID), bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)

@@ -17,10 +17,13 @@ type loginRequest struct {
 }
 
 func Login(ctx context.Context, a *agent.Agent, id, pw string) error {
-	reqBody, _ := json.Marshal(&loginRequest{
+	reqBody, err := json.Marshal(&loginRequest{
 		Username: id,
 		Password: pw,
 	})
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
 	req, err := a.POST("/login", bytes.NewBuffer(reqBody))
 	if err != nil {
 		// リクエスト生成に失敗はほぼありえないのでCritical
@@ -43,10 +46,13 @@ func Login(ctx context.Context, a *agent.Agent, id, pw string) error {
 }
 
 func LoginFail(ctx context.Context, a *agent.Agent, id, pw string) error {
-	reqBody, _ := json.Marshal(&loginRequest{
+	reqBody, err := json.Marshal(&loginRequest{
 		Username: id,
 		Password: pw,
 	})
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
 	req, err := a.POST("/login", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)

@@ -33,7 +33,10 @@ func ChangePhaseToResult(ctx context.Context, a *agent.Agent) error {
 
 func changePhase(ctx context.Context, a *agent.Agent, phase string) error {
 	reqObj := &phaseRequest{Phase: phase}
-	reqBody, _ := json.Marshal(reqObj)
+	reqBody, err := json.Marshal(reqObj)
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
 	req, err := a.POST("/phase", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
