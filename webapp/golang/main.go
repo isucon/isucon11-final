@@ -1,7 +1,6 @@
 package main
 
 import (
-	"archive/zip"
 	"database/sql"
 	"fmt"
 	"io"
@@ -9,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -1351,35 +1351,14 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 }
 
 func createSubmissionsZip(zipFilePath string, submissions []*Submission) error {
-	zipFile, err := os.Create(zipFilePath)
-	if err != nil {
-		return err
-	}
-	w := zip.NewWriter(zipFile)
-
+	args := make([]string, 0, len(submissions)+1)
+	args = append(args, zipFilePath)
 	for _, submission := range submissions {
-		f, err := w.Create(submission.UserID.String() + "-" + submission.Name)
-		if err != nil {
-			return err
-		}
-		submissionFile, err := os.Open(AssignmentsDirectory + submission.ID.String())
-		if err != nil {
-			return err
-		}
-		if _, err = io.Copy(f, submissionFile); err != nil {
-			return err
-		}
-		if err = submissionFile.Close(); err != nil {
-			return err
-		}
+		args = append(args, AssignmentsDirectory+submission.ID.String())
 	}
-
-	if err := w.Flush(); err != nil {
+	cmd := exec.Command("zip", args...)
+	if err := cmd.Start(); err != nil {
 		return err
 	}
-	if err := w.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return cmd.Wait()
 }
