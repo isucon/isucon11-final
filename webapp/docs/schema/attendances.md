@@ -13,9 +13,9 @@ CREATE TABLE `attendances` (
   `user_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`class_id`,`user_id`),
-  KEY `FK_user_id` (`user_id`),
-  CONSTRAINT `attendances_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`),
-  CONSTRAINT `attendances_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+  KEY `FK_attendances_user_id` (`user_id`),
+  CONSTRAINT `FK_attendances_class_id` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`),
+  CONSTRAINT `FK_attendances_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -31,18 +31,18 @@ CREATE TABLE `attendances` (
 
 ## Constraints
 
-| Name               | Type        | Definition                                     |
-| ------------------ | ----------- | ---------------------------------------------- |
-| attendances_ibfk_1 | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
-| attendances_ibfk_2 | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)    |
-| PRIMARY            | PRIMARY KEY | PRIMARY KEY (class_id, user_id)                |
+| Name                    | Type        | Definition                                     |
+| ----------------------- | ----------- | ---------------------------------------------- |
+| FK_attendances_class_id | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
+| FK_attendances_user_id  | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)    |
+| PRIMARY                 | PRIMARY KEY | PRIMARY KEY (class_id, user_id)                |
 
 ## Indexes
 
-| Name       | Definition                                  |
-| ---------- | ------------------------------------------- |
-| FK_user_id | KEY FK_user_id (user_id) USING BTREE        |
-| PRIMARY    | PRIMARY KEY (class_id, user_id) USING BTREE |
+| Name                   | Definition                                       |
+| ---------------------- | ------------------------------------------------ |
+| FK_attendances_user_id | KEY FK_attendances_user_id (user_id) USING BTREE |
+| PRIMARY                | PRIMARY KEY (class_id, user_id) USING BTREE      |
 
 ## Relations
 

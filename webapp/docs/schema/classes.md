@@ -15,8 +15,8 @@ CREATE TABLE `classes` (
   `description` text COLLATE utf8mb4_bin NOT NULL,
   `attendance_code` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `FK_course_id` (`course_id`),
-  CONSTRAINT `classes_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
+  KEY `FK_classes_course_id` (`course_id`),
+  CONSTRAINT `FK_classes_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -34,17 +34,17 @@ CREATE TABLE `classes` (
 
 ## Constraints
 
-| Name           | Type        | Definition                                      |
-| -------------- | ----------- | ----------------------------------------------- |
-| classes_ibfk_1 | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
-| PRIMARY        | PRIMARY KEY | PRIMARY KEY (id)                                |
+| Name                 | Type        | Definition                                      |
+| -------------------- | ----------- | ----------------------------------------------- |
+| FK_classes_course_id | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
+| PRIMARY              | PRIMARY KEY | PRIMARY KEY (id)                                |
 
 ## Indexes
 
-| Name         | Definition                               |
-| ------------ | ---------------------------------------- |
-| FK_course_id | KEY FK_course_id (course_id) USING BTREE |
-| PRIMARY      | PRIMARY KEY (id) USING BTREE             |
+| Name                 | Definition                                       |
+| -------------------- | ------------------------------------------------ |
+| FK_classes_course_id | KEY FK_classes_course_id (course_id) USING BTREE |
+| PRIMARY              | PRIMARY KEY (id) USING BTREE                     |
 
 ## Relations
 

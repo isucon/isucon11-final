@@ -12,9 +12,9 @@ CREATE TABLE `course_requirements` (
   `course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `required_course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   PRIMARY KEY (`course_id`,`required_course_id`),
-  KEY `FK_required_course_id` (`required_course_id`),
-  CONSTRAINT `course_requirements_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
-  CONSTRAINT `course_requirements_ibfk_2` FOREIGN KEY (`required_course_id`) REFERENCES `courses` (`id`)
+  KEY `FK_course_requirements_required_course_id` (`required_course_id`),
+  CONSTRAINT `FK_course_requirements_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
+  CONSTRAINT `FK_course_requirements_required_course_id` FOREIGN KEY (`required_course_id`) REFERENCES `courses` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -29,18 +29,18 @@ CREATE TABLE `course_requirements` (
 
 ## Constraints
 
-| Name                       | Type        | Definition                                               |
-| -------------------------- | ----------- | -------------------------------------------------------- |
-| course_requirements_ibfk_1 | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id)          |
-| course_requirements_ibfk_2 | FOREIGN KEY | FOREIGN KEY (required_course_id) REFERENCES courses (id) |
-| PRIMARY                    | PRIMARY KEY | PRIMARY KEY (course_id, required_course_id)              |
+| Name                                      | Type        | Definition                                               |
+| ----------------------------------------- | ----------- | -------------------------------------------------------- |
+| FK_course_requirements_course_id          | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id)          |
+| FK_course_requirements_required_course_id | FOREIGN KEY | FOREIGN KEY (required_course_id) REFERENCES courses (id) |
+| PRIMARY                                   | PRIMARY KEY | PRIMARY KEY (course_id, required_course_id)              |
 
 ## Indexes
 
-| Name                  | Definition                                                 |
-| --------------------- | ---------------------------------------------------------- |
-| FK_required_course_id | KEY FK_required_course_id (required_course_id) USING BTREE |
-| PRIMARY               | PRIMARY KEY (course_id, required_course_id) USING BTREE    |
+| Name                                      | Definition                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------ |
+| FK_course_requirements_required_course_id | KEY FK_course_requirements_required_course_id (required_course_id) USING BTREE |
+| PRIMARY                                   | PRIMARY KEY (course_id, required_course_id) USING BTREE                        |
 
 ## Relations
 
