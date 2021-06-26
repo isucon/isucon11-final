@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"database/sql"
 	"fmt"
 	"io"
@@ -22,10 +23,11 @@ import (
 )
 
 const (
-	SQLDirectory         = "../sql/"
-	AssignmentsDirectory = "../assignments/"
-	DocDirectory         = "../documents/"
-	SessionName          = "session"
+	SQLDirectory               = "../sql/"
+	AssignmentsDirectory       = "../assignments/"
+	AssignmentExportsDirectory = "../assignments/exports/"
+	DocDirectory               = "../documents/"
+	SessionName                = "session"
 )
 
 type handlers struct {
@@ -376,6 +378,14 @@ type Announcement struct {
 	Title      string    `db:"title"`
 	Message    string    `db:"message"`
 	CreatedAt  time.Time `db:"created_at"`
+}
+
+type Submission struct {
+	ID           uuid.UUID `db:"id"`
+	UserID       uuid.UUID `db:"user_id"`
+	AssignmentID uuid.UUID `db:"assignment_id"`
+	Name         string    `db:"name"`
+	CreatedAt    time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -1004,8 +1014,54 @@ func (h *handlers) SubmitAssignment(context echo.Context) error {
 	return context.NoContent(http.StatusNoContent)
 }
 
-func (h *handlers) DownloadSubmittedAssignment(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	assignmentID := uuid.Parse(c.Param("assignmentID"))
+	if assignmentID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid assignmentID")
+	}
+
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// MEMO: zipファイルを作るためFOR UPDATEでassignment、FOR SHAREでsubmissionをロック
+	var assignment Assignment
+	if err := tx.Get(&assignment, "SELECT * FROM `assignments` WHERE `id` = ? FOR UPDATE", assignmentID); err == sql.ErrNoRows {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	var submissions []*Submission
+	if err := tx.Select(&submissions, "SELECT * FROM `submissions` WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE"); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// MEMO: TODO: export時でなく提出時にzipファイルを作ることでボトルネックを作りたいが、「そうはならんやろ」という気持ち
+	zipFilePath := AssignmentExportsDirectory + assignmentID.String()
+	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	return c.File(zipFilePath)
 }
 
 func (h *handlers) GetAttendanceCode(context echo.Context) error {
@@ -1292,4 +1348,38 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+func createSubmissionsZip(zipFilePath string, submissions []*Submission) error {
+	zipFile, err := os.Create(zipFilePath)
+	if err != nil {
+		return err
+	}
+	w := zip.NewWriter(zipFile)
+
+	for _, submission := range submissions {
+		f, err := w.Create(submission.UserID.String() + "-" + submission.Name)
+		if err != nil {
+			return err
+		}
+		submissionFile, err := os.Open(AssignmentsDirectory + submission.ID.String())
+		if err != nil {
+			return err
+		}
+		if _, err = io.Copy(f, submissionFile); err != nil {
+			return err
+		}
+		if err = submissionFile.Close(); err != nil {
+			return err
+		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
