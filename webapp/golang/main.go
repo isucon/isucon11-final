@@ -187,7 +187,7 @@ type InitializeResponse struct {
 
 type SetPhaseRequest struct {
 	Phase    string `json:"phase"`
-	Year     int    `json:"year"`
+	Year     uint32 `json:"year"`
 	Semester string `json:"semester"`
 }
 
@@ -222,6 +222,12 @@ type GetDocumentResponse struct {
 }
 
 type GetDocumentsResponse []GetDocumentResponse
+
+type Phase struct {
+	Phase    string `json:"phase"`
+	Year     uint32 `json:"year"`
+	Semester string `json:"semester"`
+}
 
 type UserType string
 
@@ -834,18 +840,18 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) PostAttendanceCode(context echo.Context) error {
-	sess, err := session.Get(SessionName, context)
+func (h *handlers) PostAttendanceCode(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		return echo.ErrInternalServerError
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if uuid.Equal(uuid.NIL, userID) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	var req PostAttendanceCodeRequest
-	if err := context.Bind(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
@@ -854,7 +860,27 @@ func (h *handlers) PostAttendanceCode(context echo.Context) error {
 	if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `attendance_code` = ?", req.Code); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
 	} else if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get class: %v", err))
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// 学期確認
+	// MEMO: 複数phaseに渡る講義を想定していない
+	var schedule Schedule
+	query := "SELECT `schedules`.*" +
+		"FROM `schedules`" +
+		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`" +
+		"JOIN `courses` ON `course_schedules`.`course_id` = `courses`.`id`" +
+		"WHERE `courses`.`id` = ?" +
+		"LIMIT 1"
+	if err := h.DB.Get(&schedule, query, class.CourseID); err != nil {
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	var phase Phase
+	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if schedule.Year != phase.Year || schedule.Semester != phase.Semester {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
 	}
 
 	// 履修確認
@@ -880,5 +906,5 @@ func (h *handlers) PostAttendanceCode(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create attendance: %v", err))
 	}
 
-	return context.NoContent(http.StatusNoContent)
+	return c.NoContent(http.StatusNoContent)
 }
