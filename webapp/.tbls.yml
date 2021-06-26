@@ -4,7 +4,7 @@ format:
   adjust: true
 er:
   format: svg
-  distance: 2
+  distance: 1
   font: M+
 lint:
   requireTableComment:
