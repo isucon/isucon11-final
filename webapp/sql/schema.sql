@@ -36,11 +36,15 @@ CREATE TABLE `users`
 CREATE TABLE `courses`
 (
     `id`          CHAR(36) PRIMARY KEY,
-    `name`        VARCHAR(255)     NOT NULL,
-    `description` TEXT             NOT NULL,
-    `credit`      TINYINT UNSIGNED NOT NULL,
-    `classroom`   VARCHAR(255)     NOT NULL,
-    `capacity`    INT UNSIGNED
+    `code`        VARCHAR(255) UNIQUE                     NOT NULL,
+    `type`        ENUM ('liberal-arts', 'major-subjects') NOT NULL,
+    `name`        VARCHAR(255)                            NOT NULL,
+    `description` TEXT                                    NOT NULL,
+    `credit`      TINYINT UNSIGNED                        NOT NULL,
+    `classroom`   VARCHAR(255)                            NOT NULL,
+    `capacity`    INT UNSIGNED,
+    `teacher_id`  CHAR(36)                                NOT NULL,
+    `keywords`    TEXT                                    NOT NULL
 );
 
 -- master data
@@ -99,10 +103,10 @@ CREATE TABLE `grades`
 CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
-    `course_id`       CHAR(36)     NOT NULL,
-    `title`           VARCHAR(255) NOT NULL,
-    `description`     TEXT         NOT NULL,
-    `attendance_code` VARCHAR(255) NOT NULL,
+    `course_id`       CHAR(36)            NOT NULL,
+    `title`           VARCHAR(255)        NOT NULL,
+    `description`     TEXT                NOT NULL,
+    `attendance_code` VARCHAR(255) UNIQUE NOT NULL,
     CONSTRAINT FK_classes_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 );
 
