@@ -1,9 +1,12 @@
 package model
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type UserData struct {
@@ -16,12 +19,9 @@ type Student struct {
 	*UserData
 
 	// ベンチの操作で変更されるデータ
-	registeredCourseIDs     []string
-	receivedAnnouncementIDs []string
-	readAnnouncementIDs     []string
-	receivedAssignmentIDs   []string
-	submittedAssignmentIDs  []string
-	firstSemesterGrades     map[string]string
+	registeredCourseIDs    []string
+	announcementsByID      map[string]*Announcement
+	isReadByAnnouncementID map[string]bool
 
 	Agent *agent.Agent
 	rmu   sync.RWMutex
@@ -54,15 +54,12 @@ func NewStudent(name, number, rawPW string) *Student {
 	a, _ := agent.NewAgent()
 
 	return &Student{
-		UserData:                newUserData(name, number, rawPW),
-		registeredCourseIDs:     []string{},
-		receivedAnnouncementIDs: []string{},
-		readAnnouncementIDs:     []string{},
-		receivedAssignmentIDs:   []string{},
-		submittedAssignmentIDs:  []string{},
-		firstSemesterGrades:     map[string]string{},
-		Agent:                   a,
-		rmu:                     sync.RWMutex{},
+		UserData:               newUserData(name, number, rawPW),
+		registeredCourseIDs:    []string{},
+		announcementsByID:      map[string]*Announcement{},
+		isReadByAnnouncementID: map[string]bool{},
+		Agent:                  a,
+		rmu:                    sync.RWMutex{},
 	}
 }
 
@@ -72,10 +69,44 @@ func (s *Student) AddCourses(courses []string) {
 
 	s.registeredCourseIDs = append(s.registeredCourseIDs, courses...)
 }
-
 func (s *Student) Courses() []string {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
 	return s.registeredCourseIDs
+}
+
+func (s *Student) AddAnnouncement(id string, announcement *Announcement) error {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	if s.announcementsByID[id] != nil {
+		return failure.NewError(fails.ErrApplication, fmt.Errorf("announcementID(%s) is duplicated", id))
+	}
+	s.announcementsByID[id] = announcement
+	return nil
+}
+func (s *Student) AnnouncementsCount() int {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return len(s.announcementsByID)
+}
+func (s *Student) AnnouncementByID(id string) *Announcement {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return s.announcementsByID[id]
+}
+func (s *Student) AddReadAnnouncement(id string) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.isReadByAnnouncementID[id] = true
+}
+func (s *Student) IsReadAnnouncement(id string) bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return s.isReadByAnnouncementID[id]
 }

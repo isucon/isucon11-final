@@ -52,3 +52,33 @@ func (c *Course) AddStudent(student *Student) {
 
 	c.registeredStudents = append(c.registeredStudents, student)
 }
+
+func (c *Course) AddHeldClasses(class *Class) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.heldClasses = append(c.heldClasses, class)
+}
+func (c *Course) HeldClasses() []*Class {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	r := make([]*Class, 0)
+	copy(r, c.heldClasses)
+	return r
+}
+func (c *Course) GetHeldClassCount() int {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	return len(c.heldClasses)
+}
+
+func (c *Course) Students() []*Student {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	var r []*Student
+	copy(r, c.registeredStudents)
+	return r
+}

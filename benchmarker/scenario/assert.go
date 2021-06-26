@@ -1,5 +1,9 @@
 package scenario
 
+import (
+	"hash/crc32"
+)
+
 // 講義に重複がなく内容が一致
 func equalCourses(expected, actual []string) bool {
 	if len(expected) != len(actual) {
@@ -30,4 +34,13 @@ func equalCourses(expected, actual []string) bool {
 		}
 	}
 	return true
+}
+
+func getHash(data []byte) []byte {
+	h := crc32.ChecksumIEEE(data)
+	return []byte{
+		byte(h & 0xff),
+		byte((h >> 8) & 0xff),
+		byte((h >> 16) & 0xff),
+		byte((h >> 24) & 0xff)}
 }
