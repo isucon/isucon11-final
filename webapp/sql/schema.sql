@@ -1,4 +1,4 @@
-# CREATEと逆順
+#CREATEと逆順
 DROP TABLE IF EXISTS `unread_announcements`;
 DROP TABLE IF EXISTS `announcements`;
 DROP TABLE IF EXISTS `submissions`;
@@ -22,6 +22,7 @@ CREATE TABLE `phase`
     `semester` ENUM ('first', 'second')                                                 NOT NULL
 );
 
+-- master data
 CREATE TABLE `users`
 (
     `id`              CHAR(36) PRIMARY KEY,
@@ -31,6 +32,7 @@ CREATE TABLE `users`
     `type`            ENUM ('student', 'faculty') NOT NULL
 );
 
+-- master data
 CREATE TABLE `courses`
 (
     `id`          CHAR(36) PRIMARY KEY,
@@ -41,6 +43,7 @@ CREATE TABLE `courses`
     `capacity`    INT UNSIGNED
 );
 
+-- master data
 CREATE TABLE `course_requirements`
 (
     `course_id`          CHAR(36),
@@ -50,6 +53,7 @@ CREATE TABLE `course_requirements`
     FOREIGN KEY FK_required_course_id (`required_course_id`) REFERENCES `courses` (`id`)
 );
 
+-- master data
 CREATE TABLE `schedules`
 (
     `id`          CHAR(36) PRIMARY KEY,
@@ -59,6 +63,7 @@ CREATE TABLE `schedules`
     `year`        INT UNSIGNED                                                                        NOT NULL
 );
 
+-- master data
 CREATE TABLE `course_schedules`
 (
     `course_id`   CHAR(36),
@@ -81,14 +86,16 @@ CREATE TABLE `registrations`
 
 CREATE TABLE `grades`
 (
-    `id`        CHAR(36) PRIMARY KEY,
-    `user_id`   CHAR(36)     NOT NULL,
-    `course_id` CHAR(36)     NOT NULL,
-    `grade`     INT UNSIGNED NOT NULL,
+    `id`         CHAR(36) PRIMARY KEY,
+    `user_id`    CHAR(36)     NOT NULL,
+    `course_id`  CHAR(36)     NOT NULL,
+    `grade`      INT UNSIGNED NOT NULL,
+    `created_at` DATETIME(6)  NOT NULL,
     FOREIGN KEY FK_user_id (`user_id`) REFERENCES `users` (`id`),
     FOREIGN KEY FK_course_id (`course_id`) REFERENCES `courses` (`id`)
 );
 
+-- master data
 CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
