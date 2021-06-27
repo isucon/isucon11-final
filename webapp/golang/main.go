@@ -165,14 +165,14 @@ type LoginRequest struct {
 }
 
 type GetGradesResponse struct {
-	Summary      Summary        `json:"Summary"`
-	CourseGrades []*CourseGrade `json:"Courses"`
+	Summary      Summary        `json:"summary"`
+	CourseGrades []*CourseGrade `json:"courses"`
 }
 
 type PostGradesRequest []PostGradeRequest
 
 type Summary struct {
-	Credits uint8   `json:"credits"`
+	Credits int     `json:"credits"`
 	GPA     float64 `json:"gpa"`
 }
 
@@ -485,8 +485,8 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	//MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
 	var CourseGrades []CourseGrade
 	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
-		"FROM `Grades`" +
-		"JOIN `Courses` ON `Grades.course_id` = `Courses.id`" +
+		"FROM `grades`" +
+		"JOIN `courses` ON `grades`.`course_id` = `courses`.`id`" +
 		"WHERE `user_id` = ?"
 	if err := h.DB.Select(&CourseGrades, query, userID); err != nil {
 		log.Println(err)
@@ -495,11 +495,10 @@ func (h *handlers) GetGrades(context echo.Context) error {
 
 	//MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
 	var gpa float64 = 0.0
-	var credits uint8 = 0
-	CourseGrades_len := len(CourseGrades)
-	if CourseGrades_len > 0 {
+	var credits int = 0
+	if len(CourseGrades) > 0 {
 		for _, CourseGrade := range CourseGrades {
-			credits += CourseGrade.Credit
+			credits += int(CourseGrade.Credit)
 			gpa += float64(CourseGrade.Grade)
 		}
 		gpa = gpa / float64(credits)
@@ -757,7 +756,7 @@ func (h *handlers) SetUserGrades(context echo.Context) error {
 
 	//MEMO: LOGIC: 学生一人の全コース成績登録
 	for _, coursegrade := range req {
-		if _, err := h.DB.Exec("INSERT INTO `Grades` (`id`, `user_id`, `course_id`, `grade`) VALUES (?, ?, ?, ?)", uuid.New(), coursegrade.UserID, courseID, coursegrade.Grade); err != nil {
+		if _, err := h.DB.Exec("INSERT INTO `grades` (`id`, `user_id`, `course_id`, `grade`) VALUES (?, ?, ?, ?)", uuid.New(), coursegrade.UserID, courseID, coursegrade.Grade); err != nil {
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
