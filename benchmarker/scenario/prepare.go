@@ -237,5 +237,27 @@ func (s *Scenario) prepareFastCheckInResult(ctx context.Context, student *model.
 		return err
 	}
 
+	grades, err := FetchGradesAction(ctx, student)
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
+
+	expectedGrade := student.FirseSemesterGrade()
+	if len(grades) != len(expectedGrade) {
+		err = failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行で取得できた成績の数が期待したものと違いました"))
+		step.AddError(err)
+		return err
+	}
+
+	for id, grade := range grades {
+		v, ok := expectedGrade[id]
+		if !ok || grade != v {
+			err = failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行で成績が一致しませんでした"))
+			step.AddError(err)
+			return err
+		}
+	}
+
 	return nil
 }

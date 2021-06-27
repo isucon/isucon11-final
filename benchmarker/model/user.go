@@ -87,3 +87,10 @@ func (s *Student) SetGradesUnchecked(courseID string, grade uint32) {
 
 	s.firstSemesterGrades[courseID] = grade
 }
+
+func (s *Student) FirseSemesterGrade() map[string]uint32 {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return s.firstSemesterGrades
+}

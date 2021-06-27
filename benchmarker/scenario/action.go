@@ -105,6 +105,19 @@ func RegisterGradeAction(ctx context.Context, faculty *model.Faculty, student *m
 	}
 	student.SetGradesUnchecked(courseID, grade)
 	return nil
+}
+
+func FetchGradesAction(ctx context.Context, student *model.Student) (map[string]uint32, error) {
+	r, err := api.GetGrades(ctx, student.Agent, student.Number)
+	mp := make(map[string]uint32, len(r.CourseGrades))
+	for _, courseGrade := range r.CourseGrades {
+		mp[courseGrade.ID] = courseGrade.Grade
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return mp, nil
 
 }
 
