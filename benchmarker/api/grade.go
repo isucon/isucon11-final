@@ -20,10 +20,14 @@ type registerGradeRequest struct {
 
 func RegisterGrades(ctx context.Context, a *agent.Agent, courseID, userID string, grade uint32) error {
 	// MEMO: エラー無視していいのか
-	reqBody, _ := json.Marshal(&registerGradeRequest{
+	reqBody, err := json.Marshal(&registerGradeRequest{
 		UserID: userID,
 		Grade:  grade,
 	})
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
+
 	req, err := a.POST(fmt.Sprintf("/api/courses/%s/grades", courseID), bytes.NewBuffer(reqBody))
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
