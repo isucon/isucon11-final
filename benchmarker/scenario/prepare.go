@@ -212,5 +212,30 @@ func (s *Scenario) prepareFastCheckInResult(ctx context.Context, student *model.
 	// 成績開示期間での動作確認
 	// TODO: Facultyによる講義Aの課題確認 & 成績登録
 	// TODO: Studentによる成績確認
+	faculty.Agent.ClearCookie()
+
+	if errs := LoginAction(ctx, faculty.Agent, faculty.UserData); len(errs) > 0 {
+		for _, err := range errs {
+			step.AddError(err)
+		}
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行のadminログイン処理が失敗しました"))
+		return err
+	}
+
+	courses := student.Courses()
+	hasErr := false
+	for _, c := range courses {
+		if err := RegisterGradeAction(ctx, faculty, student, c); err != nil {
+			step.AddError(err)
+			hasErr = true
+		}
+	}
+
+	if hasErr {
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行で成績登録が失敗しました"))
+		step.AddError(err)
+		return err
+	}
+
 	return nil
 }
