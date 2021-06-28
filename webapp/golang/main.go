@@ -1042,7 +1042,7 @@ func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 	var submissions []*Submission
-	if err := tx.Select(&submissions, "SELECT * FROM `submissions` WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE"); err != nil && err != sql.ErrNoRows {
+	if err := tx.Select(&submissions, "SELECT * FROM `submissions` WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE", assignmentID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusInternalServerError)
