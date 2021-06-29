@@ -583,7 +583,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var res []GetClassResponse
+	res := make([]GetClassResponse, 0)
 	for _, class := range classes {
 		var documents []DocumentsMeta
 		if err := h.DB.Select(&documents, "SELECT * FROM `documents` WHERE `class_id` = ?", class.ID); err != nil {
