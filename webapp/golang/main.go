@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	SQLDirectory               = "../sql/"
-	AssignmentsDirectory       = "../assignments/"
-	AssignmentExportsDirectory = "../assignments/exports/"
-	DocDirectory               = "../documents/"
-	SessionName                = "session"
+	SQLDirectory           = "../sql/"
+	AssignmentsDirectory   = "../assignments/"
+	AssignmentTmpDirectory = "../assignments/tmp/"
+	DocDirectory           = "../documents/"
+	SessionName            = "session"
 )
 
 type handlers struct {
@@ -217,7 +217,7 @@ type CourseGrade struct {
 	Grade  uint32    `json:"grade" db:"grade"`
 }
 
-//MEMO: S/A/B/Cと数値の話どうなったんだっけ？
+// MEMO: S/A/B/Cと数値の話どうなったんだっけ？
 type PostGradeRequest struct {
 	UserID uuid.UUID `json:"user_id"`
 	Grade  uint32    `json:"grade"`
@@ -640,7 +640,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
 	}
 
-	//MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
+	// MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
 	var CourseGrades []CourseGrade
 	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
 		"FROM `grades`" +
@@ -651,7 +651,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	//MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
+	// MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
 	var gpa float64 = 0.0
 	var credits int = 0
 	if len(CourseGrades) > 0 {
@@ -662,7 +662,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		gpa = gpa / float64(credits)
 	}
 
-	//MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
+	// MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
 	var res GetGradesResponse
 	res.Summary = Summary{
 		Credits: credits,
@@ -1049,7 +1049,7 @@ func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
 	}
 
 	// MEMO: TODO: export時でなく提出時にzipファイルを作ることでボトルネックを作りたいが、「そうはならんやろ」という気持ち
-	zipFilePath := AssignmentExportsDirectory + assignmentID.String() + ".zip"
+	zipFilePath := AssignmentTmpDirectory + assignmentID.String() + ".zip"
 	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
@@ -1157,7 +1157,7 @@ func (h *handlers) SetUserGrades(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
-	//MEMO: LOGIC: 学生一人の全コース成績登録
+	// MEMO: LOGIC: 学生一人の全コース成績登録
 	for _, coursegrade := range req {
 		if _, err := h.DB.Exec("INSERT INTO `grades` (`id`, `user_id`, `course_id`, `grade`) VALUES (?, ?, ?, ?)", uuid.New(), coursegrade.UserID, courseID, coursegrade.Grade); err != nil {
 			log.Println(err)
@@ -1351,12 +1351,28 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 }
 
 func createSubmissionsZip(zipFilePath string, submissions []*Submission) error {
-	args := make([]string, 0, len(submissions)+2)
-	args = append(args, "-j", zipFilePath)
+	// Zipに含めるファイルの名称変更のためコピー
+	// MEMO: N回 cp はやりすぎかも
 	for _, submission := range submissions {
-		args = append(args, AssignmentsDirectory+submission.ID.String())
+		cpCmd := exec.Command(
+			"cp",
+			AssignmentsDirectory+submission.ID.String(),
+			AssignmentTmpDirectory+submission.UserID.String()+"-"+submission.ID.String()+"-"+submission.Name,
+		)
+		if err := cpCmd.Start(); err != nil {
+			return err
+		}
+		if err := cpCmd.Wait(); err != nil {
+			return err
+		}
 	}
-	cmd := exec.Command("zip", args...)
+
+	zipArgs := make([]string, 0, len(submissions)+2)
+	zipArgs = append(zipArgs, "-j", zipFilePath)
+	for _, submission := range submissions {
+		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserID.String()+"-"+submission.ID.String()+"-"+submission.Name)
+	}
+	cmd := exec.Command("zip", zipArgs...)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
