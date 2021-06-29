@@ -21,7 +21,7 @@ type Student struct {
 	readAnnouncementIDs     []string
 	receivedAssignmentIDs   []string
 	submittedAssignmentIDs  []string
-	firstSemesterGrades     map[string]string
+	firstSemesterGrades     map[string]uint32
 
 	Agent *agent.Agent
 	rmu   sync.RWMutex
@@ -60,7 +60,7 @@ func NewStudent(name, number, rawPW string) *Student {
 		readAnnouncementIDs:     []string{},
 		receivedAssignmentIDs:   []string{},
 		submittedAssignmentIDs:  []string{},
-		firstSemesterGrades:     map[string]string{},
+		firstSemesterGrades:     map[string]uint32{},
 		Agent:                   a,
 		rmu:                     sync.RWMutex{},
 	}
@@ -78,4 +78,19 @@ func (s *Student) Courses() []string {
 	defer s.rmu.RUnlock()
 
 	return s.registeredCourseIDs
+}
+
+// 引数がvalidなものかは検証しない
+func (s *Student) SetGradesUnchecked(courseID string, grade uint32) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.firstSemesterGrades[courseID] = grade
+}
+
+func (s *Student) FirseSemesterGrade() map[string]uint32 {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return s.firstSemesterGrades
 }
