@@ -568,6 +568,14 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
+	var course Course
+	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "course not found")
+	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	// MEMO: TODO: classに順序を入れてその順序で返す
 	var classes []Class
 	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ?", courseID); err != nil {
