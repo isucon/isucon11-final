@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -206,6 +208,33 @@ type GetAttendanceCodeResponse struct {
 	Code string `json:"code"`
 }
 
+type GetAnnouncementsResponse []GetAnnouncementResponse
+type GetAnnouncementResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	// MEMO: TODO: 既読機能
+	// Unread     bool      `json:"unread"`
+	CreatedAt int64 `json:"created_at"`
+}
+
+type GetAnnouncementDetailResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	Message    string    `json:"message"`
+	CreatedAt  int64     `json:"created_at"`
+}
+
+type PostAnnouncementsRequest struct {
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
+
+type PostAnnouncementsResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
 type GetAttendancesAttendance struct {
 	UserID     uuid.UUID `json:"user_id"`
 	AttendedAt int64     `json:"attended_at"`
@@ -215,6 +244,10 @@ type GetAttendancesResponse []GetAttendancesAttendance
 
 type PostAttendanceCodeRequest struct {
 	Code string `json:"code"`
+}
+
+type PostDocumentResponse struct {
+	ID uuid.UUID `json:"id"`
 }
 
 type GetDocumentResponse struct {
@@ -291,6 +324,14 @@ type Assignment struct {
 	Description string    `db:"description"`
 	Deadline    time.Time `db:"deadline"`
 	CreatedAt   time.Time `db:"created_at"`
+}
+
+type Announcement struct {
+	ID         uuid.UUID `db:"id"`
+	CourseName string    `db:"name"`
+	Title      string    `db:"title"`
+	Message    string    `db:"message"`
+	CreatedAt  time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -633,6 +674,10 @@ type PostAssignmentRequest struct {
 	Deadline    time.Time
 }
 
+type PostAssignmentResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
 func (h *handlers) PostAssignment(context echo.Context) error {
 	var req PostAssignmentRequest
 	if err := context.Bind(&req); err != nil {
@@ -652,12 +697,15 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
-	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", uuid.New(), classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
+	assignmentID := uuid.NewRandom()
+	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", assignmentID, classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusCreated, PostAssignmentResponse{
+		ID: assignmentID,
+	})
 }
 
 func (h *handlers) GetCourseDocumentList(context echo.Context) error {
@@ -721,6 +769,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		}
 	}
 
+	res := make([]PostDocumentResponse, 0, len(files))
 	for _, file := range files {
 		src, err := file.Open()
 		if err != nil {
@@ -765,6 +814,8 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 			deleteFiles(dsts)
 			return context.NoContent(http.StatusInternalServerError)
 		}
+
+		res = append(res, PostDocumentResponse{ID: fileMeta.ID})
 	}
 
 	err = tx.Commit()
@@ -773,7 +824,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) GetAssignmentList(context echo.Context) error {
@@ -909,7 +960,35 @@ func (h *handlers) GetAttendances(context echo.Context) error {
 }
 
 func (h *handlers) AddAnnouncements(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
+	}
+
+	var req PostAnnouncementsRequest
+	if err := context.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	announcementID := uuid.NewRandom()
+	if _, err := h.DB.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", announcementID, courseID, req.Title, req.Message); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := PostAnnouncementsResponse{
+		ID: announcementID,
+	}
+
+	return context.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) SetUserGrades(context echo.Context) error {
@@ -917,11 +996,108 @@ func (h *handlers) SetUserGrades(context echo.Context) error {
 }
 
 func (h *handlers) GetAnnouncementList(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: ページングの初期実装はページ番号形式
+	var page int
+	if context.QueryParam("page") == "" {
+		page = 1
+	} else {
+		page, err = strconv.Atoi(context.QueryParam("page"))
+		if err != nil || page <= 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid page.")
+		}
+	}
+	limit := 20
+	offset := limit * (page - 1)
+
+	announcements := make([]Announcement, 0)
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at` "+
+		"FROM `announcements` "+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
+		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL "+
+		"ORDER BY `announcements`.`created_at` DESC "+
+		"LIMIT ? OFFSET ?", userID, limit+1, offset); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	lenRes := len(announcements)
+	if len(announcements) == limit+1 {
+		lenRes = limit
+	}
+	res := make(GetAnnouncementsResponse, 0, lenRes)
+	for _, announcement := range announcements[:lenRes] {
+		res = append(res, GetAnnouncementResponse{
+			ID:         announcement.ID,
+			CourseName: announcement.CourseName,
+			Title:      announcement.Title,
+			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
+		})
+	}
+
+	if lenRes > 0 {
+		var links []string
+		path := fmt.Sprintf("%v://%v%v", context.Scheme(), context.Request().Host, context.Path())
+		if page > 1 {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
+		}
+		if len(announcements) == limit+1 {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
+		}
+		context.Response().Header().Set("Link", strings.Join(links, ","))
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := uuid.Parse(context.Param("announcementID"))
+	if announcementID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid announcementID")
+	}
+
+	var announcement Announcement
+	if err := h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
+		"FROM `announcements`"+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`"+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id`"+
+		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "announcement not found.")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := GetAnnouncementDetailResponse{
+		ID:         announcement.ID,
+		CourseName: announcement.CourseName,
+		Title:      announcement.Title,
+		Message:    announcement.Message,
+		CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
+	}
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) PostAttendanceCode(context echo.Context) error {

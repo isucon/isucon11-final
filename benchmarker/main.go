@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"runtime/pprof"
 	"sync"
@@ -17,7 +18,6 @@ import (
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun"                            // TODO: modify to isucon11-portal
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources" // TODO: modify to isucon11-portal
-
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 )
 
@@ -131,7 +131,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		pprof.StartCPUProfile(fs)
+		_ = pprof.StartCPUProfile(fs)
 		defer pprof.StopCPUProfile()
 	}
 	if targetAddress == "" {
@@ -149,7 +149,10 @@ func main() {
 	if useTLS {
 		scheme = "https"
 	}
-	s.BaseURL = fmt.Sprintf("%s://%s/", scheme, targetAddress)
+	s.BaseURL, err = url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
+	if err != nil {
+		panic(err)
+	}
 	s.NoLoad = noLoad
 
 	benchTimeout, err := time.ParseDuration(benchTimeout)
