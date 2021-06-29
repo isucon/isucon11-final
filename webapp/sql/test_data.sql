@@ -28,7 +28,7 @@ INSERT INTO `users` (`id`, `name`, `mail_address`, `hashed_password`, `type`) VA
   'faculty'
 ),
 (
-  '2a931c3f-0576-464a-a05d-6e700ad54d70',
+  '01234567-89ab-cdef-0001-000000000005',
   '田山勝蔵',
   'tayama.s@isu.com',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02',
@@ -57,7 +57,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `c
   2,
   'B101講義室',
   100,
-  '2a931c3f-0576-464a-a05d-6e700ad54d70',
+  '01234567-89ab-cdef-0001-000000000004',
   '数学 線形代数 基礎'
 ),
 (
@@ -69,7 +69,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `c
   2,
   'C101講義室',
   NULL,
-  '2a931c3f-0576-464a-a05d-6e700ad54d70',
+  '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 アルゴリズム 基礎'
 ),
 (
@@ -81,7 +81,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `c
   2,
   'C101講義室',
   30,
-  '2a931c3f-0576-464a-a05d-6e700ad54d70',
+  '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 アルゴリズム 応用'
 ),
 (
@@ -117,7 +117,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `c
   2,
   'C102講義室',
   100,
-  '2a931c3f-0576-464a-a05d-6e700ad54d70',
+  '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語'
 ),
 (
@@ -129,7 +129,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `c
   1,
   '演習室1',
   50,
-  '2a931c3f-0576-464a-a05d-6e700ad54d70',
+  '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語 演習'
 ),
 (
@@ -141,7 +141,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `c
   1,
   '演習室1',
   50,
-  '2a931c3f-0576-464a-a05d-6e700ad54d70',
+  '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語 演習'
 );
 
@@ -173,6 +173,13 @@ INSERT INTO `schedules` (`id`, `period`, `day_of_week`, `semester`, `year`) VALU
 (
   '01234567-89ab-cdef-0003-000000000003',
   3,
+  'friday',
+  'first',
+  2021
+),
+(
+  '01234567-89ab-cdef-0003-000000000004',
+  4,
   'friday',
   'first',
   2021
@@ -225,6 +232,10 @@ INSERT INTO `course_schedules` (`course_id`, `schedule_id`) VALUES
 (
   '01234567-89ab-cdef-0002-000000000003',
   '01234567-89ab-cdef-0003-000000000003'
+),
+(
+  '01234567-89ab-cdef-0002-000000000004',
+  '01234567-89ab-cdef-0003-000000000004'
 ),
 (
   '01234567-89ab-cdef-0002-000000000011',
