@@ -380,9 +380,10 @@ type Announcement struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
-type Submission struct {
+type SubmissionWithUserName struct {
 	ID           uuid.UUID `db:"id"`
 	UserID       uuid.UUID `db:"user_id"`
+	UserName     string    `db:"user_name"`
 	AssignmentID uuid.UUID `db:"assignment_id"`
 	Name         string    `db:"name"`
 	CreatedAt    time.Time `db:"created_at"`
@@ -1041,8 +1042,11 @@ func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	var submissions []*Submission
-	if err := tx.Select(&submissions, "SELECT * FROM `submissions` WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE", assignmentID); err != nil && err != sql.ErrNoRows {
+	var submissions []*SubmissionWithUserName
+	if err := tx.Select(&submissions,
+		"SELECT `submissions`.*, `users`.`name` AS `user_name` "+
+			"FROM `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id`"+
+			"WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE", assignmentID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusInternalServerError)
@@ -1350,14 +1354,14 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-func createSubmissionsZip(zipFilePath string, submissions []*Submission) error {
+func createSubmissionsZip(zipFilePath string, submissions []*SubmissionWithUserName) error {
 	// Zipに含めるファイルの名称変更のためコピー
 	// MEMO: N回 cp はやりすぎかも
 	for _, submission := range submissions {
 		cpCmd := exec.Command(
 			"cp",
 			AssignmentsDirectory+submission.ID.String(),
-			AssignmentTmpDirectory+submission.UserID.String()+"-"+submission.ID.String()+"-"+submission.Name,
+			AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.Name,
 		)
 		if err := cpCmd.Start(); err != nil {
 			return err
@@ -1370,7 +1374,7 @@ func createSubmissionsZip(zipFilePath string, submissions []*Submission) error {
 	zipArgs := make([]string, 0, len(submissions)+2)
 	zipArgs = append(zipArgs, "-j", zipFilePath)
 	for _, submission := range submissions {
-		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserID.String()+"-"+submission.ID.String()+"-"+submission.Name)
+		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.Name)
 	}
 	cmd := exec.Command("zip", zipArgs...)
 	if err := cmd.Start(); err != nil {
