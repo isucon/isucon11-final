@@ -46,7 +46,7 @@ func (c *Class) Announcement() []*Announcement {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	var r []*Announcement
+	r := make([]*Announcement, len(c.announcement))
 	copy(r, c.announcement)
 	return r
 }
@@ -123,6 +123,6 @@ func (c *Class) Submissions() map[string]hash {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	// Submissionのチェックは1クラス1回しか行われないのでオブジェクト(参照)をそのまま渡す
+	// Submissionのチェックは1クラス1回しか行われないのでhmapオブジェクト(ポインタ)をそのまま渡す
 	return c.submissionHashByName
 }

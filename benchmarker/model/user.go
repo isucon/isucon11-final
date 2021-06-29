@@ -73,7 +73,9 @@ func (s *Student) Courses() []string {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
-	return s.registeredCourseIDs
+	r := make([]string, len(s.registeredCourseIDs))
+	copy(r, s.registeredCourseIDs)
+	return r
 }
 
 func (s *Student) AddAnnouncement(id string, announcement *Announcement) error {

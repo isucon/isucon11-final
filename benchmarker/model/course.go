@@ -63,7 +63,7 @@ func (c *Course) HeldClasses() []*Class {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	r := make([]*Class, 0)
+	r := make([]*Class, len(c.heldClasses))
 	copy(r, c.heldClasses)
 	return r
 }
@@ -78,7 +78,7 @@ func (c *Course) Students() []*Student {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	var r []*Student
+	r := make([]*Student, len(c.registeredStudents))
 	copy(r, c.registeredStudents)
 	return r
 }
