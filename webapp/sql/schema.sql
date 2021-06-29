@@ -95,7 +95,7 @@ CREATE TABLE `grades`
     CONSTRAINT FK_grades_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 );
 
--- master data
+-- MEMO: クラス追加しないならmaster data
 CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
