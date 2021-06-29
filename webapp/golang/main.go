@@ -1049,7 +1049,7 @@ func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
 	}
 
 	// MEMO: TODO: export時でなく提出時にzipファイルを作ることでボトルネックを作りたいが、「そうはならんやろ」という気持ち
-	zipFilePath := AssignmentExportsDirectory + assignmentID.String()
+	zipFilePath := AssignmentExportsDirectory + assignmentID.String() + ".zip"
 	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
@@ -1351,8 +1351,8 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 }
 
 func createSubmissionsZip(zipFilePath string, submissions []*Submission) error {
-	args := make([]string, 0, len(submissions)+1)
-	args = append(args, zipFilePath)
+	args := make([]string, 0, len(submissions)+2)
+	args = append(args, "-j", zipFilePath)
 	for _, submission := range submissions {
 		args = append(args, AssignmentsDirectory+submission.ID.String())
 	}
