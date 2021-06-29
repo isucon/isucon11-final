@@ -12,9 +12,9 @@ CREATE TABLE `course_schedules` (
   `course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `schedule_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   PRIMARY KEY (`course_id`,`schedule_id`),
-  KEY `FK_schedule_id` (`schedule_id`),
-  CONSTRAINT `course_schedules_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
-  CONSTRAINT `course_schedules_ibfk_2` FOREIGN KEY (`schedule_id`) REFERENCES `schedules` (`id`)
+  KEY `FK_course_schedules_schedule_id` (`schedule_id`),
+  CONSTRAINT `FK_course_schedules_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
+  CONSTRAINT `FK_course_schedules_schedule_id` FOREIGN KEY (`schedule_id`) REFERENCES `schedules` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -29,18 +29,18 @@ CREATE TABLE `course_schedules` (
 
 ## Constraints
 
-| Name                    | Type        | Definition                                          |
-| ----------------------- | ----------- | --------------------------------------------------- |
-| course_schedules_ibfk_1 | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id)     |
-| course_schedules_ibfk_2 | FOREIGN KEY | FOREIGN KEY (schedule_id) REFERENCES schedules (id) |
-| PRIMARY                 | PRIMARY KEY | PRIMARY KEY (course_id, schedule_id)                |
+| Name                            | Type        | Definition                                          |
+| ------------------------------- | ----------- | --------------------------------------------------- |
+| FK_course_schedules_course_id   | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id)     |
+| FK_course_schedules_schedule_id | FOREIGN KEY | FOREIGN KEY (schedule_id) REFERENCES schedules (id) |
+| PRIMARY                         | PRIMARY KEY | PRIMARY KEY (course_id, schedule_id)                |
 
 ## Indexes
 
-| Name           | Definition                                       |
-| -------------- | ------------------------------------------------ |
-| FK_schedule_id | KEY FK_schedule_id (schedule_id) USING BTREE     |
-| PRIMARY        | PRIMARY KEY (course_id, schedule_id) USING BTREE |
+| Name                            | Definition                                                    |
+| ------------------------------- | ------------------------------------------------------------- |
+| FK_course_schedules_schedule_id | KEY FK_course_schedules_schedule_id (schedule_id) USING BTREE |
+| PRIMARY                         | PRIMARY KEY (course_id, schedule_id) USING BTREE              |
 
 ## Relations
 

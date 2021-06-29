@@ -15,10 +15,10 @@ CREATE TABLE `submissions` (
   `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `FK_user_id` (`user_id`),
-  KEY `FK_assignment_id` (`assignment_id`),
-  CONSTRAINT `submissions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `submissions_ibfk_2` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`id`)
+  KEY `FK_submissions_user_id` (`user_id`),
+  KEY `FK_submissions_assignment_id` (`assignment_id`),
+  CONSTRAINT `FK_submissions_assignment_id` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`id`),
+  CONSTRAINT `FK_submissions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -36,19 +36,19 @@ CREATE TABLE `submissions` (
 
 ## Constraints
 
-| Name               | Type        | Definition                                              |
-| ------------------ | ----------- | ------------------------------------------------------- |
-| PRIMARY            | PRIMARY KEY | PRIMARY KEY (id)                                        |
-| submissions_ibfk_1 | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)             |
-| submissions_ibfk_2 | FOREIGN KEY | FOREIGN KEY (assignment_id) REFERENCES assignments (id) |
+| Name                         | Type        | Definition                                              |
+| ---------------------------- | ----------- | ------------------------------------------------------- |
+| FK_submissions_assignment_id | FOREIGN KEY | FOREIGN KEY (assignment_id) REFERENCES assignments (id) |
+| FK_submissions_user_id       | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)             |
+| PRIMARY                      | PRIMARY KEY | PRIMARY KEY (id)                                        |
 
 ## Indexes
 
-| Name             | Definition                                       |
-| ---------------- | ------------------------------------------------ |
-| FK_assignment_id | KEY FK_assignment_id (assignment_id) USING BTREE |
-| FK_user_id       | KEY FK_user_id (user_id) USING BTREE             |
-| PRIMARY          | PRIMARY KEY (id) USING BTREE                     |
+| Name                         | Definition                                                   |
+| ---------------------------- | ------------------------------------------------------------ |
+| FK_submissions_assignment_id | KEY FK_submissions_assignment_id (assignment_id) USING BTREE |
+| FK_submissions_user_id       | KEY FK_submissions_user_id (user_id) USING BTREE             |
+| PRIMARY                      | PRIMARY KEY (id) USING BTREE                                 |
 
 ## Relations
 
