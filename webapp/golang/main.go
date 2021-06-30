@@ -204,21 +204,20 @@ type GetGradesResponse struct {
 type PostGradesRequest []PostGradeRequest
 
 type Summary struct {
-	Credits int     `json:"credits"`
-	GPA     float64 `json:"gpa"`
+	Credits int    `json:"credits"`
+	GPT     uint32 `json:"gpt"`
 }
 
 type CourseGrade struct {
 	ID     uuid.UUID `json:"id" db:"course_id"`
 	Name   string    `json:"name" db:"name"`
 	Credit uint8     `json:"credit" db:"credit"`
-	Grade  uint32    `json:"grade" db:"grade"`
+	Grade  string    `json:"grade" db:"grade"`
 }
 
-//MEMO: S/A/B/Cと数値の話どうなったんだっけ？
 type PostGradeRequest struct {
 	UserID uuid.UUID `json:"user_id"`
-	Grade  uint32    `json:"grade"`
+	Grade  string    `json:"grade"`
 }
 
 type RegisterCoursesRequestContent struct {
@@ -641,31 +640,41 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	//MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
-	var gpa float64 = 0.0
+	var res GetGradesResponse
+	var grade uint32
+	var gpt uint32 = 0
 	var credits int = 0
 	if len(CourseGrades) > 0 {
-		for _, CourseGrade := range CourseGrades {
-			credits += int(CourseGrade.Credit)
-			gpa += float64(CourseGrade.Grade)
+		for _, coursegrade := range CourseGrades {
+			switch coursegrade.Grade {
+			case "S":
+				grade = 4
+			case "A":
+				grade = 3
+			case "B":
+				grade = 2
+			case "C":
+				grade = 1
+			case "D":
+				grade = 0
+			}
+			res.CourseGrades = append(res.CourseGrades, &CourseGrade{
+				ID:     coursegrade.ID,
+				Name:   coursegrade.Name,
+				Credit: coursegrade.Credit,
+				Grade:  coursegrade.Grade,
+			})
+
+			credits += int(coursegrade.Credit)
+			gpt += grade * uint32(coursegrade.Credit)
 		}
-		gpa = gpa / float64(credits)
 	}
 
-	//MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
-	var res GetGradesResponse
 	res.Summary = Summary{
 		Credits: credits,
-		GPA:     gpa,
+		GPT:     gpt,
 	}
-	for _, coursegrade := range CourseGrades {
-		res.CourseGrades = append(res.CourseGrades, &CourseGrade{
-			ID:     coursegrade.ID,
-			Name:   coursegrade.Name,
-			Credit: coursegrade.Credit,
-			Grade:  coursegrade.Grade,
-		})
-	}
+
 	return context.JSON(http.StatusOK, res)
 }
 

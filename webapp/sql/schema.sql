@@ -89,7 +89,7 @@ CREATE TABLE `grades`
     `id`         CHAR(36) PRIMARY KEY,
     `user_id`    CHAR(36)     NOT NULL,
     `course_id`  CHAR(36)     NOT NULL,
-    `grade`      INT UNSIGNED NOT NULL,
+    `grade`      VARCHAR(255) NOT NULL,
     `created_at` DATETIME(6)  NOT NULL,
     CONSTRAINT FK_grades_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
     CONSTRAINT FK_grades_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
