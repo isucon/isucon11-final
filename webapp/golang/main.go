@@ -78,6 +78,7 @@ func main() {
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/code", h.GetAttendanceCode, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/classes/:classID", h.SetClassFlag, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/attendances", h.GetAttendances, h.IsAdmin)
 			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncements, h.IsAdmin)
@@ -1026,6 +1027,41 @@ func (h *handlers) GetAttendanceCode(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusOK, res)
+}
+
+type AddClassRequest struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type AddClassResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
+func (h *handlers) AddClass(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var req AddClassRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	classID := uuid.NewRandom()
+	// MEMO: TODO: 出席コードの生成はどうやる？
+	attendance_code := "test_code"
+	if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?)", classID, courseID, req.Title, req.Description, attendance_code); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	res := AddClassResponse{
+		ID: classID,
+	}
+
+	return c.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) SetClassFlag(context echo.Context) error {
