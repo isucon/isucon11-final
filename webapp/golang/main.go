@@ -64,7 +64,7 @@ func main() {
 		syllabusAPI := API.Group("/syllabus")
 		{
 			syllabusAPI.GET("", h.SearchCourses)
-			syllabusAPI.GET("/:courseID", h.GetCourseSyllabus)
+			syllabusAPI.GET("/:courseID", h.GetCourseDetail)
 		}
 		coursesAPI := API.Group("/courses")
 		{
@@ -324,12 +324,16 @@ type User struct {
 }
 
 type Course struct {
-	ID          uuid.UUID `db:"id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	Credit      uint8     `db:"credit"`
-	Classroom   string    `db:"classroom"`
-	Capacity    uint32    `db:"capacity"`
+	ID          uuid.UUID     `db:"id"`
+	Code        string        `db:"code"`
+	Type        string        `db:"type"`
+	Name        string        `db:"name"`
+	Description string        `db:"description"`
+	Credit      uint8         `db:"credit"`
+	Classroom   string        `db:"classroom"`
+	Capacity    sql.NullInt32 `db:"capacity"`
+	TeacherID   uuid.UUID     `db:"teacher_id"`
+	Keywords    string        `db:"keywords"`
 }
 
 type Schedule struct {
@@ -540,7 +544,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
-		if registerCount >= course.Capacity {
+		if course.Capacity.Valid && registerCount >= uint32(course.Capacity.Int32) {
 			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Course capacity exceeded. course id: %v", course.ID))
 		}
@@ -673,8 +677,27 @@ func (h *handlers) SearchCourses(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) GetCourseSyllabus(context echo.Context) error {
-	panic("implement me")
+type GetCourseDetailResponse struct {
+	ID              uuid.UUID                `json:"id"`
+	Code            string                   `json:"code"`
+	Type            string                   `json:"type"`
+	Name            string                   `json:"name"`
+	Description     string                   `json:"description"`
+	Credit          uint8                    `json:"credit"`
+	Classroom       string                   `json:"classroom"`
+	Capacity        uint32                   `json:"capacity,omitempty"`
+	Teacher         string                   `json:"teacher"`
+	Keywords        string                   `json:"keywords"`
+	Period          uint8                    `json:"period"`
+	DayOfWeek       string                   `json:"day_of_week"`
+	Semester        Semester                 `json:"semester"`
+	Year            uint32                   `json:"year"`
+	RequiredCourses []RequiredCourseResponse `json:"required_courses"`
+}
+
+type RequiredCourseResponse struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 func (h *handlers) GetCourseDetail(context echo.Context) error {
@@ -684,14 +707,68 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 	}
 
 	var course Course
-	if err := h.DB.Get(&course, "SELECT * from `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course")
 	} else if err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.JSON(http.StatusOK, course)
+	var schedule Schedule
+	if err := h.DB.Get(&schedule, "SELECT `schedules`.* "+
+		"FROM `schedules` "+
+		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
+		"WHERE `course_schedules`.`course_id` = ?", course.ID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	var teacher User
+	if err := h.DB.Get(&teacher, "SELECT * FROM `users` WHERE `id` = ?", course.TeacherID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	var requiredCourses []Course
+	if err := h.DB.Select(&requiredCourses, "SELECT `courses`.* "+
+		"FROM `course_requirements` "+
+		"JOIN `courses` ON `course_requirements`.`required_course_id` = `courses`.`id` "+
+		"WHERE `course_requirements`.`course_id` = ?", course.ID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	requiredCourseRes := make([]RequiredCourseResponse, 0, len(requiredCourses))
+	for _, course := range requiredCourses {
+		requiredCourseRes = append(requiredCourseRes, RequiredCourseResponse{
+			ID:   course.ID,
+			Name: course.Name,
+		})
+	}
+
+	res := GetCourseDetailResponse{
+		ID:              course.ID,
+		Code:            course.Code,
+		Type:            course.Type,
+		Name:            course.Name,
+		Description:     course.Description,
+		Credit:          course.Credit,
+		Classroom:       course.Classroom,
+		Teacher:         teacher.Name,
+		Keywords:        course.Keywords,
+		Period:          schedule.Period,
+		DayOfWeek:       schedule.DayOfWeek,
+		Semester:        schedule.Semester,
+		Year:            schedule.Year,
+		RequiredCourses: requiredCourseRes,
+	}
+
+	// MEMO: capacityがNULLのときどう返すか？
+	if course.Capacity.Valid {
+		res.Capacity = uint32(course.Capacity.Int32)
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 type GetClassResponse struct {
