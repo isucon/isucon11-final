@@ -1,14 +1,9 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 
 	"github.com/isucon/isucandar/agent"
 )
@@ -19,29 +14,16 @@ type registerGradeRequest struct {
 }
 
 func RegisterGrades(ctx context.Context, a *agent.Agent, courseID, userID string, grade uint32) error {
-	// MEMO: エラー無視していいのか
-	reqBody, err := json.Marshal(&registerGradeRequest{
+	req := &registerGradeRequest{
 		UserID: userID,
 		Grade:  grade,
-	})
-	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
 	}
 
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/grades", courseID), bytes.NewBuffer(reqBody))
+	_, err := ApiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/courses/%s/grades", courseID), req, nil, []int{http.StatusOK})
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -63,25 +45,11 @@ type CourseGrade struct {
 }
 
 func GetGrades(ctx context.Context, a *agent.Agent, userID string) (*GetGradesResponse, error) {
-	req, err := a.GET(fmt.Sprintf("/api/users/%s/grades", userID))
+	r := &GetGradesResponse{}
+	_, err := ApiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/grades", userID), nil, r, []int{http.StatusOK})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
 	}
-	r := GetGradesResponse{}
-	err = json.NewDecoder(res.Body).Decode(&r)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-	return &r, nil
+
+	return r, nil
 }
