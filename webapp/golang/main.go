@@ -378,12 +378,6 @@ type Announcement struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
-type Phase struct {
-	Phase    string `db:"phase"`
-	Year     int    `db:"year"`
-	Semester string `db:"semester"`
-}
-
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
