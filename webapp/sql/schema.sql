@@ -44,7 +44,8 @@ CREATE TABLE `courses`
     `classroom`   VARCHAR(255)                            NOT NULL,
     `capacity`    INT UNSIGNED,
     `teacher_id`  CHAR(36)                                NOT NULL,
-    `keywords`    TEXT                                    NOT NULL
+    `keywords`    TEXT                                    NOT NULL,
+    CONSTRAINT FK_courses_teacher_id FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`)
 );
 
 -- master data
