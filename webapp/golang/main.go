@@ -456,7 +456,7 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 type RegisterCoursesErrorResponse struct {
 	NotFoundCourse         []string    `json:"not_found_course,omitempty"`
 	NotTakenRequiredCourse []uuid.UUID `json:"not_taken_required_course,omitempty"`
-	CapaticyExceeded       []uuid.UUID `json:"capacity_exceeded,omitempty"`
+	CapacityExceeded       []uuid.UUID `json:"capacity_exceeded,omitempty"`
 	TimeslotDuplicated     []uuid.UUID `json:"timeslot_duplicated,omitempty"`
 }
 
@@ -580,7 +580,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		}
 		if registerCount >= course.Capacity {
 			hasError = true
-			errors.CapaticyExceeded = append(errors.CapaticyExceeded, course.ID)
+			errors.CapacityExceeded = append(errors.CapacityExceeded, course.ID)
 		}
 	}
 
