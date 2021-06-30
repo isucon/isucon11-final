@@ -568,6 +568,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			if gradeCount == 0 {
 				hasError = true
 				errors.NotTakenRequiredCourse = append(errors.NotTakenRequiredCourse, course.ID)
+				break
 			}
 		}
 
