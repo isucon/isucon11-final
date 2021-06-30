@@ -626,10 +626,10 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			return context.NoContent(http.StatusInternalServerError)
 		}
 
-		schedules = append(schedules, registeredSchedules...)
+		registeredSchedules = append(registeredSchedules, schedules...)
 
 		for _, schedule1 := range schedules {
-			for _, schedule2 := range schedules {
+			for _, schedule2 := range registeredSchedules {
 				if !uuid.Equal(schedule1.ID, schedule2.ID) && schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
 					hasError = true
 					errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, schedule1.ID)
