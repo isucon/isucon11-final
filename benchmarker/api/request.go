@@ -33,10 +33,10 @@ func ApiRequest(ctx context.Context, a *agent.Agent, method string, rpath string
 	httpreq.Header.Set("Content-Type", "application/json")
 
 	httpres, err := a.Do(ctx, httpreq)
-	defer httpres.Body.Close()
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
+	defer httpres.Body.Close()
 
 	invalidStatusCode := true
 	for _, statusCode := range allowedStatuCodes {
@@ -51,10 +51,11 @@ func ApiRequest(ctx context.Context, a *agent.Agent, method string, rpath string
 	}
 
 	err = json.NewDecoder(httpres.Body).Decode(res)
-
-	return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-		"JSONのパースに失敗しました (%s: %s)", httpres.Request.Method, httpres.Request.URL.Path,
-	))
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
+			"JSONのパースに失敗しました (%s: %s)", httpres.Request.Method, httpres.Request.URL.Path,
+		))
+	}
 
 	return httpres, nil
 }
