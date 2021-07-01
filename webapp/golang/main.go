@@ -646,6 +646,13 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	var credits int = 0
 	if len(CourseGrades) > 0 {
 		for _, coursegrade := range CourseGrades {
+			res.CourseGrades = append(res.CourseGrades, &CourseGrade{
+				ID:     coursegrade.ID,
+				Name:   coursegrade.Name,
+				Credit: coursegrade.Credit,
+				Grade:  coursegrade.Grade,
+			})
+
 			switch coursegrade.Grade {
 			case "S":
 				grade = 4
@@ -658,13 +665,6 @@ func (h *handlers) GetGrades(context echo.Context) error {
 			case "D":
 				grade = 0
 			}
-			res.CourseGrades = append(res.CourseGrades, &CourseGrade{
-				ID:     coursegrade.ID,
-				Name:   coursegrade.Name,
-				Credit: coursegrade.Credit,
-				Grade:  coursegrade.Grade,
-			})
-
 			credits += int(coursegrade.Credit)
 			gpt += grade * uint32(coursegrade.Credit)
 		}
