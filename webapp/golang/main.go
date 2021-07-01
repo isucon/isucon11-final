@@ -70,7 +70,7 @@ func main() {
 		{
 			coursesAPI.GET("/:courseID", h.GetCourseDetail)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
-			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumentList)
+			coursesAPI.GET("/:courseID/documents", h.GetDocumentList)
 			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
 			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
@@ -272,13 +272,6 @@ type PostAttendanceCodeRequest struct {
 type PostDocumentResponse struct {
 	ID uuid.UUID `json:"id"`
 }
-
-type GetDocumentResponse struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
-
-type GetDocumentsResponse []GetDocumentResponse
 
 type PhaseType string
 
@@ -923,9 +916,17 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 	})
 }
 
-func (h *handlers) GetCourseDocumentList(context echo.Context) error {
+type GetDocumentResponse struct {
+	ID      uuid.UUID `json:"id"`
+	ClassID uuid.UUID `json:"class_id"`
+	Name    string    `json:"name"`
+}
+
+type GetDocumentsResponse []GetDocumentResponse
+
+func (h *handlers) GetDocumentList(context echo.Context) error {
 	courseID := uuid.Parse(context.Param("courseID"))
-	if uuid.Equal(uuid.NIL, courseID) {
+	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
@@ -939,8 +940,9 @@ func (h *handlers) GetCourseDocumentList(context echo.Context) error {
 	res := make(GetDocumentsResponse, 0, len(documentsMeta))
 	for _, meta := range documentsMeta {
 		res = append(res, GetDocumentResponse{
-			ID:   meta.ID,
-			Name: meta.Name,
+			ID:      meta.ID,
+			ClassID: meta.ClassID,
+			Name:    meta.Name,
 		})
 	}
 
