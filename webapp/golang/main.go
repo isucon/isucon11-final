@@ -6,12 +6,14 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
@@ -1158,7 +1160,8 @@ type AddClassRequest struct {
 }
 
 type AddClassResponse struct {
-	ID uuid.UUID `json:"id"`
+	ID             uuid.UUID `json:"id"`
+	AttendanceCode string    `json:"attendance_code"`
 }
 
 func (h *handlers) AddClass(c echo.Context) error {
@@ -1173,15 +1176,30 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	classID := uuid.NewRandom()
-	// MEMO: TODO: 出席コードの生成はどうやる？
-	attendance_code := "test_code"
-	if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?)", classID, courseID, req.Title, req.Description, attendance_code); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
+	const lenCode = 6
+	const mysqlDupEntryCode = 1062
+	var attendanceCode string
+	for {
+		bytes := make([]byte, lenCode)
+		for i := range bytes {
+			bytes[i] = byte(65 + rand.Intn(26))
+		}
+		attendanceCode = string(bytes)
+
+		if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?)", classID, courseID, req.Title, req.Description, attendanceCode); err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == mysqlDupEntryCode {
+				continue
+			} else {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+		}
+		break
 	}
 
 	res := AddClassResponse{
-		ID: classID,
+		ID:             classID,
+		AttendanceCode: attendanceCode,
 	}
 
 	return c.JSON(http.StatusCreated, res)
