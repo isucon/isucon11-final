@@ -136,7 +136,6 @@ CREATE TABLE `assignments`
     `class_id`    CHAR(36)     NOT NULL,
     `name`        VARCHAR(255) NOT NULL,
     `description` TEXT         NOT NULL,
-    `deadline`    DATETIME(6)  NOT NULL,
     `created_at`  DATETIME(6)  NOT NULL,
     CONSTRAINT FK_assignments_class_id FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 );
