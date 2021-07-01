@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -22,10 +23,11 @@ import (
 )
 
 const (
-	SQLDirectory         = "../sql/"
-	AssignmentsDirectory = "../assignments/"
-	DocDirectory         = "../documents/"
-	SessionName          = "session"
+	SQLDirectory           = "../sql/"
+	AssignmentsDirectory   = "../assignments/"
+	AssignmentTmpDirectory = "../assignments/tmp/"
+	DocDirectory           = "../documents/"
+	SessionName            = "session"
 )
 
 type handlers struct {
@@ -215,7 +217,7 @@ type CourseGrade struct {
 	Grade  uint32    `json:"grade" db:"grade"`
 }
 
-//MEMO: S/A/B/Cと数値の話どうなったんだっけ？
+// MEMO: S/A/B/Cと数値の話どうなったんだっけ？
 type PostGradeRequest struct {
 	UserID uuid.UUID `json:"user_id"`
 	Grade  uint32    `json:"grade"`
@@ -380,6 +382,15 @@ type Announcement struct {
 	Title      string    `db:"title"`
 	Message    string    `db:"message"`
 	CreatedAt  time.Time `db:"created_at"`
+}
+
+type SubmissionWithUserName struct {
+	ID           uuid.UUID `db:"id"`
+	UserID       uuid.UUID `db:"user_id"`
+	UserName     string    `db:"user_name"`
+	AssignmentID uuid.UUID `db:"assignment_id"`
+	Name         string    `db:"name"`
+	CreatedAt    time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -680,7 +691,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
 	}
 
-	//MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
+	// MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
 	var CourseGrades []CourseGrade
 	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
 		"FROM `grades`" +
@@ -691,7 +702,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	//MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
+	// MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
 	var gpa float64 = 0.0
 	var credits int = 0
 	if len(CourseGrades) > 0 {
@@ -702,7 +713,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		gpa = gpa / float64(credits)
 	}
 
-	//MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
+	// MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
 	var res GetGradesResponse
 	res.Summary = Summary{
 		Credits: credits,
@@ -1123,8 +1134,57 @@ func (h *handlers) SubmitAssignment(context echo.Context) error {
 	return context.NoContent(http.StatusNoContent)
 }
 
-func (h *handlers) DownloadSubmittedAssignment(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	assignmentID := uuid.Parse(c.Param("assignmentID"))
+	if assignmentID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid assignmentID")
+	}
+
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// MEMO: zipファイルを作るためFOR UPDATEでassignment、FOR SHAREでsubmissionをロック
+	var assignment Assignment
+	if err := tx.Get(&assignment, "SELECT * FROM `assignments` WHERE `id` = ? FOR UPDATE", assignmentID); err == sql.ErrNoRows {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	var submissions []*SubmissionWithUserName
+	if err := tx.Select(&submissions,
+		"SELECT `submissions`.*, `users`.`name` AS `user_name` "+
+			"FROM `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id`"+
+			"WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE", assignmentID); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// MEMO: TODO: export時でなく提出時にzipファイルを作ることでボトルネックを作りたいが、「そうはならんやろ」という気持ち
+	zipFilePath := AssignmentTmpDirectory + assignmentID.String() + ".zip"
+	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	return c.File(zipFilePath)
 }
 
 func (h *handlers) GetAttendanceCode(context echo.Context) error {
@@ -1220,7 +1280,7 @@ func (h *handlers) SetUserGrades(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
-	//MEMO: LOGIC: 学生一人の全コース成績登録
+	// MEMO: LOGIC: 学生一人の全コース成績登録
 	for _, coursegrade := range req {
 		if _, err := h.DB.Exec("INSERT INTO `grades` (`id`, `user_id`, `course_id`, `grade`) VALUES (?, ?, ?, ?)", uuid.New(), coursegrade.UserID, courseID, coursegrade.Grade); err != nil {
 			log.Println(err)
@@ -1411,4 +1471,33 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+func createSubmissionsZip(zipFilePath string, submissions []*SubmissionWithUserName) error {
+	// Zipに含めるファイルの名称変更のためコピー
+	// MEMO: N回 cp はやりすぎかも
+	for _, submission := range submissions {
+		cpCmd := exec.Command(
+			"cp",
+			AssignmentsDirectory+submission.ID.String(),
+			AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.Name,
+		)
+		if err := cpCmd.Start(); err != nil {
+			return err
+		}
+		if err := cpCmd.Wait(); err != nil {
+			return err
+		}
+	}
+
+	zipArgs := make([]string, 0, len(submissions)+2)
+	zipArgs = append(zipArgs, "-j", zipFilePath)
+	for _, submission := range submissions {
+		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.Name)
+	}
+	cmd := exec.Command("zip", zipArgs...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Wait()
 }
