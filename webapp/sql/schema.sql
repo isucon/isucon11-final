@@ -105,6 +105,7 @@ CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
     `course_id`       CHAR(36)            NOT NULL,
+    `part`            TINYINT UNSIGNED    NOT NULL,
     `title`           VARCHAR(255)        NOT NULL,
     `description`     TEXT                NOT NULL,
     `attendance_code` VARCHAR(255) UNIQUE NOT NULL,

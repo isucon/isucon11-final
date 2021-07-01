@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
@@ -80,6 +82,7 @@ func main() {
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/code", h.GetAttendanceCode, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/classes/:classID", h.SetClassFlag, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/attendances", h.GetAttendances, h.IsAdmin)
 			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncements, h.IsAdmin)
@@ -1216,6 +1219,63 @@ func (h *handlers) GetAttendanceCode(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusOK, res)
+}
+
+type AddClassRequest struct {
+	Part        uint8  `json:"part"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type AddClassResponse struct {
+	ID             uuid.UUID `json:"id"`
+	AttendanceCode string    `json:"attendance_code"`
+}
+
+func (h *handlers) AddClass(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var req AddClassRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	if req.Part == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid part")
+	}
+
+	classID := uuid.NewRandom()
+	const lenCode = 6
+	const mysqlDupEntryCode = 1062
+	var attendanceCode string
+	for {
+		bytes := make([]byte, lenCode)
+		for i := range bytes {
+			bytes[i] = byte(65 + rand.Intn(26))
+		}
+		attendanceCode = string(bytes)
+
+		if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?, ?)",
+			classID, courseID, req.Part, req.Title, req.Description, attendanceCode); err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == mysqlDupEntryCode {
+				continue
+			} else {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+		}
+		break
+	}
+
+	res := AddClassResponse{
+		ID:             classID,
+		AttendanceCode: attendanceCode,
+	}
+
+	return c.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) SetClassFlag(context echo.Context) error {
