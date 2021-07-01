@@ -284,7 +284,6 @@ type GetAssignmentResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Deadline    int64     `json:"deadline"`
 }
 
 type GetDocumentsResponse []GetDocumentResponse
@@ -372,7 +371,6 @@ type Assignment struct {
 	ClassID     uuid.UUID `db:"class_id"`
 	Name        string    `db:"name"`
 	Description string    `db:"description"`
-	Deadline    time.Time `db:"deadline"`
 	CreatedAt   time.Time `db:"created_at"`
 }
 
@@ -885,7 +883,6 @@ func (h *handlers) GetClasses(c echo.Context) error {
 				ID:          assignment.ID,
 				Name:        assignment.Name,
 				Description: assignment.Description,
-				Deadline:    assignment.Deadline.UnixNano() / int64(time.Millisecond),
 			})
 		}
 
@@ -904,7 +901,6 @@ func (h *handlers) GetClasses(c echo.Context) error {
 type PostAssignmentRequest struct {
 	Name        string
 	Description string
-	Deadline    time.Time
 }
 
 type PostAssignmentResponse struct {
@@ -918,8 +914,8 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	if req.Name == "" || req.Description == "" || req.Deadline.IsZero() {
-		return echo.NewHTTPError(http.StatusBadRequest, "Name, description and deadline must not be empty.")
+	if req.Name == "" || req.Description == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Name and description must not be empty.")
 	}
 
 	classID := context.Param("classID")
@@ -931,7 +927,7 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 	assignmentID := uuid.NewRandom()
-	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", assignmentID, classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
+	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", assignmentID, classID, req.Name, req.Description); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
@@ -1091,6 +1087,21 @@ func (h *handlers) SubmitAssignment(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	courseID := uuid.Parse(context.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	if ok, err := h.courseIsInCurrentPhase(courseID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	} else if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "The course is not started yet or has ended.")
+	}
 
 	assignmentID := context.Param("assignmentID")
 	var assignments int
@@ -1423,24 +1434,10 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	}
 
 	// 学期確認
-	// MEMO: 複数phaseに渡る講義を想定していない
-	var schedule Schedule
-	query := "SELECT `schedules`.*" +
-		"FROM `schedules`" +
-		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`" +
-		"JOIN `courses` ON `course_schedules`.`course_id` = `courses`.`id`" +
-		"WHERE `courses`.`id` = ?" +
-		"LIMIT 1"
-	if err := h.DB.Get(&schedule, query, class.CourseID); err != nil {
+	if ok, err := h.courseIsInCurrentPhase(class.CourseID); err != nil {
 		log.Println(err)
 		return c.NoContent(http.StatusInternalServerError)
-	}
-	var phase Phase
-	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
-		log.Println(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if schedule.Year != phase.Year || schedule.Semester != phase.Semester {
+	} else if !ok {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
 	}
 
@@ -1471,6 +1468,28 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+
+func (h *handlers) courseIsInCurrentPhase(courseID uuid.UUID) (bool, error) {
+	// MEMO: 複数phaseに渡る講義を想定していない
+	var schedule Schedule
+	query := "SELECT `schedules`.*" +
+		"FROM `schedules`" +
+		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`" +
+		"JOIN `courses` ON `course_schedules`.`course_id` = `courses`.`id`" +
+		"WHERE `courses`.`id` = ?" +
+		"LIMIT 1"
+	if err := h.DB.Get(&schedule, query, courseID); err != nil {
+		return false, err
+	}
+
+	var phase Phase
+	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
+		return false, err
+	}
+
+	return schedule.Year == phase.Year && schedule.Semester == phase.Semester, nil
 }
 
 func createSubmissionsZip(zipFilePath string, submissions []*SubmissionWithUserName) error {

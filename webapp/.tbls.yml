@@ -93,7 +93,6 @@ comments:
       class_id: 講義のID
       name: 課題名
       description: 課題の説明
-      deadline: 提出期限
   - table: submissions
     tableComment: 提出された課題一覧
     columnComments:
