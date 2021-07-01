@@ -333,6 +333,7 @@ type Schedule struct {
 type Class struct {
 	ID             uuid.UUID `db:"id"`
 	CourseID       uuid.UUID `db:"course_id"`
+	Part           uint8     `db:"part"`
 	Title          string    `db:"title"`
 	Description    string    `db:"description"`
 	AttendanceCode string    `db:"attendance_code"`
@@ -804,11 +805,10 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 }
 
 type GetClassResponse struct {
-	ID          uuid.UUID               `json:"id"`
-	Title       string                  `json:"title"`
-	Description string                  `json:"description"`
-	Documents   []GetDocumentResponse   `json:"documents"`
-	Assignments []GetAssignmentResponse `json:"assignments"`
+	ID          uuid.UUID `json:"id"`
+	Part        uint8     `json:"part"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
 }
 
 func (h *handlers) GetClasses(c echo.Context) error {
@@ -825,51 +825,19 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// MEMO: TODO: classに順序を入れてその順序で返す
 	var classes []Class
-	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ?", courseID); err != nil {
+	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := make([]GetClassResponse, 0)
+	res := make([]GetClassResponse, 0, len(classes))
 	for _, class := range classes {
-		var documents []DocumentsMeta
-		if err := h.DB.Select(&documents, "SELECT * FROM `documents` WHERE `class_id` = ?", class.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		var assignments []Assignment
-		if err := h.DB.Select(&assignments, "SELECT * FROM `assignments` WHERE `class_id` = ?", class.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		documentsRes := make([]GetDocumentResponse, 0, len(documents))
-		for _, document := range documents {
-			documentsRes = append(documentsRes, GetDocumentResponse{
-				ID:   document.ID,
-				Name: document.Name,
-			})
-		}
-
-		assignmentsRes := make([]GetAssignmentResponse, 0, len(assignments))
-		for _, assignment := range assignments {
-			assignmentsRes = append(assignmentsRes, GetAssignmentResponse{
-				ID:          assignment.ID,
-				Name:        assignment.Name,
-				Description: assignment.Description,
-				Deadline:    assignment.Deadline.UnixNano() / int64(time.Millisecond),
-			})
-		}
-
 		res = append(res, GetClassResponse{
 			ID:          class.ID,
+			Part:        class.Part,
 			Title:       class.Title,
 			Description: class.Description,
-			Documents:   documentsRes,
-			Assignments: assignmentsRes,
 		})
 	}
 
