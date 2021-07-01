@@ -231,7 +231,7 @@ INSERT INTO `assignments` (id, class_id, name, description, deadline, created_at
 ),
 (
   '01234567-89ab-cdef-0005-000000000002',
-  '01234567-89ab-cdef-0004-000000000002',
+  '01234567-89ab-cdef-0004-000000000003',
   '線形代数基礎 課題 1',
   '第一回課題. 1週間後までに提出',
   DATE_ADD(NOW(6), INTERVAL 7 DAY),
