@@ -938,10 +938,6 @@ func (h *handlers) GetCourseDocumentList(context echo.Context) error {
 	if uuid.Equal(uuid.NIL, courseID) {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
-	classID := uuid.Parse(context.Param("classID"))
-	if uuid.Equal(uuid.NIL, classID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
-	}
 
 	documentsMeta := make([]DocumentsMeta, 0)
 	err := h.DB.Select(&documentsMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` WHERE `classes`.`course_id` = ?", courseID)
