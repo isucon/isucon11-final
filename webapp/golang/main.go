@@ -278,13 +278,6 @@ type GetDocumentResponse struct {
 	Name string    `json:"name"`
 }
 
-type GetAssignmentResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Deadline    int64     `json:"deadline"`
-}
-
 type GetDocumentsResponse []GetDocumentResponse
 
 type PhaseType string
@@ -1045,8 +1038,43 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 	return context.JSON(http.StatusCreated, res)
 }
 
-func (h *handlers) GetAssignmentList(context echo.Context) error {
-	panic("implement me")
+type GetAssignmentResponse struct {
+	ID          uuid.UUID `json:"id"`
+	ClassID     uuid.UUID `json:"class_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Deadline    int64     `json:"deadline"`
+}
+
+type GetAssignmentsResponse []GetAssignmentResponse
+
+func (h *handlers) GetAssignmentList(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var assignments []Assignment
+	if err := h.DB.Select(&assignments, "SELECT `assignments`.* "+
+		"FROM `assignments` "+
+		"JOIN `classes` ON `assignments`.`class_id` = `classes`.`id` "+
+		"WHERE `classes`.`course_id` = ?", courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	res := make(GetAssignmentsResponse, 0, len(assignments))
+	for _, assignment := range assignments {
+		res = append(res, GetAssignmentResponse{
+			ID:          assignment.ID,
+			ClassID:     assignment.ClassID,
+			Name:        assignment.Name,
+			Description: assignment.Description,
+			Deadline:    assignment.Deadline.UnixNano() / int64(time.Millisecond),
+		})
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) DownloadDocumentFile(context echo.Context) error {
