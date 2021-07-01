@@ -1151,6 +1151,7 @@ func (h *handlers) GetAttendanceCode(context echo.Context) error {
 }
 
 type AddClassRequest struct {
+	Part        uint8  `json:"part"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
@@ -1171,6 +1172,10 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
+	if req.Part == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid part")
+	}
+
 	classID := uuid.NewRandom()
 	const lenCode = 6
 	const mysqlDupEntryCode = 1062
@@ -1182,7 +1187,8 @@ func (h *handlers) AddClass(c echo.Context) error {
 		}
 		attendanceCode = string(bytes)
 
-		if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?)", classID, courseID, req.Title, req.Description, attendanceCode); err != nil {
+		if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?, ?)",
+			classID, courseID, req.Part, req.Title, req.Description, attendanceCode); err != nil {
 			if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == mysqlDupEntryCode {
 				continue
 			} else {
