@@ -112,7 +112,7 @@ func AddClass(ctx context.Context, faculty *model.Faculty, course *model.Course)
 
 	class := model.NewClass(id, course.ID, title, desc)
 	course.AddHeldClasses(class)
-	return &model.Class{}, nil
+	return class, nil
 }
 
 func AddClassAnnouncement(ctx context.Context, faculty *model.Faculty, course *model.Course, class *model.Class) error {
