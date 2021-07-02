@@ -221,7 +221,7 @@ func (s *Scenario) prepareFastCheckInClass(ctx context.Context, faculty *model.F
 		return err
 	}
 	var attendanceCode string // Verificationシナリオではコード自体は検証しないのでmodel.Classに埋め込まない
-	if attendanceCode, err = AddAttendanceCode(ctx, faculty, class); err != nil {
+	if attendanceCode, err = GetAttendanceCode(ctx, faculty, class); err != nil {
 		step.AddError(err)
 		return err
 	}

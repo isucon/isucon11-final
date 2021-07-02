@@ -255,7 +255,7 @@ func VerifyClassDoc(ctx context.Context, student *model.Student, class *model.Cl
 	return nil
 }
 
-func AddAttendanceCode(ctx context.Context, faculty *model.Faculty, class *model.Class) (string, error) {
+func GetAttendanceCode(ctx context.Context, faculty *model.Faculty, class *model.Class) (string, error) {
 	code, err := api.GetAttendanceCode(ctx, faculty.Agent, class.CourseID, class.ID)
 	if err != nil {
 		return "", err
