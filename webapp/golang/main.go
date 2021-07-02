@@ -676,7 +676,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 			"FROM `schedules` "+
 			"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
 			"JOIN `registrations` ON `course_schedules`.`course_id` = `registrations`.`course_id` "+
-			"WHERE `registrations`.`user_id` = ? ", userID); err != nil {
+			"WHERE `schedules`.`year` = ? AND `schedules`.`semester` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", phase.Year, phase.Semester, userID); err != nil {
 			_ = tx.Rollback()
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
