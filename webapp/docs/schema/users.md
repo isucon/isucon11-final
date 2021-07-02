@@ -22,13 +22,13 @@ CREATE TABLE `users` (
 
 ## Columns
 
-| Name            | Type                      | Default | Nullable | Children                                                                                                                                                          | Parents | Comment                |
-| --------------- | ------------------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------- |
-| id              | char(36)                  |         | false    | [attendances](attendances.md) [grades](grades.md) [registrations](registrations.md) [submissions](submissions.md) [unread_announcements](unread_announcements.md) |         |                        |
-| name            | varchar(255)              |         | false    |                                                                                                                                                                   |         | ユーザー名                  |
-| mail_address    | varchar(255)              |         | false    |                                                                                                                                                                   |         | メールアドレス                |
-| hashed_password | binary(60)                |         | false    |                                                                                                                                                                   |         | 暗号化されたパスワード            |
-| type            | enum('student','faculty') |         | false    |                                                                                                                                                                   |         | 学生・教員                  |
+| Name            | Type                      | Default | Nullable | Children                                                                                                                                                                                | Parents | Comment                |
+| --------------- | ------------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------- |
+| id              | char(36)                  |         | false    | [attendances](attendances.md) [courses](courses.md) [grades](grades.md) [registrations](registrations.md) [submissions](submissions.md) [unread_announcements](unread_announcements.md) |         |                        |
+| name            | varchar(255)              |         | false    |                                                                                                                                                                                         |         | ユーザー名                  |
+| mail_address    | varchar(255)              |         | false    |                                                                                                                                                                                         |         | メールアドレス                |
+| hashed_password | binary(60)                |         | false    |                                                                                                                                                                                         |         | 暗号化されたパスワード            |
+| type            | enum('student','faculty') |         | false    |                                                                                                                                                                                         |         | 学生・教員                  |
 
 ## Constraints
 

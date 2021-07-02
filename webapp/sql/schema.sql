@@ -105,6 +105,7 @@ CREATE TABLE `classes`
 (
     `id`              CHAR(36) PRIMARY KEY,
     `course_id`       CHAR(36)            NOT NULL,
+    `part`            TINYINT UNSIGNED    NOT NULL,
     `title`           VARCHAR(255)        NOT NULL,
     `description`     TEXT                NOT NULL,
     `attendance_code` VARCHAR(255) UNIQUE NOT NULL,
@@ -136,7 +137,6 @@ CREATE TABLE `assignments`
     `class_id`    CHAR(36)     NOT NULL,
     `name`        VARCHAR(255) NOT NULL,
     `description` TEXT         NOT NULL,
-    `deadline`    DATETIME(6)  NOT NULL,
     `created_at`  DATETIME(6)  NOT NULL,
     CONSTRAINT FK_assignments_class_id FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 );
