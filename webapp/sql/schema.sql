@@ -17,9 +17,9 @@ DROP TABLE IF EXISTS `phase`;
 
 CREATE TABLE `phase`
 (
-    `phase`    ENUM ('registration', 'term-time', 'exam-period') DEFAULT 'registration' NOT NULL,
-    `year`     INT UNSIGNED                                                             NOT NULL,
-    `semester` ENUM ('first', 'second')                                                 NOT NULL
+    `phase`    ENUM ('reg', 'class', 'result') DEFAULT 'reg' NOT NULL,
+    `year`     INT UNSIGNED                                  NOT NULL,
+    `semester` ENUM ('first', 'second')                      NOT NULL
 );
 
 -- master data

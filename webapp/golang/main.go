@@ -173,7 +173,7 @@ func (h *handlers) SetPhase(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	if req.Phase != Registration && req.Phase != TermTime && req.Phase != ExamPeriod {
+	if req.Phase != PhaseRegistration && req.Phase != PhaseClass && req.Phase != PhaseResult {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad phase")
 	}
 	if req.Semester != FirstSemester && req.Semester != SecondSemester {
@@ -294,9 +294,9 @@ type GetDocumentsResponse []GetDocumentResponse
 type PhaseType string
 
 const (
-	Registration PhaseType = "registration"
-	TermTime     PhaseType = "term-time"
-	ExamPeriod   PhaseType = "exam-period"
+	PhaseRegistration PhaseType = "reg"
+	PhaseClass        PhaseType = "class"
+	PhaseResult       PhaseType = "result"
 )
 
 type Semester string
@@ -506,7 +506,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	if phase.Phase != "registration" {
+	if phase.Phase != PhaseRegistration {
 		return echo.NewHTTPError(http.StatusBadRequest, "not registration phase.")
 	}
 
@@ -1529,7 +1529,6 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 
 	return c.NoContent(http.StatusNoContent)
 }
-
 
 func (h *handlers) courseIsInCurrentPhase(courseID uuid.UUID) (bool, error) {
 	// MEMO: 複数phaseに渡る講義を想定していない
