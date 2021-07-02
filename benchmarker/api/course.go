@@ -131,7 +131,7 @@ func FetchDocumentIDList(ctx context.Context, a *agent.Agent, courseID, classID 
 			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
 		))
 	}
-	var idList []string
+	idList := make([]string, len(idListResponse))
 	for _, resp := range idListResponse {
 		idList = append(idList, resp.ID)
 	}

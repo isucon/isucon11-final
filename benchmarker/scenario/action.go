@@ -71,7 +71,7 @@ func SearchCoursesAction(ctx context.Context, agent *agent.Agent, course *model.
 }
 
 func RegisterCoursesAction(ctx context.Context, student *model.Student, courses []*model.Course) error {
-	var coursesID []string
+	coursesID := make([]string, len(courses))
 	for _, c := range courses {
 		coursesID = append(coursesID, c.ID)
 	}

@@ -47,7 +47,7 @@ func SearchSyllabus(ctx context.Context, a *agent.Agent, keyword string) ([]stri
 			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
 		))
 	}
-	var syllabusIDs []string
+	syllabusIDs := make([]string, len(r))
 	for _, s := range r {
 		syllabusIDs = append(syllabusIDs, s.ID)
 	}
