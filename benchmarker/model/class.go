@@ -111,6 +111,9 @@ func (c *Class) AddAssignmentID(id string) {
 	c.assignmentID = id
 }
 func (c *Class) AssignmentID() string {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
 	return c.assignmentID
 }
 func (c *Class) AddSubmission(name string, hash []byte) {
