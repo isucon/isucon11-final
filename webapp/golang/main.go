@@ -438,6 +438,15 @@ func (h *handlers) Login(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+type GetRegisteredCourseResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	TeacherName string    `json:"teacher"`
+	Classroom   string    `json:"classroom"`
+	Period      uint8     `json:"period"`
+	DayOfWeek   string    `json:"day_of_week"`
+}
+
 func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
@@ -457,16 +466,52 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
 	}
 
-	courses := make([]Course, 0)
-	err = h.DB.Select(&courses, "SELECT `id`, `name`, `description`, `credit`, `classroom`, `capacity`\n"+
-		"	FROM `courses` JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`\n"+
-		"	WHERE `user_id` = ?", userID)
+	var phase Phase
+	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	var courses []Course
+	err = h.DB.Select(&courses, "SELECT `courses`.* "+
+		"FROM `courses` "+
+		"JOIN `course_schedules` ON `courses`.`id` = `course_schedules`.`course_id` "+
+		"JOIN `schedules` ON `course_schedules`.`schedule_id` = `schedules`.`id` "+
+		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
+		"WHERE `schedules`.`year` = ? AND `schedules`.`semester` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", phase.Year, phase.Semester, userID)
 	if err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.JSON(http.StatusOK, courses)
+	res := make([]GetRegisteredCourseResponse, 0, len(courses))
+	for _, course := range courses {
+		var teacher User
+		if err := h.DB.Get(&teacher, "SELECT * FROM `users` WHERE `id` = ?", course.TeacherID); err != nil {
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		var schedule Schedule
+		if err := h.DB.Get(&schedule, "SELECT `schedules`.* "+
+			"FROM `schedules` "+
+			"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
+			"WHERE `course_schedules`.`course_id` = ?", course.ID); err != nil {
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		res = append(res, GetRegisteredCourseResponse{
+			ID:          course.ID,
+			Name:        course.Name,
+			TeacherName: teacher.Name,
+			Classroom:   course.Classroom,
+			Period:      schedule.Period,
+			DayOfWeek:   schedule.DayOfWeek,
+		})
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 type RegisterCoursesErrorResponse struct {
@@ -1529,7 +1574,6 @@ func (h *handlers) PostAttendanceCode(c echo.Context) error {
 
 	return c.NoContent(http.StatusNoContent)
 }
-
 
 func (h *handlers) courseIsInCurrentPhase(courseID uuid.UUID) (bool, error) {
 	// MEMO: 複数phaseに渡る講義を想定していない
