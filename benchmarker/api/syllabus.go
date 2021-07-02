@@ -25,7 +25,7 @@ type syllabusData struct {
 
 func SearchSyllabus(ctx context.Context, a *agent.Agent, keyword string) ([]string, error) {
 	res := syllabusSearchResponse{}
-	_, err := ApiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/syllabus?keyword=%s", keyword), nil, &res, []int{http.StatusOK})
+	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/syllabus?keyword=%s", keyword), nil, &res, []int{http.StatusOK})
 	if err != nil {
 		return nil, err
 	}

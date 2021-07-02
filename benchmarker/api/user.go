@@ -21,7 +21,7 @@ type usersCourseResponse struct {
 
 func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) ([]string, error) {
 	var registeredCourses []usersCourseResponse
-	_, err := ApiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/courses", userID), nil, &registeredCourses, []int{http.StatusOK})
+	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/courses", userID), nil, &registeredCourses, []int{http.StatusOK})
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) 
 }
 
 func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses []string) ([]string, error) {
-	res, err := ApiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/%s/courses", userID), courses, nil, []int{http.StatusOK, http.StatusBadRequest})
+	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/%s/courses", userID), courses, nil, []int{http.StatusOK, http.StatusBadRequest})
 	if err != nil {
 		return nil, err
 	}

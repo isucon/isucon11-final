@@ -15,7 +15,7 @@ import (
 	"github.com/isucon/isucandar/failure"
 )
 
-func ApiRequest(ctx context.Context, a *agent.Agent, method string, rpath string, req, res interface{}, allowedStatuCodes []int) (*http.Response, error) {
+func apiRequest(ctx context.Context, a *agent.Agent, method string, rpath string, req, res interface{}, allowedStatuCodes []int) (*http.Response, error) {
 	var body io.Reader = nil
 	if req != nil {
 		reqBody, err := json.Marshal(req)

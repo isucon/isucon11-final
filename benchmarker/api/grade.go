@@ -19,7 +19,7 @@ func RegisterGrades(ctx context.Context, a *agent.Agent, courseID, userID string
 		Grade:  grade,
 	}
 
-	_, err := ApiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/courses/%s/grades", courseID), req, nil, []int{http.StatusOK})
+	_, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/courses/%s/grades", courseID), req, nil, []int{http.StatusOK})
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ type CourseGrade struct {
 
 func GetGrades(ctx context.Context, a *agent.Agent, userID string) (*GetGradesResponse, error) {
 	r := &GetGradesResponse{}
-	_, err := ApiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/grades", userID), nil, r, []int{http.StatusOK})
+	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/grades", userID), nil, r, []int{http.StatusOK})
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,7 @@ func Login(ctx context.Context, a *agent.Agent, id, pw string) error {
 		Username: id,
 		Password: pw,
 	}
-	_, err := ApiRequest(ctx, a, http.MethodPost, "/login", req, nil, []int{http.StatusOK})
+	_, err := apiRequest(ctx, a, http.MethodPost, "/login", req, nil, []int{http.StatusOK})
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func LoginFail(ctx context.Context, a *agent.Agent, id, pw string) error {
 		Password: pw,
 	}
 
-	_, err := ApiRequest(ctx, a, http.MethodPost, "/login", req, nil, []int{http.StatusUnauthorized})
+	_, err := apiRequest(ctx, a, http.MethodPost, "/login", req, nil, []int{http.StatusUnauthorized})
 	if err != nil {
 		return err
 	}

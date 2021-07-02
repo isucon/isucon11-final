@@ -29,7 +29,7 @@ func ChangePhaseToResult(ctx context.Context, a *agent.Agent) error {
 
 func changePhase(ctx context.Context, a *agent.Agent, phase string) error {
 	req := &phaseRequest{Phase: phase}
-	_, err := ApiRequest(ctx, a, http.MethodPost, "/phase", req, nil, []int{http.StatusOK})
+	_, err := apiRequest(ctx, a, http.MethodPost, "/phase", req, nil, []int{http.StatusOK})
 	if err != nil {
 		return err
 	}
