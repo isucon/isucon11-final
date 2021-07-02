@@ -288,7 +288,71 @@ func (s *Scenario) prepareFastCheckInClass(ctx context.Context, faculty *model.F
 }
 func (s *Scenario) prepareFastCheckInResult(ctx context.Context, student *model.Student, faculty *model.Faculty, step *isucandar.BenchmarkStep) error {
 	// 成績開示期間での動作確認
-	// TODO: Facultyによる講義Aの課題確認 & 成績登録
-	// TODO: Studentによる成績確認
+	// TODO: Facultyによる講義Aの課題確認
+
+	// 教師による成績登録
+	faculty.Agent.ClearCookie()
+
+	if errs := LoginAction(ctx, faculty.Agent, faculty.UserData); len(errs) > 0 {
+		for _, err := range errs {
+			step.AddError(err)
+		}
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行のadminログイン処理が失敗しました"))
+		return err
+	}
+
+	courses := student.Courses()
+	hasErr := false
+	for _, c := range courses {
+		if err := RegisterGradeAction(ctx, faculty, student, c); err != nil {
+			step.AddError(err)
+			hasErr = true
+		}
+	}
+
+	if hasErr {
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行で成績登録が失敗しました"))
+		step.AddError(err)
+		return err
+	}
+
+	// 生徒による成績確認
+	student.Agent.ClearCookie()
+	if errs := LoginAction(ctx, student.Agent, student.UserData); len(errs) > 0 {
+		for _, err := range errs {
+			step.AddError(err)
+		}
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行のログイン処理が失敗しました"))
+		return err
+	}
+
+	if errs := AccessMyPageAction(ctx, student.Agent); len(errs) > 0 {
+		err := failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行でマイページの描画に失敗しました"))
+		step.AddError(err)
+		return err
+	}
+
+	grades, err := FetchGradesAction(ctx, student)
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
+
+	expectedGrade := student.FirseSemesterGrade()
+	if len(grades) != len(expectedGrade) {
+		err = failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行で取得できた成績の数が期待したものと違いました"))
+		step.AddError(err)
+		return err
+	}
+
+	for id, grade := range grades {
+		v, ok := expectedGrade[id]
+		if !ok || grade != v {
+			err = failure.NewError(fails.ErrCritical, fmt.Errorf("初期走行で成績が一致しませんでした"))
+			step.AddError(err)
+			return err
+		}
+	}
+
 	return nil
 }

@@ -14,9 +14,9 @@ CREATE TABLE `unread_announcements` (
   `created_at` datetime(6) NOT NULL,
   `deleted_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`announcement_id`,`user_id`),
-  KEY `FK_user_id` (`user_id`),
-  CONSTRAINT `unread_announcements_ibfk_1` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`),
-  CONSTRAINT `unread_announcements_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+  KEY `FK_unread_announcements_user_id` (`user_id`),
+  CONSTRAINT `FK_unread_announcements_announcement_id` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`),
+  CONSTRAINT `FK_unread_announcements_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -33,18 +33,18 @@ CREATE TABLE `unread_announcements` (
 
 ## Constraints
 
-| Name                        | Type        | Definition                                                  |
-| --------------------------- | ----------- | ----------------------------------------------------------- |
-| PRIMARY                     | PRIMARY KEY | PRIMARY KEY (announcement_id, user_id)                      |
-| unread_announcements_ibfk_1 | FOREIGN KEY | FOREIGN KEY (announcement_id) REFERENCES announcements (id) |
-| unread_announcements_ibfk_2 | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)                 |
+| Name                                    | Type        | Definition                                                  |
+| --------------------------------------- | ----------- | ----------------------------------------------------------- |
+| FK_unread_announcements_announcement_id | FOREIGN KEY | FOREIGN KEY (announcement_id) REFERENCES announcements (id) |
+| FK_unread_announcements_user_id         | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)                 |
+| PRIMARY                                 | PRIMARY KEY | PRIMARY KEY (announcement_id, user_id)                      |
 
 ## Indexes
 
-| Name       | Definition                                         |
-| ---------- | -------------------------------------------------- |
-| FK_user_id | KEY FK_user_id (user_id) USING BTREE               |
-| PRIMARY    | PRIMARY KEY (announcement_id, user_id) USING BTREE |
+| Name                            | Definition                                                |
+| ------------------------------- | --------------------------------------------------------- |
+| FK_unread_announcements_user_id | KEY FK_unread_announcements_user_id (user_id) USING BTREE |
+| PRIMARY                         | PRIMARY KEY (announcement_id, user_id) USING BTREE        |
 
 ## Relations
 

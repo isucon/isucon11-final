@@ -13,11 +13,10 @@ CREATE TABLE `assignments` (
   `class_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `description` text COLLATE utf8mb4_bin NOT NULL,
-  `deadline` datetime(6) NOT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `FK_class_id` (`class_id`),
-  CONSTRAINT `assignments_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
+  KEY `FK_assignments_class_id` (`class_id`),
+  CONSTRAINT `FK_assignments_class_id` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -31,22 +30,21 @@ CREATE TABLE `assignments` (
 | class_id    | char(36)     |         | false    |                               | [classes](classes.md) | 講義のID      |
 | name        | varchar(255) |         | false    |                               |                       | 課題名        |
 | description | text         |         | false    |                               |                       | 課題の説明      |
-| deadline    | datetime(6)  |         | false    |                               |                       | 提出期限       |
 | created_at  | datetime(6)  |         | false    |                               |                       |            |
 
 ## Constraints
 
-| Name               | Type        | Definition                                     |
-| ------------------ | ----------- | ---------------------------------------------- |
-| assignments_ibfk_1 | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
-| PRIMARY            | PRIMARY KEY | PRIMARY KEY (id)                               |
+| Name                    | Type        | Definition                                     |
+| ----------------------- | ----------- | ---------------------------------------------- |
+| FK_assignments_class_id | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
+| PRIMARY                 | PRIMARY KEY | PRIMARY KEY (id)                               |
 
 ## Indexes
 
-| Name        | Definition                             |
-| ----------- | -------------------------------------- |
-| FK_class_id | KEY FK_class_id (class_id) USING BTREE |
-| PRIMARY     | PRIMARY KEY (id) USING BTREE           |
+| Name                    | Definition                                         |
+| ----------------------- | -------------------------------------------------- |
+| FK_assignments_class_id | KEY FK_assignments_class_id (class_id) USING BTREE |
+| PRIMARY                 | PRIMARY KEY (id) USING BTREE                       |
 
 ## Relations
 

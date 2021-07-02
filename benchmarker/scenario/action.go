@@ -360,6 +360,29 @@ func readZipFileData(file *zip.File) ([]byte, error) {
 	return buf, nil
 }
 
+func RegisterGradeAction(ctx context.Context, faculty *model.Faculty, student *model.Student, courseID string) error {
+	var grade uint32 = 1
+	err := api.RegisterGrades(ctx, faculty.Agent, courseID, student.UserData.Number, grade)
+	if err != nil {
+		return err
+	}
+	student.SetGradesUnchecked(courseID, grade)
+	return nil
+}
+
+func FetchGradesAction(ctx context.Context, student *model.Student) (map[string]uint32, error) {
+	r, err := api.GetGrades(ctx, student.Agent, student.Number)
+	mp := make(map[string]uint32, len(r.CourseGrades))
+	for _, courseGrade := range r.CourseGrades {
+		mp[courseGrade.ID] = courseGrade.Grade
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return mp, nil
+}
+
 // 他のアクションに付随しないページアクセス
 func AccessMyPageAction(ctx context.Context, agent *agent.Agent) []error {
 	return api.AccessMyPage(ctx, agent)

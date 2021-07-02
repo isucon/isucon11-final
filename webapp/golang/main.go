@@ -6,10 +6,15 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
@@ -20,10 +25,11 @@ import (
 )
 
 const (
-	SQLDirectory         = "../sql/"
-	AssignmentsDirectory = "../assignments/"
-	DocDirectory         = "../documents/"
-	SessionName          = "session"
+	SQLDirectory           = "../sql/"
+	AssignmentsDirectory   = "../assignments/"
+	AssignmentTmpDirectory = "../assignments/tmp/"
+	DocDirectory           = "../documents/"
+	SessionName            = "session"
 )
 
 type handlers struct {
@@ -62,11 +68,12 @@ func main() {
 		syllabusAPI := API.Group("/syllabus")
 		{
 			syllabusAPI.GET("", h.SearchCourses)
-			syllabusAPI.GET("/:courseID", h.GetCourseSyllabus)
+			syllabusAPI.GET("/:courseID", h.GetCourseDetail)
 		}
 		coursesAPI := API.Group("/courses")
 		{
 			coursesAPI.GET("/:courseID", h.GetCourseDetail)
+			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumentList)
 			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
@@ -75,6 +82,7 @@ func main() {
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/code", h.GetAttendanceCode, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/classes/:classID", h.SetClassFlag, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/attendances", h.GetAttendances, h.IsAdmin)
 			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncements, h.IsAdmin)
@@ -152,6 +160,12 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+type SetPhaseRequest struct {
+	Phase    PhaseType `json:"phase"`
+	Year     uint32    `json:"year"`
+	Semester Semester  `json:"semester"`
+}
+
 func (h *handlers) SetPhase(c echo.Context) error {
 	var req SetPhaseRequest
 	if err := c.Bind(&req); err != nil {
@@ -159,13 +173,10 @@ func (h *handlers) SetPhase(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	if req.Phase != "registration" && req.Phase != "term-time" && req.Phase != "exam-period" {
+	if req.Phase != Registration && req.Phase != TermTime && req.Phase != ExamPeriod {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad phase")
 	}
-	if req.Year < 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad year")
-	}
-	if req.Semester != "first" && req.Semester != "second" {
+	if req.Semester != FirstSemester && req.Semester != SecondSemester {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad semester")
 	}
 
@@ -185,15 +196,34 @@ type InitializeResponse struct {
 	Language string `json:"language"`
 }
 
-type SetPhaseRequest struct {
-	Phase    string `json:"phase"`
-	Year     int    `json:"year"`
-	Semester string `json:"semester"`
-}
-
 type LoginRequest struct {
 	ID       uuid.UUID `json:"name,omitempty"` // TODO: やっぱり学籍番号を用意したほうが良さそうだけど教員の扱いどうしようかな
 	Password string    `json:"password,omitempty"`
+}
+
+type GetGradesResponse struct {
+	Summary      Summary        `json:"summary"`
+	CourseGrades []*CourseGrade `json:"courses"`
+}
+
+type PostGradesRequest []PostGradeRequest
+
+type Summary struct {
+	Credits int     `json:"credits"`
+	GPA     float64 `json:"gpa"`
+}
+
+type CourseGrade struct {
+	ID     uuid.UUID `json:"id" db:"course_id"`
+	Name   string    `json:"name" db:"name"`
+	Credit uint8     `json:"credit" db:"credit"`
+	Grade  uint32    `json:"grade" db:"grade"`
+}
+
+// MEMO: S/A/B/Cと数値の話どうなったんだっけ？
+type PostGradeRequest struct {
+	UserID uuid.UUID `json:"user_id"`
+	Grade  uint32    `json:"grade"`
 }
 
 type RegisterCoursesRequestContent struct {
@@ -201,8 +231,36 @@ type RegisterCoursesRequestContent struct {
 }
 
 type RegisterCoursesRequest []RegisterCoursesRequestContent
+
 type GetAttendanceCodeResponse struct {
 	Code string `json:"code"`
+}
+
+type GetAnnouncementsResponse []GetAnnouncementResponse
+type GetAnnouncementResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	// MEMO: TODO: 既読機能
+	// Unread     bool      `json:"unread"`
+	CreatedAt int64 `json:"created_at"`
+}
+
+type GetAnnouncementDetailResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	Message    string    `json:"message"`
+	CreatedAt  int64     `json:"created_at"`
+}
+
+type PostAnnouncementsRequest struct {
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
+
+type PostAnnouncementsResponse struct {
+	ID uuid.UUID `json:"id"`
 }
 
 type GetAttendancesAttendance struct {
@@ -216,12 +274,43 @@ type PostAttendanceCodeRequest struct {
 	Code string `json:"code"`
 }
 
+type PostDocumentResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
 type GetDocumentResponse struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 }
 
+type GetAssignmentResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+}
+
 type GetDocumentsResponse []GetDocumentResponse
+
+type PhaseType string
+
+const (
+	Registration PhaseType = "registration"
+	TermTime     PhaseType = "term-time"
+	ExamPeriod   PhaseType = "exam-period"
+)
+
+type Semester string
+
+const (
+	FirstSemester  Semester = "first"
+	SecondSemester Semester = "second"
+)
+
+type Phase struct {
+	Phase    PhaseType `json:"phase"`
+	Year     uint32    `json:"year"`
+	Semester Semester  `json:"semester"`
+}
 
 type UserType string
 
@@ -239,19 +328,23 @@ type User struct {
 }
 
 type Course struct {
-	ID          uuid.UUID `db:"id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	Credit      uint8     `db:"credit"`
-	Classroom   string    `db:"classroom"`
-	Capacity    uint32    `db:"capacity"`
+	ID          uuid.UUID     `db:"id"`
+	Code        string        `db:"code"`
+	Type        string        `db:"type"`
+	Name        string        `db:"name"`
+	Description string        `db:"description"`
+	Credit      uint8         `db:"credit"`
+	Classroom   string        `db:"classroom"`
+	Capacity    sql.NullInt32 `db:"capacity"`
+	TeacherID   uuid.UUID     `db:"teacher_id"`
+	Keywords    string        `db:"keywords"`
 }
 
 type Schedule struct {
 	ID        uuid.UUID `db:"id"`
 	Period    uint8     `db:"period"`
 	DayOfWeek string    `db:"day_of_week"`
-	Semester  string    `db:"semester"`
+	Semester  Semester  `db:"semester"`
 	Year      uint32    `db:"year"`
 }
 
@@ -274,6 +367,31 @@ type DocumentsMeta struct {
 	ClassID   uuid.UUID `db:"class_id"`
 	Name      string    `db:"name"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type Assignment struct {
+	ID          uuid.UUID `db:"id"`
+	ClassID     uuid.UUID `db:"class_id"`
+	Name        string    `db:"name"`
+	Description string    `db:"description"`
+	CreatedAt   time.Time `db:"created_at"`
+}
+
+type Announcement struct {
+	ID         uuid.UUID `db:"id"`
+	CourseName string    `db:"name"`
+	Title      string    `db:"title"`
+	Message    string    `db:"message"`
+	CreatedAt  time.Time `db:"created_at"`
+}
+
+type SubmissionWithUserName struct {
+	ID           uuid.UUID `db:"id"`
+	UserID       uuid.UUID `db:"user_id"`
+	UserName     string    `db:"user_name"`
+	AssignmentID uuid.UUID `db:"assignment_id"`
+	Name         string    `db:"name"`
+	CreatedAt    time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -351,6 +469,13 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	return context.JSON(http.StatusOK, courses)
 }
 
+type RegisterCoursesErrorResponse struct {
+	NotFoundCourse         []string    `json:"not_found_course,omitempty"`
+	NotTakenRequiredCourse []uuid.UUID `json:"not_taken_required_course,omitempty"`
+	CapacityExceeded       []uuid.UUID `json:"capacity_exceeded,omitempty"`
+	TimeslotDuplicated     []uuid.UUID `json:"timeslot_duplicated,omitempty"`
+}
+
 func (h *handlers) RegisterCourses(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
@@ -375,6 +500,16 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
+	var phase Phase
+	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
+		context.Logger().Error(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	if phase.Phase != "registration" {
+		return echo.NewHTTPError(http.StatusBadRequest, "not registration phase.")
+	}
+
 	tx, err := h.DB.Beginx()
 	if err != nil {
 		log.Println(err)
@@ -382,8 +517,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	}
 
 	// MEMO: SELECT ... FOR UPDATE は今のDB構造だとデッドロックする
-	_, err = tx.Exec("LOCK TABLES `registrations` WRITE, `courses` READ, `course_requirements` READ, `grades` READ, `schedules` READ, `course_schedules` READ")
-	if err != nil {
+	if _, err = tx.Exec("LOCK TABLES `registrations` WRITE, `courses` READ, `course_requirements` READ, `grades` READ, `schedules` READ, `course_schedules` READ"); err != nil {
 		_ = tx.Rollback()
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
@@ -392,105 +526,136 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		_, _ = h.DB.Exec("UNLOCK TABLES")
 	}()
 
+	hasError := false
+	var errors RegisterCoursesErrorResponse
 	var courseList []Course
 	for _, content := range req {
+		courseID := uuid.Parse(content.ID)
+		if courseID == nil {
+			hasError = true
+			errors.NotFoundCourse = append(errors.NotFoundCourse, content.ID)
+			continue
+		}
+
 		var course Course
-		// MEMO: TODO: 年度、学期の扱い
-		err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", content.ID)
-		if err == sql.ErrNoRows {
-			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Not found course. id: %v", content.ID))
+		if err := tx.Get(&course, "SELECT `courses`.* "+
+			"FROM `courses` "+
+			"JOIN `course_schedules` ON `courses`.`id` = `course_schedules`.`course_id` "+
+			"JOIN `schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
+			"WHERE `courses`.`id` = ? AND `schedules`.`year` = ? AND `schedules`.`semester` = ?", courseID, phase.Year, phase.Semester); err == sql.ErrNoRows {
+			hasError = true
+			errors.NotFoundCourse = append(errors.NotFoundCourse, content.ID)
+			continue
 		} else if err != nil {
 			_ = tx.Rollback()
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
+
+		// MEMO: すでに履修登録済みの科目は無視する
+		var registerCount int
+		if err := tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID); err != nil {
+			_ = tx.Rollback()
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+		if registerCount > 0 {
+			continue
+		}
+
 		courseList = append(courseList, course)
 	}
 
-	// MEMO: LOGIC: 前提講義/受講者数制限バリデーション
 	for _, course := range courseList {
-		var requiredCourseIDList []string
-		err = tx.Select(&requiredCourseIDList, "SELECT `required_course_id` FROM `course_requirements` WHERE `course_id` = ?", course.ID)
-		if err != nil {
+		// MEMO: 前提講義バリデーション
+		var requiredCourseIDList []uuid.UUID
+		if err = tx.Select(&requiredCourseIDList, "SELECT `required_course_id` FROM `course_requirements` WHERE `course_id` = ?", course.ID); err != nil {
 			_ = tx.Rollback()
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
 		for _, requiredCourseID := range requiredCourseIDList {
-			var gradeCount uint32
-			err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM `grades` WHERE `user_id` = ? AND `course_id` = ?", userID, requiredCourseID)
-			if err != nil {
+			var gradeCount int
+			if err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM `grades` WHERE `user_id` = ? AND `course_id` = ?", userID, requiredCourseID); err != nil {
 				_ = tx.Rollback()
 				log.Println(err)
 				return context.NoContent(http.StatusInternalServerError)
 			}
 			if gradeCount == 0 {
-				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You have not taken required course. required course id: %v", requiredCourseID))
+				hasError = true
+				errors.NotTakenRequiredCourse = append(errors.NotTakenRequiredCourse, course.ID)
+				break
 			}
 		}
 
+		// MEMO: 受講者数制限バリデーション
 		var registerCount uint32
-		err = tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ?", course.ID)
+		if err = tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ?", course.ID); err != nil {
+			_ = tx.Rollback()
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+		if course.Capacity.Valid && registerCount >= uint32(course.Capacity.Int32) {
+			hasError = true
+			errors.CapacityExceeded = append(errors.CapacityExceeded, course.ID)
+		}
+	}
+
+	if len(courseList) > 0 {
+		// MEMO: スケジュールの重複バリデーション
+		courseIDList := make([]uuid.UUID, 0, len(courseList))
+		for _, course := range courseList {
+			courseIDList = append(courseIDList, course.ID)
+		}
+
+		query := "SELECT `schedules`.* " +
+			"FROM `schedules`" +
+			"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` " +
+			"WHERE `course_schedules`.`course_id` IN (?)"
+		query, args, err := sqlx.In(query, courseIDList)
 		if err != nil {
 			_ = tx.Rollback()
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
-		if registerCount >= course.Capacity {
+
+		var schedules []Schedule
+		if err := tx.Select(&schedules, query, args...); err != nil {
 			_ = tx.Rollback()
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Course capacity exceeded. course id: %v", course.ID))
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
-	}
 
-	// MEMO: LOGIC: スケジュールの重複バリデーション
-	// MEMO: さすがに二重ループはやりすぎな気もする
-	getSchedule := func(courseID uuid.UUID) (Schedule, error) {
-		var schedule Schedule
-		err := tx.Get(&schedule, "SELECT `id`, `period`, `day_of_week`, `semester`, `year`\n"+
-			"	FROM `schedules` JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`\n"+
-			"	WHERE `course_id` = ?", courseID)
-		if err != nil {
-			return schedule, err
+		var registeredSchedules []Schedule
+		if err := tx.Select(&registeredSchedules, "SELECT `schedules`.* "+
+			"FROM `schedules` "+
+			"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
+			"JOIN `registrations` ON `course_schedules`.`course_id` = `registrations`.`course_id` "+
+			"WHERE `registrations`.`user_id` = ? ", userID); err != nil {
+			_ = tx.Rollback()
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
-		return schedule, nil
-	}
 
-	for i := 0; i < len(courseList); i++ {
-		for j := i + 1; j < len(courseList); j++ {
-			schedule1, err := getSchedule(courseList[i].ID)
-			if err != nil {
-				_ = tx.Rollback()
-				log.Println(err)
-				return context.NoContent(http.StatusInternalServerError)
-			}
-			schedule2, err := getSchedule(courseList[j].ID)
-			if err != nil {
-				_ = tx.Rollback()
-				log.Println(err)
-				return context.NoContent(http.StatusInternalServerError)
-			}
-			if schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
-				_ = tx.Rollback()
-				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("You cannot take courses held on same schedule. course id: %v and %v", courseList[i].ID, courseList[j].ID))
+		registeredSchedules = append(registeredSchedules, schedules...)
+
+		for _, schedule1 := range schedules {
+			for _, schedule2 := range registeredSchedules {
+				if !uuid.Equal(schedule1.ID, schedule2.ID) && schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
+					hasError = true
+					errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, schedule1.ID)
+					break
+				}
 			}
 		}
 	}
 
-	// MEMO: LOGIC: 履修登録
+	if hasError {
+		_ = tx.Rollback()
+		return context.JSON(http.StatusBadRequest, errors)
+	}
+
 	for _, course := range courseList {
-		var count uint32
-		err := tx.Get(&count, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID)
-		if err != nil {
-			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-		if count > 0 {
-			continue
-		}
-
 		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
 			_ = tx.Rollback()
@@ -499,8 +664,7 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
@@ -509,15 +673,89 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 }
 
 func (h *handlers) GetGrades(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	userIDParam := uuid.Parse(context.Param("userID"))
+	if userIDParam == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid userID")
+	}
+	if !uuid.Equal(userID, userIDParam) {
+		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
+	}
+
+	// MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
+	var CourseGrades []CourseGrade
+	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
+		"FROM `grades`" +
+		"JOIN `courses` ON `grades`.`course_id` = `courses`.`id`" +
+		"WHERE `user_id` = ?"
+	if err := h.DB.Select(&CourseGrades, query, userID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: CourseGradesからgpaを計算, gptじゃないんだっけ？
+	var gpa float64 = 0.0
+	var credits int = 0
+	if len(CourseGrades) > 0 {
+		for _, CourseGrade := range CourseGrades {
+			credits += int(CourseGrade.Credit)
+			gpa += float64(CourseGrade.Grade)
+		}
+		gpa = gpa / float64(credits)
+	}
+
+	// MEMO: LOGIC: CourseGradesとgpaから成績一覧(GPA、コース成績)を取得
+	var res GetGradesResponse
+	res.Summary = Summary{
+		Credits: credits,
+		GPA:     gpa,
+	}
+	for _, coursegrade := range CourseGrades {
+		res.CourseGrades = append(res.CourseGrades, &CourseGrade{
+			ID:     coursegrade.ID,
+			Name:   coursegrade.Name,
+			Credit: coursegrade.Credit,
+			Grade:  coursegrade.Grade,
+		})
+	}
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) SearchCourses(context echo.Context) error {
 	panic("implement me")
 }
 
-func (h *handlers) GetCourseSyllabus(context echo.Context) error {
-	panic("implement me")
+type GetCourseDetailResponse struct {
+	ID              uuid.UUID                `json:"id"`
+	Code            string                   `json:"code"`
+	Type            string                   `json:"type"`
+	Name            string                   `json:"name"`
+	Description     string                   `json:"description"`
+	Credit          uint8                    `json:"credit"`
+	Classroom       string                   `json:"classroom"`
+	Capacity        uint32                   `json:"capacity,omitempty"`
+	Teacher         string                   `json:"teacher"`
+	Keywords        string                   `json:"keywords"`
+	Period          uint8                    `json:"period"`
+	DayOfWeek       string                   `json:"day_of_week"`
+	Semester        Semester                 `json:"semester"`
+	Year            uint32                   `json:"year"`
+	RequiredCourses []RequiredCourseResponse `json:"required_courses"`
+}
+
+type RequiredCourseResponse struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
 func (h *handlers) GetCourseDetail(context echo.Context) error {
@@ -527,20 +765,149 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 	}
 
 	var course Course
-	if err := h.DB.Get(&course, "SELECT * from `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course")
 	} else if err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.JSON(http.StatusOK, course)
+	var schedule Schedule
+	if err := h.DB.Get(&schedule, "SELECT `schedules`.* "+
+		"FROM `schedules` "+
+		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
+		"WHERE `course_schedules`.`course_id` = ?", course.ID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	var teacher User
+	if err := h.DB.Get(&teacher, "SELECT * FROM `users` WHERE `id` = ?", course.TeacherID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	var requiredCourses []Course
+	if err := h.DB.Select(&requiredCourses, "SELECT `courses`.* "+
+		"FROM `course_requirements` "+
+		"JOIN `courses` ON `course_requirements`.`required_course_id` = `courses`.`id` "+
+		"WHERE `course_requirements`.`course_id` = ?", course.ID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	requiredCourseRes := make([]RequiredCourseResponse, 0, len(requiredCourses))
+	for _, course := range requiredCourses {
+		requiredCourseRes = append(requiredCourseRes, RequiredCourseResponse{
+			ID:   course.ID,
+			Name: course.Name,
+		})
+	}
+
+	res := GetCourseDetailResponse{
+		ID:              course.ID,
+		Code:            course.Code,
+		Type:            course.Type,
+		Name:            course.Name,
+		Description:     course.Description,
+		Credit:          course.Credit,
+		Classroom:       course.Classroom,
+		Teacher:         teacher.Name,
+		Keywords:        course.Keywords,
+		Period:          schedule.Period,
+		DayOfWeek:       schedule.DayOfWeek,
+		Semester:        schedule.Semester,
+		Year:            schedule.Year,
+		RequiredCourses: requiredCourseRes,
+	}
+
+	// MEMO: capacityがNULLのときどう返すか？
+	if course.Capacity.Valid {
+		res.Capacity = uint32(course.Capacity.Int32)
+	}
+
+	return context.JSON(http.StatusOK, res)
+}
+
+type GetClassResponse struct {
+	ID          uuid.UUID               `json:"id"`
+	Title       string                  `json:"title"`
+	Description string                  `json:"description"`
+	Documents   []GetDocumentResponse   `json:"documents"`
+	Assignments []GetAssignmentResponse `json:"assignments"`
+}
+
+func (h *handlers) GetClasses(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var course Course
+	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "course not found")
+	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: TODO: classに順序を入れてその順序で返す
+	var classes []Class
+	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ?", courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	res := make([]GetClassResponse, 0)
+	for _, class := range classes {
+		var documents []DocumentsMeta
+		if err := h.DB.Select(&documents, "SELECT * FROM `documents` WHERE `class_id` = ?", class.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		var assignments []Assignment
+		if err := h.DB.Select(&assignments, "SELECT * FROM `assignments` WHERE `class_id` = ?", class.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		documentsRes := make([]GetDocumentResponse, 0, len(documents))
+		for _, document := range documents {
+			documentsRes = append(documentsRes, GetDocumentResponse{
+				ID:   document.ID,
+				Name: document.Name,
+			})
+		}
+
+		assignmentsRes := make([]GetAssignmentResponse, 0, len(assignments))
+		for _, assignment := range assignments {
+			assignmentsRes = append(assignmentsRes, GetAssignmentResponse{
+				ID:          assignment.ID,
+				Name:        assignment.Name,
+				Description: assignment.Description,
+			})
+		}
+
+		res = append(res, GetClassResponse{
+			ID:          class.ID,
+			Title:       class.Title,
+			Description: class.Description,
+			Documents:   documentsRes,
+			Assignments: assignmentsRes,
+		})
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 type PostAssignmentRequest struct {
 	Name        string
 	Description string
-	Deadline    time.Time
+}
+
+type PostAssignmentResponse struct {
+	ID uuid.UUID `json:"id"`
 }
 
 func (h *handlers) PostAssignment(context echo.Context) error {
@@ -550,8 +917,8 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	if req.Name == "" || req.Description == "" || req.Deadline.IsZero() {
-		return echo.NewHTTPError(http.StatusBadRequest, "Name, description and deadline must not be empty.")
+	if req.Name == "" || req.Description == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Name and description must not be empty.")
 	}
 
 	classID := context.Param("classID")
@@ -562,22 +929,21 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
-	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `deadline`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))", uuid.New(), classID, req.Name, req.Description, req.Deadline.Truncate(time.Microsecond)); err != nil {
+	assignmentID := uuid.NewRandom()
+	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", assignmentID, classID, req.Name, req.Description); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusCreated, PostAssignmentResponse{
+		ID: assignmentID,
+	})
 }
 
 func (h *handlers) GetCourseDocumentList(context echo.Context) error {
 	courseID := uuid.Parse(context.Param("courseID"))
 	if uuid.Equal(uuid.NIL, courseID) {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-	classID := uuid.Parse(context.Param("classID"))
-	if uuid.Equal(uuid.NIL, classID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
 	}
 
 	documentsMeta := make([]DocumentsMeta, 0)
@@ -631,6 +997,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		}
 	}
 
+	res := make([]PostDocumentResponse, 0, len(files))
 	for _, file := range files {
 		src, err := file.Open()
 		if err != nil {
@@ -675,6 +1042,8 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 			deleteFiles(dsts)
 			return context.NoContent(http.StatusInternalServerError)
 		}
+
+		res = append(res, PostDocumentResponse{ID: fileMeta.ID})
 	}
 
 	err = tx.Commit()
@@ -683,7 +1052,7 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusCreated)
+	return context.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) GetAssignmentList(context echo.Context) error {
@@ -721,6 +1090,21 @@ func (h *handlers) SubmitAssignment(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	courseID := uuid.Parse(context.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	if ok, err := h.courseIsInCurrentPhase(courseID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	} else if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "The course is not started yet or has ended.")
+	}
 
 	assignmentID := context.Param("assignmentID")
 	var assignments int
@@ -764,8 +1148,57 @@ func (h *handlers) SubmitAssignment(context echo.Context) error {
 	return context.NoContent(http.StatusNoContent)
 }
 
-func (h *handlers) DownloadSubmittedAssignment(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	assignmentID := uuid.Parse(c.Param("assignmentID"))
+	if assignmentID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid assignmentID")
+	}
+
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// MEMO: zipファイルを作るためFOR UPDATEでassignment、FOR SHAREでsubmissionをロック
+	var assignment Assignment
+	if err := tx.Get(&assignment, "SELECT * FROM `assignments` WHERE `id` = ? FOR UPDATE", assignmentID); err == sql.ErrNoRows {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+	var submissions []*SubmissionWithUserName
+	if err := tx.Select(&submissions,
+		"SELECT `submissions`.*, `users`.`name` AS `user_name` "+
+			"FROM `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id`"+
+			"WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE", assignmentID); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// MEMO: TODO: export時でなく提出時にzipファイルを作ることでボトルネックを作りたいが、「そうはならんやろ」という気持ち
+	zipFilePath := AssignmentTmpDirectory + assignmentID.String() + ".zip"
+	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	return c.File(zipFilePath)
 }
 
 func (h *handlers) GetAttendanceCode(context echo.Context) error {
@@ -786,6 +1219,63 @@ func (h *handlers) GetAttendanceCode(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusOK, res)
+}
+
+type AddClassRequest struct {
+	Part        uint8  `json:"part"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type AddClassResponse struct {
+	ID             uuid.UUID `json:"id"`
+	AttendanceCode string    `json:"attendance_code"`
+}
+
+func (h *handlers) AddClass(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var req AddClassRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	if req.Part == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid part")
+	}
+
+	classID := uuid.NewRandom()
+	const lenCode = 6
+	const mysqlDupEntryCode = 1062
+	var attendanceCode string
+	for {
+		bytes := make([]byte, lenCode)
+		for i := range bytes {
+			bytes[i] = byte(65 + rand.Intn(26))
+		}
+		attendanceCode = string(bytes)
+
+		if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?, ?)",
+			classID, courseID, req.Part, req.Title, req.Description, attendanceCode); err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == mysqlDupEntryCode {
+				continue
+			} else {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+		}
+		break
+	}
+
+	res := AddClassResponse{
+		ID:             classID,
+		AttendanceCode: attendanceCode,
+	}
+
+	return c.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) SetClassFlag(context echo.Context) error {
@@ -819,33 +1309,178 @@ func (h *handlers) GetAttendances(context echo.Context) error {
 }
 
 func (h *handlers) AddAnnouncements(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
+	}
+
+	var req PostAnnouncementsRequest
+	if err := context.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	announcementID := uuid.NewRandom()
+	if _, err := h.DB.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", announcementID, courseID, req.Title, req.Message); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := PostAnnouncementsResponse{
+		ID: announcementID,
+	}
+
+	return context.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) SetUserGrades(context echo.Context) error {
-	panic("implement me")
+	courseID := uuid.Parse(context.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var req PostGradesRequest
+	if err := context.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	// MEMO: LOGIC: 学生一人の全コース成績登録
+	for _, coursegrade := range req {
+		if _, err := h.DB.Exec("INSERT INTO `grades` (`id`, `user_id`, `course_id`, `grade`) VALUES (?, ?, ?, ?)", uuid.New(), coursegrade.UserID, courseID, coursegrade.Grade); err != nil {
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+	}
+
+	return context.NoContent(http.StatusNoContent)
 }
 
 func (h *handlers) GetAnnouncementList(context echo.Context) error {
-	panic("implement me")
+	sess, err := session.Get(SessionName, context)
+	if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: ページングの初期実装はページ番号形式
+	var page int
+	if context.QueryParam("page") == "" {
+		page = 1
+	} else {
+		page, err = strconv.Atoi(context.QueryParam("page"))
+		if err != nil || page <= 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid page.")
+		}
+	}
+	limit := 20
+	offset := limit * (page - 1)
+
+	announcements := make([]Announcement, 0)
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at` "+
+		"FROM `announcements` "+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
+		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL "+
+		"ORDER BY `announcements`.`created_at` DESC "+
+		"LIMIT ? OFFSET ?", userID, limit+1, offset); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	lenRes := len(announcements)
+	if len(announcements) == limit+1 {
+		lenRes = limit
+	}
+	res := make(GetAnnouncementsResponse, 0, lenRes)
+	for _, announcement := range announcements[:lenRes] {
+		res = append(res, GetAnnouncementResponse{
+			ID:         announcement.ID,
+			CourseName: announcement.CourseName,
+			Title:      announcement.Title,
+			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
+		})
+	}
+
+	if lenRes > 0 {
+		var links []string
+		path := fmt.Sprintf("%v://%v%v", context.Scheme(), context.Request().Host, context.Path())
+		if page > 1 {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
+		}
+		if len(announcements) == limit+1 {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
+		}
+		context.Response().Header().Set("Link", strings.Join(links, ","))
+	}
+
+	return context.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
-	panic("implement me")
-}
-
-func (h *handlers) PostAttendanceCode(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
-		return echo.ErrInternalServerError
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := uuid.Parse(context.Param("announcementID"))
+	if announcementID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid announcementID")
+	}
+
+	var announcement Announcement
+	if err := h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
+		"FROM `announcements`"+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`"+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id`"+
+		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "announcement not found.")
+	} else if err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	res := GetAnnouncementDetailResponse{
+		ID:         announcement.ID,
+		CourseName: announcement.CourseName,
+		Title:      announcement.Title,
+		Message:    announcement.Message,
+		CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
+	}
+	return context.JSON(http.StatusOK, res)
+}
+
+func (h *handlers) PostAttendanceCode(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if uuid.Equal(uuid.NIL, userID) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "get userID from session")
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	var req PostAttendanceCodeRequest
-	if err := context.Bind(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
@@ -854,13 +1489,23 @@ func (h *handlers) PostAttendanceCode(context echo.Context) error {
 	if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `attendance_code` = ?", req.Code); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
 	} else if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get class: %v", err))
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// 学期確認
+	if ok, err := h.courseIsInCurrentPhase(class.CourseID); err != nil {
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid code")
 	}
 
 	// 履修確認
 	var registration int
 	if err := h.DB.Get(&registration, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ? AND `deleted_at` IS NULL", class.CourseID, userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check registration: %v", err))
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	if registration == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "You are not registered in the course.")
@@ -869,7 +1514,8 @@ func (h *handlers) PostAttendanceCode(context echo.Context) error {
 	// 既に出席しているか
 	var attendances int
 	if err := h.DB.Get(&attendances, "SELECT COUNT(*) FROM `attendances` WHERE `class_id` = ? AND `user_id` = ?", class.ID, userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("check attendance: %v", err))
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	if attendances > 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "You have already attended in this class.")
@@ -877,8 +1523,60 @@ func (h *handlers) PostAttendanceCode(context echo.Context) error {
 
 	// 出席コード登録
 	if _, err := h.DB.Exec("INSERT INTO `attendances` (`class_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", class.ID, userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("create attendance: %v", err))
+		log.Println(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusNoContent)
+	return c.NoContent(http.StatusNoContent)
+}
+
+
+func (h *handlers) courseIsInCurrentPhase(courseID uuid.UUID) (bool, error) {
+	// MEMO: 複数phaseに渡る講義を想定していない
+	var schedule Schedule
+	query := "SELECT `schedules`.*" +
+		"FROM `schedules`" +
+		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`" +
+		"JOIN `courses` ON `course_schedules`.`course_id` = `courses`.`id`" +
+		"WHERE `courses`.`id` = ?" +
+		"LIMIT 1"
+	if err := h.DB.Get(&schedule, query, courseID); err != nil {
+		return false, err
+	}
+
+	var phase Phase
+	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
+		return false, err
+	}
+
+	return schedule.Year == phase.Year && schedule.Semester == phase.Semester, nil
+}
+
+func createSubmissionsZip(zipFilePath string, submissions []*SubmissionWithUserName) error {
+	// Zipに含めるファイルの名称変更のためコピー
+	// MEMO: N回 cp はやりすぎかも
+	for _, submission := range submissions {
+		cpCmd := exec.Command(
+			"cp",
+			AssignmentsDirectory+submission.ID.String(),
+			AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.Name,
+		)
+		if err := cpCmd.Start(); err != nil {
+			return err
+		}
+		if err := cpCmd.Wait(); err != nil {
+			return err
+		}
+	}
+
+	zipArgs := make([]string, 0, len(submissions)+2)
+	zipArgs = append(zipArgs, "-j", zipFilePath)
+	for _, submission := range submissions {
+		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.Name)
+	}
+	cmd := exec.Command("zip", zipArgs...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Wait()
 }

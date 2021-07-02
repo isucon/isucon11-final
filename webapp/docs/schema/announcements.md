@@ -15,8 +15,8 @@ CREATE TABLE `announcements` (
   `message` text COLLATE utf8mb4_bin NOT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `FK_course_id` (`course_id`),
-  CONSTRAINT `announcements_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
+  KEY `FK_announcements_course_id` (`course_id`),
+  CONSTRAINT `FK_announcements_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -34,17 +34,17 @@ CREATE TABLE `announcements` (
 
 ## Constraints
 
-| Name                 | Type        | Definition                                      |
-| -------------------- | ----------- | ----------------------------------------------- |
-| announcements_ibfk_1 | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
-| PRIMARY              | PRIMARY KEY | PRIMARY KEY (id)                                |
+| Name                       | Type        | Definition                                      |
+| -------------------------- | ----------- | ----------------------------------------------- |
+| FK_announcements_course_id | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
+| PRIMARY                    | PRIMARY KEY | PRIMARY KEY (id)                                |
 
 ## Indexes
 
-| Name         | Definition                               |
-| ------------ | ---------------------------------------- |
-| FK_course_id | KEY FK_course_id (course_id) USING BTREE |
-| PRIMARY      | PRIMARY KEY (id) USING BTREE             |
+| Name                       | Definition                                             |
+| -------------------------- | ------------------------------------------------------ |
+| FK_announcements_course_id | KEY FK_announcements_course_id (course_id) USING BTREE |
+| PRIMARY                    | PRIMARY KEY (id) USING BTREE                           |
 
 ## Relations
 

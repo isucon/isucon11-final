@@ -12,29 +12,17 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/setup-go@v2
         with:
           go-version: 1.16
       - uses: actions/checkout@v2
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('./webapp/**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - run: make
         working-directory: ./webapp/golang
-      - uses: actions/upload-artifact@v2
-        with:
-          name: isucholar
-          path: ./webapp/golang/bin
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - name: golangci-lint

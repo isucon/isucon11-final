@@ -13,11 +13,12 @@ CREATE TABLE `grades` (
   `user_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `grade` int unsigned NOT NULL,
+  `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `FK_user_id` (`user_id`),
-  KEY `FK_course_id` (`course_id`),
-  CONSTRAINT `grades_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `grades_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
+  KEY `FK_grades_user_id` (`user_id`),
+  KEY `FK_grades_course_id` (`course_id`),
+  CONSTRAINT `FK_grades_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
+  CONSTRAINT `FK_grades_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -25,28 +26,29 @@ CREATE TABLE `grades` (
 
 ## Columns
 
-| Name      | Type         | Default | Nullable | Children | Parents               | Comment      |
-| --------- | ------------ | ------- | -------- | -------- | --------------------- | ------------ |
-| id        | char(36)     |         | false    |          |                       |              |
-| user_id   | char(36)     |         | false    |          | [users](users.md)     | 学生のID        |
-| course_id | char(36)     |         | false    |          | [courses](courses.md) | 履修科目のID      |
-| grade     | int unsigned |         | false    |          |                       | 成績           |
+| Name       | Type         | Default | Nullable | Children | Parents               | Comment      |
+| ---------- | ------------ | ------- | -------- | -------- | --------------------- | ------------ |
+| id         | char(36)     |         | false    |          |                       |              |
+| user_id    | char(36)     |         | false    |          | [users](users.md)     | 学生のID        |
+| course_id  | char(36)     |         | false    |          | [courses](courses.md) | 履修科目のID      |
+| grade      | int unsigned |         | false    |          |                       | 成績           |
+| created_at | datetime(6)  |         | false    |          |                       |              |
 
 ## Constraints
 
-| Name          | Type        | Definition                                      |
-| ------------- | ----------- | ----------------------------------------------- |
-| grades_ibfk_1 | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)     |
-| grades_ibfk_2 | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
-| PRIMARY       | PRIMARY KEY | PRIMARY KEY (id)                                |
+| Name                | Type        | Definition                                      |
+| ------------------- | ----------- | ----------------------------------------------- |
+| FK_grades_course_id | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
+| FK_grades_user_id   | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)     |
+| PRIMARY             | PRIMARY KEY | PRIMARY KEY (id)                                |
 
 ## Indexes
 
-| Name         | Definition                               |
-| ------------ | ---------------------------------------- |
-| FK_course_id | KEY FK_course_id (course_id) USING BTREE |
-| FK_user_id   | KEY FK_user_id (user_id) USING BTREE     |
-| PRIMARY      | PRIMARY KEY (id) USING BTREE             |
+| Name                | Definition                                      |
+| ------------------- | ----------------------------------------------- |
+| FK_grades_course_id | KEY FK_grades_course_id (course_id) USING BTREE |
+| FK_grades_user_id   | KEY FK_grades_user_id (user_id) USING BTREE     |
+| PRIMARY             | PRIMARY KEY (id) USING BTREE                    |
 
 ## Relations
 

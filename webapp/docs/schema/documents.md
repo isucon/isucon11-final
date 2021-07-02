@@ -14,8 +14,8 @@ CREATE TABLE `documents` (
   `name` text COLLATE utf8mb4_bin NOT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `FK_class_id` (`class_id`),
-  CONSTRAINT `documents_ibfk_1` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
+  KEY `FK_documents_class_id` (`class_id`),
+  CONSTRAINT `FK_documents_class_id` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -32,17 +32,17 @@ CREATE TABLE `documents` (
 
 ## Constraints
 
-| Name             | Type        | Definition                                     |
-| ---------------- | ----------- | ---------------------------------------------- |
-| documents_ibfk_1 | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
-| PRIMARY          | PRIMARY KEY | PRIMARY KEY (id)                               |
+| Name                  | Type        | Definition                                     |
+| --------------------- | ----------- | ---------------------------------------------- |
+| FK_documents_class_id | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
+| PRIMARY               | PRIMARY KEY | PRIMARY KEY (id)                               |
 
 ## Indexes
 
-| Name        | Definition                             |
-| ----------- | -------------------------------------- |
-| FK_class_id | KEY FK_class_id (class_id) USING BTREE |
-| PRIMARY     | PRIMARY KEY (id) USING BTREE           |
+| Name                  | Definition                                       |
+| --------------------- | ------------------------------------------------ |
+| FK_documents_class_id | KEY FK_documents_class_id (class_id) USING BTREE |
+| PRIMARY               | PRIMARY KEY (id) USING BTREE                     |
 
 ## Relations
 

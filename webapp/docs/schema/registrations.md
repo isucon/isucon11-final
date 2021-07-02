@@ -14,9 +14,9 @@ CREATE TABLE `registrations` (
   `created_at` datetime(6) NOT NULL,
   `deleted_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`course_id`,`user_id`),
-  KEY `FK_user_id` (`user_id`),
-  CONSTRAINT `registrations_ibfk_1` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
-  CONSTRAINT `registrations_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+  KEY `FK_registrations_user_id` (`user_id`),
+  CONSTRAINT `FK_registrations_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
+  CONSTRAINT `FK_registrations_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -33,18 +33,18 @@ CREATE TABLE `registrations` (
 
 ## Constraints
 
-| Name                 | Type        | Definition                                      |
-| -------------------- | ----------- | ----------------------------------------------- |
-| PRIMARY              | PRIMARY KEY | PRIMARY KEY (course_id, user_id)                |
-| registrations_ibfk_1 | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
-| registrations_ibfk_2 | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)     |
+| Name                       | Type        | Definition                                      |
+| -------------------------- | ----------- | ----------------------------------------------- |
+| FK_registrations_course_id | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
+| FK_registrations_user_id   | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)     |
+| PRIMARY                    | PRIMARY KEY | PRIMARY KEY (course_id, user_id)                |
 
 ## Indexes
 
-| Name       | Definition                                   |
-| ---------- | -------------------------------------------- |
-| FK_user_id | KEY FK_user_id (user_id) USING BTREE         |
-| PRIMARY    | PRIMARY KEY (course_id, user_id) USING BTREE |
+| Name                     | Definition                                         |
+| ------------------------ | -------------------------------------------------- |
+| FK_registrations_user_id | KEY FK_registrations_user_id (user_id) USING BTREE |
+| PRIMARY                  | PRIMARY KEY (course_id, user_id) USING BTREE       |
 
 ## Relations
 

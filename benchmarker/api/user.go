@@ -1,15 +1,11 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 /*
@@ -24,24 +20,10 @@ type usersCourseResponse struct {
 }
 
 func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) ([]string, error) {
-	req, err := a.GET(fmt.Sprintf("/api/users/%s/courses", userID))
-	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
 	var registeredCourses []usersCourseResponse
-	err = json.NewDecoder(res.Body).Decode(&registeredCourses)
+	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/courses", userID), nil, &registeredCourses, []int{http.StatusOK})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
+		return nil, err
 	}
 
 	var ids []string
@@ -52,31 +34,17 @@ func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) 
 }
 
 func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses []string) ([]string, error) {
-	reqBody, err := json.Marshal(courses)
+	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/%s/courses", userID), courses, nil, []int{http.StatusOK, http.StatusBadRequest})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, err
 	}
-	req, err := a.POST(fmt.Sprintf("/api/users/%s/courses", userID), bytes.NewBuffer(reqBody))
-	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-	req.Header.Set("Content-Type", "application/json")
 
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusBadRequest); err == nil {
+	if res.StatusCode == http.StatusBadRequest {
 		// 400エラー = 定員オーバーによる登録失敗。 FIXME: 他の400エラーと区別するためにエラーレスポンスを解析が必要っぽい
 		// 登録成功したコースは0(空), 準正常系なのでエラーなし
 		return []string{}, nil
 	}
 
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
-		return nil, err
-	}
 	// 登録に成功したコースを返す
 	return courses, err
 }
