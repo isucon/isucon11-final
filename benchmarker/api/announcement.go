@@ -103,6 +103,7 @@ func FetchAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*A
 		return nil, err
 	}
 
+	// FIXME: ページングに対応 Issue:#91
 	var resp AnnouncementDetailResponse
 	err = json.NewDecoder(res.Body).Decode(&resp)
 	if err != nil {
