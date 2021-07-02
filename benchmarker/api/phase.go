@@ -1,14 +1,10 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 const (
@@ -32,22 +28,11 @@ func ChangePhaseToResult(ctx context.Context, a *agent.Agent) error {
 }
 
 func changePhase(ctx context.Context, a *agent.Agent, phase string) error {
-	reqObj := &phaseRequest{Phase: phase}
-	reqBody, _ := json.Marshal(reqObj)
-	req, err := a.POST("/phase", bytes.NewBuffer(reqBody))
+	req := &phaseRequest{Phase: phase}
+	_, err := apiRequest(ctx, a, http.MethodPost, "/phase", req, nil, []int{http.StatusOK})
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
 
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
-		return nil
-	}
 	return nil
 }

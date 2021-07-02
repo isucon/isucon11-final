@@ -2,13 +2,10 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type syllabusSearchResponse []syllabusData
@@ -27,28 +24,14 @@ type syllabusData struct {
 }
 
 func SearchSyllabus(ctx context.Context, a *agent.Agent, keyword string) ([]string, error) {
-	req, err := a.GET(fmt.Sprintf("/api/syllabus?keyword=%s", keyword))
+	res := syllabusSearchResponse{}
+	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/syllabus?keyword=%s", keyword), nil, &res, []int{http.StatusOK})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
 	}
-	r := syllabusSearchResponse{}
-	err = json.NewDecoder(res.Body).Decode(&r)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
+
 	var syllabusIDs []string
-	for _, s := range r {
+	for _, s := range res {
 		syllabusIDs = append(syllabusIDs, s.ID)
 	}
 	return syllabusIDs, nil
