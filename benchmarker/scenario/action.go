@@ -218,7 +218,7 @@ func CheckClassDoc(ctx context.Context, student *model.Student, class *model.Cla
 	}
 
 	for _, docID := range docIDs {
-		_, err := api.FetchDocument(ctx, student.Agent, class.CourseID, class.ID, docID)
+		_, err := api.FetchDocument(ctx, student.Agent, class.CourseID, docID)
 		if err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ func VerifyClassDoc(ctx context.Context, student *model.Student, class *model.Cl
 	}
 
 	for _, docID := range docIDs {
-		docData, err := api.FetchDocument(ctx, student.Agent, class.CourseID, class.ID, docID)
+		docData, err := api.FetchDocument(ctx, student.Agent, class.CourseID, docID)
 		if err != nil {
 			return err
 		}

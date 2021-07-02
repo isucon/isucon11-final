@@ -138,8 +138,8 @@ func FetchDocumentIDList(ctx context.Context, a *agent.Agent, courseID, classID 
 	return idList, nil
 }
 
-func FetchDocument(ctx context.Context, a *agent.Agent, courseID, classID, docID string) ([]byte, error) {
-	req, err := a.GET(fmt.Sprintf("/api/courses/%s/classes/%s/documents/%s", courseID, classID, docID))
+func FetchDocument(ctx context.Context, a *agent.Agent, courseID, docID string) ([]byte, error) {
+	req, err := a.GET(fmt.Sprintf("/api/courses/%s/documents/%s", courseID, docID))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
