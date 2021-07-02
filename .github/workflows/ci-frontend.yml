@@ -24,10 +24,10 @@ jobs:
           node-version: 14
           check-latest: true
       - name: Install dependencies
-        run: yarn
+        run: npm ci
 
       - name: Run linter
-        run: yarn lint
+        run: npm run lint
 
       - name: Run tests
-        run: yarn test
+        run: npm run test
