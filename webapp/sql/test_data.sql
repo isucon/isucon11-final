@@ -196,10 +196,11 @@ INSERT INTO `course_schedules` (`course_id`, `schedule_id`) VALUES
   '01234567-89ab-cdef-0003-000000000015'
 );
 
-INSERT INTO `classes` (id, course_id, title, description, attendance_code) VALUES
+INSERT INTO `classes` (id, course_id, part, title, description, attendance_code) VALUES
 (
   '01234567-89ab-cdef-0004-000000000001',
   '01234567-89ab-cdef-0002-000000000001',
+  1,
   '微分積分基礎第一回',
   '微分積分の導入',
   'test_code'
@@ -207,6 +208,7 @@ INSERT INTO `classes` (id, course_id, title, description, attendance_code) VALUE
 (
   '01234567-89ab-cdef-0004-000000000002',
   '01234567-89ab-cdef-0002-000000000001',
+  2,
   '微分積分基礎第二回',
   '微分(1)',
   'test_code2'
@@ -214,19 +216,19 @@ INSERT INTO `classes` (id, course_id, title, description, attendance_code) VALUE
 (
   '01234567-89ab-cdef-0004-000000000003',
   '01234567-89ab-cdef-0002-000000000002',
+  1,
   '線形代数基礎第一回',
   '線形代数とは',
   'test_code3'
 );
 
 
-INSERT INTO `assignments` (id, class_id, name, description, deadline, created_at) VALUES
+INSERT INTO `assignments` (id, class_id, name, description, created_at) VALUES
 (
   '01234567-89ab-cdef-0005-000000000001',
   '01234567-89ab-cdef-0004-000000000001',
   '微分積分基礎 課題 1',
   '第一回課題. 明日までに提出',
-  DATE_ADD(NOW(6), INTERVAL 1 DAY),
   NOW()
 ),
 (
@@ -234,6 +236,5 @@ INSERT INTO `assignments` (id, class_id, name, description, deadline, created_at
   '01234567-89ab-cdef-0004-000000000003',
   '線形代数基礎 課題 1',
   '第一回課題. 1週間後までに提出',
-  DATE_ADD(NOW(6), INTERVAL 7 DAY),
   NOW()
 );
