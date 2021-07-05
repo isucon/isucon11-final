@@ -278,6 +278,11 @@ type PostDocumentResponse struct {
 	ID uuid.UUID `json:"id"`
 }
 
+type TimeSlotResponse struct {
+	Period    uint8  `json:"period"`
+	DayOfWeek string `json:"day_of_week"`
+}
+
 type PhaseType string
 
 const (
@@ -427,12 +432,11 @@ func (h *handlers) Login(c echo.Context) error {
 }
 
 type GetRegisteredCourseResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	TeacherName string    `json:"teacher"`
-	Classroom   string    `json:"classroom"`
-	Period      uint8     `json:"period"`
-	DayOfWeek   string    `json:"day_of_week"`
+	ID          uuid.UUID          `json:"id"`
+	Name        string             `json:"name"`
+	TeacherName string             `json:"teacher"`
+	Classroom   string             `json:"classroom"`
+	Timeslots   []TimeSlotResponse `json:"timeslots"`
 }
 
 func (h *handlers) GetRegisteredCourses(context echo.Context) error {
@@ -461,13 +465,12 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	}
 
 	var courses []Course
-	err = h.DB.Select(&courses, "SELECT `courses`.* "+
+	if err = h.DB.Select(&courses, "SELECT DISTINCT `courses`.* "+
 		"FROM `courses` "+
 		"JOIN `course_schedules` ON `courses`.`id` = `course_schedules`.`course_id` "+
 		"JOIN `schedules` ON `course_schedules`.`schedule_id` = `schedules`.`id` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
-		"WHERE `schedules`.`year` = ? AND `schedules`.`semester` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", phase.Year, phase.Semester, userID)
-	if err != nil {
+		"WHERE `schedules`.`year` = ? AND `schedules`.`semester` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", phase.Year, phase.Semester, userID); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
@@ -480,8 +483,8 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 			return context.NoContent(http.StatusInternalServerError)
 		}
 
-		var schedule Schedule
-		if err := h.DB.Get(&schedule, "SELECT `schedules`.* "+
+		var schedules []Schedule
+		if err := h.DB.Select(&schedules, "SELECT `schedules`.* "+
 			"FROM `schedules` "+
 			"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
 			"WHERE `course_schedules`.`course_id` = ?", course.ID); err != nil {
@@ -489,13 +492,20 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 			return context.NoContent(http.StatusInternalServerError)
 		}
 
+		timeslotsRes := make([]TimeSlotResponse, 0, len(schedules))
+		for _, schedule := range schedules {
+			timeslotsRes = append(timeslotsRes, TimeSlotResponse{
+				Period:    schedule.Period,
+				DayOfWeek: schedule.DayOfWeek,
+			})
+		}
+
 		res = append(res, GetRegisteredCourseResponse{
 			ID:          course.ID,
 			Name:        course.Name,
 			TeacherName: teacher.Name,
 			Classroom:   course.Classroom,
-			Period:      schedule.Period,
-			DayOfWeek:   schedule.DayOfWeek,
+			Timeslots:   timeslotsRes,
 		})
 	}
 
@@ -779,10 +789,9 @@ type GetCourseDetailResponse struct {
 	Capacity        uint32                   `json:"capacity,omitempty"`
 	Teacher         string                   `json:"teacher"`
 	Keywords        string                   `json:"keywords"`
-	Period          uint8                    `json:"period"`
-	DayOfWeek       string                   `json:"day_of_week"`
 	Semester        Semester                 `json:"semester"`
 	Year            uint32                   `json:"year"`
+	Timeslots       []TimeSlotResponse       `json:"timeslots"`
 	RequiredCourses []RequiredCourseResponse `json:"required_courses"`
 }
 
@@ -805,8 +814,14 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	var schedule Schedule
-	if err := h.DB.Get(&schedule, "SELECT `schedules`.* "+
+	var teacher User
+	if err := h.DB.Get(&teacher, "SELECT * FROM `users` WHERE `id` = ?", course.TeacherID); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	var schedules []Schedule
+	if err := h.DB.Select(&schedules, "SELECT `schedules`.* "+
 		"FROM `schedules` "+
 		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
 		"WHERE `course_schedules`.`course_id` = ?", course.ID); err != nil {
@@ -814,9 +829,7 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	var teacher User
-	if err := h.DB.Get(&teacher, "SELECT * FROM `users` WHERE `id` = ?", course.TeacherID); err != nil {
-		log.Println(err)
+	if len(schedules) == 0 {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
@@ -829,9 +842,17 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	requiredCourseRes := make([]RequiredCourseResponse, 0, len(requiredCourses))
+	timeslotsRes := make([]TimeSlotResponse, 0, len(schedules))
+	for _, schedule := range schedules {
+		timeslotsRes = append(timeslotsRes, TimeSlotResponse{
+			Period:    schedule.Period,
+			DayOfWeek: schedule.DayOfWeek,
+		})
+	}
+
+	requiredCoursesRes := make([]RequiredCourseResponse, 0, len(requiredCourses))
 	for _, course := range requiredCourses {
-		requiredCourseRes = append(requiredCourseRes, RequiredCourseResponse{
+		requiredCoursesRes = append(requiredCoursesRes, RequiredCourseResponse{
 			ID:   course.ID,
 			Name: course.Name,
 		})
@@ -847,14 +868,12 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 		Classroom:       course.Classroom,
 		Teacher:         teacher.Name,
 		Keywords:        course.Keywords,
-		Period:          schedule.Period,
-		DayOfWeek:       schedule.DayOfWeek,
-		Semester:        schedule.Semester,
-		Year:            schedule.Year,
-		RequiredCourses: requiredCourseRes,
+		Semester:        schedules[0].Semester,
+		Year:            schedules[0].Year,
+		Timeslots:       timeslotsRes,
+		RequiredCourses: requiredCoursesRes,
 	}
 
-	// MEMO: capacityがNULLのときどう返すか？
 	if course.Capacity.Valid {
 		res.Capacity = uint32(course.Capacity.Int32)
 	}
