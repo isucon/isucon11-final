@@ -51,7 +51,7 @@ export default Vue.extend({
         name: this.name,
         password: this.password,
       })
-      this.$store.commit('user/set', this.name)
+      localStorage.setItem('user', this.name)
       await this.$router.push('mypage')
     },
   },
