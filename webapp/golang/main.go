@@ -74,7 +74,7 @@ func main() {
 		{
 			coursesAPI.GET("/:courseID", h.GetCourseDetail)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
-			coursesAPI.GET("/:courseID/documents", h.GetCourseDocumentList)
+			coursesAPI.GET("/:courseID/documents", h.GetDocumentList)
 			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
 			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
 			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
@@ -278,19 +278,6 @@ type PostDocumentResponse struct {
 	ID uuid.UUID `json:"id"`
 }
 
-type GetDocumentResponse struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
-
-type GetAssignmentResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-}
-
-type GetDocumentsResponse []GetDocumentResponse
-
 type PhaseType string
 
 const (
@@ -351,6 +338,7 @@ type Schedule struct {
 type Class struct {
 	ID             uuid.UUID `db:"id"`
 	CourseID       uuid.UUID `db:"course_id"`
+	Part           uint8     `db:"part"`
 	Title          string    `db:"title"`
 	Description    string    `db:"description"`
 	AttendanceCode string    `db:"attendance_code"`
@@ -830,11 +818,10 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 }
 
 type GetClassResponse struct {
-	ID          uuid.UUID               `json:"id"`
-	Title       string                  `json:"title"`
-	Description string                  `json:"description"`
-	Documents   []GetDocumentResponse   `json:"documents"`
-	Assignments []GetAssignmentResponse `json:"assignments"`
+	ID          uuid.UUID `json:"id"`
+	Part        uint8     `json:"part"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
 }
 
 func (h *handlers) GetClasses(c echo.Context) error {
@@ -851,50 +838,19 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// MEMO: TODO: classに順序を入れてその順序で返す
 	var classes []Class
-	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ?", courseID); err != nil {
+	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := make([]GetClassResponse, 0)
+	res := make([]GetClassResponse, 0, len(classes))
 	for _, class := range classes {
-		var documents []DocumentsMeta
-		if err := h.DB.Select(&documents, "SELECT * FROM `documents` WHERE `class_id` = ?", class.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		var assignments []Assignment
-		if err := h.DB.Select(&assignments, "SELECT * FROM `assignments` WHERE `class_id` = ?", class.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		documentsRes := make([]GetDocumentResponse, 0, len(documents))
-		for _, document := range documents {
-			documentsRes = append(documentsRes, GetDocumentResponse{
-				ID:   document.ID,
-				Name: document.Name,
-			})
-		}
-
-		assignmentsRes := make([]GetAssignmentResponse, 0, len(assignments))
-		for _, assignment := range assignments {
-			assignmentsRes = append(assignmentsRes, GetAssignmentResponse{
-				ID:          assignment.ID,
-				Name:        assignment.Name,
-				Description: assignment.Description,
-			})
-		}
-
 		res = append(res, GetClassResponse{
 			ID:          class.ID,
+			Part:        class.Part,
 			Title:       class.Title,
 			Description: class.Description,
-			Documents:   documentsRes,
-			Assignments: assignmentsRes,
 		})
 	}
 
@@ -940,9 +896,17 @@ func (h *handlers) PostAssignment(context echo.Context) error {
 	})
 }
 
-func (h *handlers) GetCourseDocumentList(context echo.Context) error {
+type GetDocumentResponse struct {
+	ID      uuid.UUID `json:"id"`
+	ClassID uuid.UUID `json:"class_id"`
+	Name    string    `json:"name"`
+}
+
+type GetDocumentsResponse []GetDocumentResponse
+
+func (h *handlers) GetDocumentList(context echo.Context) error {
 	courseID := uuid.Parse(context.Param("courseID"))
-	if uuid.Equal(uuid.NIL, courseID) {
+	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
@@ -956,8 +920,9 @@ func (h *handlers) GetCourseDocumentList(context echo.Context) error {
 	res := make(GetDocumentsResponse, 0, len(documentsMeta))
 	for _, meta := range documentsMeta {
 		res = append(res, GetDocumentResponse{
-			ID:   meta.ID,
-			Name: meta.Name,
+			ID:      meta.ID,
+			ClassID: meta.ClassID,
+			Name:    meta.Name,
 		})
 	}
 
@@ -1055,8 +1020,41 @@ func (h *handlers) PostDocumentFile(context echo.Context) error {
 	return context.JSON(http.StatusCreated, res)
 }
 
-func (h *handlers) GetAssignmentList(context echo.Context) error {
-	panic("implement me")
+type GetAssignmentResponse struct {
+	ID          uuid.UUID `json:"id"`
+	ClassID     uuid.UUID `json:"class_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+}
+
+type GetAssignmentsResponse []GetAssignmentResponse
+
+func (h *handlers) GetAssignmentList(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var assignments []Assignment
+	if err := h.DB.Select(&assignments, "SELECT `assignments`.* "+
+		"FROM `assignments` "+
+		"JOIN `classes` ON `assignments`.`class_id` = `classes`.`id` "+
+		"WHERE `classes`.`course_id` = ?", courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	res := make(GetAssignmentsResponse, 0, len(assignments))
+	for _, assignment := range assignments {
+		res = append(res, GetAssignmentResponse{
+			ID:          assignment.ID,
+			ClassID:     assignment.ClassID,
+			Name:        assignment.Name,
+			Description: assignment.Description,
+		})
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) DownloadDocumentFile(context echo.Context) error {
