@@ -89,13 +89,13 @@ type DataType = {
 }
 
 export default Vue.extend({
-  middleware: 'is_loggedin',
   components: {
     SearchModal,
     CalendarCell,
     Calendar,
     Button,
   },
+  middleware: 'is_loggedin',
   data(): DataType {
     return {
       isShownModal: false,
@@ -111,10 +111,9 @@ export default Vue.extend({
   },
   methods: {
     getCourse(idx: number): Course | undefined {
-      console.log(JSON.stringify(this.willRegisterCourses))
       const course = this.willRegisterCourses.find((c) => {
         const dayOfWeek = DayOfWeek[c.dayOfWeek]
-        return idx === dayOfWeek * c.period
+        return idx === dayOfWeek + (c.period - 1) * 5
       })
       return course
     },
@@ -124,14 +123,14 @@ export default Vue.extend({
     onCloseSearchModal(): void {
       this.isShownModal = false
     },
-    onClickConfirm(): void {
-      const userName = this.$store.state.user.name
+    async onClickConfirm(): Promise<void> {
+      const userName = localStorage.getItem('user')
       const path = `/api/users/${userName}/courses`
-      console.log(path)
-      // const res = await this.$axios.put(path, this.willRegisterIds)
-      // if (res.status === 200) {
-      //   await this.$router.push('mypage')
-      // }
+      const ids = this.willRegisterCourses.map((c) => ({ id: c.id }))
+      const res = await this.$axios.put(path, ids)
+      if (res.status === 200) {
+        await this.$router.push('mypage')
+      }
     },
   },
 })

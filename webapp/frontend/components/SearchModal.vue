@@ -70,8 +70,8 @@
             />
           </div>
           <Button type="submit" class="mt-6 flex-grow-0" color="primary"
-            >検索</Button
-          >
+            >検索
+          </Button>
         </form>
 
         <div v-if="isShowSearchResult">
@@ -109,8 +109,8 @@
                 <td>椅子 昆</td>
                 <td>
                   <NuxtLink :to="`/course/${c.id}`" class="text-primary-500"
-                    >詳細を見る</NuxtLink
-                  >
+                    >詳細を見る
+                  </NuxtLink>
                 </td>
               </tr>
             </template>
@@ -158,7 +158,7 @@ export default Vue.extend({
   data(): DataType {
     return {
       courses: [],
-      checkedCourses: [],
+      checkedCourses: this.value,
     }
   },
   computed: {
@@ -168,7 +168,7 @@ export default Vue.extend({
   },
   methods: {
     isChecked(courseId: string): boolean {
-      const course = this.value.find((v) => v.id === courseId)
+      const course = this.checkedCourses.find((v) => v.id === courseId)
       return course !== undefined
     },
     async onSubmitSearch(): Promise<void> {
@@ -237,11 +237,13 @@ export default Vue.extend({
       // }
     },
     onChangeCheckbox(course: Course): void {
-      const c = this.value.find((v) => v.id === course.id)
+      const c = this.checkedCourses.find((v) => v.id === course.id)
       if (c) {
-        this.checkedCourses = this.value.filter((v) => v.id !== course.id)
+        this.checkedCourses = this.checkedCourses.filter(
+          (v) => v.id !== course.id
+        )
       } else {
-        this.checkedCourses = [...this.value, course]
+        this.checkedCourses = [...this.checkedCourses, course]
       }
     },
     onSubmitTemporaryRegistration(): void {
