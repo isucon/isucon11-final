@@ -1,15 +1,11 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type announcementRegRequest struct {
@@ -21,33 +17,15 @@ type announcementRegResponse struct {
 }
 
 func AddAnnouncement(ctx context.Context, a *agent.Agent, courseID, title, message string) (string, error) {
-	reqBody, err := json.Marshal(&announcementRegRequest{title, message})
+	rpath := fmt.Sprintf("/api/courses/%s/announcements", courseID)
+	req := &announcementRegRequest{title, message}
+	var res announcementRegResponse
+	_, err := apiRequest(ctx, a, http.MethodPost, rpath, req, res, []int{http.StatusOK})
 	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/announcements", courseID), bytes.NewBuffer(reqBody))
-	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, err)
-	}
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return "", err
 	}
 
-	var resp announcementRegResponse
-	err = json.NewDecoder(res.Body).Decode(&resp)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-
-	return resp.ID, nil
+	return res.ID, nil
 }
 
 type AnnouncementsResponse struct {
@@ -58,28 +36,15 @@ type AnnouncementsResponse struct {
 }
 
 func FetchAnnouncements(ctx context.Context, a *agent.Agent) ([]*AnnouncementsResponse, error) {
-	req, err := a.GET(fmt.Sprintf("/api/announcements"))
+	rpath := "/api/announcements"
+	var res []*AnnouncementsResponse
+	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
 	}
+	// FIXME: ページングに対応 Issue:#91
 
-	var resp []*AnnouncementsResponse
-	err = json.NewDecoder(res.Body).Decode(&resp)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-
-	return resp, nil
+	return res, nil
 }
 
 type AnnouncementDetailResponse struct {
@@ -90,26 +55,12 @@ type AnnouncementDetailResponse struct {
 }
 
 func FetchAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*AnnouncementDetailResponse, error) {
-	req, err := a.GET(fmt.Sprintf("/api/announcements/%s", id))
+	rpath := fmt.Sprintf("/api/announcements/%s", id)
+	res := &AnnouncementDetailResponse{}
+	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
 	}
 
-	// FIXME: ページングに対応 Issue:#91
-	var resp AnnouncementDetailResponse
-	err = json.NewDecoder(res.Body).Decode(&resp)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-	return &resp, nil
+	return res, nil
 }

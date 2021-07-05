@@ -25,37 +25,18 @@ type addClassResponse struct {
 }
 
 func AddClass(ctx context.Context, a *agent.Agent, courseID, title, desc string) (string, error) {
-	reqBody, err := json.Marshal(&addClassRequest{
+	rpath := fmt.Sprintf("/api/courses/%s/classes", courseID)
+	req := &addClassRequest{
 		Title:       title,
 		Description: desc,
-	})
-	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
 	}
-
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes", courseID), bytes.NewBuffer(reqBody))
+	res := &addClassResponse{}
+	_, err := apiRequest(ctx, a, http.MethodPost, rpath, req, res, []int{http.StatusOK})
 	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return "", err
 	}
 
-	var respObj addClassResponse
-	err = json.NewDecoder(res.Body).Decode(&respObj)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-	return respObj.ID, nil
+	return res.ID, nil
 }
 
 type addDocResponse struct {
@@ -110,30 +91,16 @@ type docIDListResponse struct {
 }
 
 func FetchDocumentIDList(ctx context.Context, a *agent.Agent, courseID, classID string) ([]string, error) {
-	req, err := a.GET(fmt.Sprintf("/api/courses/%s/classes/%s/documents", courseID, classID))
+	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/documents", courseID, classID)
+	res := make([]*docIDListResponse, 0)
+	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
 	}
 
-	var idListResponse []docIDListResponse
-	err = json.NewDecoder(res.Body).Decode(&idListResponse)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-	idList := make([]string, len(idListResponse))
-	for _, resp := range idListResponse {
-		idList = append(idList, resp.ID)
+	idList := make([]string, len(res))
+	for _, r := range res {
+		idList = append(idList, r.ID)
 	}
 	return idList, nil
 }
@@ -152,7 +119,6 @@ func FetchDocument(ctx context.Context, a *agent.Agent, courseID, docID string) 
 	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
 	}
-	// 基本的にレスポンスはapplication/jsonだろうからチェックしてないけどpdfは特別なので確認する
 	if err := assertContentType(res, "application/pdf"); err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
@@ -169,28 +135,14 @@ type attendCodeResponse struct {
 }
 
 func GetAttendanceCode(ctx context.Context, a *agent.Agent, courseID, classID string) (string, error) {
-	req, err := a.GET(fmt.Sprintf("/api/courses/%s/classes/%s/attendance_code", courseID, classID))
+	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/attendance_code", courseID, classID)
+	res := &attendCodeResponse{}
+	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
 	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return "", err
 	}
 
-	var codeResponse attendCodeResponse
-	err = json.NewDecoder(res.Body).Decode(&codeResponse)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-	return codeResponse.Code, nil
+	return res.Code, nil
 }
 
 type attendStudentResponse struct {
@@ -199,29 +151,15 @@ type attendStudentResponse struct {
 }
 
 func GetAttendanceStudentIDs(ctx context.Context, a *agent.Agent, courseID, classID string) ([]string, error) {
-	req, err := a.GET(fmt.Sprintf("/api/courses/%s/classes/%s/attendances", courseID, classID))
+	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/attendances", courseID, classID)
+	res := make([]*attendStudentResponse, 0)
+	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
-	}
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return nil, err
 	}
 
-	var resObj []attendStudentResponse
-	err = json.NewDecoder(res.Body).Decode(&resObj)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
 	r := make([]string, 0)
-	for _, resp := range resObj {
+	for _, resp := range res {
 		r = append(r, resp.ID)
 	}
 	return r, nil
@@ -237,38 +175,18 @@ type addAssignmentResponse struct {
 }
 
 func AddAssignments(ctx context.Context, a *agent.Agent, courseID, classID, name, desc string, deadline int64) (string, error) {
-	reqBody, err := json.Marshal(&addAssignmentRequest{
+	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID)
+	req := &addAssignmentRequest{
 		Name:     name,
 		Desc:     desc,
 		Deadline: deadline,
-	})
-	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
 	}
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID), bytes.NewBuffer(reqBody))
+	res := &addAssignmentResponse{}
+	_, err := apiRequest(ctx, a, http.MethodPost, rpath, req, res, []int{http.StatusOK})
 	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
 		return "", err
 	}
-
-	var resp addAssignmentResponse
-	err = json.NewDecoder(res.Body).Decode(&resp)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-	return resp.ID, nil
+	return res.ID, nil
 }
 
 func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, assignmentID, fileName string, data []byte) error {
