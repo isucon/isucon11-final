@@ -21,6 +21,17 @@ func assertStatusCode(res *http.Response, expectCode int) error {
 	}
 	return nil
 }
+func assertContentType(res *http.Response, expectType string) error {
+	if res.Header.Get("Content-Type") != expectType {
+		// 以降利用しないres.Bodyはコネクション維持のために読み捨てる
+		_, _ = io.Copy(ioutil.Discard, res.Body)
+		return failure.NewError(fails.ErrHTTP, fmt.Errorf(
+			"%s ではないContent-Typeが返却されました: %s (%s: %s)",
+			expectType, res.Header.Get("Content-Type"), res.Request.Method, res.Request.URL.Path,
+		))
+	}
+	return nil
+}
 
 func assertChecksum(_ *http.Response) error {
 	return nil
