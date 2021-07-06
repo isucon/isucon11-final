@@ -98,7 +98,7 @@ func FetchDocumentIDList(ctx context.Context, a *agent.Agent, courseID, classID 
 		return nil, err
 	}
 
-	idList := make([]string, len(res))
+	idList := make([]string, 0, len(res))
 	for _, r := range res {
 		idList = append(idList, r.ID)
 	}
@@ -158,7 +158,7 @@ func GetAttendanceStudentIDs(ctx context.Context, a *agent.Agent, courseID, clas
 		return nil, err
 	}
 
-	r := make([]string, 0)
+	r := make([]string, 0, len(res))
 	for _, resp := range res {
 		r = append(r, resp.ID)
 	}

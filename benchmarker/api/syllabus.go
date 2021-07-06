@@ -30,7 +30,7 @@ func SearchSyllabus(ctx context.Context, a *agent.Agent, keyword string) ([]stri
 		return nil, err
 	}
 
-	syllabusIDs := make([]string, len(res))
+	syllabusIDs := make([]string, 0, len(res))
 	for _, s := range res {
 		syllabusIDs = append(syllabusIDs, s.ID)
 	}
