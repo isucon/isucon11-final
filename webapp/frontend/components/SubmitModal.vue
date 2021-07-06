@@ -62,7 +62,7 @@
           "
           @click="close"
         >
-          Cancel
+          閉じる
         </button>
         <button
           type="button"
@@ -80,7 +80,7 @@
           "
           @click="upload"
         >
-          Submit
+          提出
         </button>
       </div>
     </card>
