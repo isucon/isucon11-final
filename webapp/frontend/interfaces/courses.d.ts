@@ -33,16 +33,11 @@ export interface Assignment {
   id: string
   name: string
   description: string
-  deadline: string
-  // not implemented
-  // submitted: boolean
 }
 
 export interface Classwork {
   id: string
   title: string
-  // not implemented
-  // startedAt: string
   description: string
   documents: Array<Document>
   assignments: Array<Assignment>

@@ -149,6 +149,21 @@ export default Vue.extend({
       this.files.splice(index, 1)
     },
     upload() {
+      const formData = new FormData()
+      for (const file of this.files) {
+        formData.append('file', file)
+      }
+      this.$axios
+        .post(
+          `/${this.$route.params.courseId}/assignments/${this.assignmentId}`,
+          formData
+        )
+        .then((response) => {
+          console.log(response.data)
+        })
+        .catch((error) => {
+          console.log(error)
+        })
       this.close()
     },
     close() {

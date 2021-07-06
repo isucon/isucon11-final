@@ -27,7 +27,7 @@
                 <tr class="bg-gray-300">
                   <th class="px-4 py-2">課題番号</th>
                   <th class="px-4 py-2">課題名</th>
-                  <th class="px-4 py-2">提出期限</th>
+                  <th class="px-4 py-2">課題内容</th>
                   <th class="px-4 py-2">提出日</th>
                   <th class="px-4 py-2"></th>
                 </tr>
@@ -40,9 +40,13 @@
                 >
                   <td class="px-4 py-2">{{ index }}</td>
                   <td class="px-4 py-2">{{ assignment.name }}</td>
-                  <td class="px-4 py-2">{{ assignment.deadline }}</td>
+                  <td class="px-4 py-2">{{ assignment.desscription }}</td>
                   <td class="px-4 py-2">
-                    {{ getAssignmentStatusMessage(assignment) }}
+                    <span
+                      class="text-primary-400 cursor-pointer"
+                      @click="downloadAssignment(assignment)"
+                      >提出済み課題のダウンロード</span
+                    >
                   </td>
                   <td class="px-4 py-2">
                     <span
@@ -105,13 +109,6 @@ export default Vue.extend({
     getRowBgColor(index: number) {
       return index % 2 === 1 ? 'bg-gray-200' : null
     },
-    // `submitted` is not implemented yet
-    // getAssignmentStatusMessage(assignment: Assignment) {
-    //   return assignment.submitted ? '提出済み' : '提出ファイルはありません'
-    // },
-    getAssignmentStatusMessage(_assignment: Assignment) {
-      return '提出済み'
-    },
     openModal(index: number) {
       this.assignmentName = this.classwork.assignments[index].name
       this.assignmentId = this.classwork.assignments[index].id
@@ -120,16 +117,31 @@ export default Vue.extend({
       this.assignmentName = ''
       this.assignmentId = ''
     },
-    download(doc: Document) {
+    download(name: string, data: Blob) {
+      const link = document.createElement('a')
+      link.href = window.URL.createObjectURL(data)
+      link.download = name
+      link.click()
+    },
+    downloadDocument(doc: Document) {
       this.$axios
         .$get(`/api/courses/${this.course.id}/documents/${doc.id}`, {
           responseType: 'blob',
         })
         .then((response) => {
-          const link = document.createElement('a')
-          link.href = window.URL.createObjectURL(response)
-          link.download = doc.name
-          link.click()
+          this.download(doc.name, response)
+        })
+    },
+    downloadAssignment(assignment: Assignment) {
+      this.$axios
+        .$get(
+          `/api/courses/${this.course.id}/assignments/${assignment.id}/export`,
+          {
+            responseType: 'blob',
+          }
+        )
+        .then((response) => {
+          this.download(assignment.name, response)
         })
     },
   },
