@@ -108,7 +108,7 @@
                 <td>{{ c.credit }}</td>
                 <td>椅子 昆</td>
                 <td>
-                  <NuxtLink :to="`/course/${c.id}`" class="text-primary-500"
+                  <NuxtLink :to="`/syllabus/${c.id}`" class="text-primary-500"
                     >詳細を見る
                   </NuxtLink>
                 </td>
