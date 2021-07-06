@@ -89,6 +89,7 @@ type DataType = {
 }
 
 export default Vue.extend({
+  middleware: 'is_loggedin',
   components: {
     SearchModal,
     CalendarCell,
