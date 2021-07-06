@@ -17,6 +17,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./frontend:/frontend
+      - node_modules:/frontend/node_modules
     ports:
       - "3000:3000"
   backend:
@@ -64,3 +65,4 @@ services:
 
 volumes:
   mysql:
+  node_modules:

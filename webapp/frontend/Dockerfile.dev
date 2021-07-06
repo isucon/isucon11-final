@@ -4,4 +4,10 @@ EXPOSE 3000
 
 WORKDIR /frontend
 
-CMD ["yarn", "run", "dev"]
+COPY package*.json ./
+
+RUN yarn install
+
+COPY . ./
+
+CMD yarn run dev
