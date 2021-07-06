@@ -11,9 +11,10 @@
         >
           <template slot="announcements">
             <announcement
-              v-for="announcement in announcements"
+              v-for="(announcement, index) in announcements"
               :key="announcement.id"
               :announcement="announcement"
+              @open="openAnnouncement(announcement, index)"
             />
           </template>
           <template slot="classworks">
@@ -51,21 +52,24 @@ export default Vue.extend({
   async asyncData({ params, $axios }): Promise<CourseData> {
     const course: Course = await $axios.$get(`/api/courses/${params.id}`)
     // not implemented
-    // const announcements: Array<Announcement> = await $axios.$get(
-    //   `/api/courses/${params.id}/announcements`
-    // )
+    // const announcements: Array<Announcement> = (
+    //   await $axios.$get(`/api/courses/${params.id}/announcements`)
+    // ).map((item: Announcement) => {
+    //   item.createdAt = new Date(item.createdAt).toLocaleString()
+    //   return item
+    // })
     const announcements: Array<Announcement> = [
       {
-        id: 'announce2',
-        courseName: '椅子概論',
-        title: '椅子概論 第一回課題の訂正',
-        createdAt: '6/17 10:00',
+        id: '01234567-89ab-cdef-0010-000000000001',
+        courseName: '微分積分基礎',
+        title: 'The third class will be cancelled',
+        createdAt: new Date(1625573684000).toLocaleString(),
       },
       {
-        id: 'announce1',
-        courseName: '椅子概論',
-        title: '第一回講義日時 変更のお知らせ',
-        createdAt: '6/10 10:00',
+        id: '01234567-89ab-cdef-0010-000000000002',
+        courseName: '微分積分基礎',
+        title: 'Comments for your assignments',
+        createdAt: new Date(1625573684000).toLocaleString(),
       },
     ]
     const documents: Array<Document> = await $axios.$get(
@@ -147,6 +151,17 @@ export default Vue.extend({
       announcements,
       classworks,
     }
+  },
+  data(): CourseData | undefined {
+    return undefined
+  },
+  methods: {
+    async openAnnouncement(announcement: Announcement, index: number) {
+      const announcementDetail: Announcement = await this.$axios.$get(
+        `/api/announcements/${announcement.id}`
+      )
+      this.announcements[index].message = announcementDetail.message
+    },
   },
 })
 </script>
