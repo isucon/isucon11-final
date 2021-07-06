@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 export type Course = {
   id: string
   code: string
@@ -11,10 +10,10 @@ export type Course = {
   teacher: string
   keywords: string
   period: number
-  day_of_week: string
+  dayOfWeek: string
   semester: string
   year: number
-  required_courses: Array<string>
+  requiredCourses: Array<string>
 }
 
 export type Announcement = {
