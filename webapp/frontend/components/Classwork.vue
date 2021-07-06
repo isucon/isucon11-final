@@ -28,7 +28,7 @@
                   <th class="px-4 py-2">課題番号</th>
                   <th class="px-4 py-2">課題名</th>
                   <th class="px-4 py-2">課題内容</th>
-                  <th class="px-4 py-2">提出日</th>
+                  <th class="px-4 py-2"></th>
                   <th class="px-4 py-2"></th>
                 </tr>
               </thead>
