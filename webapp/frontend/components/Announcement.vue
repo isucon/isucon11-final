@@ -1,6 +1,6 @@
 <template>
   <div class="mt-2 flex-grow-0">
-    <accordion>
+    <accordion @open="$emit('open')" @close="$emit('close')">
       <template #header>
         <p class="text-2xl text-primary-500 font-bold flex items-center">
           {{ announcement.title }}
@@ -32,10 +32,6 @@ export default Vue.extend({
   },
   data() {
     return {}
-  },
-  methods: {
-    open() {},
-    close() {},
   },
 })
 </script>
