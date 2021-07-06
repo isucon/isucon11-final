@@ -10,7 +10,9 @@
         </div>
       </template>
       <template #default>
-        <p class="text-black text-base mb-4">{{ announcement.message }}</p>
+        <p class="text-black text-base mb-4">
+          {{ announcement.message || '' }}
+        </p>
       </template>
     </accordion>
   </div>
