@@ -19,26 +19,33 @@ export interface Course {
 
 export interface Announcement {
   id: string
+  courseName: string
   title: string
-  message: string
+  message?: string
   createdAt: string
 }
 
 export interface Document {
   id: string
+  classId: string
   name: string
 }
 
 export interface Assignment {
   id: string
+  classId: string
   name: string
   description: string
 }
 
-export interface Classwork {
+export interface ClassInfo {
   id: string
+  part: number
   title: string
   description: string
+}
+
+export interface Classwork extends ClassInfo {
   documents: Array<Document>
   assignments: Array<Assignment>
 }
