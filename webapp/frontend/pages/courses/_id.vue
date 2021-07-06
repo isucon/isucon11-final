@@ -41,7 +41,7 @@ import {
   Assignment,
 } from '@/interfaces/courses'
 
-interface CourseData {
+type CourseData = {
   course: Course
   announcements: Array<Announcement>
   classworks: Array<Classwork>

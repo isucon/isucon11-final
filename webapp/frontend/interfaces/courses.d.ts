@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-export interface Course {
+export type Course = {
   id: string
   code: string
   type: string
@@ -17,7 +17,7 @@ export interface Course {
   required_courses: Array<string>
 }
 
-export interface Announcement {
+export type Announcement = {
   id: string
   courseName: string
   title: string
@@ -25,27 +25,27 @@ export interface Announcement {
   createdAt: string
 }
 
-export interface Document {
+export type Document = {
   id: string
   classId: string
   name: string
 }
 
-export interface Assignment {
+export type Assignment = {
   id: string
   classId: string
   name: string
   description: string
 }
 
-export interface ClassInfo {
+export type ClassInfo = {
   id: string
   part: number
   title: string
   description: string
 }
 
-export interface Classwork extends ClassInfo {
+export type Classwork = ClassInfo & {
   documents: Array<Document>
   assignments: Array<Assignment>
 }

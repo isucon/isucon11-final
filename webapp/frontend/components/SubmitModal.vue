@@ -90,7 +90,7 @@
 <script lang="ts">
 import Vue from 'vue'
 
-interface SubmitFormData {
+type SubmitFormData = {
   files: File[]
 }
 

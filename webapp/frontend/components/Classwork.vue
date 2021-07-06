@@ -77,7 +77,7 @@
 import Vue, { PropOptions } from 'vue'
 import { Course, Classwork, Document, Assignment } from '@/interfaces/courses'
 
-interface ClassworkData {
+type ClassworkData = {
   assignmentName: string
   assignmentId: string
 }

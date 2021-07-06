@@ -25,7 +25,7 @@
 <script lang="ts">
 import Vue, { PropOptions } from 'vue'
 
-interface Tab {
+type Tab = {
   id: string
   label: string
 }
