@@ -35,7 +35,7 @@
                 <tr
                   v-for="(assignment, index) of classwork.assignments"
                   :key="assignment.id"
-                  :class="getRowBgColor(index)"
+                  class="bg-gray-200 odd:bg-white"
                 >
                   <td class="px-4 py-2">{{ index }}</td>
                   <td class="px-4 py-2">{{ assignment.name }}</td>
@@ -98,9 +98,6 @@ export default Vue.extend({
     },
   },
   methods: {
-    getRowBgColor(index: number) {
-      return index % 2 === 1 ? 'bg-gray-200' : null
-    },
     openModal(index: number) {
       this.assignmentName = this.classwork.assignments[index].name
       this.assignmentId = this.classwork.assignments[index].id
