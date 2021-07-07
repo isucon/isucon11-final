@@ -1,5 +1,5 @@
 <template>
-  <div class="py-10 px-8 bg-white shadow-lg">
+  <div class="bg-white shadow-lg px-6 py-4">
     <slot />
   </div>
 </template>
@@ -7,7 +7,5 @@
 <script lang="ts">
 import Vue from 'vue'
 
-export default Vue.extend({
-  name: 'Card',
-})
+export default Vue.extend({})
 </script>
