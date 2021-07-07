@@ -20,7 +20,7 @@
 
 <script lang="ts">
 import Vue, { PropOptions } from 'vue'
-import { Announcement } from '@/interfaces/courses'
+import { Announcement } from '~/types/courses'
 
 export default Vue.extend({
   name: 'Announcement',

@@ -67,7 +67,7 @@
 
 <script lang="ts">
 import Vue, { PropOptions } from 'vue'
-import { Course, Classwork, Document } from '@/interfaces/courses'
+import { Course, Classwork, Document } from '~/types/courses'
 
 type ClassworkData = {
   assignmentName: string

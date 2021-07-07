@@ -40,7 +40,7 @@ import {
   Classwork,
   Document,
   Assignment,
-} from '@/interfaces/courses'
+} from '~/types/courses'
 
 type CourseData = {
   course: Course
