@@ -29,20 +29,35 @@
             <div
               v-for="(file, index) in files"
               :key="file.name"
-              class="text-black text-base"
+              class="flex flex-row items-center text-black text-base"
             >
-              {{ file.name }}&nbsp;&nbsp;<span
-                class="cursor-pointer"
-                @click="removeFile(index)"
-              >
-                X
-              </span>
+              <span class="mr=2">{{ file.name }}</span
+              ><CloseIcon @click="removeFile(index)"></CloseIcon>
             </div>
           </div>
         </template>
         <template v-else>
           <span class="text-black text-base">ファイルが選択されていません</span>
         </template>
+      </div>
+      <div
+        v-if="failed"
+        class="
+          bg-red-100
+          border border-red-400
+          text-red-700
+          px-4
+          py-3
+          rounded
+          relative
+        "
+        role="alert"
+      >
+        <strong class="font-bold">エラー</strong>
+        <span class="block sm:inline">課題の提出に失敗しました</span>
+        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
+          <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
+        </span>
       </div>
       <div class="px-4 py-3 flex justify-center">
         <button
@@ -92,6 +107,7 @@ import Vue from 'vue'
 
 type SubmitFormData = {
   files: File[]
+  failed: Boolean
 }
 
 export default Vue.extend({
@@ -122,6 +138,7 @@ export default Vue.extend({
   data(): SubmitFormData {
     return {
       files: [],
+      failed: false,
     }
   },
   computed: {
@@ -160,15 +177,23 @@ export default Vue.extend({
         )
         .then((response) => {
           console.log(response.data)
+          this.close()
         })
         .catch((error) => {
           console.log(error)
+          this.showAlert()
         })
-      this.close()
     },
     close() {
       this.files = []
+      this.hideAlert()
       this.$emit('close')
+    },
+    showAlert() {
+      this.failed = true
+    },
+    hideAlert() {
+      this.failed = false
     },
   },
 })
