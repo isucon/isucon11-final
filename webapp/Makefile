@@ -2,7 +2,7 @@ TBLS_VERSION := 1.50.0
 
 .PHONY: up
 up: ## prepare dev environment
-	@docker compose up -d --build
+	@docker compose up backend mysql adminer -d --build
 	@until (curl -X POST --silent http://localhost:7000/initialize) do sleep 1;done; echo initialized
 
 .PHONY: down
