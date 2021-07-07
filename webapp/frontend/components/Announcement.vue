@@ -1,6 +1,6 @@
 <template>
   <div class="mt-2 flex-grow-0">
-    <accordion @open="$emit('open')" @close="$emit('close')">
+    <Accordion @open="$emit('open')" @close="$emit('close')">
       <template #header>
         <p class="text-2xl text-primary-500 font-bold flex items-center">
           {{ announcement.title }}
@@ -14,7 +14,7 @@
           {{ announcement.message || '' }}
         </p>
       </template>
-    </accordion>
+    </Accordion>
   </div>
 </template>
 

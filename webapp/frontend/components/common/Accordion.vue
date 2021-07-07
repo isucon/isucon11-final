@@ -1,5 +1,5 @@
 <template>
-  <card>
+  <Card>
     <div class="flex flex-col justify-between leading-normal">
       <a
         href="#"
@@ -14,7 +14,7 @@
         <span v-show="isOpen" class="text-primary-500">&#9650; 閉じる</span>
       </a>
     </div>
-  </card>
+  </Card>
 </template>
 
 <script lang="ts">

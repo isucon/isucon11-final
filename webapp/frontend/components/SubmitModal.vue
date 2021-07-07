@@ -1,6 +1,6 @@
 <template>
-  <modal :is-shown="isShown" @close="emit('close')">
-    <card>
+  <Modal :is-shown="isShown" @close="emit('close')">
+    <Card>
       <p class="text-2xl text-black font-bold flex justify-center mb-4">
         {{ title }}
       </p>
@@ -98,8 +98,8 @@
           提出
         </button>
       </div>
-    </card>
-  </modal>
+    </Card>
+  </Modal>
 </template>
 
 <script lang="ts">

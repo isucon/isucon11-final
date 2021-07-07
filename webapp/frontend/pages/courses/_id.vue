@@ -1,6 +1,6 @@
 <template>
   <div>
-    <card>
+    <Card>
       <div class="flex-1 flex-col">
         <h1 class="text-2xl mb-4 font-bold">{{ course.name }}</h1>
         <tabs
@@ -10,7 +10,7 @@
           ]"
         >
           <template slot="announcements">
-            <announcement
+            <Announcement
               v-for="(announcement, index) in announcements"
               :key="announcement.id"
               :announcement="announcement"
@@ -18,7 +18,7 @@
             />
           </template>
           <template slot="classworks">
-            <classwork
+            <Classwork
               v-for="classwork in classworks"
               :key="classwork.id"
               :course="course"
@@ -27,7 +27,7 @@
           </template>
         </tabs>
       </div>
-    </card>
+    </Card>
   </div>
 </template>
 

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="mt-2">
-      <card>
+      <Card>
         <div class="mb-8 flex flex-col justify-between leading-normal">
           <p class="text-2xl text-primary-500 font-bold flex items-center">
             {{ classwork.title }}
@@ -52,9 +52,9 @@
             </table>
           </div>
         </div>
-      </card>
+      </Card>
     </div>
-    <submit-modal
+    <SubmitModal
       :is-shown="modalVisibility"
       :course-name="course.name"
       :class-title="classwork.title"
