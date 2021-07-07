@@ -29,7 +29,6 @@
                   <th class="px-4 py-2">課題名</th>
                   <th class="px-4 py-2">課題内容</th>
                   <th class="px-4 py-2"></th>
-                  <th class="px-4 py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -41,13 +40,6 @@
                   <td class="px-4 py-2">{{ index }}</td>
                   <td class="px-4 py-2">{{ assignment.name }}</td>
                   <td class="px-4 py-2">{{ assignment.desscription }}</td>
-                  <td class="px-4 py-2">
-                    <span
-                      class="text-primary-400 cursor-pointer"
-                      @click="downloadAssignment(assignment)"
-                      >提出済み課題のダウンロード</span
-                    >
-                  </td>
                   <td class="px-4 py-2">
                     <span
                       class="text-primary-400 cursor-pointer"
@@ -75,7 +67,7 @@
 
 <script lang="ts">
 import Vue, { PropOptions } from 'vue'
-import { Course, Classwork, Document, Assignment } from '@/interfaces/courses'
+import { Course, Classwork, Document } from '@/interfaces/courses'
 
 type ClassworkData = {
   assignmentName: string
@@ -130,18 +122,6 @@ export default Vue.extend({
         })
         .then((response) => {
           this.download(doc.name, response)
-        })
-    },
-    downloadAssignment(assignment: Assignment) {
-      this.$axios
-        .$get(
-          `/api/courses/${this.course.id}/assignments/${assignment.id}/export`,
-          {
-            responseType: 'blob',
-          }
-        )
-        .then((response) => {
-          this.download(assignment.name, response)
         })
     },
   },
