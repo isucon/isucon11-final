@@ -91,7 +91,7 @@
               時限
             </div>
             <div class="px-2 py-2 border">
-              {{ course.day_of_week }}{{ course.period }}
+              {{ course.dayOfWeek }}{{ course.period }}
             </div>
             <div
               class="
