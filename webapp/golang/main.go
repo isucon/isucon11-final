@@ -61,9 +61,9 @@ func main() {
 	{
 		usersAPI := API.Group("/users")
 		{
-			usersAPI.GET("/:userID/courses", h.GetRegisteredCourses)
-			usersAPI.PUT("/:userID/courses", h.RegisterCourses)
-			usersAPI.GET("/:userID/grades", h.GetGrades)
+			usersAPI.GET("/me/courses", h.GetRegisteredCourses)
+			usersAPI.PUT("/me/courses", h.RegisterCourses)
+			usersAPI.GET("/me/grades", h.GetGrades)
 		}
 		syllabusAPI := API.Group("/syllabus")
 		{
@@ -220,12 +220,6 @@ type PostGradeRequest struct {
 	Grade  string    `json:"grade"`
 }
 
-type RegisterCoursesRequestContent struct {
-	ID string `json:"id"`
-}
-
-type RegisterCoursesRequest []RegisterCoursesRequestContent
-
 type GetAttendanceCodeResponse struct {
 	Code string `json:"code"`
 }
@@ -314,17 +308,27 @@ type User struct {
 }
 
 type Course struct {
-	ID          uuid.UUID     `db:"id"`
-	Code        string        `db:"code"`
-	Type        string        `db:"type"`
-	Name        string        `db:"name"`
-	Description string        `db:"description"`
-	Credit      uint8         `db:"credit"`
-	Classroom   string        `db:"classroom"`
-	Capacity    sql.NullInt32 `db:"capacity"`
-	TeacherID   uuid.UUID     `db:"teacher_id"`
-	Keywords    string        `db:"keywords"`
+	ID          uuid.UUID    `db:"id"`
+	Code        string       `db:"code"`
+	Type        string       `db:"type"`
+	Name        string       `db:"name"`
+	Description string       `db:"description"`
+	Credit      uint8        `db:"credit"`
+	Period      uint8        `db:"period"`
+	DayOfWeek   string       `db:"day_of_week"`
+	TeacherID   uuid.UUID    `db:"teacher_id"`
+	Keywords    string       `db:"keywords"`
+	Status      CourseStatus `db:"status"`
+	CreatedAt   time.Time    `db:"created_at"`
 }
+
+type CourseStatus string
+
+const (
+	StatusReg    CourseStatus = "reg"
+	_            CourseStatus = "class" /* FIXME: use StatusClass */
+	StatusResult CourseStatus = "result"
+)
 
 type Schedule struct {
 	ID        uuid.UUID `db:"id"`
@@ -516,181 +520,102 @@ func (h *handlers) GetRegisteredCourses(context echo.Context) error {
 	return context.JSON(http.StatusOK, res)
 }
 
-type RegisterCoursesErrorResponse struct {
-	NotFoundCourse         []string    `json:"not_found_course,omitempty"`
-	NotTakenRequiredCourse []uuid.UUID `json:"not_taken_required_course,omitempty"`
-	CapacityExceeded       []uuid.UUID `json:"capacity_exceeded,omitempty"`
-	TimeslotDuplicated     []uuid.UUID `json:"timeslot_duplicated,omitempty"`
+type RegisterCourseRequest struct {
+	ID string `json:"id"`
 }
 
-func (h *handlers) RegisterCourses(context echo.Context) error {
-	sess, err := session.Get(SessionName, context)
+type RegisterCoursesRequest []RegisterCourseRequest
+
+type RegisterCoursesErrorResponse struct {
+	NotFoundCourse        []string    `json:"not_found_course,omitempty"`
+	StatusNotRegistration []uuid.UUID `json:"status_not_registration,omitempty"`
+	TimeslotDuplicated    []uuid.UUID `json:"timeslot_duplicated,omitempty"`
+}
+
+func (h *handlers) RegisterCourses(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
-	if uuid.Equal(uuid.NIL, userID) {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-	userIDParam := uuid.Parse(context.Param("userID"))
-	if uuid.Equal(uuid.NIL, userIDParam) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid userID")
-	}
-	if !uuid.Equal(userID, userIDParam) {
-		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	var req RegisterCoursesRequest
-	if err := context.Bind(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
-	}
-
-	var phase Phase
-	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
-		context.Logger().Error(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	if phase.Phase != PhaseRegistration {
-		return echo.NewHTTPError(http.StatusBadRequest, "not registration phase.")
 	}
 
 	tx, err := h.DB.Beginx()
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	// MEMO: SELECT ... FOR UPDATE は今のDB構造だとデッドロックする
-	if _, err = tx.Exec("LOCK TABLES `registrations` WRITE, `courses` READ, `course_requirements` READ, `grades` READ, `schedules` READ, `course_schedules` READ"); err != nil {
-		_ = tx.Rollback()
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-	defer func() {
-		_, _ = h.DB.Exec("UNLOCK TABLES")
-	}()
 
 	hasError := false
 	var errors RegisterCoursesErrorResponse
-	var courseList []Course
-	for _, content := range req {
-		courseID := uuid.Parse(content.ID)
+	var courses []Course
+	for _, courseReq := range req {
+		courseID := uuid.Parse(courseReq.ID)
 		if courseID == nil {
 			hasError = true
-			errors.NotFoundCourse = append(errors.NotFoundCourse, content.ID)
+			errors.NotFoundCourse = append(errors.NotFoundCourse, courseReq.ID)
 			continue
 		}
 
 		var course Course
-		if err := tx.Get(&course, "SELECT `courses`.* "+
-			"FROM `courses` "+
-			"JOIN `course_schedules` ON `courses`.`id` = `course_schedules`.`course_id` "+
-			"JOIN `schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
-			"WHERE `courses`.`id` = ? AND `schedules`.`year` = ? AND `schedules`.`semester` = ?", courseID, phase.Year, phase.Semester); err == sql.ErrNoRows {
+		if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
 			hasError = true
-			errors.NotFoundCourse = append(errors.NotFoundCourse, content.ID)
+			errors.NotFoundCourse = append(errors.NotFoundCourse, courseReq.ID)
 			continue
 		} else if err != nil {
 			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		if course.Status != StatusReg {
+			hasError = true
+			errors.StatusNotRegistration = append(errors.StatusNotRegistration, course.ID)
+			continue
 		}
 
 		// MEMO: すでに履修登録済みの科目は無視する
 		var registerCount int
 		if err := tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID); err != nil {
 			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
 		}
 		if registerCount > 0 {
 			continue
 		}
 
-		courseList = append(courseList, course)
+		courses = append(courses, course)
 	}
 
-	for _, course := range courseList {
-		// MEMO: 前提講義バリデーション
-		var requiredCourseIDList []uuid.UUID
-		if err = tx.Select(&requiredCourseIDList, "SELECT `required_course_id` FROM `course_requirements` WHERE `course_id` = ?", course.ID); err != nil {
-			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-		for _, requiredCourseID := range requiredCourseIDList {
-			var gradeCount int
-			if err = tx.Get(&gradeCount, "SELECT COUNT(*) FROM `grades` WHERE `user_id` = ? AND `course_id` = ?", userID, requiredCourseID); err != nil {
-				_ = tx.Rollback()
-				log.Println(err)
-				return context.NoContent(http.StatusInternalServerError)
-			}
-			if gradeCount == 0 {
-				hasError = true
-				errors.NotTakenRequiredCourse = append(errors.NotTakenRequiredCourse, course.ID)
-				break
-			}
-		}
-
-		// MEMO: 受講者数制限バリデーション
-		var registerCount uint32
-		if err = tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ?", course.ID); err != nil {
-			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-		if course.Capacity.Valid && registerCount >= uint32(course.Capacity.Int32) {
-			hasError = true
-			errors.CapacityExceeded = append(errors.CapacityExceeded, course.ID)
-		}
-	}
-
-	if len(courseList) > 0 {
+	if len(courses) > 0 {
 		// MEMO: スケジュールの重複バリデーション
-		courseIDList := make([]uuid.UUID, 0, len(courseList))
-		for _, course := range courseList {
-			courseIDList = append(courseIDList, course.ID)
-		}
-
-		query := "SELECT `schedules`.* " +
-			"FROM `schedules`" +
-			"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` " +
-			"WHERE `course_schedules`.`course_id` IN (?)"
-		query, args, err := sqlx.In(query, courseIDList)
-		if err != nil {
+		var registeredCourses []Course
+		if err := tx.Select(&registeredCourses, "SELECT `courses`.* "+
+			"FROM `courses` "+
+			"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
+			"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
 			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		var schedules []Schedule
-		if err := tx.Select(&schedules, query, args...); err != nil {
-			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
-		}
+		registeredCourses = append(registeredCourses, courses...)
 
-		var registeredSchedules []Schedule
-		if err := tx.Select(&registeredSchedules, "SELECT `schedules`.* "+
-			"FROM `schedules` "+
-			"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
-			"JOIN `registrations` ON `course_schedules`.`course_id` = `registrations`.`course_id` "+
-			"WHERE `schedules`.`year` = ? AND `schedules`.`semester` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", phase.Year, phase.Semester, userID); err != nil {
-			_ = tx.Rollback()
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-
-		registeredSchedules = append(registeredSchedules, schedules...)
-
-		for _, schedule1 := range schedules {
-			for _, schedule2 := range registeredSchedules {
-				if !uuid.Equal(schedule1.ID, schedule2.ID) && schedule1.Period == schedule2.Period && schedule1.DayOfWeek == schedule2.DayOfWeek {
+		for _, course1 := range courses {
+			for _, course2 := range registeredCourses {
+				if !uuid.Equal(course1.ID, course2.ID) && course1.Period == course2.Period && course1.DayOfWeek == course2.DayOfWeek {
 					hasError = true
-					errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, schedule1.ID)
+					errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, course1.ID)
 					break
 				}
 			}
@@ -699,24 +624,24 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 
 	if hasError {
 		_ = tx.Rollback()
-		return context.JSON(http.StatusBadRequest, errors)
+		return c.JSON(http.StatusBadRequest, errors)
 	}
 
-	for _, course := range courseList {
+	for _, course := range courses {
 		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
 			_ = tx.Rollback()
 			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
+			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
 		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusOK)
+	return c.NoContent(http.StatusOK)
 }
 
 func (h *handlers) GetGrades(context echo.Context) error {
