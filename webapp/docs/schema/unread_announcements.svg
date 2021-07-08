@@ -74,11 +74,11 @@
 <text text-anchor="start" x="554" y="-173.9" font-family="Arial" font-size="14.00" fill="#000000">id </text>
 <text text-anchor="start" x="568.7798" y="-173.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
 <polygon fill="none" stroke="#000000" points="547,-132.5 547,-162.5 749,-162.5 749,-132.5 547,-132.5"/>
-<text text-anchor="start" x="554" y="-143.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
-<text text-anchor="start" x="592.899" y="-143.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
+<text text-anchor="start" x="554" y="-143.9" font-family="Arial" font-size="14.00" fill="#000000">code </text>
+<text text-anchor="start" x="588.2384" y="-143.9" font-family="Arial" font-size="14.00" fill="#666666">[char(8)]</text>
 <polygon fill="none" stroke="#000000" points="547,-102.5 547,-132.5 749,-132.5 749,-102.5 547,-102.5"/>
-<text text-anchor="start" x="554" y="-113.9" font-family="Arial" font-size="14.00" fill="#000000">mail_address </text>
-<text text-anchor="start" x="641.1206" y="-113.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
+<text text-anchor="start" x="554" y="-113.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
+<text text-anchor="start" x="592.899" y="-113.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
 <polygon fill="none" stroke="#000000" points="547,-72.5 547,-102.5 749,-102.5 749,-72.5 547,-72.5"/>
 <text text-anchor="start" x="553.8668" y="-83.9" font-family="Arial" font-size="14.00" fill="#000000">hashed_password </text>
 <text text-anchor="start" x="671.3506" y="-83.9" font-family="Arial" font-size="14.00" fill="#666666">[binary(60)]</text>

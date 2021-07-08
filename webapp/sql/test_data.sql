@@ -1,271 +1,162 @@
-INSERT INTO `users` (`id`, `name`, `mail_address`, `hashed_password`, `type`) VALUES
+INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 (
   '01234567-89ab-cdef-0001-000000000001',
+  'S0000001',
   '佐藤太郎',
-  'sato@example.com',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02', -- "password"
   'student'
 ),
 (
   '01234567-89ab-cdef-0001-000000000002',
+  'S0000002',
   '鈴木次郎',
-  'suzuki@example.com',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02',
   'student'
 ),
 (
   '01234567-89ab-cdef-0001-000000000003',
+  'S0000003',
   '高橋三郎',
-  'takahashi@example.com',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02',
   'student'
 ),
 (
   '01234567-89ab-cdef-0001-000000000004',
+  'F0000001',
   '椅子昆',
-  'isu@example.com',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02',
   'faculty'
 ),
 (
   '01234567-89ab-cdef-0001-000000000005',
+  'F0000002',
   '田山勝蔵',
-  'tayama.s@isu.com',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02',
   'faculty'
 );
 
-INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `classroom`, `capacity`, `teacher_id`, `keywords`) VALUES
+INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`, `status`, `created_at`) VALUES
 (
   '01234567-89ab-cdef-0002-000000000001',
   'ISU.F117',
-  'liberal-arts',
+  'major-subjects',
   '微分積分基礎',
   '微積分の基礎を学びます。',
   2,
-  'A101講義室',
-  100,
+  1,
+  'monday',
   '01234567-89ab-cdef-0001-000000000004',
-  '数学 微分 積分 基礎'
+  '数学 微分 積分 基礎',
+  'reg',
+  NOW(6)
 ),
 (
   '01234567-89ab-cdef-0002-000000000002',
   'ISU.M101',
-  'liberal-arts',
+  'major-subjects',
   '線形代数基礎',
   '線形代数の基礎を学びます。',
   2,
-  'B101講義室',
-  100,
+  2,
+  'tuesday',
   '01234567-89ab-cdef-0001-000000000004',
-  '数学 線形代数 基礎'
+  '数学 線形代数 基礎',
+  'reg',
+  NOW(6)
 ),
 (
   '01234567-89ab-cdef-0002-000000000003',
-  'CSC.A331',
-  'major-subjects',
-  'アルゴリズム基礎',
-  'アルゴリズムの基礎を学びます。',
-  2,
-  'C101講義室',
-  NULL,
-  '01234567-89ab-cdef-0001-000000000005',
-  '計算機科学 アルゴリズム 基礎'
-),
-(
-  '01234567-89ab-cdef-0002-000000000004',
-  'CSC.A332',
-  'major-subjects',
-  'アルゴリズム応用',
-  'アルゴリズムの応用を学びます。',
-  2,
-  'C101講義室',
-  30,
-  '01234567-89ab-cdef-0001-000000000005',
-  '計算機科学 アルゴリズム 応用'
-),
-(
-  '01234567-89ab-cdef-0002-000000000011',
-  'ISU.F118',
-  'major-subjects',
-  '微分積分応用',
-  '微積分の応用を学びます。',
-  2,
-  'A102講義室',
-  100,
-  '01234567-89ab-cdef-0001-000000000004',
-  '数学 微分 積分 応用'
-),
-(
-  '01234567-89ab-cdef-0002-000000000012',
-  'ISU.F119',
-  'major-subjects',
-  '線形代数応用',
-  '線形代数の応用を学びます。',
-  2,
-  'B102講義室',
-  NULL,
-  '01234567-89ab-cdef-0001-000000000004',
-  '数学 線形代数 応用'
-),
-(
-  '01234567-89ab-cdef-0002-000000000013',
   'CSP.B003',
-  'liberal-arts',
+  'major-subjects',
   'プログラミング',
   'プログラミングを学びます。',
   2,
-  'C102講義室',
-  100,
+  3,
+  'wednesday',
   '01234567-89ab-cdef-0001-000000000005',
-  '計算機科学 C言語'
+  '計算機科学 C言語',
+  'reg',
+  NOW(6)
 ),
 (
-  '01234567-89ab-cdef-0002-000000000014',
+  '01234567-89ab-cdef-0002-000000000004',
   'CSC.B103',
   'major-subjects',
   'プログラミング演習A',
   'プログラミングの演習を行います。',
   1,
-  '演習室1',
-  50,
+  4,
+  'wednesday',
   '01234567-89ab-cdef-0001-000000000005',
-  '計算機科学 C言語 演習'
+  '計算機科学 C言語 演習',
+  'reg',
+  NOW(6)
 ),
 (
-  '01234567-89ab-cdef-0002-000000000015',
+  '01234567-89ab-cdef-0002-000000000005',
   'CSC.B104',
   'major-subjects',
   'プログラミング演習B',
   'プログラミングの演習を行います。',
   1,
-  '演習室1',
-  50,
-  '01234567-89ab-cdef-0001-000000000005',
-  '計算機科学 C言語 演習'
-);
-
-INSERT INTO `course_requirements` (`course_id`, `required_course_id`) VALUES
-(
-  '01234567-89ab-cdef-0002-000000000011',
-  '01234567-89ab-cdef-0002-000000000001'
-),
-(
-  '01234567-89ab-cdef-0002-000000000012',
-  '01234567-89ab-cdef-0002-000000000002'
-);
-
-INSERT INTO `schedules` (`id`, `period`, `day_of_week`, `semester`, `year`) VALUES
-(
-  '01234567-89ab-cdef-0003-000000000001',
-  1,
-  'monday',
-  'first',
-  2021
-),
-(
-  '01234567-89ab-cdef-0003-000000000002',
-  2,
+  4,
   'wednesday',
-  'first',
-  2021
+  '01234567-89ab-cdef-0001-000000000005',
+  '計算機科学 C言語 演習',
+  'reg',
+  NOW(6)
 ),
 (
-  '01234567-89ab-cdef-0003-000000000003',
-  3,
-  'friday',
-  'first',
-  2021
-),
-(
-  '01234567-89ab-cdef-0003-000000000004',
-  4,
-  'friday',
-  'first',
-  2021
-),
-(
-  '01234567-89ab-cdef-0003-000000000011',
-  1,
-  'tuesday',
-  'second',
-  2021
-),
-(
-  '01234567-89ab-cdef-0003-000000000012',
+  '01234567-89ab-cdef-0002-000000000006',
+  'LAH.A100',
+  'liberal-arts',
+  'ISUCON基礎',
+  'ISUCONの基礎を学びます。',
   2,
+  1,
   'thursday',
-  'second',
-  2021
+  '01234567-89ab-cdef-0001-000000000005',
+  'ISUCON パフォーマンスチューニング',
+  'reg',
+  NOW(6)
 ),
 (
-  '01234567-89ab-cdef-0003-000000000013',
-  3,
+  '01234567-89ab-cdef-0002-000000000007',
+  'LAH.B101',
+  'liberal-arts',
+  '英語第一',
+  '英語を学びます。',
+  1,
+  2,
   'friday',
-  'second',
-  2021
+  '01234567-89ab-cdef-0001-000000000005',
+  '英語 English',
+  'result',
+  NOW(6)
 ),
 (
-  '01234567-89ab-cdef-0003-000000000014',
-  4,
+  '01234567-89ab-cdef-0002-000000000008',
+  'LAH.B102',
+  'liberal-arts',
+  '英語第二',
+  '英会話を実践します。',
+  1,
+  2,
   'friday',
-  'second',
-  2021
-),
-(
-  '01234567-89ab-cdef-0003-000000000015',
-  4,
-  'friday',
-  'second',
-  2021
+  '01234567-89ab-cdef-0001-000000000005',
+  '英語 英会話 English',
+  'class',
+  NOW(6)
 );
 
-INSERT INTO `course_schedules` (`course_id`, `schedule_id`) VALUES
-(
-  '01234567-89ab-cdef-0002-000000000001',
-  '01234567-89ab-cdef-0003-000000000001'
-),
-(
-  '01234567-89ab-cdef-0002-000000000002',
-  '01234567-89ab-cdef-0003-000000000002'
-),
-(
-  '01234567-89ab-cdef-0002-000000000003',
-  '01234567-89ab-cdef-0003-000000000003'
-),
-(
-  '01234567-89ab-cdef-0002-000000000004',
-  '01234567-89ab-cdef-0003-000000000004'
-),
-(
-  '01234567-89ab-cdef-0002-000000000011',
-  '01234567-89ab-cdef-0003-000000000011'
-),
-(
-  '01234567-89ab-cdef-0002-000000000012',
-  '01234567-89ab-cdef-0003-000000000012'
-),
-(
-  '01234567-89ab-cdef-0002-000000000013',
-  '01234567-89ab-cdef-0003-000000000013'
-),
-(
-  '01234567-89ab-cdef-0002-000000000014',
-  '01234567-89ab-cdef-0003-000000000014'
-),
-(
-  '01234567-89ab-cdef-0002-000000000015',
-  '01234567-89ab-cdef-0003-000000000015'
-);
-
-INSERT INTO `classes` (id, course_id, part, title, description, attendance_code) VALUES
+INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES
 (
   '01234567-89ab-cdef-0004-000000000001',
   '01234567-89ab-cdef-0002-000000000001',
   1,
   '微分積分基礎第一回',
   '微分積分の導入',
-  'test_code'
+  NOW(6)
 ),
 (
   '01234567-89ab-cdef-0004-000000000002',
@@ -273,7 +164,7 @@ INSERT INTO `classes` (id, course_id, part, title, description, attendance_code)
   2,
   '微分積分基礎第二回',
   '微分(1)',
-  'test_code2'
+  NOW(6)
 ),
 (
   '01234567-89ab-cdef-0004-000000000003',
@@ -281,22 +172,5 @@ INSERT INTO `classes` (id, course_id, part, title, description, attendance_code)
   1,
   '線形代数基礎第一回',
   '線形代数とは',
-  'test_code3'
-);
-
-
-INSERT INTO `assignments` (id, class_id, name, description, created_at) VALUES
-(
-  '01234567-89ab-cdef-0005-000000000001',
-  '01234567-89ab-cdef-0004-000000000001',
-  '微分積分基礎 課題 1',
-  '第一回課題. 明日までに提出',
-  NOW()
-),
-(
-  '01234567-89ab-cdef-0005-000000000002',
-  '01234567-89ab-cdef-0004-000000000003',
-  '線形代数基礎 課題 1',
-  '第一回課題. 1週間後までに提出',
-  NOW()
+  NOW(6)
 );

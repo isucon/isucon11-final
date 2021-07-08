@@ -20,85 +20,47 @@ detectVirtualRelations:
   enabled: true
 
 comments:
-  - table: phase
-    tableComment: 単一のレコードに現在のフェーズを保持する。
-    columnComments:
-      phase: 履修登録期間(Registration)、授業期間(term-time)、試験期間(exam-period)のいずれか
-      year: 年度
-      semester: 学期(前期・後期)
   - table: users
     tableComment: ユーザー一覧
     columnComments:
+      code: 学籍番号
       name: ユーザー名
-      mail_address: メールアドレス
       hashed_password: 暗号化されたパスワード
       type: 学生・教員
   - table: courses
     tableComment: 科目一覧
     columnComments:
+      code: 科目コード
+      type: 科目種別
       name: 科目名
       description: 科目の説明
       credit: 単位数
-      classroom: 開講場所
-      capacity: 履修定員
-  - table: course_requirements
-    tableComment: 受講に必要な科目一覧
-    columnComments:
-      course_id: 履修科目
-      required_course_id: 先に履修する必要がある科目
-  - table: schedules
-    tableComment: 時間割で使用する単位区分
-    columnComments:
-      period: 時限(1限〜5限)
-      day_of_week: 曜日
-      semester: 学期(前期・後期)
-      year: 年度
-  - table: course_schedules
-    tableComment: 科目の時間割対応一覧
-    columnComments:
-      course_id: 科目のID
-      schedule_id: 時間割のID
+      period: 開講時限
+      day_of_week: 開講曜日
+      teacher_id: 担当教員のID
+      keywords: キーワード
+      status: 科目ステータス
   - table: registrations
     tableComment: 履修登録一覧
     columnComments:
       course_id: 履修科目のID
       user_id: 学生のID
       deleted_at: 履修取り消し時のタイムスタンプ
-  - table: grades
-    tableComment: 学生の科目別成績一覧
-    columnComments:
-      course_id: 履修科目のID
-      user_id: 学生のID
-      grade: 成績
   - table: classes
     tableComment: 講義一覧
     columnComments:
+      course_id: 科目のID
+      part: 講義の順序
       title: 講義のタイトル
       description: 講義の説明
-      attendance_code: 出席確認用コード
-  - table: documents
-    tableComment: 講義資料一覧
-    columnComments:
-      class_id: 講義のID
-      name:
-        資料のファイル名
-  - table: attendances
-    tableComment: 出席履歴
-    columnComments:
-      class_id: 講義のID
-      user_id: 出席した学生のID
-  - table: assignments
-    tableComment: 課題一覧
-    columnComments:
-      class_id: 講義のID
-      name: 課題名
-      description: 課題の説明
+      submission_closed_at: 課題締め切り時のタイムスタンプ
   - table: submissions
     tableComment: 提出された課題一覧
     columnComments:
-      assignment_id: 対象課題のID
       user_id: 提出した学生のID
+      class_id: 対象講義のID
       name: 提出したファイル名
+      score: 課題のスコア
   - table: announcements
     tableComment: お知らせ一覧
     columnComments:

@@ -11,11 +11,12 @@
 CREATE TABLE `classes` (
   `id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
+  `part` tinyint unsigned NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `description` text COLLATE utf8mb4_bin NOT NULL,
-  `attendance_code` varchar(255) COLLATE utf8mb4_bin NOT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `submission_closed_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `attendance_code` (`attendance_code`),
   KEY `FK_classes_course_id` (`course_id`),
   CONSTRAINT `FK_classes_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
@@ -25,29 +26,29 @@ CREATE TABLE `classes` (
 
 ## Columns
 
-| Name            | Type         | Default | Nullable | Children                                                                              | Parents               | Comment          |
-| --------------- | ------------ | ------- | -------- | ------------------------------------------------------------------------------------- | --------------------- | ---------------- |
-| id              | char(36)     |         | false    | [assignments](assignments.md) [attendances](attendances.md) [documents](documents.md) |                       |                  |
-| course_id       | char(36)     |         | false    |                                                                                       | [courses](courses.md) |                  |
-| title           | varchar(255) |         | false    |                                                                                       |                       | 講義のタイトル          |
-| description     | text         |         | false    |                                                                                       |                       | 講義の説明            |
-| attendance_code | varchar(255) |         | false    |                                                                                       |                       | 出席確認用コード         |
+| Name                 | Type             | Default | Nullable | Children                      | Parents               | Comment                        |
+| -------------------- | ---------------- | ------- | -------- | ----------------------------- | --------------------- | ------------------------------ |
+| id                   | char(36)         |         | false    | [submissions](submissions.md) |                       |                                |
+| course_id            | char(36)         |         | false    |                               | [courses](courses.md) | 科目のID                          |
+| part                 | tinyint unsigned |         | false    |                               |                       | 講義の順序                          |
+| title                | varchar(255)     |         | false    |                               |                       | 講義のタイトル                        |
+| description          | text             |         | false    |                               |                       | 講義の説明                          |
+| created_at           | datetime(6)      |         | false    |                               |                       |                                |
+| submission_closed_at | datetime(6)      |         | true     |                               |                       | 課題締め切り時のタイムスタンプ                |
 
 ## Constraints
 
 | Name                 | Type        | Definition                                      |
 | -------------------- | ----------- | ----------------------------------------------- |
-| attendance_code      | UNIQUE      | UNIQUE KEY attendance_code (attendance_code)    |
 | FK_classes_course_id | FOREIGN KEY | FOREIGN KEY (course_id) REFERENCES courses (id) |
 | PRIMARY              | PRIMARY KEY | PRIMARY KEY (id)                                |
 
 ## Indexes
 
-| Name                 | Definition                                               |
-| -------------------- | -------------------------------------------------------- |
-| FK_classes_course_id | KEY FK_classes_course_id (course_id) USING BTREE         |
-| PRIMARY              | PRIMARY KEY (id) USING BTREE                             |
-| attendance_code      | UNIQUE KEY attendance_code (attendance_code) USING BTREE |
+| Name                 | Definition                                       |
+| -------------------- | ------------------------------------------------ |
+| FK_classes_course_id | KEY FK_classes_course_id (course_id) USING BTREE |
+| PRIMARY              | PRIMARY KEY (id) USING BTREE                     |
 
 ## Relations
 
