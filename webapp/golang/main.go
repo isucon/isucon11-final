@@ -86,7 +86,6 @@ func main() {
 			coursesAPI.POST("/:courseID/classes/:classID", h.SetClassFlag, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/attendances", h.GetAttendances, h.IsAdmin)
 			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncements, h.IsAdmin)
-			coursesAPI.POST("/:courseID/grades", h.SetUserGrades, h.IsAdmin)
 		}
 		announcementsAPI := API.Group("/announcements")
 		{
@@ -1415,28 +1414,6 @@ func (h *handlers) AddAnnouncements(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusCreated, res)
-}
-
-func (h *handlers) SetUserGrades(context echo.Context) error {
-	courseID := uuid.Parse(context.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-
-	var req PostGradesRequest
-	if err := context.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
-	}
-
-	// MEMO: LOGIC: 学生一人の全コース成績登録
-	for _, coursegrade := range req {
-		if _, err := h.DB.Exec("INSERT INTO `grades` (`id`, `user_id`, `course_id`, `grade`) VALUES (?, ?, ?, ?)", uuid.New(), coursegrade.UserID, courseID, coursegrade.Grade); err != nil {
-			log.Println(err)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-	}
-
-	return context.NoContent(http.StatusNoContent)
 }
 
 func (h *handlers) GetAnnouncementList(context echo.Context) error {
