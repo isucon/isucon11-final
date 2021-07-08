@@ -72,6 +72,7 @@ func main() {
 		coursesAPI := API.Group("/courses")
 		{
 			coursesAPI.POST("", h.AddCourse, h.IsAdmin)
+			coursesAPI.PUT("/:courseID/status", h.SetCourseStatus, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
@@ -884,6 +885,29 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, AddCourseResponse{ID: id})
+}
+
+type SetCourseStatusRequest struct {
+	Status string `json:"status"`
+}
+
+func (h *handlers) SetCourseStatus(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var req SetCourseStatusRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %s", err))
+	}
+
+	if _, err := h.DB.Exec("UPDATE `courses` SET `status` = ? WHERE `id` = ?", req.Status, courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 type GetClassResponse struct {
