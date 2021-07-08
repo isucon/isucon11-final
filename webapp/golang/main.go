@@ -263,7 +263,7 @@ type Phase struct {
 type UserType string
 
 const (
-	_       UserType = "student" /* FIXME: use Student */
+	Student UserType = "student"
 	Faculty UserType = "faculty"
 )
 
@@ -876,15 +876,54 @@ func (h *handlers) AddCourse(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %s", err))
 	}
 
-	id := uuid.NewRandom()
-	_, err = h.DB.Exec("INSERT INTO `courses` (id, code, type, name, description, credit, period, day_of_week, teacher_id, keywords, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
-		id, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
+	tx, err := h.DB.Beginx()
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusCreated, AddCourseResponse{ID: id})
+	courseID := uuid.NewRandom()
+	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
+	if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := uuid.NewRandom()
+	_, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
+		announcementID, courseID, fmt.Sprintf("コース追加: %s", req.Name), fmt.Sprintf("コースが新しく追加されました: %s\n%s", req.Name, req.Description))
+	if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var users []*User
+	if err := tx.Select(&users, "SELECT * FROM `users` WHERE `type` = ?", Student); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: N+1だけど最初から無くても良いかもしれない
+	for _, user := range users {
+		_, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())",
+			announcementID, user.ID)
+		if err != nil {
+			c.Logger().Error(err)
+			_ = tx.Rollback()
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusCreated, AddCourseResponse{ID: courseID})
 }
 
 type SetCourseStatusRequest struct {
