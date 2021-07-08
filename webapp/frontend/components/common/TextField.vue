@@ -24,6 +24,8 @@
         :placeholder="placeholder"
         :value="defaultValue"
         @input="$emit('input', $event.target.value)"
+        @keydown="$emit('keydown', $event)"
+        @blur="$emit('blur', $event)"
       />
     </div>
   </div>
