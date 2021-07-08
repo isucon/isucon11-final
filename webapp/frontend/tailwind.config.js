@@ -29,6 +29,7 @@ module.exports = {
       },
       gridTemplateColumns: {
         calendar: 'minmax(0, 2.5rem) repeat(5, minmax(0, 1fr));',
+        syllabus: 'minmax(min-content, 10rem) 1fr;',
       },
     },
   },
