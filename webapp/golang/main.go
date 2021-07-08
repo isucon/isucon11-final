@@ -28,7 +28,6 @@ const (
 	SQLDirectory           = "../sql/"
 	AssignmentsDirectory   = "../assignments/"
 	AssignmentTmpDirectory = "../assignments/tmp/"
-	DocDirectory           = "../documents/"
 	SessionName            = "session"
 )
 
@@ -72,13 +71,7 @@ func main() {
 		}
 		coursesAPI := API.Group("/courses")
 		{
-			coursesAPI.GET("/:courseID", h.GetCourseDetail)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
-			coursesAPI.GET("/:courseID/documents", h.GetDocumentList)
-			coursesAPI.POST("/:courseID/classes/:classID/documents", h.PostDocumentFile, h.IsAdmin)
-			coursesAPI.GET("/:courseID/documents/:documentID", h.DownloadDocumentFile)
-			coursesAPI.GET("/:courseID/assignments", h.GetAssignmentList)
-			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.PostAssignment, h.IsAdmin)
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
@@ -239,15 +232,6 @@ type PostAnnouncementsResponse struct {
 	ID uuid.UUID `json:"id"`
 }
 
-type GetAttendancesAttendance struct {
-	UserID     uuid.UUID `json:"user_id"`
-	AttendedAt int64     `json:"attended_at"`
-}
-
-type PostDocumentResponse struct {
-	ID uuid.UUID `json:"id"`
-}
-
 type TimeSlotResponse struct {
 	Period    uint8  `json:"period"`
 	DayOfWeek string `json:"day_of_week"`
@@ -317,13 +301,6 @@ type Class struct {
 	Title          string    `db:"title"`
 	Description    string    `db:"description"`
 	AttendanceCode string    `db:"attendance_code"`
-}
-
-type DocumentsMeta struct {
-	ID        uuid.UUID `db:"id"`
-	ClassID   uuid.UUID `db:"class_id"`
-	Name      string    `db:"name"`
-	CreatedAt time.Time `db:"created_at"`
 }
 
 type Assignment struct {
@@ -904,230 +881,6 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, res)
-}
-
-type PostAssignmentRequest struct {
-	Name        string
-	Description string
-}
-
-type PostAssignmentResponse struct {
-	ID uuid.UUID `json:"id"`
-}
-
-func (h *handlers) PostAssignment(context echo.Context) error {
-	var req PostAssignmentRequest
-	if err := context.Bind(&req); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	if req.Name == "" || req.Description == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Name and description must not be empty.")
-	}
-
-	classID := context.Param("classID")
-	var classes int
-	if err := h.DB.Get(&classes, "SELECT COUNT(*) FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
-	} else if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-	assignmentID := uuid.NewRandom()
-	if _, err := h.DB.Exec("INSERT INTO `assignments` (`id`, `class_id`, `name`, `description`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", assignmentID, classID, req.Name, req.Description); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	return context.JSON(http.StatusCreated, PostAssignmentResponse{
-		ID: assignmentID,
-	})
-}
-
-type GetDocumentResponse struct {
-	ID      uuid.UUID `json:"id"`
-	ClassID uuid.UUID `json:"class_id"`
-	Name    string    `json:"name"`
-}
-
-type GetDocumentsResponse []GetDocumentResponse
-
-func (h *handlers) GetDocumentList(context echo.Context) error {
-	courseID := uuid.Parse(context.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-
-	documentsMeta := make([]DocumentsMeta, 0)
-	err := h.DB.Select(&documentsMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` WHERE `classes`.`course_id` = ?", courseID)
-	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	res := make(GetDocumentsResponse, 0, len(documentsMeta))
-	for _, meta := range documentsMeta {
-		res = append(res, GetDocumentResponse{
-			ID:      meta.ID,
-			ClassID: meta.ClassID,
-			Name:    meta.Name,
-		})
-	}
-
-	return context.JSON(http.StatusOK, res)
-
-}
-
-func (h *handlers) PostDocumentFile(context echo.Context) error {
-	courseID := uuid.Parse(context.Param("courseID"))
-	if uuid.Equal(uuid.NIL, courseID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-	classID := uuid.Parse(context.Param("classID"))
-	if uuid.Equal(uuid.NIL, classID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
-	}
-
-	form, err := context.MultipartForm()
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "read request err")
-	}
-	files := form.File["files"]
-
-	// 作ったファイルの名前を格納しておく
-	dsts := make([]string, 0, len(files))
-
-	tx, err := h.DB.Begin()
-	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	// 作成したファイルを削除する
-	deleteFiles := func(dsts []string) {
-		for _, file := range dsts {
-			os.Remove(file)
-		}
-	}
-
-	res := make([]PostDocumentResponse, 0, len(files))
-	for _, file := range files {
-		src, err := file.Open()
-		if err != nil {
-			log.Println(err)
-			_ = tx.Rollback()
-			deleteFiles(dsts)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-
-		fileMeta := DocumentsMeta{
-			ID:      uuid.NewRandom(),
-			ClassID: classID,
-			Name:    file.Filename,
-		}
-
-		filePath := fmt.Sprintf("%s%s", DocDirectory, fileMeta.ID)
-
-		dst, err := os.Create(filePath)
-		if err != nil {
-			log.Println(err)
-			_ = tx.Rollback()
-			deleteFiles(dsts)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-
-		dsts = append(dsts, filePath)
-		_, err = tx.Exec("INSERT INTO `documents` (`id`, `class_id`, `name`, `created_at`) VALUES (?, ?, ?, NOW(6))",
-			fileMeta.ID,
-			fileMeta.ClassID,
-			fileMeta.Name,
-		)
-		if err != nil {
-			log.Println(err)
-			_ = tx.Rollback()
-			deleteFiles(dsts)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-
-		if _, err = io.Copy(dst, src); err != nil {
-			log.Println(err)
-			_ = tx.Rollback()
-			deleteFiles(dsts)
-			return context.NoContent(http.StatusInternalServerError)
-		}
-
-		res = append(res, PostDocumentResponse{ID: fileMeta.ID})
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	return context.JSON(http.StatusCreated, res)
-}
-
-type GetAssignmentResponse struct {
-	ID          uuid.UUID `json:"id"`
-	ClassID     uuid.UUID `json:"class_id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-}
-
-type GetAssignmentsResponse []GetAssignmentResponse
-
-func (h *handlers) GetAssignmentList(c echo.Context) error {
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-
-	var assignments []Assignment
-	if err := h.DB.Select(&assignments, "SELECT `assignments`.* "+
-		"FROM `assignments` "+
-		"JOIN `classes` ON `assignments`.`class_id` = `classes`.`id` "+
-		"WHERE `classes`.`course_id` = ?", courseID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	res := make(GetAssignmentsResponse, 0, len(assignments))
-	for _, assignment := range assignments {
-		res = append(res, GetAssignmentResponse{
-			ID:          assignment.ID,
-			ClassID:     assignment.ClassID,
-			Name:        assignment.Name,
-			Description: assignment.Description,
-		})
-	}
-
-	return c.JSON(http.StatusOK, res)
-}
-
-func (h *handlers) DownloadDocumentFile(context echo.Context) error {
-	courseID := uuid.Parse(context.Param("courseID"))
-	if uuid.Equal(uuid.NIL, courseID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-	documentID := uuid.Parse(context.Param("documentID"))
-	if uuid.Equal(uuid.NIL, documentID) {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
-	}
-
-	var documentMeta DocumentsMeta
-	err := h.DB.Get(&documentMeta, "SELECT `documents`.* FROM `documents` JOIN `classes` ON `classes`.`id` = `documents`.`class_id` "+
-		"WHERE `documents`.`id` = ? AND `classes`.`course_id` = ?", documentID, courseID)
-	if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "file not found")
-	} else if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	filePath := fmt.Sprintf("%s%s", DocDirectory, documentMeta.ID)
-	return context.File(filePath)
 }
 
 func (h *handlers) SubmitAssignment(context echo.Context) error {
