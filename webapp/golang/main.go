@@ -71,6 +71,7 @@ func main() {
 		}
 		coursesAPI := API.Group("/courses")
 		{
+			coursesAPI.POST("", h.AddCourse, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
@@ -841,6 +842,48 @@ func (h *handlers) GetCourseDetail(context echo.Context) error {
 	}
 
 	return context.JSON(http.StatusOK, res)
+}
+
+type AddCourseRequest struct {
+	Code        string `json:"code"`
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Credit      int    `json:"credit"`
+	Period      int    `json:"period"`
+	DayOfWeek   string `json:"day_of_week"`
+	Keywords    string `json:"keywords"`
+}
+
+type AddCourseResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
+func (h *handlers) AddCourse(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var req AddCourseRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %s", err))
+	}
+
+	id := uuid.NewRandom()
+	_, err = h.DB.Exec("INSERT INTO `courses` (id, code, type, name, description, credit, period, day_of_week, teacher_id, keywords, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+		id, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusCreated, AddCourseResponse{ID: id})
 }
 
 type GetClassResponse struct {
