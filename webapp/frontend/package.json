@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@nuxtjs/axios": "^5.13.1",
+    "camelcase-keys": "^6.2.2",
     "cookie-universal-nuxt": "^2.1.5",
     "core-js": "^3.9.1",
     "nuxt": "^2.15.3"
