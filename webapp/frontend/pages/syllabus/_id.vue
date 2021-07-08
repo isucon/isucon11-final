@@ -88,53 +88,11 @@
                 border
               "
             >
-              開講期
-            </div>
-            <div class="px-2 py-2 border">
-              {{ course.year }} {{ course.semester }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
               時限
             </div>
             <div class="px-2 py-2 border">
               {{ course.day_of_week }}{{ course.period }}
             </div>
-
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              前提科目
-            </div>
-            <template v-if="course.required_courses.id">
-              <NuxtLink
-                class="px-2 py-2 border"
-                :to="`/syllabus/${course.required_courses.id}`"
-                >{{ course.required_courses.name }}
-              </NuxtLink>
-            </template>
-            <template v-else>
-              <div class="px-2 py-2 border">なし</div>
-            </template>
             <div
               class="
                 px-2
