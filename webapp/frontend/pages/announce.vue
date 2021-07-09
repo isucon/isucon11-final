@@ -28,7 +28,8 @@
           v-for="announcement in announcements"
           :key="announcement.id"
           :announcement="announcement"
-          @open="openAnnouncement(announcement)"
+          @open="openAnnouncement($event, announcement)"
+          @close="closeAnnouncement($event)"
         />
       </div>
     </Card>
@@ -85,13 +86,20 @@ export default Vue.extend({
     this.announcements = this.innerAnnouncements
   },
   methods: {
-    async openAnnouncement(announcement: Announcement) {
+    async openAnnouncement(
+      event: { done: () => undefined },
+      announcement: Announcement
+    ) {
       const announcementDetail: Announcement = await this.$axios.$get(
         `/api/announcements/${announcement.id}`
       )
       this.innerAnnouncements.filter(
         (item) => item.id === announcement.id
       )[0].message = announcementDetail.message
+      event.done()
+    },
+    closeAnnouncement(event: { done: () => undefined }) {
+      event.done()
     },
     filterAnnouncement() {
       this.announcements = this.innerAnnouncements.filter((item) => {

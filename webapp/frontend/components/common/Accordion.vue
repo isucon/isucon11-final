@@ -30,11 +30,10 @@ export default Vue.extend({
   methods: {
     toggle() {
       if (this.isOpen) {
-        this.$emit('close')
+        this.$emit('close', { done: () => (this.isOpen = !this.isOpen) })
       } else {
-        this.$emit('open')
+        this.$emit('open', { done: () => (this.isOpen = !this.isOpen) })
       }
-      this.isOpen = !this.isOpen
     },
   },
 })
