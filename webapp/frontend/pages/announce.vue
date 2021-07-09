@@ -20,8 +20,7 @@
             label=""
             type="text"
             placeholder="科目名で絞り込み"
-            @keydown.enter="filterAnnouncement"
-            @blur="filterAnnouncement"
+            @input="filterAnnouncements"
           />
         </div>
         <Announcement
@@ -101,7 +100,7 @@ export default Vue.extend({
     closeAnnouncement(event: { done: () => undefined }) {
       event.done()
     },
-    filterAnnouncement() {
+    filterAnnouncements() {
       this.announcements = this.innerAnnouncements.filter((item) => {
         return item.courseName.indexOf(this.courseName) === 0
       })
