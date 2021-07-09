@@ -294,12 +294,13 @@ type Schedule struct {
 }
 
 type Class struct {
-	ID             uuid.UUID `db:"id"`
-	CourseID       uuid.UUID `db:"course_id"`
-	Part           uint8     `db:"part"`
-	Title          string    `db:"title"`
-	Description    string    `db:"description"`
-	AttendanceCode string    `db:"attendance_code"`
+	ID                 uuid.UUID    `db:"id"`
+	CourseID           uuid.UUID    `db:"course_id"`
+	Part               uint8        `db:"part"`
+	Title              string       `db:"title"`
+	Description        string       `db:"description"`
+	CreatedAt          time.Time    `db:"created_at"`
+	SubmissionClosedAt sql.NullTime `db:"submission_closed_at"`
 }
 
 type Assignment struct {
@@ -947,11 +948,14 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 }
 
 type GetClassResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Part        uint8     `json:"part"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
+	ID                 uuid.UUID `json:"id"`
+	Part               uint8     `json:"part"`
+	Title              string    `json:"title"`
+	Description        string    `json:"description"`
+	SubmissionClosedAt int64     `json:"submission_closed_at,omitempty"`
 }
+
+type GetClassesResponse []GetClassResponse
 
 func (h *handlers) GetClasses(c echo.Context) error {
 	courseID := uuid.Parse(c.Param("courseID"))
@@ -961,7 +965,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 
 	var course Course
 	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "course not found")
+		return echo.NewHTTPError(http.StatusNotFound, "no such course")
 	} else if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -973,14 +977,19 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := make([]GetClassResponse, 0, len(classes))
+	res := make(GetClassesResponse, 0, len(classes))
 	for _, class := range classes {
-		res = append(res, GetClassResponse{
+		getClassRes := GetClassResponse{
 			ID:          class.ID,
 			Part:        class.Part,
 			Title:       class.Title,
 			Description: class.Description,
-		})
+		}
+		if class.SubmissionClosedAt.Valid {
+			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.UnixNano() / int64(time.Millisecond)
+		}
+
+		res = append(res, getClassRes)
 	}
 
 	return c.JSON(http.StatusOK, res)
