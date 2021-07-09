@@ -63,7 +63,7 @@ func main() {
 		{
 			usersAPI.GET("/:userID/courses", h.GetRegisteredCourses)
 			usersAPI.PUT("/:userID/courses", h.RegisterCourses)
-			usersAPI.GET("/:userID/grades", h.GetGrades)
+			usersAPI.GET("/:me/grades", h.GetGrades)
 		}
 		syllabusAPI := API.Group("/syllabus")
 		{
@@ -201,25 +201,7 @@ type LoginRequest struct {
 	Password string    `json:"password,omitempty"`
 }
 
-type GetGradesResponse struct {
-	Summary      Summary        `json:"summary"`
-	CourseGrades []*CourseGrade `json:"courses"`
-}
-
 type PostGradesRequest []PostGradeRequest
-
-type Summary struct {
-	Credits int    `json:"credits"`
-	GPT     uint32 `json:"gpt"`
-}
-
-type CourseGrade struct {
-	ID     uuid.UUID `json:"id" db:"course_id"`
-	Name   string    `json:"name" db:"name"`
-	Credit uint8     `json:"credit" db:"credit"`
-	Grade  string    `json:"grade" db:"grade"`
-}
-
 
 type PostGradeRequest struct {
 	UserID uuid.UUID `json:"user_id"`
@@ -385,6 +367,15 @@ type SubmissionWithUserName struct {
 	AssignmentID uuid.UUID `db:"assignment_id"`
 	Name         string    `db:"name"`
 	CreatedAt    time.Time `db:"created_at"`
+}
+
+type Submission struct {
+	ID        uuid.UUID `db:"id"`
+	UserID    uuid.UUID `db:"user_id"`
+	ClassID   uuid.UUID `db:"class_id"`
+	Name      string    `db:"name"`
+	Score     uint8     `db:"score"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 func (h *handlers) Login(c echo.Context) error {
@@ -715,6 +706,47 @@ func (h *handlers) RegisterCourses(context echo.Context) error {
 	return context.NoContent(http.StatusOK)
 }
 
+type GetGptResponse struct {
+	Summary Summary `json:"summary"`
+	//Statistics Statistics `json:"statistics"`
+}
+
+type Summary struct {
+	Credits       int            `json:"credits"`
+	GPT           uint32         `json:"gpt"`
+	CourseResults []CourseResult `json:"courses"`
+}
+
+type CourseResult struct {
+	Result      int64        `json:"result"`
+	ClassScores []ClassScore `json:"class_scores"`
+}
+type ClassScore struct {
+	Name  string `json:"name"`
+	Score int64  `json:"score"`
+}
+
+type Statistics struct {
+	GptAvg           float64      `json:"gpt_avg"`
+	GptStd           float64      `json:"gpt_std"`
+	GptMax           float64      `json:"gpt_max"`
+	GptMin           float64      `json:"gpt_min"`
+	CourseStatistics []CourseInfo `json:"course_statistics"`
+}
+
+type CourseInfo struct {
+	ResultAvg       float64     `json:"gpt_avg"`
+	ResultStd       float64     `json:"gpt_std"`
+	ResultMax       float64     `json:"gpt_max"`
+	ResultMin       float64     `json:"gpt_min"`
+	ClassStatistics []ClassInfo `json:"class_statistics"`
+}
+type ClassInfo struct {
+	Title      string `json:"title"`
+	Part       string `json:"part"`
+	Submitters uint8  `json:"submitters"`
+}
+
 func (h *handlers) GetGrades(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
@@ -726,61 +758,83 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
-
-	userIDParam := uuid.Parse(context.Param("userID"))
-	if userIDParam == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid userID")
-	}
-	if !uuid.Equal(userID, userIDParam) {
-		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
-	}
-
-	// MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
-	var CourseGrades []CourseGrade
-	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
-		"FROM `grades`" +
-		"JOIN `courses` ON `grades`.`course_id` = `courses`.`id`" +
-		"WHERE `user_id` = ?"
-	if err := h.DB.Select(&CourseGrades, query, userID); err != nil {
+	//登録済のコース一覧
+	var registeredCourses []Course
+	query := "SELECT `courses`.*" +
+		"FROM `registrations`" +
+		"JOIN `courses` ON `registrations`.`couse`.`id` = `courses`.`id`" +
+		"WHERE `user_id` = ? AND `deleted_at` IS NOT NULL"
+	if err := h.DB.Select(&registeredCourses, query, userID); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
+	summary := Summary{
+		GPT:     0,
+		Credits: 0,
+	}
+	// summaryStatistics := SummaryStatistics{
+	// 	GptAvg: 0.0,
+	// 	GptStd: 0.0,
+	// 	GptMax: math.Inf(0),
+	// 	GptMin: math.Inf(-1),
+	// }
 
-	var res GetGradesResponse
-	var grade uint32
-	var gpt uint32 = 0
+	for _, course := range registeredCourses {
+		result := 0
+		// resultStatistics := ResultStatistics{
+		// 	ResultAvg: 0,
+		// 	ResultStd: 0.0,
+		// 	ResultMax: math.Inf(0),
+		// 	ResultMin: math.Inf(-1),
+		// }
+		var classScores []ClassScore
 
-	var credits int = 0
-	if len(CourseGrades) > 0 {
-		for _, coursegrade := range CourseGrades {
-			res.CourseGrades = append(res.CourseGrades, &CourseGrade{
-				ID:     coursegrade.ID,
-				Name:   coursegrade.Name,
-				Credit: coursegrade.Credit,
-				Grade:  coursegrade.Grade,
-			})
-
-			switch coursegrade.Grade {
-			case "S":
-				grade = 4
-			case "A":
-				grade = 3
-			case "B":
-				grade = 2
-			case "C":
-				grade = 1
-			case "D":
-				grade = 0
-			}
-			credits += int(coursegrade.Credit)
-			gpt += grade * uint32(coursegrade.Credit)
+		//採点済課題取得
+		var submissions []Submission
+		query := "SELECT `submissions`.*" +
+			"FROM `classes`" +
+			"JOIN `submissions` ON `classes`.`id` = `submissions`.`class_id`" +
+			"WHERE `course_id` = ? AND `submission_closed_at` IS NOT NULL "
+		if err := h.DB.Select(&submissions, query, course.ID); err != nil {
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
 		}
+		for _, submission := range submissions {
+			classScores = append(classScores, ClassScore{
+				//Title:
+				//Part:
+				Score: int64(submission.Score),
+			})
+			result += int(submission.Score)
+		}
+
+		// if err := h.DB.Select(&submissions, "SELECT * FROM `submissions` WHERE `class_id` = ?", class.ID); err != nil {
+		// 	log.Println(err)
+		// 	return context.NoContent(http.StatusInternalServerError)
+		// }
+		// avgResult += submission.score
+		// stdResult += math.Pow(avgResult-submission.score, 2)
+		// if maxResult < submission.Result {
+		// 	maxResult = submission.Result
+		// }
+		// if minResult > submission.Result {
+		// 	minResult = submission.Result
+		// }
+		//Submitters: int32(len(submissions)),•
+
+		summary.CourseResults = append(summary.CourseResults, CourseResult{
+			//Name: ,
+			Result:      int64(result),
+			ClassScores: classScores,
+		})
+		summary.GPT += uint32(result) * uint32(course.Credit)
+		summary.Credits += int(course.Credit)
 	}
 
-	res.Summary = Summary{
-		Credits: credits,
-		GPT:     gpt,
+	res := GetGptResponse{
+		Summary: summary,
+		//Statistics: ,
 	}
 
 	return context.JSON(http.StatusOK, res)
