@@ -11,13 +11,14 @@
 CREATE TABLE `submissions` (
   `id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `user_id` char(36) COLLATE utf8mb4_bin NOT NULL,
-  `assignment_id` char(36) COLLATE utf8mb4_bin NOT NULL,
+  `class_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
+  `score` tinyint unsigned DEFAULT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_submissions_user_id` (`user_id`),
-  KEY `FK_submissions_assignment_id` (`assignment_id`),
-  CONSTRAINT `FK_submissions_assignment_id` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`id`),
+  KEY `FK_submissions_class_id` (`class_id`),
+  CONSTRAINT `FK_submissions_class_id` FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`),
   CONSTRAINT `FK_submissions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
@@ -26,29 +27,30 @@ CREATE TABLE `submissions` (
 
 ## Columns
 
-| Name          | Type         | Default | Nullable | Children | Parents                       | Comment            |
-| ------------- | ------------ | ------- | -------- | -------- | ----------------------------- | ------------------ |
-| id            | char(36)     |         | false    |          |                               |                    |
-| user_id       | char(36)     |         | false    |          | [users](users.md)             | 提出した学生のID          |
-| assignment_id | char(36)     |         | false    |          | [assignments](assignments.md) | 対象課題のID            |
-| name          | varchar(255) |         | false    |          |                               | 提出したファイル名          |
-| created_at    | datetime(6)  |         | false    |          |                               |                    |
+| Name       | Type             | Default | Nullable | Children | Parents               | Comment            |
+| ---------- | ---------------- | ------- | -------- | -------- | --------------------- | ------------------ |
+| id         | char(36)         |         | false    |          |                       |                    |
+| user_id    | char(36)         |         | false    |          | [users](users.md)     | 提出した学生のID          |
+| class_id   | char(36)         |         | false    |          | [classes](classes.md) | 対象講義のID            |
+| name       | varchar(255)     |         | false    |          |                       | 提出したファイル名          |
+| score      | tinyint unsigned |         | true     |          |                       | 課題のスコア             |
+| created_at | datetime(6)      |         | false    |          |                       |                    |
 
 ## Constraints
 
-| Name                         | Type        | Definition                                              |
-| ---------------------------- | ----------- | ------------------------------------------------------- |
-| FK_submissions_assignment_id | FOREIGN KEY | FOREIGN KEY (assignment_id) REFERENCES assignments (id) |
-| FK_submissions_user_id       | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)             |
-| PRIMARY                      | PRIMARY KEY | PRIMARY KEY (id)                                        |
+| Name                    | Type        | Definition                                     |
+| ----------------------- | ----------- | ---------------------------------------------- |
+| FK_submissions_class_id | FOREIGN KEY | FOREIGN KEY (class_id) REFERENCES classes (id) |
+| FK_submissions_user_id  | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users (id)    |
+| PRIMARY                 | PRIMARY KEY | PRIMARY KEY (id)                               |
 
 ## Indexes
 
-| Name                         | Definition                                                   |
-| ---------------------------- | ------------------------------------------------------------ |
-| FK_submissions_assignment_id | KEY FK_submissions_assignment_id (assignment_id) USING BTREE |
-| FK_submissions_user_id       | KEY FK_submissions_user_id (user_id) USING BTREE             |
-| PRIMARY                      | PRIMARY KEY (id) USING BTREE                                 |
+| Name                    | Definition                                         |
+| ----------------------- | -------------------------------------------------- |
+| FK_submissions_class_id | KEY FK_submissions_class_id (class_id) USING BTREE |
+| FK_submissions_user_id  | KEY FK_submissions_user_id (user_id) USING BTREE   |
+| PRIMARY                 | PRIMARY KEY (id) USING BTREE                       |
 
 ## Relations
 

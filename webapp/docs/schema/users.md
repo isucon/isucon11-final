@@ -10,11 +10,12 @@
 ```sql
 CREATE TABLE `users` (
   `id` char(36) COLLATE utf8mb4_bin NOT NULL,
+  `code` char(8) COLLATE utf8mb4_bin NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
-  `mail_address` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `hashed_password` binary(60) NOT NULL,
-  `type` enum('student','faculty') COLLATE utf8mb4_bin NOT NULL,
-  PRIMARY KEY (`id`)
+  `type` enum('student','teacher') COLLATE utf8mb4_bin NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
 ```
 
@@ -22,25 +23,27 @@ CREATE TABLE `users` (
 
 ## Columns
 
-| Name            | Type                      | Default | Nullable | Children                                                                                                                                                                                | Parents | Comment                |
-| --------------- | ------------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------- |
-| id              | char(36)                  |         | false    | [attendances](attendances.md) [courses](courses.md) [grades](grades.md) [registrations](registrations.md) [submissions](submissions.md) [unread_announcements](unread_announcements.md) |         |                        |
-| name            | varchar(255)              |         | false    |                                                                                                                                                                                         |         | ユーザー名                  |
-| mail_address    | varchar(255)              |         | false    |                                                                                                                                                                                         |         | メールアドレス                |
-| hashed_password | binary(60)                |         | false    |                                                                                                                                                                                         |         | 暗号化されたパスワード            |
-| type            | enum('student','faculty') |         | false    |                                                                                                                                                                                         |         | 学生・教員                  |
+| Name            | Type                      | Default | Nullable | Children                                                                                                                              | Parents | Comment                |
+| --------------- | ------------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------- |
+| id              | char(36)                  |         | false    | [courses](courses.md) [registrations](registrations.md) [submissions](submissions.md) [unread_announcements](unread_announcements.md) |         |                        |
+| code            | char(8)                   |         | false    |                                                                                                                                       |         | 学籍番号                   |
+| name            | varchar(255)              |         | false    |                                                                                                                                       |         | ユーザー名                  |
+| hashed_password | binary(60)                |         | false    |                                                                                                                                       |         | 暗号化されたパスワード            |
+| type            | enum('student','teacher') |         | false    |                                                                                                                                       |         | 学生・教員                  |
 
 ## Constraints
 
-| Name    | Type        | Definition       |
-| ------- | ----------- | ---------------- |
-| PRIMARY | PRIMARY KEY | PRIMARY KEY (id) |
+| Name    | Type        | Definition             |
+| ------- | ----------- | ---------------------- |
+| code    | UNIQUE      | UNIQUE KEY code (code) |
+| PRIMARY | PRIMARY KEY | PRIMARY KEY (id)       |
 
 ## Indexes
 
-| Name    | Definition                   |
-| ------- | ---------------------------- |
-| PRIMARY | PRIMARY KEY (id) USING BTREE |
+| Name    | Definition                         |
+| ------- | ---------------------------------- |
+| PRIMARY | PRIMARY KEY (id) USING BTREE       |
+| code    | UNIQUE KEY code (code) USING BTREE |
 
 ## Relations
 
