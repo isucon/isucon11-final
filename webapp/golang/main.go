@@ -467,20 +467,17 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	hasError := false
 	var errors RegisterCoursesErrorResponse
 	var courses []Course
 	for _, courseReq := range req {
 		courseID := uuid.Parse(courseReq.ID)
 		if courseID == nil {
-			hasError = true
 			errors.NotFoundCourse = append(errors.NotFoundCourse, courseReq.ID)
 			continue
 		}
 
 		var course Course
 		if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
-			hasError = true
 			errors.NotFoundCourse = append(errors.NotFoundCourse, courseReq.ID)
 			continue
 		} else if err != nil {
@@ -490,7 +487,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		}
 
 		if course.Status != StatusReg {
-			hasError = true
 			errors.StatusNotRegistration = append(errors.StatusNotRegistration, course.ID)
 			continue
 		}
@@ -525,14 +521,13 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	for _, course1 := range courses {
 		for _, course2 := range coursesToRegister {
 			if !uuid.Equal(course1.ID, course2.ID) && course1.Period == course2.Period && course1.DayOfWeek == course2.DayOfWeek {
-				hasError = true
 				errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, course1.ID)
 				break
 			}
 		}
 	}
 
-	if hasError {
+	if len(errors.NotFoundCourse) > 0 || len(errors.StatusNotRegistration) > 0 || len(errors.TimeslotDuplicated) > 0 {
 		_ = tx.Rollback()
 		return c.JSON(http.StatusBadRequest, errors)
 	}
