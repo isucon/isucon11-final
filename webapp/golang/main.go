@@ -102,6 +102,10 @@ func main() {
 	e.Logger.Error(e.StartServer(e.Server))
 }
 
+type InitializeResponse struct {
+	Language string `json:"language"`
+}
+
 func (h *handlers) Initialize(c echo.Context) error {
 	dbForInit, _ := GetDB(true)
 
@@ -192,15 +196,6 @@ func (h *handlers) SetPhase(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-type InitializeResponse struct {
-	Language string `json:"language"`
-}
-
-type LoginRequest struct {
-	ID       uuid.UUID `json:"name,omitempty"` // TODO: やっぱり学籍番号を用意したほうが良さそうだけど教員の扱いどうしようかな
-	Password string    `json:"password,omitempty"`
-}
-
 type GetGradesResponse struct {
 	Summary      Summary        `json:"summary"`
 	CourseGrades []*CourseGrade `json:"courses"`
@@ -219,7 +214,6 @@ type CourseGrade struct {
 	Credit uint8     `json:"credit" db:"credit"`
 	Grade  string    `json:"grade" db:"grade"`
 }
-
 
 type PostGradeRequest struct {
 	UserID uuid.UUID `json:"user_id"`
@@ -313,8 +307,8 @@ const (
 
 type User struct {
 	ID             uuid.UUID `db:"id"`
+	Code           string    `db:"code"`
 	Name           string    `db:"name"`
-	MailAddress    string    `db:"mail_address"`
 	HashedPassword []byte    `db:"hashed_password"`
 	Type           UserType  `db:"type"`
 }
@@ -387,33 +381,42 @@ type SubmissionWithUserName struct {
 	CreatedAt    time.Time `db:"created_at"`
 }
 
+type LoginRequest struct {
+	Code     string `json:"code"`
+	Password string `json:"password"`
+}
+
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("bind request: %v", err))
+		c.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+	}
+
+	var user User
+	err := h.DB.Get(&user, "SELECT * FROM `users` WHERE `code` = ?", req.Code)
+	if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	if bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(req.Password)) != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
 	}
 
 	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("get session: %v", err))
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
+
 	if s, ok := sess.Values["userID"].(string); ok {
 		userID := uuid.Parse(s)
-		if uuid.Equal(userID, req.ID) {
+		if uuid.Equal(userID, user.ID) {
 			return echo.NewHTTPError(http.StatusBadRequest, "You are already logged in.")
 		}
-	}
-
-	var user User
-	err = h.DB.Get(&user, "SELECT * FROM users WHERE id = ?", req.ID)
-	if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusUnauthorized, "ID or Password is wrong.")
-	} else if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("get users: %v", err))
-	}
-
-	if bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(req.Password)) != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "ID or Password is wrong.")
 	}
 
 	sess.Values["userID"] = user.ID.String()
@@ -425,7 +428,8 @@ func (h *handlers) Login(c echo.Context) error {
 	}
 
 	if err := sess.Save(c.Request(), c.Response()); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("save session: %v", err))
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.NoContent(http.StatusOK)
@@ -745,7 +749,6 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
-
 
 	var res GetGradesResponse
 	var grade uint32
