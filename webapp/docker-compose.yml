@@ -34,7 +34,6 @@ services:
     volumes:
       - ./sql:/sql:ro
       - ./assignments:/assignments
-      - ./documents:/documents
 
   mysql:
     image: mysql

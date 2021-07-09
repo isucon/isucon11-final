@@ -25,14 +25,14 @@ INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
   'F0000001',
   '椅子昆',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02',
-  'faculty'
+  'teacher'
 ),
 (
   '01234567-89ab-cdef-0001-000000000005',
   'F0000002',
   '田山勝蔵',
   '$2a$10$KEgha.chGu1/N4kHZ./rIeK1QISkv8sYk15Mqktr6BGB8xomRRe02',
-  'faculty'
+  'teacher'
 );
 
 INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`, `status`, `created_at`) VALUES
@@ -47,7 +47,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'monday',
   '01234567-89ab-cdef-0001-000000000004',
   '数学 微分 積分 基礎',
-  'reg',
+  'registration',
   NOW(6)
 ),
 (
@@ -61,7 +61,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'tuesday',
   '01234567-89ab-cdef-0001-000000000004',
   '数学 線形代数 基礎',
-  'reg',
+  'registration',
   NOW(6)
 ),
 (
@@ -75,7 +75,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'wednesday',
   '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語',
-  'reg',
+  'registration',
   NOW(6)
 ),
 (
@@ -89,7 +89,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'wednesday',
   '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語 演習',
-  'reg',
+  'registration',
   NOW(6)
 ),
 (
@@ -103,7 +103,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'wednesday',
   '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語 演習',
-  'reg',
+  'registration',
   NOW(6)
 ),
 (
@@ -117,7 +117,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'thursday',
   '01234567-89ab-cdef-0001-000000000005',
   'ISUCON パフォーマンスチューニング',
-  'reg',
+  'registration',
   NOW(6)
 ),
 (
@@ -131,7 +131,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'friday',
   '01234567-89ab-cdef-0001-000000000005',
   '英語 English',
-  'result',
+  'closed',
   NOW(6)
 ),
 (
@@ -145,7 +145,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   'friday',
   '01234567-89ab-cdef-0001-000000000005',
   '英語 英会話 English',
-  'class',
+  'in-progress',
   NOW(6)
 );
 
