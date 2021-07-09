@@ -19,7 +19,7 @@ CREATE TABLE `courses` (
   `day_of_week` enum('sunday','monday','tuesday','wednesday','thursday','friday','saturday') COLLATE utf8mb4_bin NOT NULL,
   `teacher_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `keywords` text COLLATE utf8mb4_bin NOT NULL,
-  `status` enum('reg','class','result') COLLATE utf8mb4_bin NOT NULL DEFAULT 'reg',
+  `status` enum('registration','in-progress','closed') COLLATE utf8mb4_bin NOT NULL DEFAULT 'registration',
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`),
@@ -32,20 +32,20 @@ CREATE TABLE `courses` (
 
 ## Columns
 
-| Name        | Type                                                                         | Default | Nullable | Children                                                                                  | Parents           | Comment        |
-| ----------- | ---------------------------------------------------------------------------- | ------- | -------- | ----------------------------------------------------------------------------------------- | ----------------- | -------------- |
-| id          | char(36)                                                                     |         | false    | [announcements](announcements.md) [classes](classes.md) [registrations](registrations.md) |                   |                |
-| code        | varchar(255)                                                                 |         | false    |                                                                                           |                   | 科目コード          |
-| type        | enum('liberal-arts','major-subjects')                                        |         | false    |                                                                                           |                   | 科目種別           |
-| name        | varchar(255)                                                                 |         | false    |                                                                                           |                   | 科目名            |
-| description | text                                                                         |         | false    |                                                                                           |                   | 科目の説明          |
-| credit      | tinyint unsigned                                                             |         | false    |                                                                                           |                   | 単位数            |
-| period      | tinyint unsigned                                                             |         | false    |                                                                                           |                   | 開講時限           |
-| day_of_week | enum('sunday','monday','tuesday','wednesday','thursday','friday','saturday') |         | false    |                                                                                           |                   | 開講曜日           |
-| teacher_id  | char(36)                                                                     |         | false    |                                                                                           | [users](users.md) | 担当教員のID        |
-| keywords    | text                                                                         |         | false    |                                                                                           |                   | キーワード          |
-| status      | enum('reg','class','result')                                                 | reg     | false    |                                                                                           |                   | 科目ステータス        |
-| created_at  | datetime(6)                                                                  |         | false    |                                                                                           |                   |                |
+| Name        | Type                                                                         | Default      | Nullable | Children                                                                                  | Parents           | Comment        |
+| ----------- | ---------------------------------------------------------------------------- | ------------ | -------- | ----------------------------------------------------------------------------------------- | ----------------- | -------------- |
+| id          | char(36)                                                                     |              | false    | [announcements](announcements.md) [classes](classes.md) [registrations](registrations.md) |                   |                |
+| code        | varchar(255)                                                                 |              | false    |                                                                                           |                   | 科目コード          |
+| type        | enum('liberal-arts','major-subjects')                                        |              | false    |                                                                                           |                   | 科目種別           |
+| name        | varchar(255)                                                                 |              | false    |                                                                                           |                   | 科目名            |
+| description | text                                                                         |              | false    |                                                                                           |                   | 科目の説明          |
+| credit      | tinyint unsigned                                                             |              | false    |                                                                                           |                   | 単位数            |
+| period      | tinyint unsigned                                                             |              | false    |                                                                                           |                   | 開講時限           |
+| day_of_week | enum('sunday','monday','tuesday','wednesday','thursday','friday','saturday') |              | false    |                                                                                           |                   | 開講曜日           |
+| teacher_id  | char(36)                                                                     |              | false    |                                                                                           | [users](users.md) | 担当教員のID        |
+| keywords    | text                                                                         |              | false    |                                                                                           |                   | キーワード          |
+| status      | enum('registration','in-progress','closed')                                  | registration | false    |                                                                                           |                   | 科目ステータス        |
+| created_at  | datetime(6)                                                                  |              | false    |                                                                                           |                   |                |
 
 ## Constraints
 

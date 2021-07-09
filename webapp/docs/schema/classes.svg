@@ -80,7 +80,7 @@
 <text text-anchor="start" x="160.0056" y="-113.9" font-family="Arial" font-size="14.00" fill="#666666">[text]</text>
 <polygon fill="none" stroke="#000000" points="90,-72.5 90,-102.5 665,-102.5 665,-72.5 90,-72.5"/>
 <text text-anchor="start" x="97" y="-83.9" font-family="Arial" font-size="14.00" fill="#000000">status </text>
-<text text-anchor="start" x="138.237" y="-83.9" font-family="Arial" font-size="14.00" fill="#666666">[enum(&#39;reg&#39;,&#39;class&#39;,&#39;result&#39;)]</text>
+<text text-anchor="start" x="138.237" y="-83.9" font-family="Arial" font-size="14.00" fill="#666666">[enum(&#39;registration&#39;,&#39;in&#45;progress&#39;,&#39;closed&#39;)]</text>
 <polygon fill="none" stroke="#000000" points="90,-42.5 90,-72.5 665,-72.5 665,-42.5 90,-42.5"/>
 <text text-anchor="start" x="97" y="-53.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
 <text text-anchor="start" x="167.028" y="-53.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>

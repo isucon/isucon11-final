@@ -13,7 +13,7 @@ CREATE TABLE `users` (
   `code` char(8) COLLATE utf8mb4_bin NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `hashed_password` binary(60) NOT NULL,
-  `type` enum('student','faculty') COLLATE utf8mb4_bin NOT NULL,
+  `type` enum('student','teacher') COLLATE utf8mb4_bin NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
@@ -29,7 +29,7 @@ CREATE TABLE `users` (
 | code            | char(8)                   |         | false    |                                                                                                                                       |         | 学籍番号                   |
 | name            | varchar(255)              |         | false    |                                                                                                                                       |         | ユーザー名                  |
 | hashed_password | binary(60)                |         | false    |                                                                                                                                       |         | 暗号化されたパスワード            |
-| type            | enum('student','faculty') |         | false    |                                                                                                                                       |         | 学生・教員                  |
+| type            | enum('student','teacher') |         | false    |                                                                                                                                       |         | 学生・教員                  |
 
 ## Constraints
 
