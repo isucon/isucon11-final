@@ -1,4 +1,4 @@
-export default {
+const config = {
   // Disable server-side rendering: https://go.nuxtjs.dev/ssr-mode
   ssr: false,
 
@@ -48,14 +48,19 @@ export default {
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
   axios: {
     baseURL: process.env.API_HOST || 'http://localhost:8080',
-    proxy: true,
-  },
-
-  proxy: {
-    '/api/': 'http://localhost:7000',
-    '/login': 'http://localhost:7000',
   },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {},
 }
+
+const isProd = process.env.NODE_ENV === 'production'
+if (!isProd) {
+  config.axios.proxy = true
+  config.proxy = {
+    '/api/': 'http://localhost:7000',
+    '/login': 'http://localhost:7000',
+  }
+}
+
+export default config
