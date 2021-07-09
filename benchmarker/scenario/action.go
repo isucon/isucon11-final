@@ -76,7 +76,7 @@ func RegisterCoursesAction(ctx context.Context, student *model.Student, courses 
 		coursesID = append(coursesID, c.ID)
 	}
 
-	registeredCoursesID, err := api.RegisterCourses(ctx, student.Agent, student.UserData.Number, coursesID)
+	registeredCoursesID, err := api.RegisterCourses(ctx, student.Agent, coursesID)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func RegisterCoursesAction(ctx context.Context, student *model.Student, courses 
 }
 
 func FetchRegisteredCoursesAction(ctx context.Context, student *model.Student) ([]string, error) {
-	registeredCoursesID, err := api.FetchRegisteredCourses(ctx, student.Agent, student.UserData.Number)
+	registeredCoursesID, err := api.FetchRegisteredCourses(ctx, student.Agent)
 	if err != nil {
 		return nil, err
 	}

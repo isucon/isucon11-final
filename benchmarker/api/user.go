@@ -19,9 +19,9 @@ type usersCourseResponse struct {
 	ID string `json:"id"`
 }
 
-func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) ([]string, error) {
+func FetchRegisteredCourses(ctx context.Context, a *agent.Agent) ([]string, error) {
 	var registeredCourses []usersCourseResponse
-	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/courses", userID), nil, &registeredCourses, []int{http.StatusOK})
+	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/me/courses"), nil, &registeredCourses, []int{http.StatusOK})
 	if err != nil {
 		return nil, err
 	}
@@ -33,8 +33,18 @@ func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) 
 	return ids, nil
 }
 
-func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses []string) ([]string, error) {
-	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/%s/courses", userID), courses, nil, []int{http.StatusOK, http.StatusBadRequest})
+type registerCourseRequest struct {
+	ID string `json:"id"`
+}
+
+type registerCoursesRequest []registerCourseRequest
+
+func RegisterCourses(ctx context.Context, a *agent.Agent, courses []string) ([]string, error) {
+	req := make(registerCoursesRequest, 0, len(courses))
+	for _, v := range courses {
+		req = append(req, registerCourseRequest{ID: v})
+	}
+	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/me/courses"), req, nil, []int{http.StatusOK, http.StatusBadRequest})
 	if err != nil {
 		return nil, err
 	}
