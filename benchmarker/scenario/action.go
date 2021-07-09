@@ -371,7 +371,7 @@ func RegisterGradeAction(ctx context.Context, faculty *model.Faculty, student *m
 }
 
 func FetchGradesAction(ctx context.Context, student *model.Student) (map[string]uint32, error) {
-	r, err := api.GetGrades(ctx, student.Agent, student.Number)
+	r, err := api.GetGrades(ctx, student.Agent)
 	mp := make(map[string]uint32, len(r.CourseGrades))
 	for _, courseGrade := range r.CourseGrades {
 		mp[courseGrade.ID] = courseGrade.Grade
