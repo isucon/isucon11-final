@@ -253,7 +253,7 @@ type UserType string
 
 const (
 	Student UserType = "student"
-	Faculty UserType = "faculty"
+	Teacher UserType = "teacher"
 )
 
 type User struct {
@@ -282,9 +282,9 @@ type Course struct {
 type CourseStatus string
 
 const (
-	StatusReg    CourseStatus = "reg"
-	_            CourseStatus = "class" /* FIXME: use StatusClass */
-	StatusResult CourseStatus = "result"
+	StatusRegistration CourseStatus = "registration"
+	_                  CourseStatus = "in-progress" /* FIXME: use StatusClass */
+	StatusClosed       CourseStatus = "closed"
 )
 
 type Schedule struct {
@@ -369,7 +369,7 @@ func (h *handlers) Login(c echo.Context) error {
 
 	sess.Values["userID"] = user.ID.String()
 	sess.Values["userName"] = user.Name
-	sess.Values["isAdmin"] = user.Type == Faculty
+	sess.Values["isAdmin"] = user.Type == Teacher
 	sess.Options = &sessions.Options{
 		Path:   "/",
 		MaxAge: 3600,
@@ -407,7 +407,7 @@ func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 	if err = h.DB.Select(&courses, "SELECT `courses`.* "+
 		"FROM `courses` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
-		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
+		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusClosed, userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -486,7 +486,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		if course.Status != StatusReg {
+		if course.Status != StatusRegistration {
 			errors.StatusNotRegistration = append(errors.StatusNotRegistration, course.ID)
 			continue
 		}
@@ -510,7 +510,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	if err := tx.Select(&registeredCourses, "SELECT `courses`.* "+
 		"FROM `courses` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
-		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
+		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusClosed, userID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
