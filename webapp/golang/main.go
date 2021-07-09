@@ -958,17 +958,14 @@ type GetClassResponse struct {
 type GetClassesResponse []GetClassResponse
 
 func (h *handlers) GetClasses(c echo.Context) error {
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-
-	var course Course
-	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "no such course")
-	} else if err != nil {
+	courseID := c.Param("courseID")
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "no such course")
 	}
 
 	var classes []Class
@@ -1124,9 +1121,14 @@ type AddClassResponse struct {
 }
 
 func (h *handlers) AddClass(c echo.Context) error {
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	courseID := c.Param("courseID")
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "no such course")
 	}
 
 	var req AddClassRequest
