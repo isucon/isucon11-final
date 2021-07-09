@@ -198,16 +198,6 @@ type CourseGrade struct {
 	Grade  string    `json:"grade" db:"grade"`
 }
 
-type GetAnnouncementsResponse []GetAnnouncementResponse
-type GetAnnouncementResponse struct {
-	ID         uuid.UUID `json:"id"`
-	CourseName string    `json:"course_name"`
-	Title      string    `json:"title"`
-	// MEMO: TODO: 既読機能
-	// Unread     bool      `json:"unread"`
-	CreatedAt int64 `json:"created_at"`
-}
-
 type GetAnnouncementDetailResponse struct {
 	ID         uuid.UUID `json:"id"`
 	CourseName string    `json:"course_name"`
@@ -1039,24 +1029,33 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	return c.JSON(http.StatusCreated, res)
 }
 
-func (h *handlers) GetAnnouncementList(context echo.Context) error {
-	sess, err := session.Get(SessionName, context)
+type GetAnnouncementResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	CreatedAt  int64     `json:"created_at"`
+}
+
+type GetAnnouncementsResponse []GetAnnouncementResponse
+
+func (h *handlers) GetAnnouncementList(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if userID == nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	// MEMO: ページングの初期実装はページ番号形式
 	var page int
-	if context.QueryParam("page") == "" {
+	if c.QueryParam("page") == "" {
 		page = 1
 	} else {
-		page, err = strconv.Atoi(context.QueryParam("page"))
+		page, err = strconv.Atoi(c.QueryParam("page"))
 		if err != nil || page <= 0 {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid page.")
 		}
@@ -1072,8 +1071,8 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL "+
 		"ORDER BY `announcements`.`created_at` DESC "+
 		"LIMIT ? OFFSET ?", userID, limit+1, offset); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	lenRes := len(announcements)
@@ -1092,17 +1091,17 @@ func (h *handlers) GetAnnouncementList(context echo.Context) error {
 
 	if lenRes > 0 {
 		var links []string
-		path := fmt.Sprintf("%v://%v%v", context.Scheme(), context.Request().Host, context.Path())
+		path := fmt.Sprintf("%v://%v%v", c.Scheme(), c.Request().Host, c.Path())
 		if page > 1 {
 			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
 		}
 		if len(announcements) == limit+1 {
 			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
 		}
-		context.Response().Header().Set("Link", strings.Join(links, ","))
+		c.Response().Header().Set("Link", strings.Join(links, ","))
 	}
 
-	return context.JSON(http.StatusOK, res)
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
