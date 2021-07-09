@@ -637,11 +637,7 @@ type GetCourseDetailResponse struct {
 }
 
 func (h *handlers) GetCourseDetail(c echo.Context) error {
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-
+	courseID := c.Param("courseID")
 	var res GetCourseDetailResponse
 	if err := h.DB.Get(&res, "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher` "+
 		"FROM `courses` "+
