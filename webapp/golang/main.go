@@ -560,27 +560,25 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		courses = append(courses, course)
 	}
 
-	if len(courses) > 0 {
-		// MEMO: スケジュールの重複バリデーション
-		var registeredCourses []Course
-		if err := tx.Select(&registeredCourses, "SELECT `courses`.* "+
-			"FROM `courses` "+
-			"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
-			"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
-			_ = tx.Rollback()
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
+	// MEMO: スケジュールの重複バリデーション
+	var registeredCourses []Course
+	if err := tx.Select(&registeredCourses, "SELECT `courses`.* "+
+		"FROM `courses` "+
+		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
+		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
+		_ = tx.Rollback()
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
-		registeredCourses = append(registeredCourses, courses...)
+	registeredCourses = append(registeredCourses, courses...)
 
-		for _, course1 := range courses {
-			for _, course2 := range registeredCourses {
-				if !uuid.Equal(course1.ID, course2.ID) && course1.Period == course2.Period && course1.DayOfWeek == course2.DayOfWeek {
-					hasError = true
-					errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, course1.ID)
-					break
-				}
+	for _, course1 := range courses {
+		for _, course2 := range registeredCourses {
+			if !uuid.Equal(course1.ID, course2.ID) && course1.Period == course2.Period && course1.DayOfWeek == course2.DayOfWeek {
+				hasError = true
+				errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, course1.ID)
+				break
 			}
 		}
 	}
