@@ -1134,9 +1134,49 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	classID := uuid.NewRandom()
-	if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))",
+	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := uuid.NewRandom()
+	_, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))",
+		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description))
+	if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: 履修登録しているユーザにお知らせを追加
+	var registeredUsers []User
+	if err := tx.Select(&registeredUsers, "SELECT `users`.* FROM `users` "+
+		"JOIN `registrations` ON `users`.`id` = `registrations`.`user_id` "+
+		"WHERE `registrations`.`course_id` = ? AND `registrations`.`deleted_at` IS NULL", courseID); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	for _, user := range registeredUsers {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))",
+			announcementID, user.ID); err != nil {
+			c.Logger().Error(err)
+			_ = tx.Rollback()
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
