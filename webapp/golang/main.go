@@ -288,6 +288,7 @@ type Announcement struct {
 	CourseName string    `db:"name"`
 	Title      string    `db:"title"`
 	Message    string    `db:"message"`
+	Read       bool      `db:"read"`
 	CreatedAt  time.Time `db:"created_at"`
 }
 
@@ -999,8 +1000,40 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	announcementID := uuid.NewRandom()
-	if _, err := h.DB.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", announcementID, courseID, req.Title, req.Message); err != nil {
+	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))",
+		announcementID, courseID, req.Title, req.Message); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: 履修登録しているユーザにお知らせを追加
+	var registeredUsers []User
+	if err := tx.Select(&registeredUsers, "SELECT `users`.* FROM `users` "+
+		"JOIN `registrations` ON `users`.`id` = `registrations`.`user_id` "+
+		"WHERE `registrations`.`course_id` = ? AND `registrations`.`deleted_at` IS NULL", courseID); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	for _, user := range registeredUsers {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))",
+			announcementID, user.ID); err != nil {
+			c.Logger().Error(err)
+			_ = tx.Rollback()
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1016,6 +1049,7 @@ type GetAnnouncementResponse struct {
 	ID         uuid.UUID `json:"id"`
 	CourseName string    `json:"course_name"`
 	Title      string    `json:"title"`
+	Read       bool      `json:"read"`
 	CreatedAt  int64     `json:"created_at"`
 }
 
@@ -1047,11 +1081,11 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	offset := limit * (page - 1)
 
 	announcements := make([]Announcement, 0)
-	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at` "+
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NOT NULL AS `read`, `announcements`.`created_at` "+
 		"FROM `announcements` "+
 		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
-		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
-		"WHERE `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL "+
+		"JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id` "+
+		"WHERE `unread_announcements`.`user_id` = ? "+
 		"ORDER BY `announcements`.`created_at` DESC "+
 		"LIMIT ? OFFSET ?", userID, limit+1, offset); err != nil {
 		c.Logger().Error(err)
@@ -1068,6 +1102,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 			ID:         announcement.ID,
 			CourseName: announcement.CourseName,
 			Title:      announcement.Title,
+			Read:       announcement.Read,
 			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
 		})
 	}
@@ -1116,6 +1151,12 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "no such announcement")
 	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `deleted_at` = NOW(6) WHERE `announcement_id` = ? AND `user_id` = ? AND `deleted_at` IS NULL",
+		announcementID, userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
