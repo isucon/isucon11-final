@@ -481,8 +481,8 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 			errors.NotFoundCourse = append(errors.NotFoundCourse, courseReq.ID)
 			continue
 		} else if err != nil {
-			_ = tx.Rollback()
 			c.Logger().Error(err)
+			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
@@ -494,8 +494,8 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		// MEMO: すでに履修登録済みの科目は無視する
 		var registerCount int
 		if err := tx.Get(&registerCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID); err != nil {
-			_ = tx.Rollback()
 			c.Logger().Error(err)
+			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 		if registerCount > 0 {
@@ -511,8 +511,8 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		"FROM `courses` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
 		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
-		_ = tx.Rollback()
 		c.Logger().Error(err)
+		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -535,14 +535,14 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	for _, course := range courses {
 		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
+			c.Logger().Error(err)
 			_ = tx.Rollback()
-			log.Println(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
-		log.Println(err)
+		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
