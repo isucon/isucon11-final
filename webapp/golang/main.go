@@ -266,11 +266,6 @@ type PostDocumentResponse struct {
 	ID uuid.UUID `json:"id"`
 }
 
-type TimeSlotResponse struct {
-	Period    uint8  `json:"period"`
-	DayOfWeek string `json:"day_of_week"`
-}
-
 type PhaseType string
 
 const (
@@ -687,106 +682,36 @@ func (h *handlers) SearchCourses(context echo.Context) error {
 }
 
 type GetCourseDetailResponse struct {
-	ID              uuid.UUID                `json:"id"`
-	Code            string                   `json:"code"`
-	Type            string                   `json:"type"`
-	Name            string                   `json:"name"`
-	Description     string                   `json:"description"`
-	Credit          uint8                    `json:"credit"`
-	Classroom       string                   `json:"classroom"`
-	Capacity        uint32                   `json:"capacity,omitempty"`
-	Teacher         string                   `json:"teacher"`
-	Keywords        string                   `json:"keywords"`
-	Semester        Semester                 `json:"semester"`
-	Year            uint32                   `json:"year"`
-	Timeslots       []TimeSlotResponse       `json:"timeslots"`
-	RequiredCourses []RequiredCourseResponse `json:"required_courses"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	Code        string    `json:"code" db:"code"`
+	Type        string    `json:"type" db:"type"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	Credit      uint8     `json:"credit" db:"credit"`
+	Period      uint8     `json:"period" db:"period"`
+	DayOfWeek   string    `json:"day_of_week" db:"day_of_week"`
+	Teacher     string    `json:"teacher" db:"teacher"`
+	Keywords    string    `json:"keywords" db:"keywords"`
 }
 
-type RequiredCourseResponse struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
-
-func (h *handlers) GetCourseDetail(context echo.Context) error {
-	courseID := uuid.Parse(context.Param("courseID"))
+func (h *handlers) GetCourseDetail(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
 	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
-	var course Course
-	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+	var res GetCourseDetailResponse
+	if err := h.DB.Get(&res, "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher` "+
+		"FROM `courses` "+
+		"JOIN `users` ON `courses`.`teacher_id` = `users`.`id` "+
+		"WHERE `courses`.`id` = ?", courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course")
 	} else if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var teacher User
-	if err := h.DB.Get(&teacher, "SELECT * FROM `users` WHERE `id` = ?", course.TeacherID); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	var schedules []Schedule
-	if err := h.DB.Select(&schedules, "SELECT `schedules`.* "+
-		"FROM `schedules` "+
-		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id` "+
-		"WHERE `course_schedules`.`course_id` = ?", course.ID); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	if len(schedules) == 0 {
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	var requiredCourses []Course
-	if err := h.DB.Select(&requiredCourses, "SELECT `courses`.* "+
-		"FROM `course_requirements` "+
-		"JOIN `courses` ON `course_requirements`.`required_course_id` = `courses`.`id` "+
-		"WHERE `course_requirements`.`course_id` = ?", course.ID); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	}
-
-	timeslotsRes := make([]TimeSlotResponse, 0, len(schedules))
-	for _, schedule := range schedules {
-		timeslotsRes = append(timeslotsRes, TimeSlotResponse{
-			Period:    schedule.Period,
-			DayOfWeek: schedule.DayOfWeek,
-		})
-	}
-
-	requiredCoursesRes := make([]RequiredCourseResponse, 0, len(requiredCourses))
-	for _, course := range requiredCourses {
-		requiredCoursesRes = append(requiredCoursesRes, RequiredCourseResponse{
-			ID:   course.ID,
-			Name: course.Name,
-		})
-	}
-
-	res := GetCourseDetailResponse{
-		ID:              course.ID,
-		Code:            course.Code,
-		Type:            course.Type,
-		Name:            course.Name,
-		Description:     course.Description,
-		Credit:          course.Credit,
-		Classroom:       course.Classroom,
-		Teacher:         teacher.Name,
-		Keywords:        course.Keywords,
-		Semester:        schedules[0].Semester,
-		Year:            schedules[0].Year,
-		Timeslots:       timeslotsRes,
-		RequiredCourses: requiredCoursesRes,
-	}
-
-	if course.Capacity.Valid {
-		res.Capacity = uint32(course.Capacity.Int32)
-	}
-
-	return context.JSON(http.StatusOK, res)
+	return c.JSON(http.StatusOK, res)
 }
 
 type GetClassResponse struct {
