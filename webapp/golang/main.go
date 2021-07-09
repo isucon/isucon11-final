@@ -198,23 +198,6 @@ type CourseGrade struct {
 	Grade  string    `json:"grade" db:"grade"`
 }
 
-type GetAnnouncementDetailResponse struct {
-	ID         uuid.UUID `json:"id"`
-	CourseName string    `json:"course_name"`
-	Title      string    `json:"title"`
-	Message    string    `json:"message"`
-	CreatedAt  int64     `json:"created_at"`
-}
-
-type PostAnnouncementsRequest struct {
-	Title   string `json:"title"`
-	Message string `json:"message"`
-}
-
-type PostAnnouncementsResponse struct {
-	ID uuid.UUID `json:"id"`
-}
-
 type PhaseType string
 
 const (
@@ -1104,33 +1087,37 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
-	sess, err := session.Get(SessionName, context)
+type GetAnnouncementDetailResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	Message    string    `json:"message"`
+	CreatedAt  int64     `json:"created_at"`
+}
+
+func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if userID == nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	announcementID := uuid.Parse(context.Param("announcementID"))
-	if announcementID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid announcementID")
-	}
-
+	announcementID := c.Param("announcementID")
 	var announcement Announcement
-	if err := h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at`"+
-		"FROM `announcements`"+
-		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`"+
-		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id`"+
+	if err := h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at` "+
+		"FROM `announcements` "+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
+		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
 		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "announcement not found.")
+		return echo.NewHTTPError(http.StatusNotFound, "no such announcement")
 	} else if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	res := GetAnnouncementDetailResponse{
@@ -1140,7 +1127,7 @@ func (h *handlers) GetAnnouncementDetail(context echo.Context) error {
 		Message:    announcement.Message,
 		CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
 	}
-	return context.JSON(http.StatusOK, res)
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *handlers) courseIsInCurrentPhase(courseID uuid.UUID) (bool, error) {
