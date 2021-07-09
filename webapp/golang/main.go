@@ -75,7 +75,7 @@ func main() {
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
-			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncements, h.IsAdmin)
+			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncement, h.IsAdmin)
 		}
 		announcementsAPI := API.Group("/announcements")
 		{
@@ -997,36 +997,46 @@ func (h *handlers) AddClass(c echo.Context) error {
 	return c.JSON(http.StatusCreated, res)
 }
 
-func (h *handlers) AddAnnouncements(context echo.Context) error {
-	courseID := uuid.Parse(context.Param("courseID"))
+type AddAnnouncementRequest struct {
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
+
+type AddAnnouncementResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
+func (h *handlers) AddAnnouncement(c echo.Context) error {
+	courseID := uuid.Parse(c.Param("courseID"))
 	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
+
 	var count int
 	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	if count == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
 	}
 
-	var req PostAnnouncementsRequest
-	if err := context.Bind(&req); err != nil {
+	var req AddAnnouncementRequest
+	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
 	announcementID := uuid.NewRandom()
 	if _, err := h.DB.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", announcementID, courseID, req.Title, req.Message); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := PostAnnouncementsResponse{
+	res := AddAnnouncementResponse{
 		ID: announcementID,
 	}
 
-	return context.JSON(http.StatusCreated, res)
+	return c.JSON(http.StatusCreated, res)
 }
 
 func (h *handlers) GetAnnouncementList(context echo.Context) error {
