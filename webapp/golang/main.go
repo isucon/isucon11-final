@@ -75,6 +75,7 @@ func main() {
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
+			coursesAPI.GET("/:courseID/announcements", h.GetCourseAnnouncementList)
 			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncement, h.IsAdmin)
 		}
 		announcementsAPI := API.Group("/announcements")
@@ -971,6 +972,97 @@ func (h *handlers) AddClass(c echo.Context) error {
 	return c.JSON(http.StatusCreated, res)
 }
 
+type GetCourseAnnouncementResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Title     string    `json:"title"`
+	Read      bool      `json:"read"`
+	CreatedAt int64     `json:"created_at"`
+}
+
+type GetCourseAnnouncementsResponse []GetCourseAnnouncementResponse
+
+func (h *handlers) GetCourseAnnouncementList(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	}
+
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
+	}
+
+	// MEMO: ページングの初期実装はページ番号形式
+	var page int
+	if c.QueryParam("page") == "" {
+		page = 1
+	} else {
+		page, err = strconv.Atoi(c.QueryParam("page"))
+		if err != nil || page <= 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid page.")
+		}
+	}
+	limit := 20
+	offset := limit * (page - 1)
+
+	announcements := make([]Announcement, 0)
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NOT NULL AS `read`, `announcements`.`created_at` "+
+		"FROM `announcements` "+
+		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
+		"JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id` "+
+		"WHERE `announcements`.`course_id` = ? AND `unread_announcements`.`user_id` = ? "+
+		"ORDER BY `announcements`.`created_at` DESC "+
+		"LIMIT ? OFFSET ?", courseID, userID, limit+1, offset); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	lenRes := len(announcements)
+	if len(announcements) == limit+1 {
+		lenRes = limit
+	}
+	res := make(GetCourseAnnouncementsResponse, 0, lenRes)
+	for _, announcement := range announcements[:lenRes] {
+		res = append(res, GetCourseAnnouncementResponse{
+			ID:        announcement.ID,
+			Title:     announcement.Title,
+			Read:      announcement.Read,
+			CreatedAt: announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
+		})
+	}
+
+	if lenRes > 0 {
+		var links []string
+		url := fmt.Sprintf("%v://%v%v", c.Scheme(), c.Request().Host, c.Request().URL.Path)
+		if page > 1 {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", url, page-1))
+		}
+		if len(announcements) == limit+1 {
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", url, page+1))
+		}
+		if len(links) > 0 {
+			c.Response().Header().Set("Link", strings.Join(links, ","))
+		}
+	}
+
+	return c.JSON(http.StatusOK, res)
+}
+
 type AddAnnouncementRequest struct {
 	Title   string `json:"title"`
 	Message string `json:"message"`
@@ -1109,14 +1201,16 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	if lenRes > 0 {
 		var links []string
-		path := fmt.Sprintf("%v://%v%v", c.Scheme(), c.Request().Host, c.Path())
+		url := fmt.Sprintf("%v://%v%v", c.Scheme(), c.Request().Host, c.Request().URL.Path)
 		if page > 1 {
-			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", url, page-1))
 		}
 		if len(announcements) == limit+1 {
-			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
+			links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", url, page+1))
 		}
-		c.Response().Header().Set("Link", strings.Join(links, ","))
+		if len(links) > 0 {
+			c.Response().Header().Set("Link", strings.Join(links, ","))
+		}
 	}
 
 	return c.JSON(http.StatusOK, res)
