@@ -993,11 +993,7 @@ func (h *handlers) GetCourseAnnouncementList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-
+	courseID := c.Param("courseID")
 	var count int
 	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
@@ -1073,11 +1069,7 @@ type AddAnnouncementResponse struct {
 }
 
 func (h *handlers) AddAnnouncement(c echo.Context) error {
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
-
+	courseID := c.Param("courseID")
 	var count int
 	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
