@@ -638,11 +638,16 @@ type GetCourseDetailResponse struct {
 
 func (h *handlers) GetCourseDetail(c echo.Context) error {
 	courseID := c.Param("courseID")
+	if courseID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "CourseID is required")
+	}
+
 	var res GetCourseDetailResponse
-	if err := h.DB.Get(&res, "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher` "+
-		"FROM `courses` "+
-		"JOIN `users` ON `courses`.`teacher_id` = `users`.`id` "+
-		"WHERE `courses`.`id` = ?", courseID); err == sql.ErrNoRows {
+	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
+		"FROM `courses`" +
+		"JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+		"WHERE `courses`.`id` = ?"
+	if err := h.DB.Get(&res, query, courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course")
 	} else if err != nil {
 		c.Logger().Error(err)
