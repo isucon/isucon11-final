@@ -510,8 +510,8 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	}
 
 	// MEMO: スケジュールの重複バリデーション
-	var registeredCourses []Course
-	if err := tx.Select(&registeredCourses, "SELECT `courses`.* "+
+	var coursesToRegister []Course
+	if err := tx.Select(&coursesToRegister, "SELECT `courses`.* "+
 		"FROM `courses` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
 		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
@@ -520,10 +520,10 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	registeredCourses = append(registeredCourses, courses...)
+	coursesToRegister = append(coursesToRegister, courses...)
 
 	for _, course1 := range courses {
-		for _, course2 := range registeredCourses {
+		for _, course2 := range coursesToRegister {
 			if !uuid.Equal(course1.ID, course2.ID) && course1.Period == course2.Period && course1.DayOfWeek == course2.DayOfWeek {
 				hasError = true
 				errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, course1.ID)
