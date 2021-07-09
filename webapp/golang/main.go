@@ -468,7 +468,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	}
 
 	var errors RegisterCoursesErrorResponse
-	var courses []Course
+	var coursesToRegister []Course
 	for _, courseReq := range req {
 		courseID := uuid.Parse(courseReq.ID)
 		if courseID == nil {
@@ -502,12 +502,12 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 			continue
 		}
 
-		courses = append(courses, course)
+		coursesToRegister = append(coursesToRegister, course)
 	}
 
 	// MEMO: スケジュールの重複バリデーション
-	var coursesToRegister []Course
-	if err := tx.Select(&coursesToRegister, "SELECT `courses`.* "+
+	var registeredCourses []Course
+	if err := tx.Select(&registeredCourses, "SELECT `courses`.* "+
 		"FROM `courses` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
 		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusResult, userID); err != nil {
@@ -516,10 +516,10 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	coursesToRegister = append(coursesToRegister, courses...)
+	registeredCourses = append(registeredCourses, coursesToRegister...)
 
-	for _, course1 := range courses {
-		for _, course2 := range coursesToRegister {
+	for _, course1 := range coursesToRegister {
+		for _, course2 := range registeredCourses {
 			if !uuid.Equal(course1.ID, course2.ID) && course1.Period == course2.Period && course1.DayOfWeek == course2.DayOfWeek {
 				errors.TimeslotDuplicated = append(errors.TimeslotDuplicated, course1.ID)
 				break
@@ -532,7 +532,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, errors)
 	}
 
-	for _, course := range courses {
+	for _, course := range coursesToRegister {
 		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
 		if err != nil {
 			c.Logger().Error(err)
