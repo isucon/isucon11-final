@@ -50,11 +50,13 @@ func apiRequest(ctx context.Context, a *agent.Agent, method string, rpath string
 		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf("不正な HTTP ステータスコード: %d (%s: %s)", httpres.StatusCode, httpreq.Method, httpreq.URL.Path))
 	}
 
-	err = json.NewDecoder(httpres.Body).Decode(res)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", httpres.Request.Method, httpres.Request.URL.Path,
-		))
+	if res != nil {
+		err = json.NewDecoder(httpres.Body).Decode(res)
+		if err != nil {
+			return nil, failure.NewError(fails.ErrHTTP, fmt.Errorf(
+				"JSONのパースに失敗しました (%s: %s)", httpres.Request.Method, httpres.Request.URL.Path,
+			))
+		}
 	}
 
 	return httpres, nil
