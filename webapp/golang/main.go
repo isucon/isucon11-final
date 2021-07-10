@@ -741,7 +741,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 
 	classID := c.Param("classID")
 	var class Class
-	if err := h.DB.Get(&class, "SELECT ? FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
+	if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
 		c.Logger().Error(err)
