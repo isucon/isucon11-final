@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
@@ -74,10 +72,9 @@ func main() {
 			coursesAPI.POST("", h.AddCourse, h.IsAdmin)
 			coursesAPI.PUT("/:courseID/status", h.SetCourseStatus, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
+			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
 			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
-			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
-			coursesAPI.POST("/:courseID/classes/:classID", h.SetClassFlag, h.IsAdmin)
 			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncements, h.IsAdmin)
 		}
 		announcementsAPI := API.Group("/announcements")
@@ -296,12 +293,13 @@ type Schedule struct {
 }
 
 type Class struct {
-	ID             uuid.UUID `db:"id"`
-	CourseID       uuid.UUID `db:"course_id"`
-	Part           uint8     `db:"part"`
-	Title          string    `db:"title"`
-	Description    string    `db:"description"`
-	AttendanceCode string    `db:"attendance_code"`
+	ID                 uuid.UUID    `db:"id"`
+	CourseID           uuid.UUID    `db:"course_id"`
+	Part               uint8        `db:"part"`
+	Title              string       `db:"title"`
+	Description        string       `db:"description"`
+	CreatedAt          time.Time    `db:"created_at"`
+	SubmissionClosedAt sql.NullTime `db:"submission_closed_at"`
 }
 
 type Assignment struct {
@@ -757,24 +755,24 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 }
 
 type GetClassResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Part        uint8     `json:"part"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
+	ID                 uuid.UUID `json:"id"`
+	Part               uint8     `json:"part"`
+	Title              string    `json:"title"`
+	Description        string    `json:"description"`
+	SubmissionClosedAt int64     `json:"submission_closed_at,omitempty"`
 }
 
-func (h *handlers) GetClasses(c echo.Context) error {
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
-	}
+type GetClassesResponse []GetClassResponse
 
-	var course Course
-	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "course not found")
-	} else if err != nil {
+func (h *handlers) GetClasses(c echo.Context) error {
+	courseID := c.Param("courseID")
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "no such course")
 	}
 
 	var classes []Class
@@ -783,14 +781,19 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := make([]GetClassResponse, 0, len(classes))
+	res := make(GetClassesResponse, 0, len(classes))
 	for _, class := range classes {
-		res = append(res, GetClassResponse{
+		getClassRes := GetClassResponse{
 			ID:          class.ID,
 			Part:        class.Part,
 			Title:       class.Title,
 			Description: class.Description,
-		})
+		}
+		if class.SubmissionClosedAt.Valid {
+			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.UnixNano() / int64(time.Millisecond)
+		}
+
+		res = append(res, getClassRes)
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -921,14 +924,18 @@ type AddClassRequest struct {
 }
 
 type AddClassResponse struct {
-	ID             uuid.UUID `json:"id"`
-	AttendanceCode string    `json:"attendance_code"`
+	ID uuid.UUID `json:"id"`
 }
 
 func (h *handlers) AddClass(c echo.Context) error {
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
+	courseID := c.Param("courseID")
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "no such course")
 	}
 
 	var req AddClassRequest
@@ -936,43 +943,58 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
 	}
 
-	if req.Part == 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid part")
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	classID := uuid.NewRandom()
-	const lenCode = 6
-	const mysqlDupEntryCode = 1062
-	var attendanceCode string
-	for {
-		bytes := make([]byte, lenCode)
-		for i := range bytes {
-			bytes[i] = byte(65 + rand.Intn(26))
-		}
-		attendanceCode = string(bytes)
+	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))",
+		classID, courseID, req.Part, req.Title, req.Description); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
-		if _, err := h.DB.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `attendance_code`) VALUES (?, ?, ?, ?, ?, ?)",
-			classID, courseID, req.Part, req.Title, req.Description, attendanceCode); err != nil {
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == mysqlDupEntryCode {
-				continue
-			} else {
-				c.Logger().Error(err)
-				return c.NoContent(http.StatusInternalServerError)
-			}
+	announcementID := uuid.NewRandom()
+	_, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))",
+		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description))
+	if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// MEMO: 履修登録しているユーザにお知らせを追加
+	var registeredUsers []User
+	if err := tx.Select(&registeredUsers, "SELECT `users`.* FROM `users` "+
+		"JOIN `registrations` ON `users`.`id` = `registrations`.`user_id` "+
+		"WHERE `registrations`.`course_id` = ? AND `registrations`.`deleted_at` IS NULL", courseID); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	for _, user := range registeredUsers {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))",
+			announcementID, user.ID); err != nil {
+			c.Logger().Error(err)
+			_ = tx.Rollback()
+			return c.NoContent(http.StatusInternalServerError)
 		}
-		break
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	res := AddClassResponse{
-		ID:             classID,
-		AttendanceCode: attendanceCode,
+		ID: classID,
 	}
 
 	return c.JSON(http.StatusCreated, res)
-}
-
-func (h *handlers) SetClassFlag(context echo.Context) error {
-	panic("implement me")
 }
 
 func (h *handlers) AddAnnouncements(context echo.Context) error {
