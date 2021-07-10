@@ -51,7 +51,6 @@ func main() {
 
 	// e.POST("/initialize", h.Initialize, h.IsLoggedIn, h.IsAdmin)
 	e.POST("/initialize", h.Initialize)
-	e.PUT("/phase", h.SetPhase, h.IsLoggedIn, h.IsAdmin)
 
 	e.POST("/login", h.Login)
 	API := e.Group("/api", h.IsLoggedIn)
@@ -150,38 +149,6 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-type SetPhaseRequest struct {
-	Phase    PhaseType `json:"phase"`
-	Year     uint32    `json:"year"`
-	Semester Semester  `json:"semester"`
-}
-
-func (h *handlers) SetPhase(c echo.Context) error {
-	var req SetPhaseRequest
-	if err := c.Bind(&req); err != nil {
-		log.Println(err)
-		return echo.NewHTTPError(http.StatusBadRequest, err)
-	}
-
-	if req.Phase != PhaseRegistration && req.Phase != PhaseClass && req.Phase != PhaseResult {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad phase")
-	}
-	if req.Semester != FirstSemester && req.Semester != SecondSemester {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad semester")
-	}
-
-	if _, err := h.DB.Exec("TRUNCATE TABLE `phase`"); err != nil {
-		log.Println(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if _, err := h.DB.Exec("INSERT INTO `phase` (`phase`, `year`, `semester`) VALUES (?, ?, ?)", req.Phase, req.Year, req.Semester); err != nil {
-		log.Println(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	return c.NoContent(http.StatusNoContent)
-}
-
 type GetGradesResponse struct {
 	Summary      Summary        `json:"summary"`
 	CourseGrades []*CourseGrade `json:"courses"`
@@ -197,27 +164,6 @@ type CourseGrade struct {
 	Name   string    `json:"name" db:"name"`
 	Credit uint8     `json:"credit" db:"credit"`
 	Grade  string    `json:"grade" db:"grade"`
-}
-
-type PhaseType string
-
-const (
-	PhaseRegistration PhaseType = "reg"
-	PhaseClass        PhaseType = "class"
-	PhaseResult       PhaseType = "result"
-)
-
-type Semester string
-
-const (
-	FirstSemester  Semester = "first"
-	SecondSemester Semester = "second"
-)
-
-type Phase struct {
-	Phase    PhaseType `json:"phase"`
-	Year     uint32    `json:"year"`
-	Semester Semester  `json:"semester"`
 }
 
 type UserType string
@@ -257,14 +203,6 @@ const (
 	StatusInProgress   CourseStatus = "in-progress"
 	StatusClosed       CourseStatus = "closed"
 )
-
-type Schedule struct {
-	ID        uuid.UUID `db:"id"`
-	Period    uint8     `db:"period"`
-	DayOfWeek string    `db:"day_of_week"`
-	Semester  Semester  `db:"semester"`
-	Year      uint32    `db:"year"`
-}
 
 type Class struct {
 	ID                 uuid.UUID    `db:"id"`
