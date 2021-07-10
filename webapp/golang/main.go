@@ -53,7 +53,7 @@ func main() {
 	e.POST("/initialize", h.Initialize)
 
 	e.POST("/login", h.Login)
-	//API := e.Group("/api", h.IsLoggedIn)
+	// API := e.Group("/api", h.IsLoggedIn)
 	API := e.Group("/api")
 	{
 		usersAPI := API.Group("/users")
@@ -225,6 +225,7 @@ type Assignment struct {
 
 type Announcement struct {
 	ID         uuid.UUID `db:"id"`
+	CourseID   uuid.UUID `db:"course_id"`
 	CourseName string    `db:"name"`
 	Title      string    `db:"title"`
 	Message    string    `db:"message"`
@@ -1047,7 +1048,7 @@ func (h *handlers) GetCourseAnnouncementList(c echo.Context) error {
 	offset := limit * (page - 1)
 
 	announcements := make([]Announcement, 0)
-	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NOT NULL AS `read`, `announcements`.`created_at` "+
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NOT NULL AS `read`, `announcements`.`created_at` "+
 		"FROM `announcements` "+
 		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
 		"JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id` "+
@@ -1161,6 +1162,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 
 type GetAnnouncementResponse struct {
 	ID         uuid.UUID `json:"id"`
+	CourseID   uuid.UUID `json:"course_id"`
 	CourseName string    `json:"course_name"`
 	Title      string    `json:"title"`
 	Read       bool      `json:"read"`
@@ -1195,7 +1197,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	offset := limit * (page - 1)
 
 	announcements := make([]Announcement, 0)
-	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NOT NULL AS `read`, `announcements`.`created_at` "+
+	if err := h.DB.Select(&announcements, "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NOT NULL AS `read`, `announcements`.`created_at` "+
 		"FROM `announcements` "+
 		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
 		"JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id` "+
@@ -1214,6 +1216,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	for _, announcement := range announcements[:lenRes] {
 		res = append(res, GetAnnouncementResponse{
 			ID:         announcement.ID,
+			CourseID:   announcement.CourseID,
 			CourseName: announcement.CourseName,
 			Title:      announcement.Title,
 			Read:       announcement.Read,
@@ -1240,6 +1243,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 type GetAnnouncementDetailResponse struct {
 	ID         uuid.UUID `json:"id"`
+	CourseID   uuid.UUID `json:"course_id"`
 	CourseName string    `json:"course_name"`
 	Title      string    `json:"title"`
 	Message    string    `json:"message"`
@@ -1260,7 +1264,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 
 	announcementID := c.Param("announcementID")
 	var announcement Announcement
-	if err := h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at` "+
+	if err := h.DB.Get(&announcement, "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `announcements`.`created_at` "+
 		"FROM `announcements` "+
 		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
 		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
@@ -1279,6 +1283,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 
 	res := GetAnnouncementDetailResponse{
 		ID:         announcement.ID,
+		CourseID:   announcement.CourseID,
 		CourseName: announcement.CourseName,
 		Title:      announcement.Title,
 		Message:    announcement.Message,
