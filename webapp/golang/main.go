@@ -849,9 +849,9 @@ func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
-	assignmentID := uuid.Parse(c.Param("assignmentID"))
-	if assignmentID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid assignmentID")
+	classID := uuid.Parse(c.Param("classID"))
+	if classID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid classID")
 	}
 
 	tx, err := h.DB.Beginx()
@@ -860,9 +860,9 @@ func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
-	// MEMO: zipファイルを作るためFOR UPDATEでassignment、FOR SHAREでsubmissionをロック
+	// MEMO: zipファイルを作るためFOR UPDATEでclass、FOR SHAREでsubmissionをロック
 	var assignment Assignment
-	if err := tx.Get(&assignment, "SELECT * FROM `assignments` WHERE `id` = ? FOR UPDATE", assignmentID); err == sql.ErrNoRows {
+	if err := tx.Get(&assignment, "SELECT * FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
 	} else if err != nil {
@@ -872,16 +872,14 @@ func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
 	}
 	var submissions []*SubmissionWithUserName
 	if err := tx.Select(&submissions,
-		"SELECT `submissions`.*, `users`.`name` AS `user_name` "+
-			"FROM `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id`"+
-			"WHERE `assignment_id` = ? ORDER BY `user_id` FOR SHARE", assignmentID); err != nil && err != sql.ErrNoRows {
+		"SELECT `submissions`.*, `users`.`name` AS `user_name` FROM `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` WHERE `class_id` = ? ORDER BY `user_id` FOR SHARE", classID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
 
 	// MEMO: TODO: export時でなく提出時にzipファイルを作ることでボトルネックを作りたいが、「そうはならんやろ」という気持ち
-	zipFilePath := AssignmentTmpDirectory + assignmentID.String() + ".zip"
+	zipFilePath := AssignmentTmpDirectory + classID.String() + ".zip"
 	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
