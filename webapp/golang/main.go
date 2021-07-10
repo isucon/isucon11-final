@@ -659,13 +659,13 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 		arr := strings.Split(keywords, " ")
 		var nameCondition string
 		for _, keyword := range arr {
-			nameCondition += " AND `courses`.`name` LIKE '%?%'"
-			args = append(args, keyword)
+			nameCondition += " AND `courses`.`name` LIKE ?"
+			args = append(args, "%"+keyword+"%")
 		}
 		var keywordsCondition string
 		for _, keyword := range arr {
-			keywordsCondition += " AND `courses`.`keywords` LIKE '%?%'"
-			args = append(args, keyword)
+			keywordsCondition += " AND `courses`.`keywords` LIKE ?"
+			args = append(args, "%"+keyword+"%")
 		}
 		condition += fmt.Sprintf(" AND ((1=1%s) OR (1=1%s))", nameCondition, keywordsCondition)
 	}
@@ -701,7 +701,11 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 		c.Response().Header().Set("Link", strings.Join(links, ","))
 	}
 
-	return c.JSON(http.StatusOK, res[:len(res)-1])
+	if len(res) > limit {
+		res = res[:len(res)-1]
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 type GetCourseDetailResponse struct {
