@@ -73,8 +73,8 @@ func main() {
 			coursesAPI.PUT("/:courseID/status", h.SetCourseStatus, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
-			coursesAPI.POST("/:courseID/assignments/:assignmentID", h.SubmitAssignment)
-			coursesAPI.GET("/:courseID/assignments/:assignmentID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes/:classID/assignment", h.SubmitAssignment)
+			coursesAPI.GET("/:courseID/classes/:classID/export", h.DownloadSubmittedAssignment, h.IsAdmin)
 			coursesAPI.GET("/:courseID/announcements", h.GetCourseAnnouncementList)
 			coursesAPI.POST("/:courseID/announcements", h.AddAnnouncement, h.IsAdmin)
 		}
@@ -254,7 +254,7 @@ type CourseStatus string
 
 const (
 	StatusRegistration CourseStatus = "registration"
-	_                  CourseStatus = "in-progress" /* FIXME: use StatusClass */
+	StatusInProgress   CourseStatus = "in-progress"
 	StatusClosed       CourseStatus = "closed"
 )
 
@@ -774,69 +774,73 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func (h *handlers) SubmitAssignment(context echo.Context) error {
-	sess, err := session.Get(SessionName, context)
+func (h *handlers) SubmitAssignment(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if userID == nil {
-		return context.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	courseID := uuid.Parse(context.Param("courseID"))
+	courseID := uuid.Parse(c.Param("courseID"))
 	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid courseID")
 	}
 
-	if ok, err := h.courseIsInCurrentPhase(courseID); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
-	} else if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "The course is not started yet or has ended.")
-	}
-
-	assignmentID := context.Param("assignmentID")
-	var assignments int
-	if err := h.DB.Get(&assignments, "SELECT COUNT(*) FROM `assignments` WHERE `id` = ?", assignmentID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such assignment.")
+	var course Course
+	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
 	} else if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if course.Status != StatusInProgress {
+		return echo.NewHTTPError(http.StatusBadRequest, "The course is not in progress.")
 	}
 
-	file, err := context.FormFile("file")
+	classID := c.Param("classID")
+	var class Class
+	if err := h.DB.Get(&class, "SELECT ? FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	file, err := c.FormFile("file")
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	src, err := file.Open()
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer src.Close()
 
 	submissionID := uuid.New()
 	dst, err := os.Create(AssignmentsDirectory + submissionID)
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer dst.Close()
 
 	if _, err = io.Copy(dst, src); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `assignment_id`, `name`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))", submissionID, userID, assignmentID, file.Filename); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `class_id`, `name`, `created_at`) VALUES (?, ?, ?, ?, NOW())", submissionID, userID, classID, file.Filename); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return context.NoContent(http.StatusNoContent)
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (h *handlers) DownloadSubmittedAssignment(c echo.Context) error {
@@ -1255,27 +1259,6 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Millisecond),
 	}
 	return c.JSON(http.StatusOK, res)
-}
-
-func (h *handlers) courseIsInCurrentPhase(courseID uuid.UUID) (bool, error) {
-	// MEMO: 複数phaseに渡る講義を想定していない
-	var schedule Schedule
-	query := "SELECT `schedules`.*" +
-		"FROM `schedules`" +
-		"JOIN `course_schedules` ON `schedules`.`id` = `course_schedules`.`schedule_id`" +
-		"JOIN `courses` ON `course_schedules`.`course_id` = `courses`.`id`" +
-		"WHERE `courses`.`id` = ?" +
-		"LIMIT 1"
-	if err := h.DB.Get(&schedule, query, courseID); err != nil {
-		return false, err
-	}
-
-	var phase Phase
-	if err := h.DB.Get(&phase, "SELECT * FROM `phase`"); err != nil {
-		return false, err
-	}
-
-	return schedule.Year == phase.Year && schedule.Semester == phase.Semester, nil
 }
 
 func createSubmissionsZip(zipFilePath string, submissions []*SubmissionWithUserName) error {
