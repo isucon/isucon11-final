@@ -156,37 +156,34 @@
 <!-- registrations -->
 <g id="node4" class="node">
 <title>registrations</title>
-<polygon fill="#efefef" stroke="transparent" points="240,-1031.5 240,-1066.5 449,-1066.5 449,-1031.5 240,-1031.5"/>
-<polygon fill="none" stroke="#000000" points="240,-1031.5 240,-1066.5 449,-1066.5 449,-1031.5 240,-1031.5"/>
-<text text-anchor="start" x="246.869" y="-1044.3" font-family="Arial Bold" font-size="18.00" fill="#000000">registrations</text>
-<text text-anchor="start" x="344.8772" y="-1044.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
-<text text-anchor="start" x="348.7678" y="-1044.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
-<polygon fill="none" stroke="#000000" points="240,-1001.5 240,-1031.5 449,-1031.5 449,-1001.5 240,-1001.5"/>
-<text text-anchor="start" x="247" y="-1012.9" font-family="Arial" font-size="14.00" fill="#000000">course_id </text>
-<text text-anchor="start" x="311.5708" y="-1012.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="240,-971.5 240,-1001.5 449,-1001.5 449,-971.5 240,-971.5"/>
-<text text-anchor="start" x="247" y="-982.9" font-family="Arial" font-size="14.00" fill="#000000">user_id </text>
-<text text-anchor="start" x="296.7882" y="-982.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
-<polygon fill="none" stroke="#000000" points="240,-941.5 240,-971.5 449,-971.5 449,-941.5 240,-941.5"/>
-<text text-anchor="start" x="247" y="-952.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
-<text text-anchor="start" x="317.028" y="-952.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
-<polygon fill="none" stroke="#000000" points="240,-911.5 240,-941.5 449,-941.5 449,-911.5 240,-911.5"/>
-<text text-anchor="start" x="247" y="-922.9" font-family="Arial" font-size="14.00" fill="#000000">deleted_at </text>
-<text text-anchor="start" x="316.2566" y="-922.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
+<polygon fill="#efefef" stroke="transparent" points="240,-1016.5 240,-1051.5 449,-1051.5 449,-1016.5 240,-1016.5"/>
+<polygon fill="none" stroke="#000000" points="240,-1016.5 240,-1051.5 449,-1051.5 449,-1016.5 240,-1016.5"/>
+<text text-anchor="start" x="246.869" y="-1029.3" font-family="Arial Bold" font-size="18.00" fill="#000000">registrations</text>
+<text text-anchor="start" x="344.8772" y="-1029.3" font-family="Arial" font-size="14.00" fill="#000000"> </text>
+<text text-anchor="start" x="348.7678" y="-1029.3" font-family="Arial" font-size="14.00" fill="#666666">[BASE TABLE]</text>
+<polygon fill="none" stroke="#000000" points="240,-986.5 240,-1016.5 449,-1016.5 449,-986.5 240,-986.5"/>
+<text text-anchor="start" x="247" y="-997.9" font-family="Arial" font-size="14.00" fill="#000000">course_id </text>
+<text text-anchor="start" x="311.5708" y="-997.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="240,-956.5 240,-986.5 449,-986.5 449,-956.5 240,-956.5"/>
+<text text-anchor="start" x="247" y="-967.9" font-family="Arial" font-size="14.00" fill="#000000">user_id </text>
+<text text-anchor="start" x="296.7882" y="-967.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
+<polygon fill="none" stroke="#000000" points="240,-926.5 240,-956.5 449,-956.5 449,-926.5 240,-926.5"/>
+<text text-anchor="start" x="247" y="-937.9" font-family="Arial" font-size="14.00" fill="#000000">created_at </text>
+<text text-anchor="start" x="317.028" y="-937.9" font-family="Arial" font-size="14.00" fill="#666666">[datetime(6)]</text>
 </g>
 <!-- registrations&#45;&gt;courses -->
 <g id="edge4" class="edge">
 <title>registrations:course_id&#45;&gt;courses:id</title>
-<path fill="none" stroke="#000000" d="M459.0757,-1015.7066C509.2522,-1007.0037 465.8833,-928.4932 449,-869 437.4501,-828.3008 410.5499,-828.6992 399,-788 387.6551,-748.023 357.4444,-694.5 399,-694.5"/>
-<polygon fill="#000000" stroke="#000000" points="458.9691,-1015.7149 448.6467,-1012.0139 453.9846,-1016.1074 449,-1016.5 449,-1016.5 449,-1016.5 453.9846,-1016.1074 449.3533,-1020.9861 458.9691,-1015.7149 458.9691,-1015.7149"/>
-<text text-anchor="start" x="456.386" y="-1026.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (course_id) REFERENCES courses (id)</text>
+<path fill="none" stroke="#000000" d="M459.3782,-1000.6967C540.5144,-986.9717 402.3755,-801.7884 399,-788 389.1186,-747.6364 357.4444,-694.5 399,-694.5"/>
+<polygon fill="#000000" stroke="#000000" points="458.9702,-1000.7282 448.6527,-997.0134 453.9851,-1001.1141 449,-1001.5 449,-1001.5 449,-1001.5 453.9851,-1001.1141 449.3473,-1005.9866 458.9702,-1000.7282 458.9702,-1000.7282"/>
+<text text-anchor="start" x="456.386" y="-1011.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (course_id) REFERENCES courses (id)</text>
 </g>
 <!-- registrations&#45;&gt;users -->
 <g id="edge5" class="edge">
 <title>registrations:user_id&#45;&gt;users:id</title>
-<path fill="none" stroke="#000000" d="M230.4029,-982.8931C160.9849,-924.5313 315.8654,-177.5 404,-177.5"/>
-<polygon fill="#000000" stroke="#000000" points="230.6393,-982.9819 238.4169,-990.7123 235.3196,-984.7409 240,-986.5 240,-986.5 240,-986.5 235.3196,-984.7409 241.5831,-982.2877 230.6393,-982.9819 230.6393,-982.9819"/>
-<text text-anchor="start" x="6.945" y="-996.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (user_id) REFERENCES users (id)</text>
+<path fill="none" stroke="#000000" d="M230.5868,-967.96C162.6153,-910.6803 317.4345,-177.5 404,-177.5"/>
+<polygon fill="#000000" stroke="#000000" points="230.64,-967.98 238.416,-975.712 235.32,-969.74 240,-971.5 240,-971.5 240,-971.5 235.32,-969.74 241.584,-967.288 230.64,-967.98 230.64,-967.98"/>
+<text text-anchor="start" x="6.945" y="-981.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (user_id) REFERENCES users (id)</text>
 </g>
 <!-- submissions -->
 <g id="node5" class="node">
@@ -225,7 +222,7 @@
 <!-- submissions&#45;&gt;users -->
 <g id="edge7" class="edge">
 <title>submissions:user_id&#45;&gt;users:id</title>
-<path fill="none" stroke="#000000" d="M388.6419,-1368.3136C263.8202,-1363.7375 236.612,-1275.3737 187,-1155 140.8469,-1043.0186 195.9209,-346.3571 218,-307 267.2832,-219.1502 303.2706,-177.5 404,-177.5"/>
+<path fill="none" stroke="#000000" d="M388.6419,-1368.3136C263.8202,-1363.7375 236.612,-1275.3737 187,-1155 141.3018,-1044.1225 194.0245,-347.9269 217,-307 266.4876,-218.8463 302.9055,-177.5 404,-177.5"/>
 <polygon fill="#000000" stroke="#000000" points="389.0016,-1368.32 398.919,-1372.9993 394.0008,-1368.41 399,-1368.5 399,-1368.5 399,-1368.5 394.0008,-1368.41 399.081,-1364.0007 389.0016,-1368.32 389.0016,-1368.32"/>
 <text text-anchor="start" x="165.945" y="-1378.5" font-family="Arial" font-size="10.00" fill="#000000">FOREIGN KEY (user_id) REFERENCES users (id)</text>
 </g>

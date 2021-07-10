@@ -45,7 +45,6 @@ comments:
     columnComments:
       course_id: 履修科目のID
       user_id: 学生のID
-      deleted_at: 履修取り消し時のタイムスタンプ
   - table: classes
     tableComment: 講義一覧
     columnComments:
