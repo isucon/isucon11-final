@@ -53,7 +53,8 @@ func main() {
 	e.POST("/initialize", h.Initialize)
 
 	e.POST("/login", h.Login)
-	API := e.Group("/api", h.IsLoggedIn)
+	//API := e.Group("/api", h.IsLoggedIn)
+	API := e.Group("/api")
 	{
 		usersAPI := API.Group("/users")
 		{
@@ -530,8 +531,92 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	return context.JSON(http.StatusOK, res)
 }
 
-func (h *handlers) SearchCourses(context echo.Context) error {
-	panic("implement me")
+func (h *handlers) SearchCourses(c echo.Context) error {
+	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
+		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+		" WHERE 1=1"
+	var condition string
+	var args []interface{}
+
+	// MEMO: 検索条件はtype, credit, teacher, period, day_of_weekの完全一致とname, keywordsの部分一致
+
+	if courseType := c.QueryParam("type"); courseType != "" {
+		condition += " AND `courses`.`type` = ?"
+		args = append(args, courseType)
+	}
+
+	if credit, err := strconv.Atoi(c.QueryParam("credit")); err == nil && credit > 0 {
+		condition += " AND `courses`.`credit` = ?"
+		args = append(args, credit)
+	}
+
+	if teacher := c.QueryParam("teacher"); teacher != "" {
+		condition += " AND `users`.`name` = ?"
+		args = append(args, teacher)
+	}
+
+	if period, err := strconv.Atoi(c.QueryParam("period")); err == nil && period > 0 {
+		condition += " AND `courses`.`period` = ?"
+		args = append(args, period)
+	}
+
+	if dayOfWeek := c.QueryParam("day_of_week"); dayOfWeek != "" {
+		condition += " AND `courses`.`day_of_week` = ?"
+		args = append(args, dayOfWeek)
+	}
+
+	// MEMO: 組み立てられたSQLはうまく動くけどリクエストには返ってこないからPlaceholderへの挿入がうまく言ってない気がする
+	if keywords := c.QueryParam("keywords"); keywords != "" {
+		arr := strings.Split(keywords, " ")
+		var nameCondition string
+		for _, keyword := range arr {
+			nameCondition += " AND `courses`.`name` LIKE ?"
+			args = append(args, "%"+keyword+"%")
+		}
+		var keywordsCondition string
+		for _, keyword := range arr {
+			keywordsCondition += " AND `courses`.`keywords` LIKE ?"
+			args = append(args, "%"+keyword+"%")
+		}
+		condition += fmt.Sprintf(" AND ((1=1%s) OR (1=1%s))", nameCondition, keywordsCondition)
+	}
+
+	condition += " ORDER BY `courses`.`code` DESC"
+
+	// MEMO: ページングの初期実装はページ番号形式
+	var limit = 20
+	var page int
+	if page, err := strconv.Atoi(c.QueryParam("page")); err == nil && page > 0 {
+		offset := limit * (page - 1)
+		condition += " LIMIT ? OFFSET ?"
+		args = append(args, limit+1, offset)
+	}
+
+	var res []GetCourseDetailResponse
+	if err := h.DB.Select(&res, query+condition, args...); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No course found")
+	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var links []string
+	path := fmt.Sprintf("%v://%v%v", c.Scheme(), c.Request().Host, c.Path())
+	if page > 1 {
+		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
+	}
+	if len(res) > limit {
+		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
+	}
+	if len(links) > 0 {
+		c.Response().Header().Set("Link", strings.Join(links, ","))
+	}
+
+	if len(res) > limit {
+		res = res[:len(res)-1]
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 type GetCourseDetailResponse struct {
@@ -549,11 +634,16 @@ type GetCourseDetailResponse struct {
 
 func (h *handlers) GetCourseDetail(c echo.Context) error {
 	courseID := c.Param("courseID")
+	if courseID == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "CourseID is required")
+	}
+
 	var res GetCourseDetailResponse
-	if err := h.DB.Get(&res, "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher` "+
-		"FROM `courses` "+
-		"JOIN `users` ON `courses`.`teacher_id` = `users`.`id` "+
-		"WHERE `courses`.`id` = ?", courseID); err == sql.ErrNoRows {
+	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
+		"FROM `courses`" +
+		"JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+		"WHERE `courses`.`id` = ?"
+	if err := h.DB.Get(&res, query, courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course")
 	} else if err != nil {
 		c.Logger().Error(err)
