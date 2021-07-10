@@ -12,7 +12,6 @@ CREATE TABLE `registrations` (
   `course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `user_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `created_at` datetime(6) NOT NULL,
-  `deleted_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`course_id`,`user_id`),
   KEY `FK_registrations_user_id` (`user_id`),
   CONSTRAINT `FK_registrations_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
@@ -24,12 +23,11 @@ CREATE TABLE `registrations` (
 
 ## Columns
 
-| Name       | Type        | Default | Nullable | Children | Parents               | Comment                        |
-| ---------- | ----------- | ------- | -------- | -------- | --------------------- | ------------------------------ |
-| course_id  | char(36)    |         | false    |          | [courses](courses.md) | 履修科目のID                        |
-| user_id    | char(36)    |         | false    |          | [users](users.md)     | 学生のID                          |
-| created_at | datetime(6) |         | false    |          |                       |                                |
-| deleted_at | datetime(6) |         | true     |          |                       | 履修取り消し時のタイムスタンプ                |
+| Name       | Type        | Default | Nullable | Children | Parents               | Comment      |
+| ---------- | ----------- | ------- | -------- | -------- | --------------------- | ------------ |
+| course_id  | char(36)    |         | false    |          | [courses](courses.md) | 履修科目のID      |
+| user_id    | char(36)    |         | false    |          | [users](users.md)     | 学生のID        |
+| created_at | datetime(6) |         | false    |          |                       |              |
 
 ## Constraints
 

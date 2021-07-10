@@ -319,7 +319,7 @@ func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 	if err = h.DB.Select(&courses, "SELECT `courses`.* "+
 		"FROM `courses` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
-		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusClosed, userID); err != nil {
+		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?", StatusClosed, userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -422,7 +422,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	if err := tx.Select(&registeredCourses, "SELECT `courses`.* "+
 		"FROM `courses` "+
 		"JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id` "+
-		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", StatusClosed, userID); err != nil {
+		"WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?", StatusClosed, userID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -975,7 +975,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 	var registeredUsers []User
 	if err := tx.Select(&registeredUsers, "SELECT `users`.* FROM `users` "+
 		"JOIN `registrations` ON `users`.`id` = `registrations`.`user_id` "+
-		"WHERE `registrations`.`course_id` = ? AND `registrations`.`deleted_at` IS NULL", courseID); err != nil {
+		"WHERE `registrations`.`course_id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1132,7 +1132,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	var registeredUsers []User
 	if err := tx.Select(&registeredUsers, "SELECT `users`.* FROM `users` "+
 		"JOIN `registrations` ON `users`.`id` = `registrations`.`user_id` "+
-		"WHERE `registrations`.`course_id` = ? AND `registrations`.`deleted_at` IS NULL", courseID); err != nil {
+		"WHERE `registrations`.`course_id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1264,7 +1264,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		"FROM `announcements` "+
 		"JOIN `courses` ON `announcements`.`course_id` = `courses`.`id` "+
 		"JOIN `registrations` ON `announcements`.`course_id` = `registrations`.`course_id` "+
-		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ? AND `registrations`.`deleted_at` IS NULL", announcementID, userID); err == sql.ErrNoRows {
+		"WHERE `announcements`.`id` = ? AND `registrations`.`user_id` = ?", announcementID, userID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "no such announcement")
 	} else if err != nil {
 		c.Logger().Error(err)
