@@ -640,9 +640,9 @@ func (h *handlers) GetCourseDetail(c echo.Context) error {
 
 	var res GetCourseDetailResponse
 	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
-		"FROM `courses`" +
-		"JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
-		"WHERE `courses`.`id` = ?"
+		" FROM `courses`" +
+		" JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+		" WHERE `courses`.`id` = ?"
 	if err := h.DB.Get(&res, query, courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	} else if err != nil {
@@ -1112,7 +1112,9 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	limit := 20
 	offset := limit * (page - 1)
 	// limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
-	if err := h.DB.Select(&res, query, userID, limit+1, offset); err != nil {
+	args = append(args, limit+1, offset)
+
+	if err := h.DB.Select(&res, query, args...); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
