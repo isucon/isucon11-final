@@ -513,12 +513,13 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	res := GetGptResponse{}
 
 	//登録済のコース一覧取得
+
 	var registeredCourses []Course
 	if err := h.DB.Select(&registeredCourses,
 		"SELECT `courses`.* "+
 			"FROM `registrations` "+
 			"JOIN `courses` ON `registrations`.`couse`.`id` = `courses`.`id` "+
-			"WHERE `user_id` = ? AND `deleted_at` IS NOT NULL", userID); err != nil {
+			"WHERE `user_id` = ?", userID); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
@@ -531,7 +532,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		//学生ごとのTotalScore取得
 		var TotalScores []TotalScore
 		if err := h.DB.Select(&TotalScores,
-			"SELECT SUM(`submissions`.`score`) AS total_score "+
+			"SELECT SUM(`submissions`.`score`) AS `total_score` "+
 				"FROM `submissions` "+
 				"JOIN `classses` ON `submiisons`.`class_id` = `classes`.`id` "+
 				"WHERE `classes`.`course_id`= ? "+
@@ -566,7 +567,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		if err := h.DB.Select(&classes,
 			"SELECT * "+
 				"FROM `classes` "+
-				"WHERE `classes`.`course_id` = ? ", course.ID); err != nil {
+				"WHERE `classes`.`course_id` = ?", course.ID); err != nil {
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
@@ -577,10 +578,10 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		for _, class := range classes {
 			var submissions []SubmissionWithClassName
 			if err := h.DB.Select(&submissions,
-				"SELECT `submissions`.*, `classes`.`part` AS part, `classes`.`title` AS title "+
+				"SELECT `submissions`.*, `classes`.`part` AS `part`, `classes`.`title` AS `title` "+
 					"FROM `submissions` "+
 					"WHERE `submission`.`class_id` = ? "+
-					"JOIN `classes` ON `submissions`.`class_id` = `classes`.`id` ", class.ID); err != nil {
+					"JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`", class.ID); err != nil {
 				log.Println(err)
 				return context.NoContent(http.StatusInternalServerError)
 
@@ -626,12 +627,12 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	//GPTの統計値
 	//全学生ごとのGPT
 	var GPTList []GPT
-	queryGPT := "SELECT SUM(`submissions`.`score` * `courses`.`credit`/100) AS gpt " +
-		"FROM `submissions` " +
-		"JOIN `classes` ON 'submissions'.'class_id' = `class`.`id` " +
-		"JOIN `courses` ON `classes'.'course_id' = `courses`.`id` " +
-		"GROUP BY `user_id`"
-	if err := h.DB.Select(&GPTList, queryGPT); err != nil {
+	if err := h.DB.Select(&GPTList,
+		"SELECT SUM(`submissions`.`score` * `courses`.`credit`/100) AS `gpt` " +
+			"FROM `submissions` " +
+			"JOIN `classes` ON 'submissions'.'class_id' = `class`.`id` " +
+			"JOIN `courses` ON `classes'.'course_id' = `courses`.`id` " +
+			"GROUP BY `user_id`"); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
