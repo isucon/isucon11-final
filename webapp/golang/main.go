@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"math"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -148,23 +149,6 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 
 		return next(c)
 	}
-}
-
-type GetGradesResponse struct {
-	Summary      Summary        `json:"summary"`
-	CourseGrades []*CourseGrade `json:"courses"`
-}
-
-type Summary struct {
-	Credits int    `json:"credits"`
-	GPT     uint32 `json:"gpt"`
-}
-
-type CourseGrade struct {
-	ID     uuid.UUID `json:"id" db:"course_id"`
-	Name   string    `json:"name" db:"name"`
-	Credit uint8     `json:"credit" db:"credit"`
-	Grade  string    `json:"grade" db:"grade"`
 }
 
 type UserType string
@@ -462,6 +446,59 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+type GetGptResponse struct {
+	Summary 		Summary 		`json:"summary"`
+	CourseResults 	[]CourseResult	`json:"courses"`
+}
+
+type Summary struct {
+	GPT           uint32	`json:"gpt"`
+	Credits       int		`json:"credits"`
+	GptDev        uint32	`json:"gpt_dev"`
+	GptAvg        float64	`json:"gpt_avg"`
+	GptMax        uint32	`json:"gpt_max"`
+	GptMin        uint32	`json:"gpt_min"`
+}
+
+type CourseResult struct {
+	Name        	string			`json:"name"`
+	Code			string			`json:"code"`
+	TotalScore  	uint32 			`json:"total_score"`
+	TotalScoreDev   uint32			`json:"gpt_dev"`
+	TotalScoreAvg   float64			`json:"gpt_avg"`
+	TotalScoreMax   uint32			`json:"gpt_max"`
+	TotalScoreMin   uint32			`json:"gpt_min"`
+	ClassScores 	[]ClassScore	`json:"class_scores"`
+}
+
+type ClassScore struct {
+	ClassID		uuid.UUID	`json:"class_id"`
+	Title		string		`json:"title"`
+	Part		uint8		`json:"part"`
+	Score		uint32		`json:"score"`
+	Submitters	uint8		`json:"submitters"`
+}
+
+type SubmissionWithClassName struct {
+	ID        uuid.UUID `db:"id"`
+	UserID    uuid.UUID `db:"user_id"`
+	ClassID   uuid.UUID `db:"class_id"`
+	Name      string    `db:"name"`
+	Score     uint32     `db:"score"`
+	CreatedAt time.Time `db:"created_at"`
+	Part	  uint8		`db:"part"`
+	Title	  string	`db:"title"`
+
+}
+
+type GPT struct {
+	GPT uint32 `db:"gpt"`
+}
+
+type TotalScore struct {
+	TotalScore float64 `db:"total_score"`
+}
+
 func (h *handlers) GetGrades(context echo.Context) error {
 	sess, err := session.Get(SessionName, context)
 	if err != nil {
@@ -474,59 +511,162 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	userIDParam := uuid.Parse(context.Param("userID"))
-	if userIDParam == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid userID")
-	}
-	if !uuid.Equal(userID, userIDParam) {
-		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
-	}
+	res := GetGptResponse{}
 
-	// MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
-	var CourseGrades []CourseGrade
-	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
-		"FROM `grades`" +
-		"JOIN `courses` ON `grades`.`course_id` = `courses`.`id`" +
-		"WHERE `user_id` = ?"
-	if err := h.DB.Select(&CourseGrades, query, userID); err != nil {
+	//登録済のコース一覧取得
+	var registeredCourses []Course
+	if err := h.DB.Select(&registeredCourses, 
+		"SELECT `courses`.* " +
+		"FROM `registrations` " +
+		"JOIN `courses` ON `registrations`.`couse`.`id` = `courses`.`id` " +
+		"WHERE `user_id` = ? AND `deleted_at` IS NOT NULL", userID); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
 
-	var res GetGradesResponse
-	var grade uint32
-	var gpt uint32 = 0
+	//Courses以下の取得
+	//登録済コースごとループ
+	//人気コースが分裂しても各種idはuniqueだから問題ないよね？
+	//以下uniqueな自分の受講したコースに紐ついたクラス/課題をSelectしていく
+	for _, course := range registeredCourses {
+		//学生ごとのTotalScore取得
+		var TotalScores []TotalScore
+		if err := h.DB.Select(&TotalScores, 
+			"SELECT SUM(`submissions`.`score`) AS total_score " +
+			"FROM `submissions` " +
+			"JOIN `classses` ON `submiisons`.`class_id` = `classes`.`id` " +
+			"WHERE `classes`.`course_id`= ? " +
+			"GROUP BY `user_id`", course.ID); err != nil {
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
 
-	var credits int = 0
-	if len(CourseGrades) > 0 {
-		for _, coursegrade := range CourseGrades {
-			res.CourseGrades = append(res.CourseGrades, &CourseGrade{
-				ID:     coursegrade.ID,
-				Name:   coursegrade.Name,
-				Credit: coursegrade.Credit,
-				Grade:  coursegrade.Grade,
-			})
-
-			switch coursegrade.Grade {
-			case "S":
-				grade = 4
-			case "A":
-				grade = 3
-			case "B":
-				grade = 2
-			case "C":
-				grade = 1
-			case "D":
-				grade = 0
+		//avg max min stdの計算
+		total_score_count := len(TotalScores)
+		total_score_avg := 0.0
+		total_score_max := 0
+		total_score_min := 999 //1コース5クラスなので最大500点
+		total_score_std := 0.0
+		for _, totalScore := range TotalScores {
+			total_score_avg += totalScore.TotalScore/float64(total_score_count)			
+			if total_score_max > int(totalScore.TotalScore) {
+				total_score_max = int(totalScore.TotalScore)
 			}
-			credits += int(coursegrade.Credit)
-			gpt += grade * uint32(coursegrade.Credit)
+			if total_score_min < int(totalScore.TotalScore) {
+				total_score_min = int(totalScore.TotalScore)
+			}
+		}
+
+		for _, totalScore := range TotalScores {
+			total_score_std += math.Pow(totalScore.TotalScore-total_score_avg, 2)/float64(total_score_count)
+		}
+		total_score_std = math.Sqrt(total_score_std)
+
+		//class情報の取得
+		var classes []Class
+		if err := h.DB.Select(&classes, 
+			"SELECT * " +
+			"FROM `classes` " +
+			"WHERE `classes`.`course_id` = ? ", course.ID); err != nil {
+			log.Println(err)
+			return context.NoContent(http.StatusInternalServerError)
+		}
+
+		//submission情報の取得
+		var myclassScores []ClassScore
+		mytotalScore := 0
+		for _,class := range classes {
+			var submissions []SubmissionWithClassName
+			if err := h.DB.Select(&submissions, 
+				"SELECT `submissions`.*, `classes`.`part` AS part, `classes`.`title` AS title " +
+				"FROM `submissions` " +
+				"WHERE `submission`.`class_id` = ? " +
+				"JOIN `classes` ON `submissions`.`class_id` = `classes`.`id` ", class.ID); err != nil {
+				log.Println(err)
+				return context.NoContent(http.StatusInternalServerError)
+				
+				//課題スコアを代入しつつ自分のコース成績計算
+				//提出者数(submitters)とコース成績(mytotalScore)を計算するので上のクエリで一括取得できないのが面倒
+				//->submitter消したい
+				for _, submission := range submissions {
+					if uuid.Equal(userID, submission.UserID) {
+						myclassScores = append(myclassScores, ClassScore{
+							Part:			submission.Part,
+							Title:			submission.Title,
+							Score:			uint32(submission.Score),
+							Submitters: 	uint8(len(submission.ID)),
+						})
+						mytotalScore += int(submission.Score)
+					}
+				}		
+
+			}
+	
+		}
+
+		//自分のコース偏差値の計算
+		total_score_dev := (float64(mytotalScore) - total_score_avg)/total_score_std*10+50
+		//コース情報の作成
+		res.CourseResults = append(res.CourseResults, CourseResult{
+			Name: course.Name,       	
+			Code: course.Code,			
+			TotalScore:  uint32(mytotalScore),
+			TotalScoreDev: uint32(total_score_dev), 
+			TotalScoreAvg: total_score_avg,   
+			TotalScoreMax: uint32(total_score_max),  
+			TotalScoreMin: uint32(total_score_min),  
+			ClassScores: myclassScores, 
+		})		
+
+		//自分のGPT計算
+		res.Summary.GPT += uint32(mytotalScore) * uint32(course.Credit)/100
+		res.Summary.Credits += int(course.Credit)
+		
+	}
+
+	//GPTの統計値
+	//全学生ごとのGPT
+	var GPTList []GPT
+	queryGPT := "SELECT SUM(`submissions`.`score` * `courses`.`credit`/100) AS gpt " +
+		"FROM `submissions` " +
+		"JOIN `classes` ON 'submissions'.'class_id' = `class`.`id` " +
+		"JOIN `courses` ON `classes'.'course_id' = `courses`.`id` " +		
+		"GROUP BY `user_id`"
+	if err := h.DB.Select(&GPTList, queryGPT); err != nil {
+		log.Println(err)
+		return context.NoContent(http.StatusInternalServerError)
+	}
+
+	//avg max min stdの計算
+	GPT_count := len(GPTList)
+	GPT_avg := 0.0
+	GPT_max := 0
+	GPT_std := 0.0
+	GPT_min := 9999 //1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
+	for _, gpt := range GPTList {
+		res.Summary.GptAvg += float64(gpt.GPT)/float64(GPT_count)
+		
+		if res.Summary.GptMax > uint32(gpt.GPT) {
+			res.Summary.GptMax = uint32(gpt.GPT)
+		}
+		if res.Summary.GptMax < uint32(gpt.GPT) {
+			res.Summary.GptMax = uint32(gpt.GPT)
 		}
 	}
 
+	for _, gpt := range GPTList {
+		GPT_std += math.Pow(float64(gpt.GPT)-res.Summary.GptAvg, 2)/float64(GPT_count)
+	}
+	GPT_std = math.Sqrt(GPT_std)
+
+	//自分の偏差値の計算
+	GPT_dev := uint32((float64(res.Summary.GPT) - res.Summary.GptAvg)/GPT_std*10+50)
+
 	res.Summary = Summary{
-		Credits: credits,
-		GPT:     gpt,
+		GptDev: uint32(GPT_dev),
+		GptAvg:	float64(GPT_avg),
+		GptMax: uint32(GPT_max),
+		GptMin: uint32(GPT_min), 
 	}
 
 	return context.JSON(http.StatusOK, res)
