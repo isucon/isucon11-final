@@ -447,36 +447,36 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 }
 
 type GetGptResponse struct {
-	Summary 		Summary 		`json:"summary"`
-	CourseResults 	[]CourseResult	`json:"courses"`
+	Summary       Summary        `json:"summary"`
+	CourseResults []CourseResult `json:"courses"`
 }
 
 type Summary struct {
-	GPT           uint32	`json:"gpt"`
-	Credits       int		`json:"credits"`
-	GptDev        uint32	`json:"gpt_dev"`
-	GptAvg        float64	`json:"gpt_avg"`
-	GptMax        uint32	`json:"gpt_max"`
-	GptMin        uint32	`json:"gpt_min"`
+	GPT     uint32  `json:"gpt"`
+	Credits int     `json:"credits"`
+	GptDev  uint32  `json:"gpt_dev"`
+	GptAvg  float64 `json:"gpt_avg"`
+	GptMax  uint32  `json:"gpt_max"`
+	GptMin  uint32  `json:"gpt_min"`
 }
 
 type CourseResult struct {
-	Name        	string			`json:"name"`
-	Code			string			`json:"code"`
-	TotalScore  	uint32 			`json:"total_score"`
-	TotalScoreDev   uint32			`json:"gpt_dev"`
-	TotalScoreAvg   float64			`json:"gpt_avg"`
-	TotalScoreMax   uint32			`json:"gpt_max"`
-	TotalScoreMin   uint32			`json:"gpt_min"`
-	ClassScores 	[]ClassScore	`json:"class_scores"`
+	Name          string       `json:"name"`
+	Code          string       `json:"code"`
+	TotalScore    uint32       `json:"total_score"`
+	TotalScoreDev uint32       `json:"gpt_dev"`
+	TotalScoreAvg float64      `json:"gpt_avg"`
+	TotalScoreMax uint32       `json:"gpt_max"`
+	TotalScoreMin uint32       `json:"gpt_min"`
+	ClassScores   []ClassScore `json:"class_scores"`
 }
 
 type ClassScore struct {
-	ClassID		uuid.UUID	`json:"class_id"`
-	Title		string		`json:"title"`
-	Part		uint8		`json:"part"`
-	Score		uint32		`json:"score"`
-	Submitters	uint8		`json:"submitters"`
+	ClassID    uuid.UUID `json:"class_id"`
+	Title      string    `json:"title"`
+	Part       uint8     `json:"part"`
+	Score      uint32    `json:"score"`
+	Submitters uint8     `json:"submitters"`
 }
 
 type SubmissionWithClassName struct {
@@ -484,11 +484,10 @@ type SubmissionWithClassName struct {
 	UserID    uuid.UUID `db:"user_id"`
 	ClassID   uuid.UUID `db:"class_id"`
 	Name      string    `db:"name"`
-	Score     uint32     `db:"score"`
+	Score     uint32    `db:"score"`
 	CreatedAt time.Time `db:"created_at"`
-	Part	  uint8		`db:"part"`
-	Title	  string	`db:"title"`
-
+	Part      uint8     `db:"part"`
+	Title     string    `db:"title"`
 }
 
 type GPT struct {
@@ -515,11 +514,11 @@ func (h *handlers) GetGrades(context echo.Context) error {
 
 	//登録済のコース一覧取得
 	var registeredCourses []Course
-	if err := h.DB.Select(&registeredCourses, 
-		"SELECT `courses`.* " +
-		"FROM `registrations` " +
-		"JOIN `courses` ON `registrations`.`couse`.`id` = `courses`.`id` " +
-		"WHERE `user_id` = ? AND `deleted_at` IS NOT NULL", userID); err != nil {
+	if err := h.DB.Select(&registeredCourses,
+		"SELECT `courses`.* "+
+			"FROM `registrations` "+
+			"JOIN `courses` ON `registrations`.`couse`.`id` = `courses`.`id` "+
+			"WHERE `user_id` = ? AND `deleted_at` IS NOT NULL", userID); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
 	}
@@ -531,12 +530,12 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	for _, course := range registeredCourses {
 		//学生ごとのTotalScore取得
 		var TotalScores []TotalScore
-		if err := h.DB.Select(&TotalScores, 
-			"SELECT SUM(`submissions`.`score`) AS total_score " +
-			"FROM `submissions` " +
-			"JOIN `classses` ON `submiisons`.`class_id` = `classes`.`id` " +
-			"WHERE `classes`.`course_id`= ? " +
-			"GROUP BY `user_id`", course.ID); err != nil {
+		if err := h.DB.Select(&TotalScores,
+			"SELECT SUM(`submissions`.`score`) AS total_score "+
+				"FROM `submissions` "+
+				"JOIN `classses` ON `submiisons`.`class_id` = `classes`.`id` "+
+				"WHERE `classes`.`course_id`= ? "+
+				"GROUP BY `user_id`", course.ID); err != nil {
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
@@ -548,7 +547,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		total_score_min := 999 //1コース5クラスなので最大500点
 		total_score_std := 0.0
 		for _, totalScore := range TotalScores {
-			total_score_avg += totalScore.TotalScore/float64(total_score_count)			
+			total_score_avg += totalScore.TotalScore / float64(total_score_count)
 			if total_score_max > int(totalScore.TotalScore) {
 				total_score_max = int(totalScore.TotalScore)
 			}
@@ -558,16 +557,16 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		}
 
 		for _, totalScore := range TotalScores {
-			total_score_std += math.Pow(totalScore.TotalScore-total_score_avg, 2)/float64(total_score_count)
+			total_score_std += math.Pow(totalScore.TotalScore-total_score_avg, 2) / float64(total_score_count)
 		}
 		total_score_std = math.Sqrt(total_score_std)
 
 		//class情報の取得
 		var classes []Class
-		if err := h.DB.Select(&classes, 
-			"SELECT * " +
-			"FROM `classes` " +
-			"WHERE `classes`.`course_id` = ? ", course.ID); err != nil {
+		if err := h.DB.Select(&classes,
+			"SELECT * "+
+				"FROM `classes` "+
+				"WHERE `classes`.`course_id` = ? ", course.ID); err != nil {
 			log.Println(err)
 			return context.NoContent(http.StatusInternalServerError)
 		}
@@ -575,53 +574,53 @@ func (h *handlers) GetGrades(context echo.Context) error {
 		//submission情報の取得
 		var myclassScores []ClassScore
 		mytotalScore := 0
-		for _,class := range classes {
+		for _, class := range classes {
 			var submissions []SubmissionWithClassName
-			if err := h.DB.Select(&submissions, 
-				"SELECT `submissions`.*, `classes`.`part` AS part, `classes`.`title` AS title " +
-				"FROM `submissions` " +
-				"WHERE `submission`.`class_id` = ? " +
-				"JOIN `classes` ON `submissions`.`class_id` = `classes`.`id` ", class.ID); err != nil {
+			if err := h.DB.Select(&submissions,
+				"SELECT `submissions`.*, `classes`.`part` AS part, `classes`.`title` AS title "+
+					"FROM `submissions` "+
+					"WHERE `submission`.`class_id` = ? "+
+					"JOIN `classes` ON `submissions`.`class_id` = `classes`.`id` ", class.ID); err != nil {
 				log.Println(err)
 				return context.NoContent(http.StatusInternalServerError)
-				
+
 				//課題スコアを代入しつつ自分のコース成績計算
 				//提出者数(submitters)とコース成績(mytotalScore)を計算するので上のクエリで一括取得できないのが面倒
 				//->submitter消したい
 				for _, submission := range submissions {
 					if uuid.Equal(userID, submission.UserID) {
 						myclassScores = append(myclassScores, ClassScore{
-							Part:			submission.Part,
-							Title:			submission.Title,
-							Score:			uint32(submission.Score),
-							Submitters: 	uint8(len(submission.ID)),
+							Part:       submission.Part,
+							Title:      submission.Title,
+							Score:      uint32(submission.Score),
+							Submitters: uint8(len(submission.ID)),
 						})
 						mytotalScore += int(submission.Score)
 					}
-				}		
+				}
 
 			}
-	
+
 		}
 
 		//自分のコース偏差値の計算
-		total_score_dev := (float64(mytotalScore) - total_score_avg)/total_score_std*10+50
+		total_score_dev := (float64(mytotalScore)-total_score_avg)/total_score_std*10 + 50
 		//コース情報の作成
 		res.CourseResults = append(res.CourseResults, CourseResult{
-			Name: course.Name,       	
-			Code: course.Code,			
-			TotalScore:  uint32(mytotalScore),
-			TotalScoreDev: uint32(total_score_dev), 
-			TotalScoreAvg: total_score_avg,   
-			TotalScoreMax: uint32(total_score_max),  
-			TotalScoreMin: uint32(total_score_min),  
-			ClassScores: myclassScores, 
-		})		
+			Name:          course.Name,
+			Code:          course.Code,
+			TotalScore:    uint32(mytotalScore),
+			TotalScoreDev: uint32(total_score_dev),
+			TotalScoreAvg: total_score_avg,
+			TotalScoreMax: uint32(total_score_max),
+			TotalScoreMin: uint32(total_score_min),
+			ClassScores:   myclassScores,
+		})
 
 		//自分のGPT計算
-		res.Summary.GPT += uint32(mytotalScore) * uint32(course.Credit)/100
+		res.Summary.GPT += uint32(mytotalScore) * uint32(course.Credit) / 100
 		res.Summary.Credits += int(course.Credit)
-		
+
 	}
 
 	//GPTの統計値
@@ -630,7 +629,7 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	queryGPT := "SELECT SUM(`submissions`.`score` * `courses`.`credit`/100) AS gpt " +
 		"FROM `submissions` " +
 		"JOIN `classes` ON 'submissions'.'class_id' = `class`.`id` " +
-		"JOIN `courses` ON `classes'.'course_id' = `courses`.`id` " +		
+		"JOIN `courses` ON `classes'.'course_id' = `courses`.`id` " +
 		"GROUP BY `user_id`"
 	if err := h.DB.Select(&GPTList, queryGPT); err != nil {
 		log.Println(err)
@@ -644,8 +643,8 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	GPT_std := 0.0
 	GPT_min := 9999 //1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
 	for _, gpt := range GPTList {
-		res.Summary.GptAvg += float64(gpt.GPT)/float64(GPT_count)
-		
+		res.Summary.GptAvg += float64(gpt.GPT) / float64(GPT_count)
+
 		if res.Summary.GptMax > uint32(gpt.GPT) {
 			res.Summary.GptMax = uint32(gpt.GPT)
 		}
@@ -655,23 +654,22 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	}
 
 	for _, gpt := range GPTList {
-		GPT_std += math.Pow(float64(gpt.GPT)-res.Summary.GptAvg, 2)/float64(GPT_count)
+		GPT_std += math.Pow(float64(gpt.GPT)-res.Summary.GptAvg, 2) / float64(GPT_count)
 	}
 	GPT_std = math.Sqrt(GPT_std)
 
 	//自分の偏差値の計算
-	GPT_dev := uint32((float64(res.Summary.GPT) - res.Summary.GptAvg)/GPT_std*10+50)
+	GPT_dev := uint32((float64(res.Summary.GPT)-res.Summary.GptAvg)/GPT_std*10 + 50)
 
 	res.Summary = Summary{
 		GptDev: uint32(GPT_dev),
-		GptAvg:	float64(GPT_avg),
+		GptAvg: float64(GPT_avg),
 		GptMax: uint32(GPT_max),
-		GptMin: uint32(GPT_min), 
+		GptMin: uint32(GPT_min),
 	}
 
 	return context.JSON(http.StatusOK, res)
 }
-
 func (h *handlers) SearchCourses(c echo.Context) error {
 	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
 		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
