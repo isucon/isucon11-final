@@ -6,13 +6,13 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
-	"math"
 
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -628,10 +628,10 @@ func (h *handlers) GetGrades(context echo.Context) error {
 	//全学生ごとのGPT
 	var GPTList []GPT
 	if err := h.DB.Select(&GPTList,
-		"SELECT SUM(`submissions`.`score` * `courses`.`credit`/100) AS `gpt` " +
-			"FROM `submissions` " +
-			"JOIN `classes` ON 'submissions'.'class_id' = `class`.`id` " +
-			"JOIN `courses` ON `classes'.'course_id' = `courses`.`id` " +
+		"SELECT SUM(`submissions`.`score` * `courses`.`credit`/100) AS `gpt` "+
+			"FROM `submissions` "+
+			"JOIN `classes` ON 'submissions'.'class_id' = `class`.`id` "+
+			"JOIN `courses` ON `classes'.'course_id' = `courses`.`id` "+
 			"GROUP BY `user_id`"); err != nil {
 		log.Println(err)
 		return context.NoContent(http.StatusInternalServerError)
