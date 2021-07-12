@@ -27,8 +27,8 @@
 <text text-anchor="start" x="247" y="-513.9" font-family="Arial" font-size="14.00" fill="#000000">class_id </text>
 <text text-anchor="start" x="301.4516" y="-513.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
 <polygon fill="none" stroke="#000000" points="240,-472.5 240,-502.5 450,-502.5 450,-472.5 240,-472.5"/>
-<text text-anchor="start" x="247" y="-483.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
-<text text-anchor="start" x="285.899" y="-483.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
+<text text-anchor="start" x="247" y="-483.9" font-family="Arial" font-size="14.00" fill="#000000">file_name </text>
+<text text-anchor="start" x="311.568" y="-483.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
 <polygon fill="none" stroke="#000000" points="240,-442.5 240,-472.5 450,-472.5 450,-442.5 240,-442.5"/>
 <text text-anchor="start" x="247" y="-453.9" font-family="Arial" font-size="14.00" fill="#000000">score </text>
 <text text-anchor="start" x="285.1164" y="-453.9" font-family="Arial" font-size="14.00" fill="#666666">[tinyint unsigned]</text>

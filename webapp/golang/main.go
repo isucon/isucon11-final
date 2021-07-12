@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -154,23 +154,6 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 
 		return next(c)
 	}
-}
-
-type GetGradesResponse struct {
-	Summary      Summary        `json:"summary"`
-	CourseGrades []*CourseGrade `json:"courses"`
-}
-
-type Summary struct {
-	Credits int    `json:"credits"`
-	GPT     uint32 `json:"gpt"`
-}
-
-type CourseGrade struct {
-	ID     uuid.UUID `json:"id" db:"course_id"`
-	Name   string    `json:"name" db:"name"`
-	Credit uint8     `json:"credit" db:"credit"`
-	Grade  string    `json:"grade" db:"grade"`
 }
 
 type UserType string
@@ -451,74 +434,211 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func (h *handlers) GetGrades(context echo.Context) error {
-	sess, err := session.Get(SessionName, context)
+type GetGradeResponse struct {
+	Summary       Summary        `json:"summary"`
+	CourseResults []CourseResult `json:"courses"`
+}
+
+type Summary struct {
+	Credits int     `json:"credits"`
+	GPT     int     `json:"gpt"`
+	GptDev  float64 `json:"gpt_dev"` // 偏差値
+	GptAvg  float64 `json:"gpt_avg"` // 平均値
+	GptMax  int     `json:"gpt_max"` // 最大値
+	GptMin  int     `json:"gpt_min"` // 最小値
+}
+
+type CourseResult struct {
+	Name          string       `json:"name"`
+	Code          string       `json:"code"`
+	TotalScore    int          `json:"total_score"`
+	TotalScoreDev float64      `json:"total_score_dev"` // 偏差値
+	TotalScoreAvg float64      `json:"total_score_avg"` // 平均値
+	TotalScoreMax int          `json:"total_score_max"` // 最大値
+	TotalScoreMin int          `json:"total_score_min"` // 最小値
+	ClassScores   []ClassScore `json:"class_scores"`
+}
+
+type ClassScore struct {
+	ClassID    uuid.UUID `json:"class_id"`
+	Title      string    `json:"title"`
+	Part       uint8     `json:"part"`
+	Score      int       `json:"score"`      // 0~100点
+	Submitters int       `json:"submitters"` // 提出した生徒数
+}
+
+type SubmissionWithClassName struct {
+	ID        uuid.UUID `db:"id"`
+	UserID    uuid.UUID `db:"user_id"`
+	ClassID   uuid.UUID `db:"class_id"`
+	Name      string    `db:"name"`
+	Score     int       `db:"score"`
+	CreatedAt time.Time `db:"created_at"`
+	Part      uint8     `db:"part"`
+	Title     string    `db:"title"`
+}
+
+func (h *handlers) GetGrades(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	userID := uuid.Parse(sess.Values["userID"].(string))
 	if userID == nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	userIDParam := uuid.Parse(context.Param("userID"))
-	if userIDParam == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid userID")
-	}
-	if !uuid.Equal(userID, userIDParam) {
-		return echo.NewHTTPError(http.StatusForbidden, "invalid userID")
-	}
+	var res GetGradeResponse
 
-	// MEMO: GradeテーブルとCoursesテーブルから、対象userIDのcourse_id/name/credit/gradeを取得
-	var CourseGrades []CourseGrade
-	query := "SELECT `course_id`, `name`, `credit`, `grade`" +
-		"FROM `grades`" +
-		"JOIN `courses` ON `grades`.`course_id` = `courses`.`id`" +
-		"WHERE `user_id` = ?"
-	if err := h.DB.Select(&CourseGrades, query, userID); err != nil {
-		log.Println(err)
-		return context.NoContent(http.StatusInternalServerError)
+	// 登録済の科目一覧取得
+	var registeredCourses []Course
+	query := "SELECT `courses`.*" +
+		" FROM `registrations`" +
+		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+		" WHERE `user_id` = ?"
+	if err := h.DB.Select(&registeredCourses, query, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var res GetGradesResponse
-	var grade uint32
-	var gpt uint32 = 0
+	// 科目毎の成績計算処理
+	for _, course := range registeredCourses {
+		// この科目を受講している学生のTotalScore一覧を取得
+		var totals []int
+		query := "SELECT SUM(`submissions`.`score`) AS `total_score`" +
+			" FROM `submissions`" +
+			" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
+			" WHERE `classes`.`course_id`= ?" +
+			" GROUP BY `user_id`"
+		if err := h.DB.Select(&totals, query, course.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
 
-	var credits int = 0
-	if len(CourseGrades) > 0 {
-		for _, coursegrade := range CourseGrades {
-			res.CourseGrades = append(res.CourseGrades, &CourseGrade{
-				ID:     coursegrade.ID,
-				Name:   coursegrade.Name,
-				Credit: coursegrade.Credit,
-				Grade:  coursegrade.Grade,
-			})
+		// avg max min stdの計算
+		var totalScoreCount = len(totals)
+		var totalScoreAvg float64
+		var totalScoreMax int
+		var totalScoreMin = 500   // 1科目5クラスなので最大500点
+		var totalScoreStd float64 // 標準偏差
 
-			switch coursegrade.Grade {
-			case "S":
-				grade = 4
-			case "A":
-				grade = 3
-			case "B":
-				grade = 2
-			case "C":
-				grade = 1
-			case "D":
-				grade = 0
+		for _, totalScore := range totals {
+			totalScoreAvg += float64(totalScore) / float64(totalScoreCount)
+			if totalScoreMax > totalScore {
+				totalScoreMax = totalScore
 			}
-			credits += int(coursegrade.Credit)
-			gpt += grade * uint32(coursegrade.Credit)
+			if totalScoreMin < totalScore {
+				totalScoreMin = totalScore
+			}
+			totalScoreStd += math.Pow(float64(totalScore)-totalScoreAvg, 2) / float64(totalScoreCount)
+		}
+		totalScoreStd = math.Sqrt(totalScoreStd)
+
+		// クラス一覧の取得
+		var classes []Class
+		query = "SELECT *" +
+			" FROM `classes`" +
+			" WHERE `course_id` = ?" +
+			" ORDER BY `part` DESC"
+		if err := h.DB.Select(&classes, query, course.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		// クラス毎の成績計算処理
+		var classScores []ClassScore
+		var myTotalScore int
+		for _, class := range classes {
+			var submissions []SubmissionWithClassName
+			query := "SELECT `submissions`.*, `classes`.`part` AS `part`, `classes`.`title` AS `title`" +
+				" FROM `submissions`" +
+				" WHERE `submission`.`class_id` = ?" +
+				" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`"
+			if err := h.DB.Select(&submissions, query, class.ID); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+
+			for _, submission := range submissions {
+				if uuid.Equal(userID, submission.UserID) {
+					classScores = append(classScores, ClassScore{
+						Part:       submission.Part,
+						Title:      submission.Title,
+						Score:      submission.Score,
+						Submitters: len(submissions),
+					})
+					myTotalScore += submission.Score
+				}
+			}
+		}
+
+		// 対象科目の自分の偏差値の計算
+		totalScoreDev := (float64(myTotalScore)-totalScoreAvg)/totalScoreStd*10 + 50
+		res.CourseResults = append(res.CourseResults, CourseResult{
+			Name:          course.Name,
+			Code:          course.Code,
+			TotalScore:    myTotalScore,
+			TotalScoreDev: totalScoreDev,
+			TotalScoreAvg: totalScoreAvg,
+			TotalScoreMax: totalScoreMax,
+			TotalScoreMin: totalScoreMin,
+			ClassScores:   classScores,
+		})
+
+		//自分のGPT計算
+		res.Summary.GPT += myTotalScore * int(course.Credit) / 100
+		res.Summary.Credits += int(course.Credit)
+	}
+
+	// GPTの統計値
+	// 全学生ごとのGPT
+	var gpts []int
+	query = "SELECT SUM(`submissions`.`score` * `courses`.`credit` / 100) AS `gpt`" +
+		" FROM `submissions`" +
+		" JOIN `classes` ON 'submissions'.'class_id' = `class`.`id`" +
+		" JOIN `courses` ON `classes'.'course_id' = `courses`.`id`" +
+		" GROUP BY `user_id`"
+	if err := h.DB.Select(&gpts, query); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	// avg max min stdの計算
+	var GptCount = len(gpts)
+	var GptAvg float64
+	var GptMax int
+	var GptStd float64
+	// MEMO: 1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
+	var GptMin = math.MaxInt64
+	for _, gpt := range gpts {
+		res.Summary.GptAvg += float64(gpt) / float64(GptCount)
+
+		if res.Summary.GptMax > gpt {
+			res.Summary.GptMax = gpt
+		}
+		if res.Summary.GptMax < gpt {
+			res.Summary.GptMax = gpt
 		}
 	}
 
+	for _, gpt := range gpts {
+		GptStd += math.Pow(float64(gpt)-res.Summary.GptAvg, 2) / float64(GptCount)
+	}
+	GptStd = math.Sqrt(GptStd)
+
+	//自分の偏差値の計算
+	GptDev := (float64(res.Summary.GPT)-res.Summary.GptAvg)/GptStd*10 + 50
+
 	res.Summary = Summary{
-		Credits: credits,
-		GPT:     gpt,
+		GptDev: GptDev,
+		GptAvg: GptAvg,
+		GptMax: GptMax,
+		GptMin: GptMin,
 	}
 
-	return context.JSON(http.StatusOK, res)
+	return c.JSON(http.StatusOK, res)
 }
 
 // SearchCourses 科目検索

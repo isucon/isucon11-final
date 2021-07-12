@@ -110,8 +110,8 @@
 <text text-anchor="start" x="280" y="-1033.9" font-family="Arial" font-size="14.00" fill="#000000">class_id </text>
 <text text-anchor="start" x="334.4516" y="-1033.9" font-family="Arial" font-size="14.00" fill="#666666">[char(36)]</text>
 <polygon fill="none" stroke="#000000" points="273,-992.5 273,-1022.5 483,-1022.5 483,-992.5 273,-992.5"/>
-<text text-anchor="start" x="280" y="-1003.9" font-family="Arial" font-size="14.00" fill="#000000">name </text>
-<text text-anchor="start" x="318.899" y="-1003.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
+<text text-anchor="start" x="280" y="-1003.9" font-family="Arial" font-size="14.00" fill="#000000">file_name </text>
+<text text-anchor="start" x="344.568" y="-1003.9" font-family="Arial" font-size="14.00" fill="#666666">[varchar(255)]</text>
 <polygon fill="none" stroke="#000000" points="273,-962.5 273,-992.5 483,-992.5 483,-962.5 273,-962.5"/>
 <text text-anchor="start" x="280" y="-973.9" font-family="Arial" font-size="14.00" fill="#000000">score </text>
 <text text-anchor="start" x="318.1164" y="-973.9" font-family="Arial" font-size="14.00" fill="#666666">[tinyint unsigned]</text>

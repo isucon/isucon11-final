@@ -12,7 +12,7 @@ CREATE TABLE `submissions` (
   `id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `user_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `class_id` char(36) COLLATE utf8mb4_bin NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
+  `file_name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `score` tinyint unsigned DEFAULT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
@@ -32,7 +32,7 @@ CREATE TABLE `submissions` (
 | id         | char(36)         |         | false    |          |                       |                    |
 | user_id    | char(36)         |         | false    |          | [users](users.md)     | 提出した学生のID          |
 | class_id   | char(36)         |         | false    |          | [classes](classes.md) | 対象講義のID            |
-| name       | varchar(255)     |         | false    |          |                       | 提出したファイル名          |
+| file_name  | varchar(255)     |         | false    |          |                       | 提出したファイル名          |
 | score      | tinyint unsigned |         | true     |          |                       | 課題のスコア             |
 | created_at | datetime(6)      |         | false    |          |                       |                    |
 
