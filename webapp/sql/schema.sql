@@ -61,7 +61,7 @@ CREATE TABLE `submissions`
     `id`         CHAR(36) PRIMARY KEY,
     `user_id`    CHAR(36)     NOT NULL,
     `class_id`   CHAR(36)     NOT NULL,
-    `name`       VARCHAR(255) NOT NULL,
+    `file_name`  VARCHAR(255) NOT NULL,
     `score`      TINYINT UNSIGNED,
     `created_at` DATETIME(6)  NOT NULL,
     CONSTRAINT FK_submissions_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
