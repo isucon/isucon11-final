@@ -58,7 +58,7 @@ comments:
     columnComments:
       user_id: 提出した学生のID
       class_id: 対象講義のID
-      name: 提出したファイル名
+      file_name: 提出したファイル名
       score: 課題のスコア
   - table: announcements
     tableComment: お知らせ一覧
