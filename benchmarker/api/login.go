@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type LoginRequest struct {
@@ -23,7 +23,7 @@ func Login(ctx context.Context, a *agent.Agent, auth LoginRequest) (*http.Respon
 	}
 	path := "/login"
 
-	req, err := a.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	req, err := a.POST(path, bytes.NewReader(body))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
