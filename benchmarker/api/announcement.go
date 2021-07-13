@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -48,8 +49,11 @@ type Announcement struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-func GetAnnouncementList(ctx context.Context, a *agent.Agent) (*http.Response, error) {
-	path := "/api/announcements"
+func GetAnnouncementList(ctx context.Context, a *agent.Agent, page int, courseID uuid.UUID) (*http.Response, error) {
+	path := fmt.Sprintf("/api/announcements?page=%v", page)
+	if courseID != nil {
+		path += fmt.Sprintf("&course_id=%v", courseID)
+	}
 
 	req, err := a.GET(path)
 	if err != nil {
