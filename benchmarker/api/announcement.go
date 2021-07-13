@@ -1,31 +1,41 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/pborman/uuid"
 )
 
-type announcementRegRequest struct {
-	Title   string `json:"title"`
-	Message string `json:"message"`
-}
-type announcementRegResponse struct {
-	ID string `json:"id"`
+type AddAnnouncementRequest struct {
+	CourseID uuid.UUID `json:"course_id"`
+	Title    string    `json:"title"`
+	Message  string    `json:"message"`
 }
 
-func AddAnnouncement(ctx context.Context, a *agent.Agent, courseID, title, message string) (string, error) {
-	rpath := fmt.Sprintf("/api/courses/%s/announcements", courseID)
-	req := &announcementRegRequest{title, message}
-	var res announcementRegResponse
-	_, err := apiRequest(ctx, a, http.MethodPost, rpath, req, res, []int{http.StatusOK})
+type AddAnnouncementResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
+func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnouncementRequest) (*http.Response, error) {
+	body, err := json.Marshal(announcement)
 	if err != nil {
-		return "", err
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+	path := "/announcements"
+
+	req, err := a.POST(path, bytes.NewReader(body))
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	return res.ID, nil
+	return a.Do(ctx, req)
 }
 
 type AnnouncementsResponse struct {
