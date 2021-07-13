@@ -2,13 +2,13 @@ package api
 
 import (
 	"context"
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
-	"github.com/pborman/uuid"
 	"net/http"
 	"strconv"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/pborman/uuid"
 )
 
 type SearchCourseRequest struct {
