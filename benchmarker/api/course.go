@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -14,184 +13,97 @@ import (
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/pborman/uuid"
 )
 
-type addClassRequest struct {
-	Title       string `json:"id"`
-	Description string `json:"description"`
-}
-type addClassResponse struct {
-	ID string `json:"id"`
-}
+type CourseType string
 
-func AddClass(ctx context.Context, a *agent.Agent, courseID, title, desc string) (string, error) {
-	rpath := fmt.Sprintf("/api/courses/%s/classes", courseID)
-	req := &addClassRequest{
-		Title:       title,
-		Description: desc,
-	}
-	res := &addClassResponse{}
-	_, err := apiRequest(ctx, a, http.MethodPost, rpath, req, res, []int{http.StatusOK})
-	if err != nil {
-		return "", err
-	}
+const (
+	CourseTypeLiberalArts   CourseType = "liberal-arts"
+	CourseTypeMajorSubjects CourseType = "major-subjects"
+)
 
-	return res.ID, nil
+type AddCourseRequest struct {
+	Code        string     `json:"code"`
+	Type        CourseType `json:"type"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Credit      int        `json:"credit"`
+	Period      int        `json:"period"`
+	DayOfWeek   DayOfWeek  `json:"day_of_week"`
+	Keywords    string     `json:"keywords"`
+}
+type AddCourseResponse struct {
+	ID uuid.UUID `json:"id"`
 }
 
-type addDocResponse struct {
-	ID string `json:"id"`
-}
-
-func AddDocument(ctx context.Context, a *agent.Agent, courseID, classID, docName string, docData []byte) (string, error) {
-	body := &bytes.Buffer{}
-	mw := multipart.NewWriter(body)
-
-	mh := textproto.MIMEHeader{}
-	mh.Set("Content-Type", http.DetectContentType(docData))
-	mh.Set("Content-Disposition",
-		fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "files", docName))
-	fw, err := mw.CreatePart(mh)
-	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-	_, err = io.Copy(fw, bytes.NewBuffer(docData))
-	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/documents", courseID, classID), body)
-	if err != nil {
-		return "", failure.NewError(fails.ErrCritical, err)
-	}
-	req.Header.Set("Content-Type", mw.FormDataContentType())
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
-		return "", err
-	}
-
-	var respObj addDocResponse
-	err = json.NewDecoder(res.Body).Decode(&respObj)
-	if err != nil {
-		return "", failure.NewError(fails.ErrHTTP, fmt.Errorf(
-			"JSONのパースに失敗しました (%s: %s)", res.Request.Method, res.Request.URL.Path,
-		))
-	}
-	return respObj.ID, nil
-}
-
-type docIDListResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-func FetchDocumentIDList(ctx context.Context, a *agent.Agent, courseID, classID string) ([]string, error) {
-	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/documents", courseID, classID)
-	res := make([]*docIDListResponse, 0)
-	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
-	if err != nil {
-		return nil, err
-	}
-
-	idList := make([]string, 0, len(res))
-	for _, r := range res {
-		idList = append(idList, r.ID)
-	}
-	return idList, nil
-}
-
-func FetchDocument(ctx context.Context, a *agent.Agent, courseID, docID string) ([]byte, error) {
-	req, err := a.GET(fmt.Sprintf("/api/courses/%s/documents/%s", courseID, docID))
+func AddCourse(ctx context.Context, a *agent.Agent, courseRequest *AddCourseRequest) (*http.Response, error) {
+	body, err := json.Marshal(courseRequest)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	res, err := a.Do(ctx, req)
+
+	req, err := a.POST("/api/courses", bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
-		return nil, err
-	}
-	if err := assertContentType(res, "application/pdf"); err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	return a.Do(ctx, req)
+}
+
+type CourseStatus string
+
+const (
+	StatusRegistration CourseStatus = "registration"
+	StatusInProgress   CourseStatus = "in-progress"
+	StatusClosed       CourseStatus = "closed"
+)
+
+type SetCourseStatusRequest struct {
+	Status CourseStatus `json:"status"`
+}
+
+func SetCourseStatus(ctx context.Context, a *agent.Agent, courseID string, status CourseStatus) (*http.Response, error) {
+	body, err := json.Marshal(SetCourseStatusRequest{
+		Status: status,
+	})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	return body, nil
-}
 
-type attendCodeResponse struct {
-	Code string `json:"code"`
-}
-
-func GetAttendanceCode(ctx context.Context, a *agent.Agent, courseID, classID string) (string, error) {
-	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/attendance_code", courseID, classID)
-	res := &attendCodeResponse{}
-	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
+	req, err := a.POST(fmt.Sprintf("/api/courses/%s/status", courseID), bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-
-	return res.Code, nil
+	return a.Do(ctx, req)
 }
 
-type attendStudentResponse struct {
-	ID         string `json:"user_id"`
-	AttendedAt int64  `json:"attended_at"`
+type AddClassRequest struct {
+	Part        uint8  `json:"part"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+type AddClassResponse struct {
+	ID uuid.UUID `json:"id"`
 }
 
-func GetAttendanceStudentIDs(ctx context.Context, a *agent.Agent, courseID, classID string) ([]string, error) {
-	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/attendances", courseID, classID)
-	res := make([]*attendStudentResponse, 0)
-	_, err := apiRequest(ctx, a, http.MethodGet, rpath, nil, res, []int{http.StatusOK})
+func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest *AddClassRequest) (*http.Response, error) {
+	body, err := json.Marshal(classRequest)
 	if err != nil {
-		return nil, err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	r := make([]string, 0, len(res))
-	for _, resp := range res {
-		r = append(r, resp.ID)
-	}
-	return r, nil
-}
-
-type addAssignmentRequest struct {
-	Name     string `json:"name"`
-	Desc     string `json:"description"`
-	Deadline int64  `json:"deadline"`
-}
-type addAssignmentResponse struct {
-	ID string `json:"id"`
-}
-
-func AddAssignments(ctx context.Context, a *agent.Agent, courseID, classID, name, desc string, deadline int64) (string, error) {
-	rpath := fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID)
-	req := &addAssignmentRequest{
-		Name:     name,
-		Desc:     desc,
-		Deadline: deadline,
-	}
-	res := &addAssignmentResponse{}
-	_, err := apiRequest(ctx, a, http.MethodPost, rpath, req, res, []int{http.StatusOK})
+	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes", courseID), bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	return res.ID, nil
+
+	return a.Do(ctx, req)
 }
 
-func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, assignmentID, fileName string, data []byte) error {
-	body := &bytes.Buffer{}
-	mw := multipart.NewWriter(body)
+func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fileName string, data []byte) (*http.Response, error) {
+	bodyBuf := &bytes.Buffer{}
+	mw := multipart.NewWriter(bodyBuf)
 
 	mh := textproto.MIMEHeader{}
 	mh.Set("Content-Type", http.DetectContentType(data))
@@ -199,51 +111,45 @@ func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, assignmentI
 		fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "file", fileName))
 	fw, err := mw.CreatePart(mh)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 	_, err = io.Copy(fw, bytes.NewBuffer(data))
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/assignments/%s", courseID, assignmentID), body)
-	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
-	}
-	req.Header.Set("Content-Type", mw.FormDataContentType())
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
-
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
-		return err
-	}
-	return nil
-}
-
-func ExportSubmissions(ctx context.Context, a *agent.Agent, courseID, assignmentID string) ([]byte, error) {
-	req, err := a.GET(fmt.Sprintf("/api/courses/%s/assignments/%s/export", courseID, assignmentID))
+	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignment", courseID, classID), bodyBuf)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	res, err := a.Do(ctx, req)
-	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer res.Body.Close()
 
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
-		return nil, err
+	return a.Do(ctx, req)
+}
+
+type RegisterScoresRequest struct {
+	UserCode string `json:"user_code"`
+	Score    int    `json:"score"`
+}
+
+func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID string, scores []RegisterScoresRequest) (*http.Response, error) {
+	body, err := json.Marshal(scores)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	if err := assertContentType(res, "application/zip"); err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+	path := fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID)
+
+	req, err := a.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	return a.Do(ctx, req)
+}
+
+func DownloadSubmittedAssignments(ctx context.Context, a *agent.Agent, courseID, classID string) (*http.Response, error) {
+	req, err := a.GET(fmt.Sprintf("/api/courses/%s/assignments/%s/assignments/export", courseID, classID))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	return body, nil
+	return a.Do(ctx, req)
 }
