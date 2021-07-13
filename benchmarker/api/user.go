@@ -1,14 +1,14 @@
 package api
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"encoding/json"
+	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
 	"net/http"
-
-	"github.com/isucon/isucandar/agent"
 )
 
 /*
@@ -41,7 +41,7 @@ type GetRegisteredCourseResponseContent struct {
 func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 	path := "/api/users/me/courses"
 
-	req, err := a.NewRequest(http.MethodGet, path, nil)
+	req, err := a.GET(path)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
@@ -49,56 +49,68 @@ func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, 
 	return a.Do(ctx, req)
 }
 
-type registerCourseRequest struct {
+type RegisterCourseRequestContent struct {
 	ID string `json:"id"`
 }
 
-type registerCoursesRequest []registerCourseRequest
-
-func RegisterCourses(ctx context.Context, a *agent.Agent, courses []string) ([]string, error) {
-	req := make(registerCoursesRequest, 0, len(courses))
-	for _, v := range courses {
-		req = append(req, registerCourseRequest{ID: v})
-	}
-	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/me/courses"), req, nil, []int{http.StatusOK, http.StatusBadRequest})
-	if err != nil {
-		return nil, err
-	}
-
-	if res.StatusCode == http.StatusBadRequest {
-		// 400エラー = 定員オーバーによる登録失敗。 FIXME: 他の400エラーと区別するためにエラーレスポンスを解析が必要っぽい
-		// 登録成功したコースは0(空), 準正常系なのでエラーなし
-		return []string{}, nil
-	}
-
-	// 登録に成功したコースを返す
-	return courses, err
+type RegisterCoursesErrorResponse struct {
+	CourseNotFound       []string    `json:"course_not_found,omitempty"`
+	NotRegistrableStatus []uuid.UUID `json:"not_registrable_status,omitempty"`
+	ScheduleConflict     []uuid.UUID `json:"schedule_conflict,omitempty"`
 }
 
-type GetGradesResponse struct {
-	Summary      Summary        `json:"summary"`
-	CourseGrades []*CourseGrade `json:"courses"`
+func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCourseRequestContent) (*http.Response, error) {
+	body, err := json.Marshal(courses)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+	path := "/api/users/me/courses"
+
+	req, err := a.POST(path, bytes.NewReader(body))
+
+	return a.Do(ctx, req)
+}
+
+type GetGradeResponse struct {
+	Summary       Summary        `json:"summary"`
+	CourseResults []CourseResult `json:"courses"`
 }
 
 type Summary struct {
-	Credits uint8   `json:"credits"`
-	GPA     float64 `json:"gpa"`
+	Credits int     `json:"credits"`
+	GPT     int     `json:"gpt"`
+	GptDev  float64 `json:"gpt_dev"` // 偏差値
+	GptAvg  float64 `json:"gpt_avg"` // 平均値
+	GptMax  int     `json:"gpt_max"` // 最大値
+	GptMin  int     `json:"gpt_min"` // 最小値
 }
 
-type CourseGrade struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Credit uint8  `json:"credit"`
-	Grade  uint32 `json:"grade"`
+type CourseResult struct {
+	Name          string       `json:"name"`
+	Code          string       `json:"code"`
+	TotalScore    int          `json:"total_score"`
+	TotalScoreDev float64      `json:"total_score_dev"` // 偏差値
+	TotalScoreAvg float64      `json:"total_score_avg"` // 平均値
+	TotalScoreMax int          `json:"total_score_max"` // 最大値
+	TotalScoreMin int          `json:"total_score_min"` // 最小値
+	ClassScores   []ClassScore `json:"class_scores"`
 }
 
-// FIXME: レスポンスの型などはまだ修正していない
-func GetGrades(ctx context.Context, a *agent.Agent) (*GetGradesResponse, error) {
-	r := &GetGradesResponse{}
-	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/me/grades"), nil, r, []int{http.StatusOK})
+type ClassScore struct {
+	ClassID    uuid.UUID `json:"class_id"`
+	Title      string    `json:"title"`
+	Part       uint8     `json:"part"`
+	Score      int       `json:"score"`      // 0~100点
+	Submitters int       `json:"submitters"` // 提出した生徒数
+}
+
+func GetGrades(ctx context.Context, a *agent.Agent) (*http.Response, error) {
+	path := "/api/users/me/grades"
+
+	req, err := a.GET(path)
 	if err != nil {
-		return nil, err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	return r, nil
+	return a.Do(ctx, req)
 }
