@@ -2,37 +2,58 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/pborman/uuid"
 )
 
-type syllabusSearchResponse []syllabusData
-type syllabusData struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Classroom   string `json:"classroom"`
-	Limit       int    `json:"limit"`
-	Credit      int    `json:"credit"`
-	Instructor  string `json:"instructor"`
-	Timeslots   []struct {
-		DayOfWeek int `json:"day_of_week"`
-		ClassHour int `json:"class_hour"`
-	} `json:"timeslots"`
+type SearchCourseRequest struct {
+	Type      string
+	Credit    uint8
+	Teacher   string
+	Period    uint8
+	DayOfWeek DayOfWeek
+	Keywords  string
+}
+type GetCourseDetailResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Code        string    `json:"code"`
+	Type        string    `json:"type"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Credit      uint8     `json:"credit"`
+	Period      uint8     `json:"period"`
+	DayOfWeek   string    `json:"day_of_week"`
+	Teacher     string    `json:"teacher"`
+	Keywords    string    `json:"keywords"`
 }
 
-func SearchSyllabus(ctx context.Context, a *agent.Agent, keyword string) ([]string, error) {
-	res := syllabusSearchResponse{}
-	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/syllabus?keyword=%s", keyword), nil, &res, []int{http.StatusOK})
+func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseRequest) (*http.Response, error) {
+	req, err := a.GET("/api/syllabus")
 	if err != nil {
-		return nil, err
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+	query := req.URL.Query()
+	query.Add("type", param.Type)
+	query.Add("credit", string(param.Credit))
+	query.Add("teacher", param.Teacher)
+	query.Add("period", string(param.Period))
+	query.Add("day_of_week", string(param.DayOfWeek))
+	query.Add("keywords", param.Keywords)
+	req.URL.RawQuery = query.Encode()
+
+	return a.Do(ctx, req)
+}
+
+func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID int) (*http.Response, error) {
+	req, err := a.GET("/api/syllabus/" + strconv.Itoa(courseID))
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	syllabusIDs := make([]string, 0, len(res))
-	for _, s := range res {
-		syllabusIDs = append(syllabusIDs, s.ID)
-	}
-	return syllabusIDs, nil
+	return a.Do(ctx, req)
 }
