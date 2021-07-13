@@ -997,8 +997,8 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 }
 
 type Score struct {
-	UserID uuid.UUID `json:"user_id"`
-	Score  int       `json:"score"`
+	UserCode string `json:"user_code"`
+	Score    int    `json:"score"`
 }
 
 func (h *handlers) RegisterScores(c echo.Context) error {
@@ -1034,7 +1034,7 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 	}
 
 	for _, score := range req {
-		if _, err := h.DB.Exec("UPDATE `submissions` SET `score` = ? WHERE `user_id` = ? AND `class_id` = ?", score.Score, score.UserID, classID); err != nil {
+		if _, err := h.DB.Exec("UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?", score.Score, score.UserCode, classID); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
