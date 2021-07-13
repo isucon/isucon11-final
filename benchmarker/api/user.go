@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
 	"net/http"
-
-	"github.com/isucon/isucandar/agent"
 )
 
 /*
@@ -73,30 +71,46 @@ func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCour
 	return a.Do(ctx, req)
 }
 
-type GetGradesResponse struct {
-	Summary      Summary        `json:"summary"`
-	CourseGrades []*CourseGrade `json:"courses"`
+type GetGradeResponse struct {
+	Summary       Summary        `json:"summary"`
+	CourseResults []CourseResult `json:"courses"`
 }
 
 type Summary struct {
-	Credits uint8   `json:"credits"`
-	GPA     float64 `json:"gpa"`
+	Credits int     `json:"credits"`
+	GPT     int     `json:"gpt"`
+	GptDev  float64 `json:"gpt_dev"` // 偏差値
+	GptAvg  float64 `json:"gpt_avg"` // 平均値
+	GptMax  int     `json:"gpt_max"` // 最大値
+	GptMin  int     `json:"gpt_min"` // 最小値
 }
 
-type CourseGrade struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Credit uint8  `json:"credit"`
-	Grade  uint32 `json:"grade"`
+type CourseResult struct {
+	Name          string       `json:"name"`
+	Code          string       `json:"code"`
+	TotalScore    int          `json:"total_score"`
+	TotalScoreDev float64      `json:"total_score_dev"` // 偏差値
+	TotalScoreAvg float64      `json:"total_score_avg"` // 平均値
+	TotalScoreMax int          `json:"total_score_max"` // 最大値
+	TotalScoreMin int          `json:"total_score_min"` // 最小値
+	ClassScores   []ClassScore `json:"class_scores"`
 }
 
-// FIXME: レスポンスの型などはまだ修正していない
-func GetGrades(ctx context.Context, a *agent.Agent) (*GetGradesResponse, error) {
-	r := &GetGradesResponse{}
-	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/me/grades"), nil, r, []int{http.StatusOK})
+type ClassScore struct {
+	ClassID    uuid.UUID `json:"class_id"`
+	Title      string    `json:"title"`
+	Part       uint8     `json:"part"`
+	Score      int       `json:"score"`      // 0~100点
+	Submitters int       `json:"submitters"` // 提出した生徒数
+}
+
+func GetGrades(ctx context.Context, a *agent.Agent) (*http.Response, error) {
+	path := "/api/users/me/grades"
+
+	req, err := http.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
-		return nil, err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	return r, nil
+	return a.Do(ctx, req)
 }
