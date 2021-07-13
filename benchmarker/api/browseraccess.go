@@ -41,9 +41,9 @@ func browserAccess(ctx context.Context, a *agent.Agent, path string) []error {
 	}
 
 	// HTMLファイルから追加リソースを参照する
-	resources, perr := a.ProcessHTML(ctx, res, res.Body)
-	if perr != nil {
-		return []error{failure.NewError(fails.ErrCritical, perr)}
+	resources, err := a.ProcessHTML(ctx, res, res.Body)
+	if err != nil {
+		return []error{failure.NewError(fails.ErrCritical, err)}
 	}
 
 	var errs []error
