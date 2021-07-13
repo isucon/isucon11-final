@@ -41,7 +41,7 @@ type GetRegisteredCourseResponseContent struct {
 func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 	path := "/api/users/me/courses"
 
-	req, err := a.NewRequest(http.MethodGet, path, nil)
+	req, err := a.GET(path)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
@@ -66,7 +66,7 @@ func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCour
 	}
 	path := "/api/users/me/courses"
 
-	req, err := a.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	req, err := a.POST(path, bytes.NewReader(body))
 
 	return a.Do(ctx, req)
 }
@@ -107,7 +107,7 @@ type ClassScore struct {
 func GetGrades(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 	path := "/api/users/me/grades"
 
-	req, err := http.NewRequest(http.MethodGet, path, nil)
+	req, err := a.GET(path)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
