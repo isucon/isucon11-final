@@ -76,7 +76,7 @@ func RegisterCoursesAction(ctx context.Context, student *model.Student, courses 
 		coursesID = append(coursesID, c.ID)
 	}
 
-	registeredCoursesID, err := api.RegisterCourses(ctx, student.Agent, student.UserData.Number, coursesID)
+	registeredCoursesID, err := api.RegisterCourses(ctx, student.Agent, coursesID)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func RegisterCoursesAction(ctx context.Context, student *model.Student, courses 
 }
 
 func FetchRegisteredCoursesAction(ctx context.Context, student *model.Student) ([]string, error) {
-	registeredCoursesID, err := api.FetchRegisteredCourses(ctx, student.Agent, student.UserData.Number)
+	registeredCoursesID, err := api.FetchRegisteredCourses(ctx, student.Agent)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +371,7 @@ func RegisterGradeAction(ctx context.Context, faculty *model.Faculty, student *m
 }
 
 func FetchGradesAction(ctx context.Context, student *model.Student) (map[string]uint32, error) {
-	r, err := api.GetGrades(ctx, student.Agent, student.Number)
+	r, err := api.GetGrades(ctx, student.Agent)
 	mp := make(map[string]uint32, len(r.CourseGrades))
 	for _, courseGrade := range r.CourseGrades {
 		mp[courseGrade.ID] = courseGrade.Grade

@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/pborman/uuid"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
@@ -15,26 +18,49 @@ import (
   - GET /users/{user_id}/grades   // 成績一覧取得
 */
 
-type usersCourseResponse struct {
+type DayOfWeek string
+
+const (
+	_ DayOfWeek = "sunday"
+	_ DayOfWeek = "monday"
+	_ DayOfWeek = "tuesday"
+	_ DayOfWeek = "wednesday"
+	_ DayOfWeek = "thursday"
+	_ DayOfWeek = "friday"
+	_ DayOfWeek = "saturday"
+)
+
+type GetRegisteredCourseResponseContent struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Teacher   string    `json:"teacher"`
+	Period    uint8     `json:"period"`
+	DayOfWeek DayOfWeek `json:"day_of_week"`
+}
+
+func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, error) {
+	path := "/api/users/me/courses"
+
+	req, err := a.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
+	return a.Do(ctx, req)
+}
+
+type registerCourseRequest struct {
 	ID string `json:"id"`
 }
 
-func FetchRegisteredCourses(ctx context.Context, a *agent.Agent, userID string) ([]string, error) {
-	var registeredCourses []usersCourseResponse
-	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/%s/courses", userID), nil, &registeredCourses, []int{http.StatusOK})
-	if err != nil {
-		return nil, err
-	}
+type registerCoursesRequest []registerCourseRequest
 
-	var ids []string
-	for _, c := range registeredCourses {
-		ids = append(ids, c.ID)
+func RegisterCourses(ctx context.Context, a *agent.Agent, courses []string) ([]string, error) {
+	req := make(registerCoursesRequest, 0, len(courses))
+	for _, v := range courses {
+		req = append(req, registerCourseRequest{ID: v})
 	}
-	return ids, nil
-}
-
-func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses []string) ([]string, error) {
-	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/%s/courses", userID), courses, nil, []int{http.StatusOK, http.StatusBadRequest})
+	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/me/courses"), req, nil, []int{http.StatusOK, http.StatusBadRequest})
 	if err != nil {
 		return nil, err
 	}
@@ -47,4 +73,32 @@ func RegisterCourses(ctx context.Context, a *agent.Agent, userID string, courses
 
 	// 登録に成功したコースを返す
 	return courses, err
+}
+
+type GetGradesResponse struct {
+	Summary      Summary        `json:"summary"`
+	CourseGrades []*CourseGrade `json:"courses"`
+}
+
+type Summary struct {
+	Credits uint8   `json:"credits"`
+	GPA     float64 `json:"gpa"`
+}
+
+type CourseGrade struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Credit uint8  `json:"credit"`
+	Grade  uint32 `json:"grade"`
+}
+
+// FIXME: レスポンスの型などはまだ修正していない
+func GetGrades(ctx context.Context, a *agent.Agent) (*GetGradesResponse, error) {
+	r := &GetGradesResponse{}
+	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/me/grades"), nil, r, []int{http.StatusOK})
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
