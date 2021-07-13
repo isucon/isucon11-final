@@ -1,40 +1,32 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
-type loginRequest struct {
-	Username string `json:"username"`
+type LoginRequest struct {
+	Code     string `json:"code"`
 	Password string `json:"password"`
 }
 
-func Login(ctx context.Context, a *agent.Agent, id, pw string) error {
-	req := &loginRequest{
-		Username: id,
-		Password: pw,
-	}
-	_, err := apiRequest(ctx, a, http.MethodPost, "/login", req, nil, []int{http.StatusOK})
+func Login(ctx context.Context, a *agent.Agent, auth LoginRequest) (*http.Response, error) {
+	body, err := json.Marshal(auth)
 	if err != nil {
-		return err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+	path := "/login"
 
-	return nil
-}
-
-func LoginFail(ctx context.Context, a *agent.Agent, id, pw string) error {
-	req := &loginRequest{
-		Username: id,
-		Password: pw,
-	}
-
-	_, err := apiRequest(ctx, a, http.MethodPost, "/login", req, nil, []int{http.StatusUnauthorized})
+	req, err := a.POST(path, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	return nil
+	return a.Do(ctx, req)
 }
