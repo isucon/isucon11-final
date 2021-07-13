@@ -74,7 +74,8 @@ func main() {
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/classes/:classID/assignment", h.SubmitAssignment)
-			coursesAPI.GET("/:courseID/classes/:classID/export", h.DownloadSubmittedAssignments, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.RegisterScores, h.IsAdmin)
+			coursesAPI.GET("/:courseID/classes/:classID/assignments/export", h.DownloadSubmittedAssignments, h.IsAdmin)
 		}
 		announcementsAPI := API.Group("/announcements")
 		{
@@ -995,6 +996,59 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type Score struct {
+	UserID uuid.UUID `json:"user_id"`
+	Score  int       `json:"score"`
+}
+
+func (h *handlers) RegisterScores(c echo.Context) error {
+	classID := uuid.Parse(c.Param("classID"))
+	if classID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid classID.")
+	}
+
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var closedAt sql.NullTime
+	if err := tx.Get(&closedAt, "SELECT `submission_closed_at` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	if !closedAt.Valid {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "This assignment is not closed yet.")
+	}
+
+	var req []Score
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+	}
+
+	for _, score := range req {
+		if _, err := h.DB.Exec("UPDATE `submissions` SET `score` = ? WHERE `user_id` = ? AND `class_id` = ?", score.Score, score.UserID, classID); err != nil {
+			c.Logger().Error(err)
+			_ = tx.Rollback()
+			return c.NoContent(http.StatusInternalServerError)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
 type Submission struct {
 	ID       uuid.UUID `db:"id"`
 	UserName string    `db:"user_name"`
@@ -1016,7 +1070,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	tx, err := h.DB.Beginx()
 	if err != nil {
 		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	var closedAt sql.NullTime
@@ -1026,7 +1080,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	} else if err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 	var submissions []Submission
 	query := "SELECT `submissions`.`id`, `users`.`name` AS `user_name`" +
@@ -1039,25 +1093,25 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	} else if err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	zipFilePath := AssignmentTmpDirectory + classID.String() + ".zip"
 	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed_at` = NOW(6) WHERE `id` = ?", classID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	return c.File(zipFilePath)
@@ -1205,9 +1259,8 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
-		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`"
-
-	query += " WHERE 1=1"
+		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
+		" WHERE 1=1"
 
 	if courseID := c.QueryParam("course_id"); courseID != "" {
 		query += " AND `announcements`.`course_id` = ?"
