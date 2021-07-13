@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
@@ -49,30 +51,26 @@ func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, 
 	return a.Do(ctx, req)
 }
 
-type registerCourseRequest struct {
+type RegisterCourseRequestContent struct {
 	ID string `json:"id"`
 }
 
-type registerCoursesRequest []registerCourseRequest
+type RegisterCoursesErrorResponse struct {
+	CourseNotFound       []string    `json:"course_not_found,omitempty"`
+	NotRegistrableStatus []uuid.UUID `json:"not_registrable_status,omitempty"`
+	ScheduleConflict     []uuid.UUID `json:"schedule_conflict,omitempty"`
+}
 
-func RegisterCourses(ctx context.Context, a *agent.Agent, courses []string) ([]string, error) {
-	req := make(registerCoursesRequest, 0, len(courses))
-	for _, v := range courses {
-		req = append(req, registerCourseRequest{ID: v})
-	}
-	res, err := apiRequest(ctx, a, http.MethodPost, fmt.Sprintf("/api/users/me/courses"), req, nil, []int{http.StatusOK, http.StatusBadRequest})
+func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCourseRequestContent) (*http.Response, error) {
+	body, err := json.Marshal(courses)
 	if err != nil {
-		return nil, err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+	path := "/api/users/me/courses"
 
-	if res.StatusCode == http.StatusBadRequest {
-		// 400エラー = 定員オーバーによる登録失敗。 FIXME: 他の400エラーと区別するためにエラーレスポンスを解析が必要っぽい
-		// 登録成功したコースは0(空), 準正常系なのでエラーなし
-		return []string{}, nil
-	}
+	req, err := a.NewRequest(http.MethodPost, path, bytes.NewReader(body))
 
-	// 登録に成功したコースを返す
-	return courses, err
+	return a.Do(ctx, req)
 }
 
 type GetGradesResponse struct {
