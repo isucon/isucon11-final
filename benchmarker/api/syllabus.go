@@ -2,17 +2,16 @@ package api
 
 import (
 	"context"
-	"net/http"
-	"strconv"
-
+	"fmt"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
+	"net/http"
 )
 
 type SearchCourseRequest struct {
-	Type      string
+	Type      CourseType
 	Credit    uint8
 	Teacher   string
 	Period    uint8
@@ -20,16 +19,16 @@ type SearchCourseRequest struct {
 	Keywords  string
 }
 type GetCourseDetailResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Code        string    `json:"code"`
-	Type        string    `json:"type"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Credit      uint8     `json:"credit"`
-	Period      uint8     `json:"period"`
-	DayOfWeek   string    `json:"day_of_week"`
-	Teacher     string    `json:"teacher"`
-	Keywords    string    `json:"keywords"`
+	ID          uuid.UUID  `json:"id"`
+	Code        string     `json:"code"`
+	Type        CourseType `json:"type"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Credit      uint8      `json:"credit"`
+	Period      uint8      `json:"period"`
+	DayOfWeek   DayOfWeek  `json:"day_of_week"`
+	Teacher     string     `json:"teacher"`
+	Keywords    string     `json:"keywords"`
 }
 
 func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseRequest) (*http.Response, error) {
@@ -38,7 +37,7 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 	query := req.URL.Query()
-	query.Add("type", param.Type)
+	query.Add("type", string(param.Type))
 	query.Add("credit", string(param.Credit))
 	query.Add("teacher", param.Teacher)
 	query.Add("period", string(param.Period))
@@ -49,8 +48,10 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 	return a.Do(ctx, req)
 }
 
-func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID int) (*http.Response, error) {
-	req, err := a.GET("/api/syllabus/" + strconv.Itoa(courseID))
+func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID uuid.UUID) (*http.Response, error) {
+	path := fmt.Sprintf("/api/syllabus/%s", courseID)
+
+	req, err := a.GET(path)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
