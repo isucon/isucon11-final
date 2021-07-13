@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/pborman/uuid"
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
@@ -15,22 +18,35 @@ import (
   - GET /users/{user_id}/grades   // 成績一覧取得
 */
 
-type usersCourseResponse struct {
-	ID string `json:"id"`
+type DayOfWeek string
+
+const (
+	_ DayOfWeek = "sunday"
+	_ DayOfWeek = "monday"
+	_ DayOfWeek = "tuesday"
+	_ DayOfWeek = "wednesday"
+	_ DayOfWeek = "thursday"
+	_ DayOfWeek = "friday"
+	_ DayOfWeek = "saturday"
+)
+
+type GetRegisteredCourseResponseContent struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Teacher   string    `json:"teacher"`
+	Period    uint8     `json:"period"`
+	DayOfWeek DayOfWeek `json:"day_of_week"`
 }
 
-func FetchRegisteredCourses(ctx context.Context, a *agent.Agent) ([]string, error) {
-	var registeredCourses []usersCourseResponse
-	_, err := apiRequest(ctx, a, http.MethodGet, fmt.Sprintf("/api/users/me/courses"), nil, &registeredCourses, []int{http.StatusOK})
+func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, error) {
+	path := "/api/users/me/courses"
+
+	req, err := a.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
-		return nil, err
+		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	var ids []string
-	for _, c := range registeredCourses {
-		ids = append(ids, c.ID)
-	}
-	return ids, nil
+	return a.Do(ctx, req)
 }
 
 type registerCourseRequest struct {
