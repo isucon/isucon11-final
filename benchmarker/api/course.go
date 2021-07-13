@@ -37,7 +37,7 @@ type AddCourseResponse struct {
 	ID uuid.UUID `json:"id"`
 }
 
-func AddCourse(ctx context.Context, a *agent.Agent, courseRequest *AddCourseRequest) (*http.Response, error) {
+func AddCourse(ctx context.Context, a *agent.Agent, courseRequest AddCourseRequest) (*http.Response, error) {
 	body, err := json.Marshal(courseRequest)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
@@ -87,7 +87,7 @@ type AddClassResponse struct {
 	ID uuid.UUID `json:"id"`
 }
 
-func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest *AddClassRequest) (*http.Response, error) {
+func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest AddClassRequest) (*http.Response, error) {
 	body, err := json.Marshal(classRequest)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
@@ -102,23 +102,24 @@ func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest
 }
 
 func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fileName string, data []byte) (*http.Response, error) {
-	bodyBuf := &bytes.Buffer{}
-	mw := multipart.NewWriter(bodyBuf)
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
 
-	mh := textproto.MIMEHeader{}
-	mh.Set("Content-Type", http.DetectContentType(data))
-	mh.Set("Content-Disposition",
+	header := textproto.MIMEHeader{}
+	header.Set("Content-Type", http.DetectContentType(data))
+	header.Set("Content-Disposition",
 		fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "file", fileName))
-	fw, err := mw.CreatePart(mh)
+
+	part, err := w.CreatePart(header)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	_, err = io.Copy(fw, bytes.NewBuffer(data))
+	_, err = io.Copy(part, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignment", courseID, classID), bodyBuf)
+	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignment", courseID, classID), &body)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
@@ -126,19 +127,19 @@ func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fi
 	return a.Do(ctx, req)
 }
 
-type RegisterScoresRequest struct {
+type RegisterScoreRequestContent struct {
 	UserCode string `json:"user_code"`
 	Score    int    `json:"score"`
 }
 
-func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID string, scores []RegisterScoresRequest) (*http.Response, error) {
+func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID string, scores []RegisterScoreRequestContent) (*http.Response, error) {
 	body, err := json.Marshal(scores)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 	path := fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID)
 
-	req, err := a.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	req, err := a.POST(path, bytes.NewReader(body))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
@@ -147,9 +148,12 @@ func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID strin
 }
 
 func DownloadSubmittedAssignments(ctx context.Context, a *agent.Agent, courseID, classID string) (*http.Response, error) {
-	req, err := a.GET(fmt.Sprintf("/api/courses/%s/assignments/%s/assignments/export", courseID, classID))
+	path := fmt.Sprintf("/api/courses/%s/assignments/%s/assignments/export", courseID, classID)
+
+	req, err := a.GET(path)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+
 	return a.Do(ctx, req)
 }
