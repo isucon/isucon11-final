@@ -3,11 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
-	"net/http"
 )
 
 type SearchCourseRequest struct {
