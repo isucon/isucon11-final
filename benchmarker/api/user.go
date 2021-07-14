@@ -4,19 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
-	"net/http"
 )
-
-/*
-  ユーザ関連のアクセスエンドポイント
-  - GET /users/{user_id}/courses  // 履修済み講義一覧取得
-  - PUT /users/{user_id}/courses  // 講義履修登録
-  - GET /users/{user_id}/grades   // 成績一覧取得
-*/
 
 type DayOfWeek string
 
