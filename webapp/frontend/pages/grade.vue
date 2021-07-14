@@ -70,35 +70,50 @@
             <div class="px-4 py-2 border bg-gray-300">各講義成績</div>
 
             <template v-for="(r, i) in grades.courses">
-              <div :key="r.code" class="px-4 py-2 border">
+              <div :key="`course${i}-code${r.code}`" class="px-4 py-2 border">
                 {{ r.code }}
               </div>
-              <div :key="r.name" class="px-4 py-2 border">
+              <div :key="`course${i}-name${r.name}`" class="px-4 py-2 border">
                 {{ r.name }}
               </div>
-              <div :key="r.totalScore" class="px-4 py-2 border">
+              <div
+                :key="`course${i}-totalScore${r.totalScore}`"
+                class="px-4 py-2 border"
+              >
                 {{ r.totalScore }}
               </div>
-              <div :key="r.totalScoreAvg" class="px-4 py-2 border">
+              <div
+                :key="`course${i}-totalScoreAvg${r.totalScoreAvg}`"
+                class="px-4 py-2 border"
+              >
                 {{ r.totalScoreAvg }}
               </div>
-              <div :key="r.totalScoreStd" class="px-4 py-2 border">
+              <div
+                :key="`course${i}-totalScoreStd${r.totalScoreStd}`"
+                class="px-4 py-2 border"
+              >
                 {{ r.totalScoreStd }}
               </div>
-              <div :key="r.totalScoreMin" class="px-4 py-2 border">
+              <div
+                :key="`course${i}-totalScoreMin${r.totalScoreMin}`"
+                class="px-4 py-2 border"
+              >
                 {{ r.totalScoreMin }}
               </div>
-              <div :key="r.totalScoreMax" class="px-4 py-2 border">
+              <div
+                :key="`course${i}-totalScoreMax${r.totalScoreMax}`"
+                class="px-4 py-2 border"
+              >
                 {{ r.totalScoreMax }}
               </div>
-              <div :key="`button-${i}`" class="px-4 py-2 border">
+              <div :key="`button${i}`" class="px-4 py-2 border">
                 <Button color="plain" @click="onClickClassDetail(i)"
                   >開く
                 </Button>
               </div>
               <template v-if="includeOpenedIndex(i)">
                 <div
-                  :key="`cousre-score-${i}`"
+                  :key="`courseScore${i}`"
                   class="
                     px-4
                     pt-2
@@ -112,17 +127,29 @@
                   <div class="px-4 py-2 bg-gray-300">講義名</div>
                   <div class="px-4 py-2 bg-gray-300">成績</div>
                   <div class="px-4 py-2 bg-gray-300">課題提出者数</div>
-                  <template v-for="s in r.classScores">
-                    <div :key="s.part" class="px-4 py-2 border bg-white">
+                  <template v-for="(s, j) in r.classScores">
+                    <div
+                      :key="`courseScore${j}-part${s.part}`"
+                      class="px-4 py-2 border bg-white"
+                    >
                       {{ s.part }}
                     </div>
-                    <div :key="s.title" class="px-4 py-2 border bg-white">
+                    <div
+                      :key="`courseScore${j}-title${s.title}`"
+                      class="px-4 py-2 border bg-white"
+                    >
                       {{ s.title }}
                     </div>
-                    <div :key="s.score" class="px-4 py-2 border bg-white">
+                    <div
+                      :key="`courseScore${j}-score${s.score}`"
+                      class="px-4 py-2 border bg-white"
+                    >
                       {{ s.score }}
                     </div>
-                    <div :key="s.submitters" class="px-4 py-2 border bg-white">
+                    <div
+                      :key="`courseScore${j}-submitters${s.submitters}`"
+                      class="px-4 py-2 border bg-white"
+                    >
                       {{ s.submitters }}
                     </div>
                   </template>
@@ -149,7 +176,6 @@ type Data = {
 export default Vue.extend({
   components: { Button },
   asyncData() {
-    // const grades = await ctx.$axios.get('/api/users/me/grades')
     const grades = {
       summary: {
         gpt: 1,
