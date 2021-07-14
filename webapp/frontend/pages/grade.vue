@@ -106,9 +106,10 @@
               >
                 {{ r.totalScoreMax }}
               </div>
-              <div :key="`button${i}`" class="px-4 py-2 border">
-                <Button color="plain" @click="onClickClassDetail(i)"
-                  >開く
+              <div :key="`button${i}`" class="px-2 py-2 border">
+                <Button color="plain" @click="onClickClassDetail(i)">
+                  <template v-if="includeOpenedIndex(i)">閉じる</template>
+                  <template v-else>開く</template>
                 </Button>
               </div>
               <template v-if="includeOpenedIndex(i)">
