@@ -61,6 +61,9 @@ func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCour
 	path := "/api/users/me/courses"
 
 	req, err := a.POST(path, bytes.NewReader(body))
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
 
 	return a.Do(ctx, req)
 }
