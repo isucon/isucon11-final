@@ -6,15 +6,15 @@
         @submit.prevent="onSubmitLogin"
       >
         <TextInput
-          id="inline-name"
-          v-model="name"
+          id="login-code"
+          v-model="code"
           class="mb-2"
           label="学籍番号"
           type="text"
           placeholder="学籍番号"
         />
         <TextInput
-          id="inline-password"
+          id="login-password"
           v-model="password"
           label="パスワード"
           type="password"
@@ -41,17 +41,22 @@ export default Vue.extend({
   },
   data() {
     return {
-      name: '',
+      code: '',
       password: '',
     }
   },
   methods: {
     async onSubmitLogin() {
-      await this.$axios.post('/login', {
-        name: this.name,
-        password: this.password,
-      })
-      await this.$router.push('mypage')
+      try {
+        await this.$axios.post('/login', {
+          code: this.code,
+          password: this.password,
+        })
+        await this.$router.push('mypage')
+      } catch (e) {
+        // TODO: 通知を出すなど適切に処理する
+        console.error(e)
+      }
     },
   },
 })
