@@ -90,7 +90,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		switch true {
 		case isCritical:
 			passed = false
-			reason = "Critical error has occurred"
+			reason = "致命的なエラーが発生しました"
 		case isTimeout:
 			timeoutCount++
 		case isDeduction:
@@ -99,7 +99,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	}
 	if passed && deductionCount > errorFailThreshold {
 		passed = false
-		reason = fmt.Sprintf("Error count over %d", errorFailThreshold)
+		reason = fmt.Sprintf("エラーが%d回以上発生しました", errorFailThreshold)
 	}
 
 	resultScore, raw, deducted := score.Calc(breakdown, deductionCount, timeoutCount)
@@ -107,7 +107,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		resultScore = 0
 		if passed {
 			passed = false
-			reason = "Score"
+			reason = "スコアが0点以下でした"
 		}
 	}
 
