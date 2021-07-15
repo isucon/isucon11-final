@@ -19,9 +19,13 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import Card from '~/components/common/Card.vue'
 
 export default Vue.extend({
   name: 'Accordion',
+  components: {
+    Card,
+  },
   data(): { isOpen: boolean } {
     return {
       isOpen: false,
