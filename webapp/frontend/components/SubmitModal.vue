@@ -104,6 +104,9 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import Card from '~/components/common/Card.vue'
+import Modal from '~/components/common/Modal.vue'
+import CloseIcon from '~/components/common/CloseIcon.vue'
 
 type SubmitFormData = {
   files: File[]
@@ -112,6 +115,11 @@ type SubmitFormData = {
 
 export default Vue.extend({
   name: 'SubmitModal',
+  components: {
+    Card,
+    Modal,
+    CloseIcon,
+  },
   props: {
     isShown: {
       type: Boolean,
@@ -126,11 +134,7 @@ export default Vue.extend({
       type: String,
       required: true,
     },
-    assignmentName: {
-      type: String,
-      required: true,
-    },
-    assignmentId: {
+    classId: {
       type: String,
       required: true,
     },
@@ -143,10 +147,10 @@ export default Vue.extend({
   },
   computed: {
     title(): string {
-      return `${this.assignmentName} 課題提出`
+      return `${this.classTitle} 課題提出`
     },
     description(): string {
-      return `これは科目名 ${this.courseName} の ${this.classTitle} の課題 ${this.assignmentName} の提出用です。 提出先の課題や提出ファイルが正しいか確認してください。`
+      return `これは科目 ${this.courseName} の授業 ${this.classTitle} の課題提出フォームです。 提出先の課題や提出ファイルが正しいか確認してください。`
     },
   },
   methods: {
@@ -170,9 +174,13 @@ export default Vue.extend({
       for (const file of this.files) {
         formData.append('file', file)
       }
+      // TODO: 現状
+      //   main.(*handlers).SubmitAssignment(0xc0000a65f8, 0x8758b8, 0xc0000b3860, 0x0, 0x0)
+      // /go/src/github.com/isucon/isucon11-final/webapp/golang/main.go:931 +0x1b98
+      // で500。ログイン処理実装待ち？
       this.$axios
         .post(
-          `/api/courses/${this.$route.params.id}/assignments/${this.assignmentId}`,
+          `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignment`,
           formData
         )
         .then((response) => {
