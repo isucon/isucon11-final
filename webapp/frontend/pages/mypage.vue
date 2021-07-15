@@ -108,9 +108,8 @@ export default Vue.extend({
   components: { Button, Card, CalendarCell, Calendar },
   middleware: 'is_loggedin',
   async asyncData(ctx: Context): Promise<{ registeredCourses: Course[] }> {
-    const user = localStorage.getItem('user')
     const registeredCourses = await ctx.$axios.$get<Course[]>(
-      `/api/users/${user}/courses`
+      `/api/users/me/courses`
     )
 
     return { registeredCourses }

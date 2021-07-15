@@ -35,8 +35,7 @@ import TextField from '~/components/common/TextField.vue'
 export default Vue.extend({
   components: { TextInput: TextField, Button },
   middleware({ app, redirect }) {
-    console.log(app.$cookies.get('session'), localStorage.getItem('user'))
-    if (app.$cookies.get('session') && localStorage.getItem('user')) {
+    if (app.$cookies.get('session')) {
       return redirect('mypage')
     }
   },
@@ -52,7 +51,6 @@ export default Vue.extend({
         name: this.name,
         password: this.password,
       })
-      localStorage.setItem('user', this.name)
       await this.$router.push('mypage')
     },
   },
