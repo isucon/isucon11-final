@@ -17,7 +17,7 @@
           id="inline-password"
           v-model="password"
           label="パスワード"
-          type="text"
+          type="password"
           placeholder="********"
         />
 
