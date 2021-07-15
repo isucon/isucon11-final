@@ -23,7 +23,7 @@
             @input="filterAnnouncements"
           />
         </div>
-        <Announcement
+        <AnnouncementCard
           v-for="announcement in announcements"
           :key="announcement.id"
           :announcement="announcement"
@@ -38,6 +38,9 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Announcement } from '~/types/courses'
+import Card from '~/components/common/Card.vue'
+import AnnouncementCard from '~/components/Announcement.vue'
+import TextField from '~/components/common/TextField.vue'
 
 type AsyncAnnounceData = {
   innerAnnouncements: Array<Announcement>
@@ -56,6 +59,13 @@ type AnnouncementResponse = {
 }
 
 export default Vue.extend({
+  components: {
+    Card,
+    AnnouncementCard,
+    TextField,
+  },
+  middleware: 'is_loggedin',
+  // TODO: announcement API修正（#166~#168）完了後対応
   async asyncData({ $axios }): Promise<AsyncAnnounceData> {
     const announcements: Array<AnnouncementResponse> = await $axios.$get(
       '/api/announcements'
