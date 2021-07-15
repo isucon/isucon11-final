@@ -21,9 +21,13 @@
 <script lang="ts">
 import Vue, { PropOptions } from 'vue'
 import { Announcement } from '~/types/courses'
+import Accordion from '~/components/common/Accordion.vue'
 
 export default Vue.extend({
   name: 'Announcement',
+  components: {
+    Accordion,
+  },
   props: {
     announcement: {
       type: Object,
