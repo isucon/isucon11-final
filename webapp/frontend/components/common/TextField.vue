@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-auto items-center">
-    <div class="flex-shrink-0 mr-2">
+    <div class="flex-shrink-0 mr-2 w-1/4">
       <label class="text-gray-500 font-bold text-right" :for="id">
         {{ label }}
       </label>

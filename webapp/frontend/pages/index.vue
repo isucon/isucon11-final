@@ -1,14 +1,14 @@
 <template>
-  <div class="">
-    <div class="py-10 px-8 bg-white shadow-lg">
+  <div class="h-screen items-center">
+    <div class="py-10 px-8 bg-white shadow-lg w-1/3">
       <form
-        class="flex-1 flex-col w-full max-w-sm"
+        class="grid grid-cols-3 place-content-center gap-y-2"
         @submit.prevent="onSubmitLogin"
       >
         <TextInput
           id="login-code"
           v-model="code"
-          class="mb-2"
+          class="col-span-3"
           label="学籍番号"
           type="text"
           placeholder="学籍番号"
@@ -16,12 +16,15 @@
         <TextInput
           id="login-password"
           v-model="password"
+          class="col-span-3"
           label="パスワード"
           type="password"
           placeholder="********"
         />
 
-        <Button type="submit" color="primary">ログイン</Button>
+        <Button type="submit" color="primary" class="mt-4 col-start-2"
+          >ログイン</Button
+        >
       </form>
     </div>
   </div>
