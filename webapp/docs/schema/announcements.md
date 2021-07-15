@@ -13,7 +13,7 @@ CREATE TABLE `announcements` (
   `course_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `message` text COLLATE utf8mb4_bin NOT NULL,
-  `created_at` datetime(6) NOT NULL,
+  `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_announcements_course_id` (`course_id`),
   CONSTRAINT `FK_announcements_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
@@ -30,7 +30,7 @@ CREATE TABLE `announcements` (
 | course_id  | char(36)     |         | false    |                                                 | [courses](courses.md) | 科目のID              |
 | title      | varchar(255) |         | false    |                                                 |                       | お知らせのタイトル          |
 | message    | text         |         | false    |                                                 |                       | お知らせの内容            |
-| created_at | datetime(6)  |         | false    |                                                 |                       |                    |
+| created_at | datetime     |         | false    |                                                 |                       |                    |
 
 ## Constraints
 

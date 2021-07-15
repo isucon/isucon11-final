@@ -14,7 +14,7 @@ CREATE TABLE `submissions` (
   `class_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `file_name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `score` tinyint unsigned DEFAULT NULL,
-  `created_at` datetime(6) NOT NULL,
+  `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_submissions_user_id` (`user_id`),
   KEY `FK_submissions_class_id` (`class_id`),
@@ -34,7 +34,7 @@ CREATE TABLE `submissions` (
 | class_id   | char(36)         |         | false    |          | [classes](classes.md) | 対象講義のID            |
 | file_name  | varchar(255)     |         | false    |          |                       | 提出したファイル名          |
 | score      | tinyint unsigned |         | true     |          |                       | 課題のスコア             |
-| created_at | datetime(6)      |         | false    |          |                       |                    |
+| created_at | datetime         |         | false    |          |                       |                    |
 
 ## Constraints
 

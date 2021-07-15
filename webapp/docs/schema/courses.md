@@ -20,7 +20,7 @@ CREATE TABLE `courses` (
   `teacher_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `keywords` text COLLATE utf8mb4_bin NOT NULL,
   `status` enum('registration','in-progress','closed') COLLATE utf8mb4_bin NOT NULL DEFAULT 'registration',
-  `created_at` datetime(6) NOT NULL,
+  `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`),
   KEY `FK_courses_teacher_id` (`teacher_id`),
@@ -45,7 +45,7 @@ CREATE TABLE `courses` (
 | teacher_id  | char(36)                                                                     |              | false    |                                                                                           | [users](users.md) | 担当教員のID        |
 | keywords    | text                                                                         |              | false    |                                                                                           |                   | キーワード          |
 | status      | enum('registration','in-progress','closed')                                  | registration | false    |                                                                                           |                   | 科目ステータス        |
-| created_at  | datetime(6)                                                                  |              | false    |                                                                                           |                   |                |
+| created_at  | datetime                                                                     |              | false    |                                                                                           |                   |                |
 
 ## Constraints
 

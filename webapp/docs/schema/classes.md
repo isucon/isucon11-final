@@ -14,8 +14,8 @@ CREATE TABLE `classes` (
   `part` tinyint unsigned NOT NULL,
   `title` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `description` text COLLATE utf8mb4_bin NOT NULL,
-  `created_at` datetime(6) NOT NULL,
-  `submission_closed_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime NOT NULL,
+  `submission_closed_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_classes_course_id` (`course_id`),
   CONSTRAINT `FK_classes_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
@@ -33,8 +33,8 @@ CREATE TABLE `classes` (
 | part                 | tinyint unsigned |         | false    |                               |                       | 講義の順序                          |
 | title                | varchar(255)     |         | false    |                               |                       | 講義のタイトル                        |
 | description          | text             |         | false    |                               |                       | 講義の説明                          |
-| created_at           | datetime(6)      |         | false    |                               |                       |                                |
-| submission_closed_at | datetime(6)      |         | true     |                               |                       | 課題締め切り時のタイムスタンプ                |
+| created_at           | datetime         |         | false    |                               |                       |                                |
+| submission_closed_at | datetime         |         | true     |                               |                       | 課題締め切り時のタイムスタンプ                |
 
 ## Constraints
 
