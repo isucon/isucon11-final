@@ -183,12 +183,10 @@ export default Vue.extend({
           `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignment`,
           formData
         )
-        .then((response) => {
-          console.log(response.data)
+        .then(() => {
           this.close()
         })
-        .catch((error) => {
-          console.log(error)
+        .catch(() => {
           this.showAlert()
         })
     },
