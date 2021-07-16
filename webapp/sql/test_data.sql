@@ -48,7 +48,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000004',
   '数学 微分 積分 基礎',
   'registration',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0002-000000000002',
@@ -62,7 +62,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000004',
   '数学 線形代数 基礎',
   'registration',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0002-000000000003',
@@ -76,7 +76,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語',
   'registration',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0002-000000000004',
@@ -90,7 +90,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語 演習',
   'registration',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0002-000000000005',
@@ -104,7 +104,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000005',
   '計算機科学 C言語 演習',
   'registration',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0002-000000000006',
@@ -118,7 +118,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000005',
   'ISUCON パフォーマンスチューニング',
   'registration',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0002-000000000007',
@@ -132,7 +132,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000005',
   '英語 English',
   'closed',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0002-000000000008',
@@ -146,7 +146,7 @@ INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `p
   '01234567-89ab-cdef-0001-000000000005',
   '英語 英会話 English',
   'in-progress',
-  NOW(6)
+  NOW()
 );
 
 INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES
@@ -156,7 +156,7 @@ INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `creat
   1,
   '微分積分基礎第一回',
   '微分積分の導入',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0004-000000000002',
@@ -164,7 +164,7 @@ INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `creat
   2,
   '微分積分基礎第二回',
   '微分(1)',
-  NOW(6)
+  NOW()
 ),
 (
   '01234567-89ab-cdef-0004-000000000003',
@@ -172,5 +172,5 @@ INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `creat
   1,
   '線形代数基礎第一回',
   '線形代数とは',
-  NOW(6)
+  NOW()
 );

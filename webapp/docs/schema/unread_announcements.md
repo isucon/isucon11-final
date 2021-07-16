@@ -11,8 +11,8 @@
 CREATE TABLE `unread_announcements` (
   `announcement_id` char(36) COLLATE utf8mb4_bin NOT NULL,
   `user_id` char(36) COLLATE utf8mb4_bin NOT NULL,
-  `created_at` datetime(6) NOT NULL,
-  `deleted_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`announcement_id`,`user_id`),
   KEY `FK_unread_announcements_user_id` (`user_id`),
   CONSTRAINT `FK_unread_announcements_announcement_id` FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`),
@@ -24,12 +24,12 @@ CREATE TABLE `unread_announcements` (
 
 ## Columns
 
-| Name            | Type        | Default | Nullable | Children | Parents                           | Comment                |
-| --------------- | ----------- | ------- | -------- | -------- | --------------------------------- | ---------------------- |
-| announcement_id | char(36)    |         | false    |          | [announcements](announcements.md) | お知らせのID                |
-| user_id         | char(36)    |         | false    |          | [users](users.md)                 | 未読の学生                  |
-| created_at      | datetime(6) |         | false    |          |                                   |                        |
-| deleted_at      | datetime(6) |         | true     |          |                                   | 既読時のタイムスタンプ            |
+| Name            | Type     | Default | Nullable | Children | Parents                           | Comment                |
+| --------------- | -------- | ------- | -------- | -------- | --------------------------------- | ---------------------- |
+| announcement_id | char(36) |         | false    |          | [announcements](announcements.md) | お知らせのID                |
+| user_id         | char(36) |         | false    |          | [users](users.md)                 | 未読の学生                  |
+| created_at      | datetime |         | false    |          |                                   |                        |
+| deleted_at      | datetime |         | true     |          |                                   | 既読時のタイムスタンプ            |
 
 ## Constraints
 

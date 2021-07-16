@@ -419,7 +419,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	}
 
 	for _, course := range newlyAdded {
-		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", course.ID, userID)
+		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", course.ID, userID)
 		if err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
@@ -814,7 +814,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 
 	courseID := uuid.NewRandom()
-	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(6))",
+	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
 		c.Logger().Error(err)
@@ -823,7 +823,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 
 	announcementID := uuid.NewRandom()
-	_, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))",
+	_, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
 		announcementID, courseID, fmt.Sprintf("コース追加: %s", req.Name), fmt.Sprintf("コースが新しく追加されました: %s\n%s", req.Name, req.Description))
 	if err != nil {
 		c.Logger().Error(err)
@@ -839,7 +839,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 
 	for _, s := range students {
-		_, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))",
+		_, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())",
 			announcementID, s.ID)
 		if err != nil {
 			c.Logger().Error(err)
@@ -888,11 +888,19 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 }
 
 type Class struct {
-	ID                 uuid.UUID    `db:"id" json:"id"`
-	Part               uint8        `db:"part" json:"part"`
-	Title              string       `db:"title" json:"title"`
-	Description        string       `db:"description" json:"description"`
-	SubmissionClosedAt sql.NullTime `db:"submission_closed_at" json:"submission_closed_at,omitempty"`
+	ID                 uuid.UUID    `db:"id"`
+	Part               uint8        `db:"part"`
+	Title              string       `db:"title"`
+	Description        string       `db:"description"`
+	SubmissionClosedAt sql.NullTime `db:"submission_closed_at"`
+}
+
+type GetClassResponse struct {
+	ID                 uuid.UUID `json:"id"`
+	Part               uint8     `json:"part"`
+	Title              string    `json:"title"`
+	Description        string    `json:"description"`
+	SubmissionClosedAt int64     `json:"submission_closed_at,omitempty"`
 }
 
 // GetClasses 科目に紐づくクラス一覧の取得
@@ -910,12 +918,27 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var res []Class
-	if err := h.DB.Select(&res, "SELECT `id`, `part`, `title`, `description`, `submission_closed_at` FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err == sql.ErrNoRows {
+	var classes []Class
+	if err := h.DB.Select(&classes, "SELECT `id`, `part`, `title`, `description`, `submission_closed_at` FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No class exists yet.")
 	} else if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	res := make([]GetClassResponse, 0, len(classes))
+	for _, class := range classes {
+		getClassRes := GetClassResponse{
+			ID:          class.ID,
+			Part:        class.Part,
+			Title:       class.Title,
+			Description: class.Description,
+		}
+		if class.SubmissionClosedAt.Valid {
+			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.UnixNano() / int64(time.Second)
+		}
+
+		res = append(res, getClassRes)
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -1103,7 +1126,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed_at` = NOW(6) WHERE `id` = ?", classID); err != nil {
+	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed_at` = NOW() WHERE `id` = ?", classID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1185,7 +1208,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	classID := uuid.NewRandom()
-	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW(6))",
+	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
@@ -1193,7 +1216,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	announcementID := uuid.NewRandom()
-	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))",
+	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
 		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description)); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
@@ -1212,7 +1235,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", announcementID, user.ID); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
@@ -1232,13 +1255,23 @@ func (h *handlers) AddClass(c echo.Context) error {
 }
 
 type Announcement struct {
-	ID         uuid.UUID `db:"id" json:"id"`
-	CourseID   uuid.UUID `db:"course_id" json:"course_id"`
-	CourseName string    `db:"course_name" json:"course_name"`
-	Title      string    `db:"title" json:"title"`
-	Message    string    `db:"message " json:"message"`
-	Unread     bool      `db:"unread" json:"unread"`
-	CreatedAt  time.Time `db:"created_at" json:"created_at"`
+	ID         uuid.UUID `db:"id"`
+	CourseID   uuid.UUID `db:"course_id"`
+	CourseName string    `db:"course_name"`
+	Title      string    `db:"title"`
+	Message    string    `db:"message"`
+	Unread     bool      `db:"unread"`
+	CreatedAt  time.Time `db:"created_at"`
+}
+
+type GetAnnouncementResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseID   uuid.UUID `json:"course_id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	Message    string    `json:"message"`
+	Unread     bool      `json:"unread"`
+	CreatedAt  int64     `json:"created_at"`
 }
 
 // GetAnnouncementList お知らせ一覧取得
@@ -1254,9 +1287,9 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var res []Announcement
+	var announcements []Announcement
 	var args []interface{}
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
 		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
@@ -1287,7 +1320,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	// limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
 	args = append(args, limit+1, offset)
 
-	if err := h.DB.Select(&res, query, args...); err != nil {
+	if err := h.DB.Select(&announcements, query, args...); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1297,15 +1330,28 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	if page > 1 {
 		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", url, page-1))
 	}
-	if len(res) > limit {
+	if len(announcements) > limit {
 		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", url, page+1))
 	}
 	if len(links) > 0 {
 		c.Response().Header().Set("Link", strings.Join(links, ","))
 	}
 
-	if len(res) == limit+1 {
-		res = res[:len(res)-1]
+	if len(announcements) == limit+1 {
+		announcements = announcements[:len(announcements)-1]
+	}
+
+	res := make([]GetAnnouncementResponse, 0, len(announcements))
+	for _, announcement := range announcements {
+		res = append(res, GetAnnouncementResponse{
+			ID:         announcement.ID,
+			CourseID:   announcement.CourseID,
+			CourseName: announcement.CourseName,
+			Title:      announcement.Title,
+			Message:    announcement.Message,
+			Unread:     announcement.Unread,
+			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Second),
+		})
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -1343,7 +1389,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	announcementID := uuid.NewRandom()
-	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW(6))",
+	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
 		announcementID, req.CourseID, req.Title, req.Message); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
@@ -1361,7 +1407,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW(6))", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", announcementID, user.ID); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
