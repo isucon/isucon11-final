@@ -911,11 +911,12 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	}
 
 	var count int
-	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
-	} else if err != nil {
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
 	var classes []Class
@@ -979,11 +980,12 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 
 	var count int
-	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `classes` WHERE `id` = ?", classID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
-	} else if err != nil {
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `classes` WHERE `id` = ?", classID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	}
 
 	file, err := c.FormFile("file")
@@ -1189,11 +1191,12 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	var count int
-	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
-	} else if err != nil {
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
 	var req AddClassRequest
@@ -1375,11 +1378,12 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	var count int
-	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", req.CourseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
-	} else if err != nil {
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", req.CourseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
 	tx, err := h.DB.Beginx()
