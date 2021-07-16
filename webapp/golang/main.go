@@ -81,6 +81,7 @@ func main() {
 		{
 			announcementsAPI.GET("", h.GetAnnouncementList)
 			announcementsAPI.POST("", h.AddAnnouncement, h.IsAdmin)
+			announcementsAPI.GET("/:announcementID", h.GetAnnouncementDetail)
 		}
 	}
 
@@ -588,7 +589,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			ClassScores:   classScores,
 		})
 
-		//自分のGPT計算
+		// 自分のGPT計算
 		res.Summary.GPT += myTotalScore * int(course.Credit) / 100
 		res.Summary.Credits += int(course.Credit)
 	}
@@ -629,7 +630,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 	GptStd = math.Sqrt(GptStd)
 
-	//自分の偏差値の計算
+	// 自分の偏差値の計算
 	GptDev := (float64(res.Summary.GPT)-res.Summary.GptAvg)/GptStd*10 + 50
 
 	res.Summary = Summary{
@@ -935,7 +936,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 			Description: class.Description,
 		}
 		if class.SubmissionClosedAt.Valid {
-			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.UnixNano() / int64(time.Second)
+			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.Unix()
 		}
 
 		res = append(res, getClassRes)
@@ -1349,11 +1350,83 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 			CourseName: announcement.CourseName,
 			Title:      announcement.Title,
 			Unread:     announcement.Unread,
-			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Second),
+			CreatedAt:  announcement.CreatedAt.Unix(),
 		})
 	}
 
 	return c.JSON(http.StatusOK, res)
+}
+
+type AnnouncementDetail struct {
+	ID         uuid.UUID `db:"id"`
+	CourseID   uuid.UUID `db:"course_id"`
+	CourseName string    `db:"course_name"`
+	Title      string    `db:"title"`
+	Message    string    `db:"message"`
+	Unread     bool      `db:"unread"`
+	CreatedAt  time.Time `db:"created_at"`
+}
+
+type GetAnnouncementDetailResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseID   uuid.UUID `json:"course_id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	Message    string    `json:"message"`
+	Unread     bool      `json:"unread"`
+	CreatedAt  int64     `json:"created_at"`
+}
+
+func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := c.Param("announcementID")
+
+	var announcement AnnouncementDetail
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
+		" FROM `announcements`" +
+		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
+		" LEFT JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id` AND `unread_announcements`.`user_id` = ?" +
+		" WHERE `announcements`.`id` = ?"
+	if err := h.DB.Get(&announcement, query, userID, announcementID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var registrationCount int
+	if err := h.DB.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", announcement.CourseID, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if registrationCount == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
+	}
+
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `deleted_at` = NOW() WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, GetAnnouncementDetailResponse{
+		ID:         announcement.ID,
+		CourseID:   announcement.CourseID,
+		CourseName: announcement.CourseName,
+		Title:      announcement.Title,
+		Message:    announcement.Message,
+		Unread:     announcement.Unread,
+		CreatedAt:  announcement.CreatedAt.Unix(),
+	})
 }
 
 type AddAnnouncementRequest struct {
