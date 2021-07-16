@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
@@ -722,7 +723,12 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 	}
 
 	var links []string
-	url := c.Request().URL
+	url, err := url.Parse(c.Request().URL.String())
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	url.Scheme = c.Scheme()
 	url.Host = c.Request().Host
 	q := url.Query()
@@ -1334,7 +1340,12 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	var links []string
-	url := c.Request().URL
+	url, err := url.Parse(c.Request().URL.String())
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	url.Scheme = c.Scheme()
 	url.Host = c.Request().Host
 	q := url.Query()
