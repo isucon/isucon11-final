@@ -1,6 +1,7 @@
 <template>
   <div class="h-screen items-center">
     <div class="py-10 px-8 bg-white shadow-lg w-1/3">
+      <h1 class="text-center text-2xl mb-6">ISUCHOLAR ログイン</h1>
       <form
         class="grid grid-cols-3 place-content-center gap-y-2"
         @submit.prevent="onSubmitLogin"
@@ -36,6 +37,7 @@ import Button from '~/components/common/Button.vue'
 import TextField from '~/components/common/TextField.vue'
 
 export default Vue.extend({
+  layout: 'empty',
   components: { TextInput: TextField, Button },
   middleware({ app, redirect }) {
     if (app.$cookies.get('session')) {
