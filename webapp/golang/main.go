@@ -1150,6 +1150,7 @@ type AddClassRequest struct {
 	Part        uint8  `json:"part"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	CreatedAt   int64  `json:"created_at"`
 }
 
 type AddClassResponse struct {
@@ -1183,16 +1184,17 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	classID := uuid.NewRandom()
-	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())",
-		classID, courseID, req.Part, req.Title, req.Description); err != nil {
+	createdAt := time.Unix(req.CreatedAt, 0)
+	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, ?)",
+		classID, courseID, req.Part, req.Title, req.Description, createdAt); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	announcementID := uuid.NewRandom()
-	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
-		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description)); err != nil {
+	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
+		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description), createdAt); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1210,7 +1212,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
@@ -1404,9 +1406,10 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 }
 
 type AddAnnouncementRequest struct {
-	CourseID uuid.UUID `json:"course_id"`
-	Title    string    `json:"title"`
-	Message  string    `json:"message"`
+	CourseID  uuid.UUID `json:"course_id"`
+	Title     string    `json:"title"`
+	Message   string    `json:"message"`
+	CreatedAt int64     `json:"created_at"`
 }
 
 type AddAnnouncementResponse struct {
@@ -1435,8 +1438,9 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	announcementID := uuid.NewRandom()
-	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
-		announcementID, req.CourseID, req.Title, req.Message); err != nil {
+	createdAt := time.Unix(req.CreatedAt, 0)
+	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
+		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1453,7 +1457,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
