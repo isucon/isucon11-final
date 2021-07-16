@@ -81,6 +81,7 @@ func main() {
 		{
 			announcementsAPI.GET("", h.GetAnnouncementList)
 			announcementsAPI.POST("", h.AddAnnouncement, h.IsAdmin)
+			announcementsAPI.GET("/:announcementID", h.GetAnnouncementDetail)
 		}
 	}
 
@@ -160,7 +161,7 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 type UserType string
 
 const (
-	Student UserType = "student"
+	_       UserType = "student" /* FIXME: Use Student */
 	Teacher UserType = "teacher"
 )
 
@@ -588,7 +589,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			ClassScores:   classScores,
 		})
 
-		//自分のGPT計算
+		// 自分のGPT計算
 		res.Summary.GPT += myTotalScore * int(course.Credit) / 100
 		res.Summary.Credits += int(course.Credit)
 	}
@@ -629,7 +630,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 	GptStd = math.Sqrt(GptStd)
 
-	//自分の偏差値の計算
+	// 自分の偏差値の計算
 	GptDev := (float64(res.Summary.GPT)-res.Summary.GptAvg)/GptStd*10 + 50
 
 	res.Summary = Summary{
@@ -822,32 +823,6 @@ func (h *handlers) AddCourse(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	announcementID := uuid.NewRandom()
-	_, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
-		announcementID, courseID, fmt.Sprintf("コース追加: %s", req.Name), fmt.Sprintf("コースが新しく追加されました: %s\n%s", req.Name, req.Description))
-	if err != nil {
-		c.Logger().Error(err)
-		_ = tx.Rollback()
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	var students []User
-	if err := tx.Select(&students, "SELECT * FROM `users` WHERE `type` = ?", Student); err != nil {
-		c.Logger().Error(err)
-		_ = tx.Rollback()
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	for _, s := range students {
-		_, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())",
-			announcementID, s.ID)
-		if err != nil {
-			c.Logger().Error(err)
-			_ = tx.Rollback()
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -935,7 +910,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 			Description: class.Description,
 		}
 		if class.SubmissionClosedAt.Valid {
-			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.UnixNano() / int64(time.Second)
+			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.Unix()
 		}
 
 		res = append(res, getClassRes)
@@ -1175,6 +1150,7 @@ type AddClassRequest struct {
 	Part        uint8  `json:"part"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	CreatedAt   int64  `json:"created_at"`
 }
 
 type AddClassResponse struct {
@@ -1208,16 +1184,17 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	classID := uuid.NewRandom()
-	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())",
-		classID, courseID, req.Part, req.Title, req.Description); err != nil {
+	createdAt := time.Unix(req.CreatedAt, 0)
+	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, ?)",
+		classID, courseID, req.Part, req.Title, req.Description, createdAt); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	announcementID := uuid.NewRandom()
-	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
-		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description)); err != nil {
+	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
+		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description), createdAt); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1235,7 +1212,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
@@ -1259,7 +1236,6 @@ type Announcement struct {
 	CourseID   uuid.UUID `db:"course_id"`
 	CourseName string    `db:"course_name"`
 	Title      string    `db:"title"`
-	Message    string    `db:"message"`
 	Unread     bool      `db:"unread"`
 	CreatedAt  time.Time `db:"created_at"`
 }
@@ -1269,7 +1245,6 @@ type GetAnnouncementResponse struct {
 	CourseID   uuid.UUID `json:"course_id"`
 	CourseName string    `json:"course_name"`
 	Title      string    `json:"title"`
-	Message    string    `json:"message"`
 	Unread     bool      `json:"unread"`
 	CreatedAt  int64     `json:"created_at"`
 }
@@ -1289,9 +1264,10 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	var announcements []Announcement
 	var args []interface{}
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
+		" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
 		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
 		" WHERE 1=1"
 
@@ -1301,9 +1277,10 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	query += " AND `unread_announcements`.`user_id` = ?" +
+		" AND `registrations`.`user_id` = ?" +
 		" ORDER BY `announcements`.`created_at` DESC" +
 		" LIMIT ? OFFSET ?"
-	args = append(args, userID)
+	args = append(args, userID, userID)
 
 	// MEMO: ページングの初期実装はページ番号形式
 	var page int
@@ -1348,19 +1325,92 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 			CourseID:   announcement.CourseID,
 			CourseName: announcement.CourseName,
 			Title:      announcement.Title,
-			Message:    announcement.Message,
 			Unread:     announcement.Unread,
-			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Second),
+			CreatedAt:  announcement.CreatedAt.Unix(),
 		})
 	}
 
 	return c.JSON(http.StatusOK, res)
 }
 
+type AnnouncementDetail struct {
+	ID         uuid.UUID `db:"id"`
+	CourseID   uuid.UUID `db:"course_id"`
+	CourseName string    `db:"course_name"`
+	Title      string    `db:"title"`
+	Message    string    `db:"message"`
+	Unread     bool      `db:"unread"`
+	CreatedAt  time.Time `db:"created_at"`
+}
+
+type GetAnnouncementDetailResponse struct {
+	ID         uuid.UUID `json:"id"`
+	CourseID   uuid.UUID `json:"course_id"`
+	CourseName string    `json:"course_name"`
+	Title      string    `json:"title"`
+	Message    string    `json:"message"`
+	Unread     bool      `json:"unread"`
+	CreatedAt  int64     `json:"created_at"`
+}
+
+func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := c.Param("announcementID")
+
+	var announcement AnnouncementDetail
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
+		" FROM `announcements`" +
+		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
+		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
+		" WHERE `announcements`.`id` = ?" +
+		" AND `unread_announcements`.`user_id` = ?"
+	if err := h.DB.Get(&announcement, query, announcementID, userID); err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
+	} else if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var registrationCount int
+	if err := h.DB.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", announcement.CourseID, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if registrationCount == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
+	}
+
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `deleted_at` = NOW() WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, GetAnnouncementDetailResponse{
+		ID:         announcement.ID,
+		CourseID:   announcement.CourseID,
+		CourseName: announcement.CourseName,
+		Title:      announcement.Title,
+		Message:    announcement.Message,
+		Unread:     announcement.Unread,
+		CreatedAt:  announcement.CreatedAt.Unix(),
+	})
+}
+
 type AddAnnouncementRequest struct {
-	CourseID uuid.UUID `json:"course_id"`
-	Title    string    `json:"title"`
-	Message  string    `json:"message"`
+	CourseID  uuid.UUID `json:"course_id"`
+	Title     string    `json:"title"`
+	Message   string    `json:"message"`
+	CreatedAt int64     `json:"created_at"`
 }
 
 type AddAnnouncementResponse struct {
@@ -1389,8 +1439,9 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	announcementID := uuid.NewRandom()
-	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
-		announcementID, req.CourseID, req.Title, req.Message); err != nil {
+	createdAt := time.Unix(req.CreatedAt, 0)
+	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
+		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1407,7 +1458,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
