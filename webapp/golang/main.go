@@ -161,7 +161,7 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 type UserType string
 
 const (
-	Student UserType = "student"
+	_       UserType = "student" /* FIXME: Use Student */
 	Teacher UserType = "teacher"
 )
 
@@ -821,32 +821,6 @@ func (h *handlers) AddCourse(c echo.Context) error {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	announcementID := uuid.NewRandom()
-	_, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, NOW())",
-		announcementID, courseID, fmt.Sprintf("コース追加: %s", req.Name), fmt.Sprintf("コースが新しく追加されました: %s\n%s", req.Name, req.Description))
-	if err != nil {
-		c.Logger().Error(err)
-		_ = tx.Rollback()
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	var students []User
-	if err := tx.Select(&students, "SELECT * FROM `users` WHERE `type` = ?", Student); err != nil {
-		c.Logger().Error(err)
-		_ = tx.Rollback()
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	for _, s := range students {
-		_, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())",
-			announcementID, s.ID)
-		if err != nil {
-			c.Logger().Error(err)
-			_ = tx.Rollback()
-			return c.NoContent(http.StatusInternalServerError)
-		}
 	}
 
 	if err := tx.Commit(); err != nil {
