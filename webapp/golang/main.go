@@ -700,7 +700,8 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 	if c.QueryParam("page") == "" {
 		page = 1
 	} else {
-		page, err := strconv.Atoi(c.QueryParam("page"))
+		var err error
+		page, err = strconv.Atoi(c.QueryParam("page"))
 		if err != nil || page <= 0 {
 			return echo.NewHTTPError(http.StatusBadRequest, "Invalid page")
 		}
@@ -721,12 +722,19 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 	}
 
 	var links []string
-	path := fmt.Sprintf("%v://%v%v", c.Scheme(), c.Request().Host, c.Path())
+	url := c.Request().URL
+	url.Scheme = c.Scheme()
+	url.Host = c.Request().Host
+	q := url.Query()
 	if page > 1 {
-		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", path, page-1))
+		q.Set("page", strconv.Itoa(page-1))
+		url.RawQuery = q.Encode()
+		links = append(links, fmt.Sprintf("<%v>; rel=\"prev\"", url))
 	}
 	if len(res) > limit {
-		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", path, page+1))
+		q.Set("page", strconv.Itoa(page+1))
+		url.RawQuery = q.Encode()
+		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", url))
 	}
 	if len(links) > 0 {
 		c.Response().Header().Set("Link", strings.Join(links, ","))
@@ -1326,12 +1334,19 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	var links []string
-	url := fmt.Sprintf("%v://%v%v", c.Scheme(), c.Request().Host, c.Request().URL.Path)
+	url := c.Request().URL
+	url.Scheme = c.Scheme()
+	url.Host = c.Request().Host
+	q := url.Query()
 	if page > 1 {
-		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"prev\"", url, page-1))
+		q.Set("page", strconv.Itoa(page-1))
+		url.RawQuery = q.Encode()
+		links = append(links, fmt.Sprintf("<%v>; rel=\"prev\"", url))
 	}
 	if len(announcements) > limit {
-		links = append(links, fmt.Sprintf("<%v?page=%v>; rel=\"next\"", url, page+1))
+		q.Set("page", strconv.Itoa(page+1))
+		url.RawQuery = q.Encode()
+		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", url))
 	}
 	if len(links) > 0 {
 		c.Response().Header().Set("Link", strings.Join(links, ","))
