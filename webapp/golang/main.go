@@ -1259,7 +1259,6 @@ type Announcement struct {
 	CourseID   uuid.UUID `db:"course_id"`
 	CourseName string    `db:"course_name"`
 	Title      string    `db:"title"`
-	Message    string    `db:"message"`
 	Unread     bool      `db:"unread"`
 	CreatedAt  time.Time `db:"created_at"`
 }
@@ -1269,7 +1268,6 @@ type GetAnnouncementResponse struct {
 	CourseID   uuid.UUID `json:"course_id"`
 	CourseName string    `json:"course_name"`
 	Title      string    `json:"title"`
-	Message    string    `json:"message"`
 	Unread     bool      `json:"unread"`
 	CreatedAt  int64     `json:"created_at"`
 }
@@ -1289,7 +1287,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	var announcements []Announcement
 	var args []interface{}
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
 		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
@@ -1348,7 +1346,6 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 			CourseID:   announcement.CourseID,
 			CourseName: announcement.CourseName,
 			Title:      announcement.Title,
-			Message:    announcement.Message,
 			Unread:     announcement.Unread,
 			CreatedAt:  announcement.CreatedAt.UnixNano() / int64(time.Second),
 		})
