@@ -1268,7 +1268,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
 		" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
-		" LEFT JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
+		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
 		" WHERE 1=1"
 
 	if courseID := c.QueryParam("course_id"); courseID != "" {
@@ -1371,9 +1371,10 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
-		" LEFT JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id` AND `unread_announcements`.`user_id` = ?" +
-		" WHERE `announcements`.`id` = ?"
-	if err := h.DB.Get(&announcement, query, userID, announcementID); err == sql.ErrNoRows {
+		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
+		" WHERE `announcements`.`id` = ?" +
+		" AND `unread_announcements`.`user_id` = ?"
+	if err := h.DB.Get(&announcement, query, announcementID, userID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
 	} else if err != nil {
 		c.Logger().Error(err)
