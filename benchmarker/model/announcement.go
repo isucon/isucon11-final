@@ -128,22 +128,22 @@ func (q *AnnouncementDeque) PopFront() *Announcement {
 }
 
 func (q *AnnouncementDeque) Len() int {
-	q.rmu.Lock()
-	defer q.rmu.Unlock()
+	q.rmu.RLock()
+	defer q.rmu.RUnlock()
 
 	return q.len
 }
 
 func (q *AnnouncementDeque) Cap() int {
-	q.rmu.Lock()
-	defer q.rmu.Unlock()
+	q.rmu.RLock()
+	defer q.rmu.RUnlock()
 
 	return q.cap
 }
 
 func (q *AnnouncementDeque) Items() []*Announcement {
-	q.rmu.Lock()
-	defer q.rmu.Unlock()
+	q.rmu.RLock()
+	defer q.rmu.RUnlock()
 
 	m := make([]*Announcement, q.Cap())
 	copy(m, q.items)
