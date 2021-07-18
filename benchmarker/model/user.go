@@ -17,8 +17,8 @@ type Student struct {
 
 	registeredCourses     []*Course
 	hasUnreadAnnouncement bool
-	announcements         AnnouncementDeque
-	unreadAnnouncements   AnnouncementDeque
+	announcements         *AnnouncementDeque
+	unreadAnnouncements   *AnnouncementDeque
 
 	rmu sync.RWMutex
 }
@@ -30,9 +30,13 @@ func NewStudent(id, rawPW string) *Student {
 			ID:          id,
 			RawPassword: rawPW,
 		},
-		Agent:             a,
-		registeredCourses: make([]*Course, 0),
-		rmu:               sync.RWMutex{},
+		Agent:                 a,
+		registeredCourses:     make([]*Course, 0),
+		hasUnreadAnnouncement: false,
+		announcements:         NewAnnouncementDeque(100),
+		unreadAnnouncements:   NewAnnouncementDeque(100),
+
+		rmu: sync.RWMutex{},
 	}
 }
 
