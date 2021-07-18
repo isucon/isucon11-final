@@ -30,14 +30,22 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 
 	// FIXME: コース追加前にコース登録アクションが必要
-	s.addCourseLoad(generate.Course())
-	s.addCourseLoad(generate.Course())
-	s.addCourseLoad(generate.Course())
-
-	s.addActiveStudentLoads(10)
-
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(InitialCourseCount)
+	for i := 0; i < InitialCourseCount; i++ {
+		go func() {
+			defer wg.Done()
+			s.addCourseLoad(generate.Course())
+		}()
+	}
+	wg.Wait()
+
+	wg = sync.WaitGroup{}
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		s.addActiveStudentLoads(50)
+	}()
 	go func() {
 		defer wg.Done()
 		// LoadWorkerはisucandarのParallel
@@ -61,8 +69,8 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 // アクティブ学生の負荷をかけ続けるLoadWorker(parallel.Parallel)を作成
 func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.BenchmarkStep) *parallel.Parallel {
 	// アクティブ学生は以下の2つのタスクを行い続ける
-	//　「成績確認 + （空きがあれば履修登録）」
-	//　「おしらせ確認 + （未読があれば詳細確認）」
+	// 「成績確認 + （空きがあれば履修登録）」
+	// 「おしらせ確認 + （未読があれば詳細確認）」
 	studentLoadWorker := parallel.NewParallel(ctx, -1)
 
 	// 成績確認 + (空きがあれば履修登録)
@@ -74,14 +82,53 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			return
 		}
 		AdminLogger.Println(student.ID, "の成績確認タスクが追加された") // FIXME: for debug
+
+
 		studentLoadWorker.Do(func(ctx context.Context) {
 			for ctx.Err() == nil {
 				// 学生は成績を確認し続ける
-				<-time.After(1 * time.Second) // FIXME: for debug
+				// TODO: verify grade
+				_, err := GetGradeAction(ctx, student.Agent)
+				if err != nil {
+					step.AddError(err)
+					return
+				}
+				AdminLogger.Printf("%vは成績を確認した", student.ID)
 
 				// 空きがあったら
 				// 履修登録
-				<-time.After(1 * time.Second) // FIXME: for debug
+				if student.RegisteredCoursesCount() < RegisterCourseLimit {
+					// 5回成功するまでだと、失敗し続けた場合永遠に負荷がかかってしまう
+					// 今は5回だけやって失敗したら終わりにした
+					for i := 0; i < SearchCourseLimit; i++ {
+						timer := time.After(300 * time.Millisecond)
+
+						// TODO: verify course
+						_, _, err := SearchCourseAction(ctx, student.Agent)
+
+						if err != nil {
+							step.AddError(err)
+							return
+						}
+
+						select {
+						case <-ctx.Done():
+							return
+						case <-timer:
+						}
+					}
+					AdminLogger.Printf("%vはコースを%v回検索した", student.ID, SearchCourseLimit)
+
+					course := s.selectUnregisteredCourse(student)
+					// TODO: verify response
+					_, err := TakeCourseAction(ctx, student.Agent, course)
+					if err != nil {
+						step.AddError(err)
+						return
+					}
+					student.AddCourse(course)
+					AdminLogger.Printf("%vは%vを履修した", student.ID, course.Name)
+				}
 
 				select {
 				case <-ctx.Done():
@@ -104,10 +151,28 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		studentLoadWorker.Do(func(ctx context.Context) {
 			for ctx.Err() == nil {
 				// 学生はお知らせを確認し続ける
-				<-time.After(1 * time.Second) // FIXME: for debug
+				// TODO: verify announcement
+				_, _, err := GetAnnouncementAction(ctx, student.Agent)
+				if err != nil {
+					step.AddError(err)
+					return
+				}
 
+				AdminLogger.Println(student.ID, "はお知らせを確認した") // FIXME: for debug
 				// 未読があったら
 				// 内容を確認
+				if student.HasUnreadAnnouncement() {
+					unreadAnnouncement := student.PopOldestUnreadAnnouncements()
+					// TODO: verify announcement detail
+					_, _, err := GetAnnouncementDetailAction(ctx, student.Agent, unreadAnnouncement.ID)
+					if err != nil {
+						step.AddError(err)
+						// unreadに戻しておく
+						student.PushOldestUnreadAnnouncements(unreadAnnouncement)
+						return
+					}
+					AdminLogger.Printf("%vは未読のお知らせを確認した", student.ID) // FIXME: for debug
+				}
 
 				select {
 				case <-ctx.Done():
@@ -135,17 +200,17 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			// コースgoroutineは満員になるまではなにもしない
 			for ctx.Err() == nil {
 				AdminLogger.Println(course.Name, "は定員チェックをした") // FIXME: for debug
-				<-time.After(1 * time.Second)                  // FIXME: for debug
+				//<-time.After(1 * time.Second)                  // FIXME: for debug
 
 				// if course.IsFull() {
 				// 		break
 				// }
-				<-time.After(300 * time.Millisecond)
+				//<-time.After(300 * time.Millisecond)
 				break // FIXME: for debug
 			}
 
 			// コースの処理
-			<-time.After(10 * time.Second)
+			<-time.After(5 * time.Second)
 
 			// コースがおわった
 			AdminLogger.Println(course.Name, "は終了した")
@@ -154,6 +219,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			newCourse := generate.Course()
 			// コース追加Actionで成功したら
 			// ベンチのコースタスクも増やす
+			s.addCourseLoad(newCourse)
 			s.addCourseLoad(newCourse)
 
 			// コースが追加されたのでベンチのアクティブ学生も増やす
@@ -168,11 +234,23 @@ func (s *Scenario) addActiveStudentLoads(count int) {
 	// どこまでメソッドをわけるか（s.Studentの管理）
 	for i := 0; i < count; i++ {
 		activetedStudent := s.student[0] // FIXME
+		//<-time.After(time.Duration(rand.Intn(2000)) * time.Millisecond)
 		s.sPubSub.Publish(activetedStudent)
 	}
 }
 
 func (s *Scenario) addCourseLoad(course *model.Course) {
 	// どこまでメソッドをわけるか（コース登録処理, s.Courseの管理）
+	s.mu.Lock()
+	s.courses = append(s.courses, course)
+	s.mu.Unlock()
+
 	s.cPubSub.Publish(course)
+}
+
+// studentに履修するメソッドをもたせてそこでコースを選ぶようにしてもいいかも知れない
+func (s *Scenario) selectUnregisteredCourse(student *model.Student) *model.Course {
+
+	// FIXME
+	return s.courses[0]
 }

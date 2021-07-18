@@ -18,16 +18,22 @@ var (
 	Cancel failure.StringCode = "scenario-cancel"
 )
 
+const (
+	RegisterCourseLimit = 20
+	SearchCourseLimit   = 5
+	InitialCourseCount  = 20
+)
+
 type Scenario struct {
 	BaseURL *url.URL
 	UseTLS  bool
 	NoLoad  bool
 
-	sPubSub  *pubsub.PubSub
-	cPubSub  *pubsub.PubSub
-	courses  []*model.Course
-	student  []*model.Student
-	language string
+	sPubSub             *pubsub.PubSub
+	cPubSub             *pubsub.PubSub
+	courses             []*model.Course
+	student             []*model.Student
+	language            string
 
 	mu sync.Mutex
 }
