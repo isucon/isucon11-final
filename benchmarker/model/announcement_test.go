@@ -120,7 +120,7 @@ func TestAnnouncementDeque_PushFront_PopBack(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			a := q.PopBack()
 			if a == nil {
-				t.Errorf("returned nil")
+				t.Fatalf("returned nil")
 			}
 			if a.CreatedAt != int64(i) {
 				t.Errorf("actual = %v, want %v", a.CreatedAt, i)
@@ -159,12 +159,12 @@ func TestAnnouncementDeque_Push_Pop(t *testing.T) {
 		}
 
 		if q.Len() != len(expected) {
-			t.Errorf("len = %v, want = %v", q.Len(), len(expected))
+			t.Fatalf("len = %v, want = %v", q.Len(), len(expected))
 		}
 		for i := 0; i < q.Len(); i++ {
 			a := q.PopFront()
 			if a == nil {
-				t.Errorf("returned nil")
+				t.Fatalf("returned nil")
 			}
 			if a.CreatedAt != expected[i].CreatedAt {
 				t.Errorf("actual = %v, want %v", a.CreatedAt, i)
