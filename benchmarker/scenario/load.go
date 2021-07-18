@@ -83,6 +83,12 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		}
 		AdminLogger.Println(student.ID, "の成績確認タスクが追加された") // FIXME: for debug
 
+		// FIXME for Debug
+		{
+			s.mu.Lock()
+			s.activeStudentCount++
+			s.mu.Unlock()
+		}
 
 		studentLoadWorker.Do(func(ctx context.Context) {
 			for ctx.Err() == nil {
@@ -214,6 +220,12 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 			// コースがおわった
 			AdminLogger.Println(course.Name, "は終了した")
+			// FIXME: Debug
+			{
+				s.mu.Lock()
+				s.finishedCourseCount++
+				s.mu.Unlock()
+			}
 
 			// コースを追加
 			newCourse := generate.Course()

@@ -202,7 +202,8 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				scenario.AdminLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
+				scenario.ContestantLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
+				scenario.ContestantLogger.Printf("[debug] active student: %v, course: %v, finished course: %v\n", s.ActiveStudentCount(), s.CourseCount(), s.FinishedCourseCount())
 			case <-ctx.Done():
 				ticker.Stop()
 				return nil
