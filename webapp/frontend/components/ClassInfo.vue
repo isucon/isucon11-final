@@ -10,8 +10,7 @@
           <div class="flex flex-row items-center">
             <Button @click="openModal"> 課題を提出する </Button>
             <div class="text-neutral-300 text-sm ml-4">
-              <!-- TODO: issue #163での対応待ち -->
-              締め切り：{{ classinfo.submissionClosedAt }}
+              締め切り：{{ classinfo.submissionClosedAt || '未設定' }}
             </div>
           </div>
         </div>

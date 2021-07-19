@@ -174,10 +174,6 @@ export default Vue.extend({
       for (const file of this.files) {
         formData.append('file', file)
       }
-      // TODO: 現状
-      //   main.(*handlers).SubmitAssignment(0xc0000a65f8, 0x8758b8, 0xc0000b3860, 0x0, 0x0)
-      // /go/src/github.com/isucon/isucon11-final/webapp/golang/main.go:931 +0x1b98
-      // で500。ログイン処理実装待ち？
       this.$axios
         .post(
           `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignment`,

@@ -5,12 +5,13 @@
         <div class="flex flex-row items-center mb-4">
           <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
           <div
-            class="border border-gray-400 pl-1 pr-1 mr-4"
+            class="border border-gray-400 pl-1 pr-1 mr-4 cursor-pointer"
             @click="filterUnreadAnnouncements"
           >
             <span class="text-primary-500 text-sm">未読</span>
-            <span class="bg-primary-500 text-white font-bold text-sm pl-1 pr-1"
-              >4</span
+            <span
+              class="bg-primary-500 text-white font-bold text-sm pl-1 pr-1"
+              >{{ numOfUnreads }}</span
             >
           </div>
           <TextField
@@ -23,7 +24,7 @@
             @input="filterAnnouncements"
           />
         </div>
-        <Announcement
+        <AnnouncementCard
           v-for="announcement in announcements"
           :key="announcement.id"
           :announcement="announcement"
@@ -37,10 +38,14 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { Announcement } from '~/types/courses'
+import { Announcement, AnnouncementResponse } from '~/types/courses'
+import Card from '~/components/common/Card.vue'
+import TextField from '~/components/common/TextField.vue'
+import AnnouncementCard from '~/components/Announcement.vue'
 
 type AsyncAnnounceData = {
   innerAnnouncements: Array<Announcement>
+  numOfUnreads: number
 }
 
 type AnnounceListData = AsyncAnnounceData & {
@@ -48,14 +53,9 @@ type AnnounceListData = AsyncAnnounceData & {
   announcements: Array<Announcement>
 }
 
-type AnnouncementResponse = {
-  id: string
-  courseName: string
-  title: string
-  createdAt: number
-}
-
 export default Vue.extend({
+  components: { Card, TextField, AnnouncementCard },
+  middleware: 'is_loggedin',
   async asyncData({ $axios }): Promise<AsyncAnnounceData> {
     const announcements: Array<AnnouncementResponse> = await $axios.$get(
       '/api/announcements'
@@ -64,14 +64,20 @@ export default Vue.extend({
       (item: AnnouncementResponse): Announcement => {
         return {
           id: item.id,
+          courseId: item.courseId,
           courseName: item.courseName,
           title: item.title,
-          createdAt: new Date(item.createdAt).toLocaleString(),
+          unread: item.unread,
+          createdAt: new Date(item.createdAt * 1000).toLocaleString(),
         }
       }
     )
+    const count = announcements.filter((item) => {
+      return item.unread
+    }).length
     return {
       innerAnnouncements: result,
+      numOfUnreads: count,
     }
   },
   data(): AnnounceListData {
@@ -79,6 +85,7 @@ export default Vue.extend({
       innerAnnouncements: [],
       announcements: [],
       courseName: '',
+      numOfUnreads: 0,
     }
   },
   created() {
@@ -92,9 +99,16 @@ export default Vue.extend({
       const announcementDetail: Announcement = await this.$axios.$get(
         `/api/announcements/${announcement.id}`
       )
-      this.innerAnnouncements.filter(
+      const target = this.innerAnnouncements.find(
         (item) => item.id === announcement.id
-      )[0].message = announcementDetail.message
+      )
+      if (target) {
+        target.message = announcementDetail.message
+      }
+      if (announcement.unread) {
+        this.numOfUnreads = this.numOfUnreads - 1
+        announcement.unread = false
+      }
       event.done()
     },
     closeAnnouncement(event: { done: () => undefined }) {
@@ -105,11 +119,10 @@ export default Vue.extend({
         return item.courseName.indexOf(this.courseName) === 0
       })
     },
-    async filterUnreadAnnouncements() {
-      // まだAPI側でunread fieldが実装されていないのでひとまずコメントアウト
-      // this.announcements = this.innerAnnouncements.filter((item) => {
-      //   return item.unread
-      // })
+    filterUnreadAnnouncements() {
+      this.announcements = this.innerAnnouncements.filter((item) => {
+        return item.unread
+      })
     },
   },
 })

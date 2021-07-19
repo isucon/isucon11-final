@@ -13,10 +13,21 @@ export type Course = {
 
 export type Announcement = {
   id: string
+  courseId: string
   courseName: string
   title: string
-  message?: string
+  unread: boolean
   createdAt: string
+  message?: string
+}
+
+export type AnnouncementResponse = {
+  id: string
+  courseId: string
+  courseName: string
+  title: string
+  unread: boolean
+  createdAt: number
 }
 
 export type ClassInfo = {

@@ -11,10 +11,11 @@
         >
           <template slot="announcements">
             <AnnouncementCard
-              v-for="(announcement, index) in announcements"
+              v-for="announcement in announcements"
               :key="announcement.id"
               :announcement="announcement"
-              @open="openAnnouncement(announcement, index)"
+              @close="closeAnnouncement($event)"
+              @open="openAnnouncement($event, announcement)"
             />
           </template>
           <template slot="classworks">
@@ -33,7 +34,12 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { Course, Announcement, ClassInfo } from '~/types/courses'
+import {
+  Course,
+  Announcement,
+  AnnouncementResponse,
+  ClassInfo,
+} from '~/types/courses'
 import Card from '~/components/common/Card.vue'
 import AnnouncementCard from '~/components/Announcement.vue'
 import ClassInfoCard from '~/components/ClassInfo.vue'
@@ -44,7 +50,13 @@ type CourseData = {
   classes: Array<ClassInfo>
 }
 
-// TODO: announcement周りは#166~#168あたりの改修が済み次第
+type ClassResponse = {
+  id: string
+  part: number
+  title: string
+  description: string
+  submissionClosedAt?: number
+}
 
 export default Vue.extend({
   components: {
@@ -54,36 +66,40 @@ export default Vue.extend({
   },
   middleware: 'is_loggedin',
   async asyncData({ params, $axios }): Promise<CourseData> {
-    const [course, classes, announcements] = await Promise.all([
+    const [course, classResponses, announcementResponses] = await Promise.all([
       $axios.$get(`/api/syllabus/${params.id}`),
       $axios.$get(`/api/courses/${params.id}/classes`),
-      // $axios.$get(`/api/announcements?course_id=${params.id}`), // not implemented
-      // tentative
-      (() => {
-        const announcements: Array<Announcement> = [
-          {
-            id: '01234567-89ab-cdef-0010-000000000001',
-            courseName: '微分積分基礎',
-            title: 'The third class will be cancelled',
-            createdAt: new Date(1625573684000).toLocaleString(),
-          },
-          {
-            id: '01234567-89ab-cdef-0010-000000000002',
-            courseName: '微分積分基礎',
-            title: 'Comments for your assignments',
-            createdAt: new Date(1625573684000).toLocaleString(),
-          },
-        ]
-        return announcements
-      })(),
+      $axios.$get(`/api/announcements?course_id=${params.id}`),
     ])
-    // api is not implemented
-    // const announcements = announcements.map((item: Announcement) => {
-    //   item.createdAt = new Date(item.createdAt).toLocaleString()
-    //   return item
-    // })
-    console.log('!!!!')
-    console.log(classes)
+    const classes: Array<ClassInfo> = classResponses.map(
+      (item: ClassResponse) => {
+        const cls: ClassInfo = {
+          id: item.id,
+          part: item.part,
+          title: item.title,
+          description: item.description,
+        }
+        if (item.submissionClosedAt !== undefined) {
+          cls.submissionClosedAt = new Date(
+            item.submissionClosedAt * 1000
+          ).toLocaleString()
+        }
+        return cls
+      }
+    )
+    const announcements: Array<Announcement> = announcementResponses.map(
+      (item: AnnouncementResponse) => {
+        const announce: Announcement = {
+          id: item.id,
+          courseId: item.courseId,
+          courseName: item.courseName,
+          title: item.title,
+          unread: item.unread,
+          createdAt: new Date(item.createdAt * 1000).toLocaleString(),
+        }
+        return announce
+      }
+    )
     return {
       course,
       announcements,
@@ -94,11 +110,23 @@ export default Vue.extend({
     return undefined
   },
   methods: {
-    async openAnnouncement(announcement: Announcement, index: number) {
+    async openAnnouncement(
+      event: { done: () => undefined },
+      announcement: Announcement
+    ) {
       const announcementDetail: Announcement = await this.$axios.$get(
         `/api/announcements/${announcement.id}`
       )
-      this.announcements[index].message = announcementDetail.message
+      const target = this.announcements.find(
+        (item) => item.id === announcement.id
+      )
+      if (target) {
+        target.message = announcementDetail.message
+      }
+      event.done()
+    },
+    closeAnnouncement(event: { done: () => undefined }) {
+      event.done()
     },
   },
 })
