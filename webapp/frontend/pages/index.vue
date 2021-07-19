@@ -1,27 +1,31 @@
 <template>
-  <div class="">
-    <div class="py-10 px-8 bg-white shadow-lg">
+  <div class="h-screen items-center">
+    <div class="py-10 px-8 bg-white shadow-lg w-1/3">
+      <h1 class="text-center text-2xl mb-6">ISUCHOLAR ログイン</h1>
       <form
-        class="flex-1 flex-col w-full max-w-sm"
+        class="grid grid-cols-3 place-content-center gap-y-2"
         @submit.prevent="onSubmitLogin"
       >
         <TextInput
-          id="inline-name"
-          v-model="name"
-          class="mb-2"
+          id="login-code"
+          v-model="code"
+          class="col-span-3"
           label="学籍番号"
           type="text"
           placeholder="学籍番号"
         />
         <TextInput
-          id="inline-password"
+          id="login-password"
           v-model="password"
+          class="col-span-3"
           label="パスワード"
-          type="text"
+          type="password"
           placeholder="********"
         />
 
-        <Button type="submit" color="primary">ログイン</Button>
+        <Button type="submit" color="primary" class="mt-4 col-start-2"
+          >ログイン</Button
+        >
       </form>
     </div>
   </div>
@@ -33,27 +37,31 @@ import Button from '~/components/common/Button.vue'
 import TextField from '~/components/common/TextField.vue'
 
 export default Vue.extend({
+  layout: 'empty',
   components: { TextInput: TextField, Button },
   middleware({ app, redirect }) {
-    console.log(app.$cookies.get('session'), localStorage.getItem('user'))
-    if (app.$cookies.get('session') && localStorage.getItem('user')) {
+    if (app.$cookies.get('session')) {
       return redirect('mypage')
     }
   },
   data() {
     return {
-      name: '',
+      code: '',
       password: '',
     }
   },
   methods: {
     async onSubmitLogin() {
-      await this.$axios.post('/login', {
-        name: this.name,
-        password: this.password,
-      })
-      localStorage.setItem('user', this.name)
-      await this.$router.push('mypage')
+      try {
+        await this.$axios.post('/login', {
+          code: this.code,
+          password: this.password,
+        })
+        await this.$router.push('mypage')
+      } catch (e) {
+        // TODO: 通知を出すなど適切に処理する
+        console.error(e)
+      }
     },
   },
 })

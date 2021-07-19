@@ -1,7 +1,7 @@
 import { Middleware } from '@nuxt/types'
 
 const isLoggedIn: Middleware = async (context) => {
-  if (context.$cookies.get('session') && localStorage.getItem('user')) {
+  if (context.$cookies.get('session')) {
     return
   }
 

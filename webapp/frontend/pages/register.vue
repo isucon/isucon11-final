@@ -124,8 +124,7 @@ export default Vue.extend({
       this.isShownModal = false
     },
     async onClickConfirm(): Promise<void> {
-      const userName = localStorage.getItem('user')
-      const path = `/api/users/${userName}/courses`
+      const path = `/api/users/me/courses`
       const ids = this.willRegisterCourses.map((c) => ({ id: c.id }))
       const res = await this.$axios.put(path, ids)
       if (res.status === 200) {
