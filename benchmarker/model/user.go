@@ -92,11 +92,6 @@ func (s *Student) PushLatestUnreadAnnouncements(a *Announcement) {
 	s.unreadAnnouncements.PushBack(a)
 }
 
-func (s *Student) RemoveUnreadAnnouncement(id string) {
-	s.rmu.Lock()
-
-}
-
 type Faculty struct {
 	*UserAccount
 	Agent *agent.Agent
