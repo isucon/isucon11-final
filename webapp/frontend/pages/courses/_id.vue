@@ -82,6 +82,8 @@ export default Vue.extend({
     //   item.createdAt = new Date(item.createdAt).toLocaleString()
     //   return item
     // })
+    console.log('!!!!')
+    console.log(classes)
     return {
       course,
       announcements,
