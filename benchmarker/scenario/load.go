@@ -97,7 +97,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				_, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
-					return
+					<-time.After(3000 * time.Millisecond)
+					continue
 				}
 				AdminLogger.Printf("%vは成績を確認した", student.ID)
 
@@ -114,7 +115,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 						if err != nil {
 							step.AddError(err)
-							return
+							<-timer
+							continue
 						}
 
 						select {
@@ -161,7 +163,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				_, _, err := GetAnnouncementAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
-					return
+					<-time.After(3000 * time.Millisecond)
+					continue
 				}
 
 				AdminLogger.Println(student.ID, "はお知らせを確認した") // FIXME: for debug
@@ -175,7 +178,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						step.AddError(err)
 						// unreadに戻しておく
 						student.PushOldestUnreadAnnouncements(unreadAnnouncement)
-						return
+						<-time.After(3000 * time.Millisecond)
+						continue
 					}
 					AdminLogger.Printf("%vは未読のお知らせを確認した", student.ID) // FIXME: for debug
 				}
