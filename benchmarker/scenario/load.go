@@ -9,6 +9,7 @@ import (
 	"github.com/isucon/isucandar/parallel"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
+	"github.com/isucon/isucon11-final/benchmarker/score"
 )
 
 func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) error {
@@ -35,6 +36,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	for i := 0; i < InitialCourseCount; i++ {
 		go func() {
 			defer wg.Done()
+			step.AddScore(score.CountAddCourse)
 			s.addCourseLoad(generate.Course())
 		}()
 	}
@@ -100,6 +102,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
+				step.AddScore(score.CountGetGrades)
 				AdminLogger.Printf("%vは成績を確認した", student.ID)
 
 				// 空きがあったら
@@ -126,6 +129,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						}
 					}
 					AdminLogger.Printf("%vはコースを%v回検索した", student.ID, SearchCourseLimit)
+					step.AddScore(score.CountSearchCourse)
 
 					course := s.selectUnregisteredCourse(student)
 					// TODO: verify response
@@ -134,6 +138,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						step.AddError(err)
 						return
 					}
+					step.AddScore(score.CountRegisterCourse)
 					student.AddCourse(course)
 					AdminLogger.Printf("%vは%vを履修した", student.ID, course.Name)
 				}
@@ -166,6 +171,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
+				step.AddScore(score.CountGetAnnouncements)
 
 				AdminLogger.Println(student.ID, "はお知らせを確認した") // FIXME: for debug
 				// 未読があったら
@@ -181,6 +187,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						<-time.After(3000 * time.Millisecond)
 						continue
 					}
+					step.AddScore(score.CountGetAnnouncementsDetail)
 					AdminLogger.Printf("%vは未読のお知らせを確認した", student.ID) // FIXME: for debug
 				}
 
@@ -221,6 +228,12 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 			// コースの処理
 			<-time.After(5 * time.Second)
+			for i := 0; i < 5; i++ {
+				step.AddScore(score.CountAddClass)
+				step.AddScore(score.CountAddAssignment)
+				step.AddScore(score.CountSubmitAssignment)
+				step.AddScore(score.CountAddAssignmentScore)
+			}
 
 			// コースがおわった
 			AdminLogger.Println(course.Name, "は終了した")
@@ -235,6 +248,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			newCourse := generate.Course()
 			// コース追加Actionで成功したら
 			// ベンチのコースタスクも増やす
+			step.AddScore(score.CountAddCourse)
 			s.addCourseLoad(newCourse)
 			s.addCourseLoad(newCourse)
 
