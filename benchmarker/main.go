@@ -16,14 +16,14 @@ import (
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun"                            // TODO: modify to isucon11-portal
-	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources" // TODO: modify to isucon11-portal
+	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
+	"github.com/isucon/isucon11-final/benchmarker/score"
 )
 
 const (
-	benchTimeout   string = "70s"
-	errorThreshold int64  = 100
+	benchTimeout       string = "60s"
+	errorFailThreshold int64  = 100
 )
 
 var (
@@ -76,45 +76,63 @@ func checkError(err error) (critical bool, timeout bool, deduction bool) {
 }
 
 func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish bool) bool {
+	logger := scenario.ContestantLogger
 	passed := true
-	reason := ""
+	reason := "passed"
 	errors := result.Errors.All()
+	breakdown := result.Score.Breakdown()
 
-	deduction := int64(0)
+	deductionCount := int64(0)
 	timeoutCount := int64(0)
 
 	for _, err := range errors {
 		isCritical, isTimeout, isDeduction := checkError(err)
-
 		switch true {
 		case isCritical:
 			passed = false
-			reason = "Critical error"
+			reason = "致命的なエラーが発生しました"
 		case isTimeout:
 			timeoutCount++
 		case isDeduction:
-			deduction++
+			deductionCount++
+		}
+	}
+	if passed && deductionCount > errorFailThreshold {
+		passed = false
+		reason = fmt.Sprintf("エラーが%d回以上発生しました", errorFailThreshold)
+	}
+
+	resultScore, raw, deducted := score.Calc(breakdown, deductionCount, timeoutCount)
+	if resultScore <= 0 {
+		resultScore = 0
+		if passed {
+			passed = false
+			reason = "スコアが0点以下でした"
 		}
 	}
 
-	err := reporter.Report(&isuxportalResources.BenchmarkResult{
-		SurveyResponse: &isuxportalResources.SurveyResponse{
-			Language: s.Language(),
-		},
-		Finished: finish,
-		Passed:   passed,
-		Score:    0, // TODO: 加点 - 減点
-		ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
-			Raw:       0, // TODO: 加点
-			Deduction: 0, // TODO: 減点
-		},
-		Execution: &isuxportalResources.BenchmarkResult_Execution{
-			Reason: reason,
-		},
-	})
-	if err != nil {
-		panic(err)
-	}
+	logger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
+	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
+	/*
+		err := reporter.Report(&isuxportalResources.BenchmarkResult{
+			SurveyResponse: &isuxportalResources.SurveyResponse{
+				Language: s.Language(),
+			},
+			Finished: finish,
+			Passed:   passed,
+			Score:    0, // TODO: 加点 - 減点
+			ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
+				Raw:       0, // TODO: 加点
+				Deduction: 0, // TODO: 減点
+			},
+			Execution: &isuxportalResources.BenchmarkResult_Execution{
+				Reason: reason,
+			},
+		})
+		if err != nil {
+			panic(err)
+		}
+	*/
 
 	return passed
 }
@@ -178,7 +196,7 @@ func main() {
 
 		critical, _, deduction := checkError(err)
 
-		if critical || (deduction && atomic.AddInt64(&errorCount, 1) >= errorThreshold) {
+		if critical || (deduction && atomic.AddInt64(&errorCount, 1) >= errorFailThreshold) {
 			step.Cancel()
 		}
 

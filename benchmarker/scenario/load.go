@@ -9,6 +9,7 @@ import (
 	"github.com/isucon/isucandar/parallel"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
+	"github.com/isucon/isucon11-final/benchmarker/score"
 )
 
 func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) error {
@@ -30,8 +31,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 
 	// FIXME: コース追加前にコース登録アクションが必要
+	step.AddScore(score.CountAddCourse)
 	s.addCourseLoad(generate.Course())
-	s.addCourseLoad(generate.Course())
+	step.AddScore(score.CountAddCourse)
 	s.addCourseLoad(generate.Course())
 
 	s.addActiveStudentLoads(10)
@@ -78,10 +80,13 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			for ctx.Err() == nil {
 				// 学生は成績を確認し続ける
 				<-time.After(1 * time.Second) // FIXME: for debug
+				step.AddScore(score.CountGetGrades)
 
 				// 空きがあったら
 				// 履修登録
 				<-time.After(1 * time.Second) // FIXME: for debug
+				step.AddScore(score.CountSearchCourse)
+				step.AddScore(score.CountRegisterCourse)
 
 				select {
 				case <-ctx.Done():
@@ -105,9 +110,11 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			for ctx.Err() == nil {
 				// 学生はお知らせを確認し続ける
 				<-time.After(1 * time.Second) // FIXME: for debug
+				step.AddScore(score.CountGetAnnouncements)
 
 				// 未読があったら
 				// 内容を確認
+				step.AddScore(score.CountGetAnnouncementsDetail)
 
 				select {
 				case <-ctx.Done():
@@ -146,6 +153,12 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 			// コースの処理
 			<-time.After(10 * time.Second)
+			for i := 0; i < 5; i++ {
+				step.AddScore(score.CountAddClass)
+				step.AddScore(score.CountAddAssignment)
+				step.AddScore(score.CountSubmitAssignment)
+				step.AddScore(score.CountAddAssignmentScore)
+			}
 
 			// コースがおわった
 			AdminLogger.Println(course.Name, "は終了した")
@@ -154,6 +167,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			newCourse := generate.Course()
 			// コース追加Actionで成功したら
 			// ベンチのコースタスクも増やす
+			step.AddScore(score.CountAddCourse)
 			s.addCourseLoad(newCourse)
 
 			// コースが追加されたのでベンチのアクティブ学生も増やす
