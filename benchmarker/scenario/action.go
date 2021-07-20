@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/api"
+
 	"github.com/isucon/isucon11-final/benchmarker/model"
 
 	"github.com/isucon/isucandar/agent"
@@ -27,7 +29,7 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, er
 	return nil, nil
 }
 
-func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*model.Course, error) {
+func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.GetCourseDetailResponse, error) {
 	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
 	return nil, nil, nil
 }
@@ -37,12 +39,32 @@ func TakeCourseAction(ctx context.Context, agent *agent.Agent, course *model.Cou
 	return nil, nil
 }
 
-func GetAnnouncementAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*model.Announcement, error) {
+func GetAnnouncementAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.Announcement, error) {
 	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
 	return nil, nil, nil
 }
 
-func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, *model.Announcement, error) {
+func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, *api.Announcement, error) {
 	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
 	return nil, nil, nil
+}
+
+func AddClassAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, *model.Course, *model.Announcement, error) {
+	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
+	return nil, nil, nil, nil
+}
+
+func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, classID string, submission *model.Submission) (*http.Response, error) {
+	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
+	return nil, nil
+}
+
+func DownloadSubmissionsAction(ctx context.Context, agent *agent.Agent, classID string) (*http.Response, []byte, error) {
+	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
+	return nil, nil, nil
+}
+
+func PostGradeAction(ctx context.Context, agent *agent.Agent, classID string, score int, code string) (*http.Response, error) {
+	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
+	return nil, nil
 }
