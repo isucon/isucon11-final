@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -215,24 +216,60 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		AdminLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
 		loadCourseWorker.Do(func(ctx context.Context) {
 			// コースgoroutineは満員になるまではなにもしない
-			for ctx.Err() == nil {
-				AdminLogger.Println(course.Name, "は定員チェックをした") // FIXME: for debug
-				//<-time.After(1 * time.Second)                  // FIXME: for debug
-
-				// if course.IsFull() {
-				// 		break
-				// }
-				//<-time.After(300 * time.Millisecond)
-				break // FIXME: for debug
-			}
+			<-course.WaitRegister()
 
 			// コースの処理
-			<-time.After(5 * time.Second)
-			for i := 0; i < 5; i++ {
+			for i := 0; i < CourseProcessLimit; i++ {
+				timer := time.After(100 * time.Millisecond)
+				faculty := course.Faculty()
+
+				// FIXME: verify class
+				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course.ID)
+				if err != nil {
+					step.AddError(err)
+					<-timer
+					continue
+				}
+				course.BroadCastAnnouncement(announcement)
 				step.AddScore(score.CountAddClass)
 				step.AddScore(score.CountAddAssignment)
+
+				// 課題が出されるまで待つ
+				<-course.WaitSubmission()
+
+				errs := submitAssignments(ctx, course.Students(), class.ID)
+				for _, e := range errs {
+					step.AddError(e)
+				}
+				if len(errs) > 0 {
+					<-timer
+					continue
+				}
+
+				// TODO: verify data
+				_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, class.ID)
+				if err != nil {
+					step.AddError(err)
+					return
+				}
+
+				// TODO: 採点する
+				errs = scoringAssignments(ctx, class.ID, course.Students(), assignmentsData)
+				for _, e := range errs {
+					step.AddError(e)
+				}
+				if len(errs) > 0 {
+					<-timer
+					continue
+				}
+
 				step.AddScore(score.CountSubmitAssignment)
 				step.AddScore(score.CountAddAssignmentScore)
+				select {
+				case <-ctx.Done():
+					return
+				case <-timer:
+				}
 			}
 
 			// コースがおわった
@@ -283,4 +320,44 @@ func (s *Scenario) selectUnregisteredCourse(student *model.Student) *model.Cours
 
 	// FIXME
 	return s.courses[0]
+}
+
+func submitAssignments(ctx context.Context, students []*model.Student, classID string) []error {
+	wg := sync.WaitGroup{}
+	wg.Add(len(students))
+
+	errs := make([]error, 0)
+	for _, s := range students {
+		go func(ctx context.Context) {
+			defer wg.Done()
+			submission := generate.Submission()
+			_, err := SubmitAssignmentAction(ctx, s.Agent, classID, submission)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}(ctx)
+	}
+	wg.Wait()
+
+	return errs
+}
+
+func scoringAssignments(ctx context.Context, classID string, students []*model.Student, assignments []byte) []error {
+	wg := sync.WaitGroup{}
+	wg.Add(len(students))
+
+	errs := make([]error, 0)
+	for _, s := range students {
+		go func(ctx context.Context) {
+			defer wg.Done()
+			score := rand.Intn(101)
+			_, err := PostGradeAction(ctx, s.Agent, classID, score, s.UserAccount.Code)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}(ctx)
+	}
+	wg.Wait()
+
+	return errs
 }
