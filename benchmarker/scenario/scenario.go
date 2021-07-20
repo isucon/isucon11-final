@@ -18,16 +18,24 @@ var (
 	Cancel failure.StringCode = "scenario-cancel"
 )
 
+const (
+	RegisterCourseLimit = 20
+	SearchCourseLimit   = 5
+	InitialCourseCount  = 20
+)
+
 type Scenario struct {
 	BaseURL *url.URL
 	UseTLS  bool
 	NoLoad  bool
 
-	sPubSub  *pubsub.PubSub
-	cPubSub  *pubsub.PubSub
-	courses  []*model.Course
-	student  []*model.Student
-	language string
+	sPubSub             *pubsub.PubSub
+	cPubSub             *pubsub.PubSub
+	courses             []*model.Course
+	student             []*model.Student
+	activeStudentCount  int // FIXME Debug
+	finishedCourseCount int // FIXME Debug
+	language            string
 
 	mu sync.Mutex
 }
@@ -53,4 +61,24 @@ func (s *Scenario) Validation(context.Context, *isucandar.BenchmarkStep) error {
 
 func (s *Scenario) Language() string {
 	return s.language
+}
+
+func (s *Scenario) ActiveStudentCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.activeStudentCount
+}
+
+func (s *Scenario) CourseCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return len(s.courses)
+}
+func (s *Scenario) FinishedCourseCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.finishedCourseCount
 }
