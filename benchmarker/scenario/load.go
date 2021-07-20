@@ -328,6 +328,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, classID s
 
 	errs := make([]error, 0)
 	for _, s := range students {
+		s := s
 		go func(ctx context.Context) {
 			defer wg.Done()
 			submission := generate.Submission()
@@ -348,6 +349,7 @@ func scoringAssignments(ctx context.Context, classID string, students []*model.S
 
 	errs := make([]error, 0)
 	for _, s := range students {
+		s := s
 		go func(ctx context.Context) {
 			defer wg.Done()
 			score := rand.Intn(101)
