@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -21,7 +22,7 @@ func NewCourse(name string) *Course {
 	}
 }
 
-func (c *Course) WaitRegister() <-chan struct{} {
+func (c *Course) WaitRegister(ctx context.Context) <-chan struct{} {
 	// FIXME: debug
 	ch := make(chan struct{})
 	go func() {
@@ -31,7 +32,7 @@ func (c *Course) WaitRegister() <-chan struct{} {
 	return ch
 }
 
-func (c *Course) WaitSubmission() <-chan struct{} {
+func (c *Course) WaitSubmission(ctx context.Context) <-chan struct{} {
 	// FIXME: debug
 	ch := make(chan struct{})
 	go func() {

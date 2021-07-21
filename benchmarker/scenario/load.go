@@ -216,7 +216,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		AdminLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
 		loadCourseWorker.Do(func(ctx context.Context) {
 			// コースgoroutineは満員になるまではなにもしない
-			<-course.WaitRegister()
+			<-course.WaitRegister(ctx)
 
 			// コースの処理
 			for i := 0; i < CourseProcessLimit; i++ {
@@ -235,7 +235,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				step.AddScore(score.CountAddAssignment)
 
 				// 課題が出されるまで待つ
-				<-course.WaitSubmission()
+				<-course.WaitSubmission(ctx)
 
 				errs := submitAssignments(ctx, course.Students(), class.ID)
 				for _, e := range errs {
