@@ -234,16 +234,9 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				step.AddScore(score.CountAddClass)
 				step.AddScore(score.CountAddAssignment)
 
-				// 課題が出されるまで待つ
-				<-course.WaitSubmission(ctx)
-
 				errs := submitAssignments(ctx, course.Students(), class.ID)
 				for _, e := range errs {
 					step.AddError(e)
-				}
-				if len(errs) > 0 {
-					<-timer
-					continue
 				}
 
 				// TODO: verify data
@@ -254,7 +247,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				}
 
 				// TODO: 採点する
-				errs = scoringAssignments(ctx, class.ID, course.Students(), assignmentsData)
+				errs = scoringAssignments(ctx, class.ID, faculty, course.Students(), assignmentsData)
 				for _, e := range errs {
 					step.AddError(e)
 				}
@@ -343,7 +336,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, classID s
 	return errs
 }
 
-func scoringAssignments(ctx context.Context, classID string, students []*model.Student, assignments []byte) []error {
+func scoringAssignments(ctx context.Context, classID string, faculty *model.Faculty, students []*model.Student, assignments []byte) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -353,7 +346,7 @@ func scoringAssignments(ctx context.Context, classID string, students []*model.S
 		go func(ctx context.Context) {
 			defer wg.Done()
 			score := rand.Intn(101)
-			_, err := PostGradeAction(ctx, s.Agent, classID, score, s.UserAccount.Code)
+			_, err := PostGradeAction(ctx, faculty.Agent, classID, score, s.UserAccount.Code)
 			if err != nil {
 				errs = append(errs, err)
 			}

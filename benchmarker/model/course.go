@@ -32,16 +32,6 @@ func (c *Course) WaitRegister(ctx context.Context) <-chan struct{} {
 	return ch
 }
 
-func (c *Course) WaitSubmission(ctx context.Context) <-chan struct{} {
-	// FIXME: debug
-	ch := make(chan struct{})
-	go func() {
-		<-time.After(1000 * time.Millisecond)
-		ch <- struct{}{}
-	}()
-	return ch
-}
-
 func (c *Course) Faculty() *Faculty {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
