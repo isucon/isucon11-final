@@ -13,6 +13,11 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/score"
 )
 
+const (
+	// confirmAttendanceAnsTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
+	confirmAttendanceAnsTimeout time.Duration = 5 * time.Second
+)
+
 func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) error {
 	if s.NoLoad {
 		return nil
@@ -163,39 +168,47 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		}
 		AdminLogger.Println(student.ID, "のおしらせタスクが追加された") // FIXME: for debug
 		studentLoadWorker.Do(func(ctx context.Context) {
+			var next string // 次にアクセスするお知らせ一覧のページ
 			for ctx.Err() == nil {
 				// 学生はお知らせを確認し続ける
-				// TODO: verify announcement
-				_, _, err := GetAnnouncementAction(ctx, student.Agent)
+				hres, announceList, err := GetAnnouncementListAction(ctx, student.Agent, next)
 				if err != nil {
 					step.AddError(err)
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
+				// TODO: verify announceList
 				step.AddScore(score.CountGetAnnouncements)
 
-				AdminLogger.Println(student.ID, "はお知らせを確認した") // FIXME: for debug
-				// 未読があったら
-				// 内容を確認
-				if student.HasUnreadAnnouncement() {
-					unreadAnnouncement := student.PopOldestUnreadAnnouncements()
-					// TODO: verify announcement detail
-					_, _, err := GetAnnouncementDetailAction(ctx, student.Agent, unreadAnnouncement.ID)
-					if err != nil {
-						step.AddError(err)
-						// unreadに戻しておく
-						student.PushOldestUnreadAnnouncements(unreadAnnouncement)
-						<-time.After(3000 * time.Millisecond)
-						continue
+				for _, ans := range announceList {
+					if ans.Unread {
+						select {
+						case <-ctx.Done():
+							return
+						default:
+						}
+						_, _, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+						if err != nil {
+							step.AddError(err)
+							continue // 次の未読おしらせの確認へ
+						}
+						student.ReadAnnouncement(ans.ID)
+						step.AddScore(score.CountGetAnnouncementsDetail)
 					}
-					step.AddScore(score.CountGetAnnouncementsDetail)
-					AdminLogger.Printf("%vは未読のお知らせを確認した", student.ID) // FIXME: for debug
 				}
+
+				_, next = parseLinkHeader(hres)
+				// TODO: 現状: ページングで最後のページまで確認したら最初のページに戻る
+				// TODO: 理想1: 未読お知らせを早く確認するため以降のページに未読が存在しないなら最初に戻る
+				// TODO: 理想2: 10ページぐらい最低ページングする。10ページ目末尾のお知らせ以降に未読があればさらにページングする。無いならしない。
+				// MEMO: Student.Announcementsはwebapp内のお知らせの順番(createdAt)と完全同期できていない
+				// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
+				// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
 				select {
 				case <-ctx.Done():
 					return
-				case <-time.After(3000 * time.Millisecond):
+				case <-time.After(1000 * time.Millisecond):
 				}
 			}
 		})
@@ -224,7 +237,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				faculty := course.Faculty()
 
 				// FIXME: verify class
-				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course.ID)
+				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course)
 				if err != nil {
 					step.AddError(err)
 					<-timer
@@ -234,7 +247,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				step.AddScore(score.CountAddClass)
 				step.AddScore(score.CountAddAssignment)
 
-				errs := submitAssignments(ctx, course.Students(), class.ID)
+				errs := submitAssignments(ctx, course.Students(), class, announcement.ID)
 				for _, e := range errs {
 					step.AddError(e)
 				}
@@ -315,21 +328,34 @@ func (s *Scenario) selectUnregisteredCourse(student *model.Student) *model.Cours
 	return s.courses[0]
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, classID string) []error {
+func submitAssignments(ctx context.Context, students []*model.Student, class *model.Class, annoucementID string) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
 	errs := make([]error, 0)
 	for _, s := range students {
 		s := s
-		go func(ctx context.Context) {
+		go func() {
 			defer wg.Done()
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(confirmAttendanceAnsTimeout):
+				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", confirmAttendanceAnsTimeout)
+				return
+			case <-s.WaitReadAnnouncement(annoucementID):
+				// 学生sが課題お知らせを読むまで待つ
+			}
+
 			submission := generate.Submission()
-			_, err := SubmitAssignmentAction(ctx, s.Agent, classID, submission)
+			_, err := SubmitAssignmentAction(ctx, s.Agent, class.ID, submission)
 			if err != nil {
 				errs = append(errs, err)
+			} else {
+				s.AddSubmission(submission)
 			}
-		}(ctx)
+		}()
 	}
 	wg.Wait()
 

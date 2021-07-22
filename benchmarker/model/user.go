@@ -1,9 +1,9 @@
 package model
 
 import (
-	"sync"
-
 	"github.com/isucon/isucandar/agent"
+	"sync"
+	"time"
 )
 
 type UserAccount struct {
@@ -17,11 +17,16 @@ type Student struct {
 	Agent *agent.Agent
 
 	registeredCourses     []*Course
-	hasUnreadAnnouncement bool
-	announcements         *AnnouncementDeque
-	unreadAnnouncements   *AnnouncementDeque
+	announcements         []*AnnouncementStatus
+	announcementIndexByID map[string]int
+	submissions			  []*Submission
 
 	rmu sync.RWMutex
+}
+type AnnouncementStatus struct {
+	// 学生ごとの
+	Announcement *Announcement
+	Unread bool
 }
 
 func NewStudent(id, rawPW string) *Student {
@@ -33,13 +38,13 @@ func NewStudent(id, rawPW string) *Student {
 		},
 		Agent:                 a,
 		registeredCourses:     make([]*Course, 0),
-		hasUnreadAnnouncement: false,
-		announcements:         NewAnnouncementDeque(100),
-		unreadAnnouncements:   NewAnnouncementDeque(100),
+		announcements:         make([]*AnnouncementStatus, 100),
+		announcementIndexByID: make(map[string]int, 100),
 
 		rmu: sync.RWMutex{},
 	}
 }
+
 
 func (s *Student) RegisteredCoursesCount() int {
 	s.rmu.RLock()
@@ -55,49 +60,47 @@ func (s *Student) AddCourse(course *Course) {
 	s.registeredCourses = append(s.registeredCourses, course)
 }
 
-func (s *Student) HasUnreadAnnouncement() bool {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	return s.hasUnreadAnnouncement
-}
-
-func (s *Student) UnreadAnnouncements() []*Announcement {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	// dequeでもmutex取ってるけどいらないかも知れない
-	return s.unreadAnnouncements.Items()
-}
-
-func (s *Student) PopOldestUnreadAnnouncements() *Announcement {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	// TODO: ここでpubsubとかで課題提出workerにおくってもいいかもしれない
-	// dequeでもmutex取ってるけどいらないかも知れない
-	return s.unreadAnnouncements.PopFront()
-}
-
-func (s *Student) PushOldestUnreadAnnouncements(a *Announcement) {
+func (s *Student) AddSubmission(sub *Submission) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.unreadAnnouncements.PushFront(a)
+	s.submissions = append(s.submissions, sub)
 }
 
-func (s *Student) PushLatestUnreadAnnouncements(a *Announcement) {
+func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.unreadAnnouncements.PushBack(a)
+	s.announcements = append(s.announcements, &AnnouncementStatus{announcement, false})
+	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
 }
 
-func (s *Student) PushLatestAnnouncement(a *Announcement) {
+func (s *Student) ReadAnnouncement(id string) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.announcements.PushBack(a)
+	s.announcements[s.announcementIndexByID[id]].Unread = true
+}
+func (s *Student) isUnreadAnnouncement(id string) bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return s.announcements[s.announcementIndexByID[id]].Unread
+}
+func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
+	ch := make(chan struct{})
+
+	if s.isUnreadAnnouncement(id) {
+		go func() {
+			for s.isUnreadAnnouncement(id) {
+				<-time.After(1 * time.Millisecond)
+			}
+			close(ch)
+		}()
+	} else {
+		close(ch)
+	}
+	return ch
 }
 
 type Faculty struct {
