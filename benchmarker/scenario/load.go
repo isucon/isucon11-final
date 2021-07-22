@@ -328,7 +328,7 @@ func (s *Scenario) selectUnregisteredCourse(student *model.Student) *model.Cours
 	return s.courses[0]
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, class *model.Class, annoucementID string) []error {
+func submitAssignments(ctx context.Context, students []*model.Student, class *model.Class, announcementID string) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -344,7 +344,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, class *mo
 			case <-time.After(confirmAttendanceAnsTimeout):
 				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", confirmAttendanceAnsTimeout)
 				return
-			case <-s.WaitReadAnnouncement(annoucementID):
+			case <-s.WaitReadAnnouncement(announcementID):
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
