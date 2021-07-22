@@ -8,6 +8,7 @@ import (
 
 type UserAccount struct {
 	ID          string
+	Code        string
 	RawPassword string
 }
 
@@ -90,6 +91,13 @@ func (s *Student) PushLatestUnreadAnnouncements(a *Announcement) {
 	defer s.rmu.Unlock()
 
 	s.unreadAnnouncements.PushBack(a)
+}
+
+func (s *Student) PushLatestAnnouncement(a *Announcement) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.announcements.PushBack(a)
 }
 
 type Faculty struct {

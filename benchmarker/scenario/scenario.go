@@ -22,6 +22,7 @@ const (
 	RegisterCourseLimit = 20
 	SearchCourseLimit   = 5
 	InitialCourseCount  = 20
+	CourseProcessLimit  = 5
 )
 
 type Scenario struct {
