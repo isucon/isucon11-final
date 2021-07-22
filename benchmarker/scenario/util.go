@@ -20,10 +20,10 @@ func parseLinkHeader(hres *http.Response) (prev string, next string) {
 		tags := strings.Split(l, ";")
 		if strings.Contains(tags[1], "prev") {
 			urlTag := strings.TrimSpace(tags[0])
-			prev = urlTag[1:len(urlTag)-1]
+			prev = urlTag[1 : len(urlTag)-1]
 		} else if strings.Contains(tags[1], "next") {
 			urlTag := strings.TrimSpace(tags[0])
-			next = urlTag[1:len(urlTag)-1]
+			next = urlTag[1 : len(urlTag)-1]
 		}
 	}
 	return

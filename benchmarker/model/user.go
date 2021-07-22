@@ -1,9 +1,10 @@
 package model
 
 import (
-	"github.com/isucon/isucandar/agent"
 	"sync"
 	"time"
+
+	"github.com/isucon/isucandar/agent"
 )
 
 type UserAccount struct {
@@ -19,14 +20,13 @@ type Student struct {
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
-	submissions			  []*Submission
+	submissions           []*Submission
 
 	rmu sync.RWMutex
 }
 type AnnouncementStatus struct {
-	// 学生ごとの
 	Announcement *Announcement
-	Unread bool
+	Unread       bool
 }
 
 func NewStudent(id, rawPW string) *Student {
@@ -44,7 +44,6 @@ func NewStudent(id, rawPW string) *Student {
 		rmu: sync.RWMutex{},
 	}
 }
-
 
 func (s *Student) RegisteredCoursesCount() int {
 	s.rmu.RLock()
