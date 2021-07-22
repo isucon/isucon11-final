@@ -15,13 +15,13 @@ import (
 )
 
 type AddAnnouncementRequest struct {
-	CourseID uuid.UUID `json:"course_id"`
-	Title    string    `json:"title"`
-	Message  string    `json:"message"`
+	CourseID string `json:"course_id"`
+	Title    string `json:"title"`
+	Message  string `json:"message"`
 }
 
 type AddAnnouncementResponse struct {
-	ID uuid.UUID `json:"id"`
+	ID string `json:"id"`
 }
 
 func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnouncementRequest) (*http.Response, error) {
@@ -40,14 +40,15 @@ func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnoun
 }
 
 type Announcement struct {
-	ID         uuid.UUID `json:"id"`
-	CourseID   uuid.UUID `json:"course_id"`
+	ID         string    `json:"id"`
+	CourseID   string    `json:"course_id"`
 	CourseName string    `json:"course_name"`
 	Title      string    `json:"title"`
 	Message    string    `json:"message"`
 	Unread     bool      `json:"unread"`
 	CreatedAt  time.Time `json:"created_at"`
 }
+type AnnouncementList []*Announcement
 
 func GetAnnouncementList(ctx context.Context, a *agent.Agent, page int, courseID uuid.UUID) (*http.Response, error) {
 	path := fmt.Sprintf("/api/announcements?page=%v", page)
