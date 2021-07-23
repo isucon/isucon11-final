@@ -54,7 +54,6 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 	defer c.rmu.Unlock()
 
 	for _, s := range c.registeredStudents {
-		s.PushLatestUnreadAnnouncements(a)
-		s.PushLatestAnnouncement(a)
+		s.AddAnnouncement(a)
 	}
 }

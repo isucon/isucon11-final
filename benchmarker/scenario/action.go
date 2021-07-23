@@ -39,7 +39,8 @@ func TakeCourseAction(ctx context.Context, agent *agent.Agent, course *model.Cou
 	return nil, nil
 }
 
-func GetAnnouncementAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.Announcement, error) {
+func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.AnnouncementList, error) {
+	// nextが存在する場合そちらにアクセスする。空文字なら1ページ目にアクセス。
 	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
 	return nil, nil, nil
 }
@@ -49,7 +50,7 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	return nil, nil, nil
 }
 
-func AddClassAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, *model.Course, *model.Announcement, error) {
+func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course) (*http.Response, *model.Class, *model.Announcement, error) {
 	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
 	return nil, nil, nil, nil
 }
