@@ -10,24 +10,25 @@ import (
 
 var (
 	studentFile = "./generate/data/student.tsv"
+	facultyFile = "./generate/data/student.tsv"
 )
 
-func LoadFaculty() *model.UserAccount {
-	return &model.UserAccount{
-		Code:        "F0000001",
-		Name:        "椅子昆",
-		RawPassword: "password",
-	}
+func LoadStudentsData() ([]*model.UserAccount, error) {
+	return loadUserAccountData(studentFile)
 }
 
-func LoadStudentsData() ([]*model.UserAccount, error) {
-	file, err := os.Open(studentFile)
+func LoadFacultiesData() ([]*model.UserAccount, error) {
+	return loadUserAccountData(facultyFile)
+}
+
+func loadUserAccountData(path string) ([]*model.UserAccount, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	studentDataSet := make([]*model.UserAccount, 0)
+	userDataSet := make([]*model.UserAccount, 0)
 	s := bufio.NewScanner(file)
 	for i := 0; s.Scan(); i++ {
 		line := strings.Split(s.Text(), "\t")
@@ -40,8 +41,8 @@ func LoadStudentsData() ([]*model.UserAccount, error) {
 			Name:        name,
 			RawPassword: rawPW,
 		}
-		studentDataSet = append(studentDataSet, account)
+		userDataSet = append(userDataSet, account)
 	}
 
-	return studentDataSet, nil
+	return userDataSet, nil
 }

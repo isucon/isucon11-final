@@ -34,7 +34,7 @@ type Scenario struct {
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
 	courses             []*model.Course
-	faculty             *model.Faculty
+	faculties           []*model.Faculty
 	studentPool         *userPool
 	activeStudent       []*model.Student
 	activeStudentCount  int // FIXME Debug
@@ -49,13 +49,20 @@ func NewScenario() (*Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
-	facultyData := generate.LoadFaculty()
+	facultiesData, err := generate.LoadFacultiesData()
+	if err != nil {
+		return nil, err
+	}
+	faculties := make([]*model.Faculty, 0, len(facultiesData))
+	for i, f := range facultiesData {
+		faculties[i] = model.NewFaculty(f)
+	}
 
 	return &Scenario{
 		sPubSub:       pubsub.NewPubSub(),
 		cPubSub:       pubsub.NewPubSub(),
 		courses:       []*model.Course{},
-		faculty:       model.NewFaculty(facultyData),
+		faculties:     faculties,
 		studentPool:   NewUserPool(studentsData),
 		activeStudent: make([]*model.Student, 0, InitialStudentsCount),
 	}, nil
