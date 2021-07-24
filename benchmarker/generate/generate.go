@@ -19,9 +19,18 @@ func init() {
 	newTimer()
 }
 
-func Course() *model.Course {
+func Course(faculty *model.Faculty) *model.Course {
 	randInt := rand.Intn(100)
-	return model.NewCourse(fmt.Sprintf("サンプル講義%s", strconv.Itoa(randInt)))
+	param := &model.CourseParam{
+		Type:      "L",
+		Name:      "サンプル講義",
+		Credit:    1,
+		Teacher:   "先生A",
+		Period:    1,
+		DayOfWeek: "monday",
+		Keywords:  "hoge hoge",
+	}
+	return model.NewCourse(fmt.Sprintf("サンプル講義%s", strconv.Itoa(randInt)), param, faculty)
 }
 
 func Submission() *model.Submission {

@@ -43,8 +43,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	for i := 0; i < InitialCourseCount; i++ {
 		go func() {
 			defer wg.Done()
-			step.AddScore(score.CountAddCourse)
-			s.addCourseLoad(generate.Course())
+			s.addCourseLoad(ctx, step)
 		}()
 	}
 	wg.Wait()
@@ -287,12 +286,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			}
 
 			// コースを追加
-			newCourse := generate.Course()
-			// コース追加Actionで成功したら
-			// ベンチのコースタスクも増やす
-			step.AddScore(score.CountAddCourse)
-			s.addCourseLoad(newCourse)
-			s.addCourseLoad(newCourse)
+			s.addCourseLoad(ctx, step)
+			s.addCourseLoad(ctx, step)
 
 			// コースが追加されたのでベンチのアクティブ学生も増やす
 			s.addActiveStudentLoads(1)
@@ -315,13 +310,17 @@ func (s *Scenario) addActiveStudentLoads(count int) {
 	}
 }
 
-func (s *Scenario) addCourseLoad(course *model.Course) {
-	// どこまでメソッドをわけるか（コース登録処理, s.Courseの管理）
-	s.mu.Lock()
-	s.courses = append(s.courses, course)
-	s.mu.Unlock()
+func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
+	course := generate.Course(s.GetRandomFaculty())
 
+	_, err := AddCourseAction(ctx, course.Faculty(), course)
+	if err != nil {
+		step.AddError(err)
+	}
+
+	s.AddCourse(course)
 	s.cPubSub.Publish(course)
+	step.AddScore(score.CountAddCourse)
 }
 
 // studentに履修するメソッドをもたせてそこでコースを選ぶようにしてもいいかも知れない

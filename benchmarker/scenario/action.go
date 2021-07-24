@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 
@@ -139,6 +140,10 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	// TODO
 	announcement := model.NewAnnouncement("", course.ID, course.Name, "test title")
 	return hres, class, announcement, nil
+}
+func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.Course) (*http.Response, error) {
+	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
+	return nil, nil
 }
 
 func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, submission *model.Submission) (*http.Response, error) {

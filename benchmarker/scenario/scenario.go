@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"math/rand"
 	"net/url"
 	"sync"
 
@@ -41,7 +42,7 @@ type Scenario struct {
 	finishedCourseCount int // FIXME Debug
 	language            string
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func NewScenario() (*Scenario, error) {
@@ -53,7 +54,7 @@ func NewScenario() (*Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
-	faculties := make([]*model.Faculty, 0, len(facultiesData))
+	faculties := make([]*model.Faculty, len(facultiesData))
 	for i, f := range facultiesData {
 		faculties[i] = model.NewFaculty(f)
 	}
@@ -61,7 +62,7 @@ func NewScenario() (*Scenario, error) {
 	return &Scenario{
 		sPubSub:       pubsub.NewPubSub(),
 		cPubSub:       pubsub.NewPubSub(),
-		courses:       []*model.Course{},
+		courses:       []*model.Course{}, // 全コース
 		faculties:     faculties,
 		studentPool:   NewUserPool(studentsData),
 		activeStudent: make([]*model.Student, 0, InitialStudentsCount),
@@ -105,4 +106,18 @@ func (s *Scenario) FinishedCourseCount() int {
 	defer s.mu.Unlock()
 
 	return s.finishedCourseCount
+}
+
+func (s *Scenario) AddCourse(course *model.Course) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.courses = append(s.courses, course)
+}
+
+func (s *Scenario) GetRandomFaculty() *model.Faculty {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.faculties[rand.Intn(len(s.faculties))]
 }

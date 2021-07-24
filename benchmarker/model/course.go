@@ -6,19 +6,32 @@ import (
 	"time"
 )
 
+type CourseParam struct {
+	Type      string
+	Name      string
+	Credit    int
+	Teacher   string
+	Period    int
+	DayOfWeek string
+	Keywords  string
+}
+
 type Course struct {
+	*CourseParam
 	ID                 string
-	Name               string
 	faculty            *Faculty
 	registeredStudents []*Student
 
 	rmu sync.RWMutex
 }
 
-func NewCourse(name string) *Course {
+func NewCourse(id string, param *CourseParam, faculty *Faculty) *Course {
 	return &Course{
-		Name: name,
-		rmu:  sync.RWMutex{},
+		CourseParam:        param,
+		ID:                 id,
+		faculty:            faculty,
+		registeredStudents: make([]*Student, 0),
+		rmu:                sync.RWMutex{},
 	}
 }
 
