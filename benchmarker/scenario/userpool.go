@@ -36,9 +36,9 @@ func (p *userPool) newUserData() (*model.UserAccount, error) {
 	if p.index >= len(p.dataset) {
 		return nil, fmt.Errorf("student data has been out of stock")
 	}
-	d := &p.dataset[p.index]
+	d := *p.dataset[p.index]
 	p.index++
-	return *d, nil // UserAccountデータのコピーを返却
+	return &d, nil
 }
 
 func (p *userPool) reset() {

@@ -57,7 +57,7 @@ func NewScenario() (*Scenario, error) {
 		courses:       []*model.Course{},
 		faculty:       model.NewFaculty(facultyData),
 		studentPool:   NewUserPool(studentsData),
-		activeStudent: make([]*model.Student, InitialStudentsCount),
+		activeStudent: make([]*model.Student, 0, InitialStudentsCount),
 	}, nil
 }
 
