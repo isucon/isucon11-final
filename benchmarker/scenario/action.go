@@ -50,6 +50,11 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	return nil, nil, nil
 }
 
+func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.Course) (*http.Response, error) {
+	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
+	return nil, nil
+}
+
 func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course) (*http.Response, *model.Class, *model.Announcement, error) {
 	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
 	return nil, nil, nil, nil

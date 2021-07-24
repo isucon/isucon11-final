@@ -61,7 +61,7 @@ func NewScenario() (*Scenario, error) {
 	return &Scenario{
 		sPubSub:       pubsub.NewPubSub(),
 		cPubSub:       pubsub.NewPubSub(),
-		courses:       []*model.Course{},
+		courses:       []*model.Course{}, // 全コース
 		faculties:     faculties,
 		studentPool:   NewUserPool(studentsData),
 		activeStudent: make([]*model.Student, 0, InitialStudentsCount),
@@ -105,4 +105,11 @@ func (s *Scenario) FinishedCourseCount() int {
 	defer s.mu.Unlock()
 
 	return s.finishedCourseCount
+}
+
+func (s *Scenario) AddCourse(course *model.Course) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.courses = append(s.courses, course)
 }
