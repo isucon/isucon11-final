@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/isucon/isucandar/agent"
@@ -50,11 +51,28 @@ type Announcement struct {
 }
 type AnnouncementList []*Announcement
 
-func GetAnnouncementList(ctx context.Context, a *agent.Agent, page int, courseID uuid.UUID) (*http.Response, error) {
-	path := fmt.Sprintf("/api/announcements?page=%v", page)
-	if courseID != nil {
-		path += fmt.Sprintf("&course_id=%v", courseID)
+func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID uuid.UUID) (*http.Response, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
+	q := u.Query()
+
+	if courseID != nil {
+		q.Set("course_id", courseID.String())
+		u.RawQuery = q.Encode()
+	}
+
+	req, err := a.GET(u.String())
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
+	return a.Do(ctx, req)
+}
+
+func GetAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*http.Response, error) {
+	path := fmt.Sprintf("/api/announcements/%s", id)
 
 	req, err := a.GET(path)
 	if err != nil {

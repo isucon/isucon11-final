@@ -2,10 +2,18 @@ package scenario
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
-	"github.com/isucon/isucon11-final/benchmarker/api"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+
+	"github.com/isucon/isucon11-final/benchmarker/generate"
+
+	"github.com/isucon/isucandar/failure"
+
+	api "github.com/isucon/isucon11-final/benchmarker/api"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 
@@ -23,54 +31,159 @@ const (
 	RequestDuration = 100
 )
 
-// FIXME: 何返すか決めてない
-func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil
+func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.GetGradeResponse, error) {
+	res := api.GetGradeResponse{}
+	hres, err := api.GetGrades(ctx, agent)
+	if err != nil {
+		return nil, res, err
+	}
+	defer hres.Body.Close()
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return nil, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
 }
 
 func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.GetCourseDetailResponse, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil, nil
+	// FIXME: param
+	hres, err := api.SearchCourse(ctx, agent, &api.SearchCourseRequest{})
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	res := make([]*api.GetCourseDetailResponse, 0)
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
 }
 
 func TakeCourseAction(ctx context.Context, agent *agent.Agent, course *model.Course) (*http.Response, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil
+	req := []api.RegisterCourseRequestContent{api.RegisterCourseRequestContent{ID: course.ID}}
+	hres, err := api.RegisterCourses(ctx, agent, req)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	res := make([]*api.GetCourseDetailResponse, 0)
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, nil
 }
 
 func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.AnnouncementList, error) {
-	// nextが存在する場合そちらにアクセスする。空文字なら1ページ目にアクセス。
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil, nil
+	res := api.AnnouncementList{}
+	if next == "" {
+		next = "/api/announcements"
+	}
+	hres, err := api.GetAnnouncementList(ctx, agent, next, nil)
+	if err != nil {
+		return nil, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return nil, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
 }
 
-func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, *api.Announcement, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil, nil
+func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.Announcement, error) {
+	res := api.Announcement{}
+	hres, err := api.GetAnnouncementDetail(ctx, agent, id)
+	if err != nil {
+		return nil, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return nil, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
 }
 
+func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course, part int) (*http.Response, *model.Class, *model.Announcement, error) {
+	class := generate.Class(part)
+	req := api.AddClassRequest{
+		Part:        uint8(part),
+		Title:       class.Title,
+		Description: class.Desc,
+		CreatedAt:   class.CreatedAt,
+	}
+	hres, err := api.AddClass(ctx, agent, course.ID, req)
+	if err != nil {
+		return nil, nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	res := &api.AddClassResponse{}
+	err = json.NewDecoder(hres.Body).Decode(res)
+	if err != nil {
+		return nil, nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	class.ID = res.ID
+
+	// TODO
+	announcement := model.NewAnnouncement("", course.ID, course.Name, "test title")
+	return hres, class, announcement, nil
+}
 func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.Course) (*http.Response, error) {
 	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
 	return nil, nil
 }
 
-func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course) (*http.Response, *model.Class, *model.Announcement, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil, nil, nil
+func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, submission *model.Submission) (*http.Response, error) {
+	hres, err := api.SubmitAssignment(ctx, agent, courseID, classID, submission.Title, submission.Data)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	return hres, nil
 }
 
-func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, classID string, submission *model.Submission) (*http.Response, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil
+func DownloadSubmissionsAction(ctx context.Context, agent *agent.Agent, courseID, classID string) (*http.Response, []byte, error) {
+	hres, err := api.DownloadSubmittedAssignments(ctx, agent, courseID, classID)
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	data, err := io.ReadAll(hres.Body)
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, data, nil
 }
 
-func DownloadSubmissionsAction(ctx context.Context, agent *agent.Agent, classID string) (*http.Response, []byte, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil, nil
-}
+func PostGradeAction(ctx context.Context, agent *agent.Agent, courseID, classID string, scores []StudentScore) (*http.Response, error) {
+	req := make([]api.RegisterScoreRequestContent, 0, len(scores))
+	for _, v := range scores {
+		req = append(req, api.RegisterScoreRequestContent{
+			UserCode: v.code,
+			Score:    v.score,
+		})
+	}
+	hres, err := api.RegisterScores(ctx, agent, courseID, classID, req)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
 
-func PostGradeAction(ctx context.Context, agent *agent.Agent, classID string, score int, code string) (*http.Response, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil
+	return hres, nil
 }

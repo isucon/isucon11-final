@@ -82,9 +82,10 @@ type AddClassRequest struct {
 	Part        uint8  `json:"part"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	CreatedAt   int64  `json:"created_at"`
 }
 type AddClassResponse struct {
-	ID uuid.UUID `json:"id"`
+	ID string `json:"id"`
 }
 
 func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest AddClassRequest) (*http.Response, error) {
