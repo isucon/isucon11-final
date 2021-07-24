@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"math/rand"
 	"net/url"
 	"sync"
 
@@ -41,7 +42,7 @@ type Scenario struct {
 	finishedCourseCount int // FIXME Debug
 	language            string
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 func NewScenario() (*Scenario, error) {
@@ -112,4 +113,11 @@ func (s *Scenario) AddCourse(course *model.Course) {
 	defer s.mu.Unlock()
 
 	s.courses = append(s.courses, course)
+}
+
+func (s *Scenario) GetRandomFaculty() *model.Faculty {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.faculties[rand.Intn(len(s.faculties))]
 }

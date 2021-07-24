@@ -288,6 +288,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 			// コースを追加
 			s.addCourseLoad(ctx, step)
+			s.addCourseLoad(ctx, step)
 
 			// コースが追加されたのでベンチのアクティブ学生も増やす
 			s.addActiveStudentLoads(1)
@@ -311,7 +312,7 @@ func (s *Scenario) addActiveStudentLoads(count int) {
 }
 
 func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
-	course := generate.Course()
+	course := generate.Course(s.GetRandomFaculty())
 
 	_, err := AddCourseAction(ctx, course.Faculty(), course)
 	if err != nil {
