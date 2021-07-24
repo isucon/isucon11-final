@@ -30,6 +30,14 @@ func Submission() *model.Submission {
 	return model.NewSubmission(title, data)
 }
 
+func Class(part int) *model.Class {
+	id := "test id"
+	title := "test title"
+	desc := "test desc"
+	createdAt := GenTime()
+	return model.NewClass(id, title, desc, createdAt, part)
+}
+
 type timer struct {
 	base  int64 // unix time
 	count int64

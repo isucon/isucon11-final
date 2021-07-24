@@ -3,6 +3,7 @@ package scenario
 import (
 	"context"
 	"math/rand"
+	"net/http"
 	"sync"
 	"time"
 
@@ -102,7 +103,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			for ctx.Err() == nil {
 				// 学生は成績を確認し続ける
 				// TODO: verify grade
-				_, err := GetGradeAction(ctx, student.Agent)
+				_, _, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
 					<-time.After(3000 * time.Millisecond)
@@ -237,7 +238,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				faculty := course.Faculty()
 
 				// FIXME: verify class
-				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course)
+				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, i+1)
 				if err != nil {
 					step.AddError(err)
 					<-timer
@@ -247,24 +248,22 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				step.AddScore(score.CountAddClass)
 				step.AddScore(score.CountAddAssignment)
 
-				errs := submitAssignments(ctx, course.Students(), class, announcement.ID)
+				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID)
 				for _, e := range errs {
 					step.AddError(e)
 				}
 
 				// TODO: verify data
-				_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, class.ID)
+				_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, course.ID, class.ID)
 				if err != nil {
 					step.AddError(err)
 					return
 				}
 
 				// TODO: 採点する
-				errs = scoringAssignments(ctx, class.ID, faculty, course.Students(), assignmentsData)
-				for _, e := range errs {
-					step.AddError(e)
-				}
-				if len(errs) > 0 {
+				_, err = scoringAssignments(ctx, course.ID, class.ID, faculty, course.Students(), assignmentsData)
+				if err != nil {
+					step.AddError(err)
 					<-timer
 					continue
 				}
@@ -332,7 +331,7 @@ func (s *Scenario) selectUnregisteredCourse(student *model.Student) *model.Cours
 	return s.courses[0]
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, class *model.Class, announcementID string) []error {
+func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -353,7 +352,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, class *mo
 			}
 
 			submission := generate.Submission()
-			_, err := SubmitAssignmentAction(ctx, s.Agent, class.ID, submission)
+			_, err := SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
@@ -366,23 +365,28 @@ func submitAssignments(ctx context.Context, students []*model.Student, class *mo
 	return errs
 }
 
-func scoringAssignments(ctx context.Context, classID string, faculty *model.Faculty, students []*model.Student, assignments []byte) []error {
+// これここじゃないほうがいいかも知れない
+type StudentScore struct {
+	score int
+	code  string
+}
+
+func scoringAssignments(ctx context.Context, courseID, classID string, faculty *model.Faculty, students []*model.Student, assignments []byte) (*http.Response, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
-	errs := make([]error, 0)
+	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {
-		s := s
-		go func(ctx context.Context) {
-			defer wg.Done()
-			score := rand.Intn(101)
-			_, err := PostGradeAction(ctx, faculty.Agent, classID, score, s.UserAccount.Code)
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}(ctx)
+		score := rand.Intn(101)
+		scores = append(scores, StudentScore{
+			score: score,
+			code:  s.Code,
+		})
 	}
-	wg.Wait()
+	res, err := PostGradeAction(ctx, faculty.Agent, courseID, classID, scores)
+	if err != nil {
+		return nil, err
+	}
 
-	return errs
+	return res, nil
 }

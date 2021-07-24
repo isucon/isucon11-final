@@ -1,8 +1,8 @@
 package model
 
 type Submission struct {
-	title string
-	data  []byte
+	Title string
+	Data  []byte
 }
 
 func NewSubmission(title string, data []byte) *Submission {
