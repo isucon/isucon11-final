@@ -53,7 +53,7 @@ func NewScenario() (*Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
-	faculties := make([]*model.Faculty, 0, len(facultiesData))
+	faculties := make([]*model.Faculty, len(facultiesData))
 	for i, f := range facultiesData {
 		faculties[i] = model.NewFaculty(f)
 	}
