@@ -19,10 +19,11 @@ var (
 )
 
 const (
-	RegisterCourseLimit = 20
-	SearchCourseLimit   = 5
-	InitialCourseCount  = 20
-	CourseProcessLimit  = 5
+	InitialStudentsCount = 50
+	RegisterCourseLimit  = 20
+	SearchCourseLimit    = 5
+	InitialCourseCount   = 20
+	CourseProcessLimit   = 5
 )
 
 type Scenario struct {
@@ -33,7 +34,9 @@ type Scenario struct {
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
 	courses             []*model.Course
-	student             []*model.Student
+	faculties           []*model.Faculty
+	studentPool         *userPool
+	activeStudent       []*model.Student
 	activeStudentCount  int // FIXME Debug
 	finishedCourseCount int // FIXME Debug
 	language            string
@@ -42,12 +45,26 @@ type Scenario struct {
 }
 
 func NewScenario() (*Scenario, error) {
-	initialStudents := generate.InitialStudents()
+	studentsData, err := generate.LoadStudentsData()
+	if err != nil {
+		return nil, err
+	}
+	facultiesData, err := generate.LoadFacultiesData()
+	if err != nil {
+		return nil, err
+	}
+	faculties := make([]*model.Faculty, 0, len(facultiesData))
+	for i, f := range facultiesData {
+		faculties[i] = model.NewFaculty(f)
+	}
+
 	return &Scenario{
-		sPubSub: pubsub.NewPubSub(),
-		cPubSub: pubsub.NewPubSub(),
-		courses: []*model.Course{},
-		student: initialStudents,
+		sPubSub:       pubsub.NewPubSub(),
+		cPubSub:       pubsub.NewPubSub(),
+		courses:       []*model.Course{},
+		faculties:     faculties,
+		studentPool:   NewUserPool(studentsData),
+		activeStudent: make([]*model.Student, 0, InitialStudentsCount),
 	}, nil
 }
 
@@ -64,6 +81,12 @@ func (s *Scenario) Language() string {
 	return s.language
 }
 
+func (s *Scenario) AddActiveStudent(student *model.Student) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.activeStudent = append(s.activeStudent, student)
+}
 func (s *Scenario) ActiveStudentCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()

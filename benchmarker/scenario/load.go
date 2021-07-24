@@ -89,7 +89,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			AdminLogger.Println("sPubSub に *model.Student以外が飛んできました")
 			return
 		}
-		AdminLogger.Println(student.ID, "の成績確認タスクが追加された") // FIXME: for debug
+		AdminLogger.Println(student.Name, "の成績確認タスクが追加された") // FIXME: for debug
 
 		// FIXME for Debug
 		{
@@ -109,7 +109,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					continue
 				}
 				step.AddScore(score.CountGetGrades)
-				AdminLogger.Printf("%vは成績を確認した", student.ID)
+				AdminLogger.Printf("%vは成績を確認した", student.Name)
 
 				// 空きがあったら
 				// 履修登録
@@ -134,7 +134,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						case <-timer:
 						}
 					}
-					AdminLogger.Printf("%vはコースを%v回検索した", student.ID, SearchCourseLimit)
+					AdminLogger.Printf("%vはコースを%v回検索した", student.Name, SearchCourseLimit)
 					step.AddScore(score.CountSearchCourse)
 
 					course := s.selectUnregisteredCourse(student)
@@ -146,7 +146,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					}
 					step.AddScore(score.CountRegisterCourse)
 					student.AddCourse(course)
-					AdminLogger.Printf("%vは%vを履修した", student.ID, course.Name)
+					AdminLogger.Printf("%vは%vを履修した", student.Name, course.Name)
 				}
 
 				select {
@@ -166,7 +166,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			AdminLogger.Println("sPubSub に *model.Student以外が飛んできました")
 			return
 		}
-		AdminLogger.Println(student.ID, "のおしらせタスクが追加された") // FIXME: for debug
+		AdminLogger.Println(student.Name, "のおしらせタスクが追加された") // FIXME: for debug
 		studentLoadWorker.Do(func(ctx context.Context) {
 			var next string // 次にアクセスするお知らせ一覧のページ
 			for ctx.Err() == nil {
@@ -304,11 +304,15 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 }
 
 func (s *Scenario) addActiveStudentLoads(count int) {
-	// どこまでメソッドをわけるか（s.Studentの管理）
 	for i := 0; i < count; i++ {
-		activetedStudent := s.student[0] // FIXME
-		//<-time.After(time.Duration(rand.Intn(2000)) * time.Millisecond)
-		s.sPubSub.Publish(activetedStudent)
+		userData, err := s.studentPool.newUserData()
+		if err != nil {
+			AdminLogger.Println(err)
+			break
+		}
+		student := model.NewStudent(userData)
+		s.AddActiveStudent(student)
+		s.sPubSub.Publish(student)
 	}
 }
 

@@ -8,8 +8,8 @@ import (
 )
 
 type UserAccount struct {
-	ID          string
 	Code        string
+	Name        string
 	RawPassword string
 }
 
@@ -29,13 +29,10 @@ type AnnouncementStatus struct {
 	Unread       bool
 }
 
-func NewStudent(id, rawPW string) *Student {
+func NewStudent(userData *UserAccount) *Student {
 	a, _ := agent.NewAgent()
 	return &Student{
-		UserAccount: &UserAccount{
-			ID:          id,
-			RawPassword: rawPW,
-		},
+		UserAccount:           userData,
 		Agent:                 a,
 		registeredCourses:     make([]*Course, 0),
 		announcements:         make([]*AnnouncementStatus, 100),
@@ -107,13 +104,10 @@ type Faculty struct {
 	Agent *agent.Agent
 }
 
-func NewFaculty(id, rawPW string) *Faculty {
+func NewFaculty(userData *UserAccount) *Faculty {
 	a, _ := agent.NewAgent()
 	return &Faculty{
-		UserAccount: &UserAccount{
-			ID:          id,
-			RawPassword: rawPW,
-		},
-		Agent: a,
+		UserAccount: userData,
+		Agent:       a,
 	}
 }
