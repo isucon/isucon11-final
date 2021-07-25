@@ -8,11 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
-
 	"github.com/isucon/isucandar"
+	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
 	"github.com/isucon/isucon11-final/benchmarker/score"
@@ -315,8 +314,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
-			student := model.NewStudent(userData)
-			student.Agent.BaseURL = s.BaseURL
+			student := model.NewStudent(userData, s.BaseURL)
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {

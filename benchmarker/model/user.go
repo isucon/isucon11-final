@@ -1,10 +1,12 @@
 package model
 
 import (
+	"net/url"
 	"sync"
 	"time"
 
 	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/random/useragent"
 )
 
 type UserAccount struct {
@@ -29,8 +31,11 @@ type AnnouncementStatus struct {
 	Unread       bool
 }
 
-func NewStudent(userData *UserAccount) *Student {
+func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	a, _ := agent.NewAgent()
+	a.Name = useragent.UserAgent()
+	a.BaseURL = baseURL
+
 	return &Student{
 		UserAccount:           userData,
 		Agent:                 a,
@@ -104,8 +109,12 @@ type Faculty struct {
 	Agent *agent.Agent
 }
 
-func NewFaculty(userData *UserAccount) *Faculty {
+const facultyUserAgent = "isucholar-agent-faculty/1.0.0"
+
+func NewFaculty(userData *UserAccount, baseURL *url.URL) *Faculty {
 	a, _ := agent.NewAgent()
+	a.BaseURL = baseURL
+	a.Name = facultyUserAgent
 	return &Faculty{
 		UserAccount: userData,
 		Agent:       a,
