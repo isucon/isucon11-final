@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -71,6 +73,15 @@ func checkError(err error) (critical bool, timeout bool, deduction bool) {
 	critical = false  // TODO: クリティカルなエラー(起きたら即ベンチを止める)
 	timeout = false   // TODO: リクエストタイムアウト(ある程度の数許容するかも)
 	deduction = false // TODO: 減点対象になるエラー
+
+	if failure.IsCode(err, fails.ErrCritical) {
+		critical = true
+		return
+	}
+	if failure.IsCode(err, failure.TimeoutErrorCode) {
+		timeout = true
+		return
+	}
 
 	return
 }
@@ -155,23 +166,24 @@ func main() {
 	if targetAddress == "" {
 		targetAddress = "localhost:9292"
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s, err := scenario.NewScenario()
-	if err != nil {
-		panic(err)
-	}
 	scheme := "http"
 	if useTLS {
 		scheme = "https"
 	}
-	s.BaseURL, err = url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
+	baseURL, err := url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
 	if err != nil {
 		panic(err)
 	}
-	s.NoLoad = noLoad
+	config := &scenario.Config{
+		BaseURL: baseURL,
+		UseTLS:  useTLS,
+		NoLoad:  noLoad,
+	}
+
+	s, err := scenario.NewScenario(config)
+	if err != nil {
+		panic(err)
+	}
 
 	benchTimeout, err := time.ParseDuration(benchTimeout)
 	if err != nil {
@@ -200,7 +212,7 @@ func main() {
 			step.Cancel()
 		}
 
-		scenario.ContestantLogger.Printf("ERR: %v", err)
+		scenario.ContestantLogger.Printf("ERR: %+v", err)
 	})
 
 	b.AddScenario(s)
@@ -229,6 +241,8 @@ func main() {
 		}
 	})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	result := b.Start(ctx)
 
 	wg.Wait()

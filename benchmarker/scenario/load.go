@@ -2,13 +2,16 @@ package scenario
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/isucon/isucandar"
+	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
 	"github.com/isucon/isucon11-final/benchmarker/score"
@@ -47,12 +50,16 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 		}()
 	}
 	wg.Wait()
+	if len(s.courses) == 0 {
+		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("コース登録が一つも成功しませんでした")))
+		return nil
+	}
 
 	wg = sync.WaitGroup{}
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		s.addActiveStudentLoads(50)
+		s.addActiveStudentLoads(ctx, step, 50)
 	}()
 	go func() {
 		defer wg.Done()
@@ -231,10 +238,10 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			// コースgoroutineは満員になるまではなにもしない
 			<-course.WaitRegister(ctx)
 
+			faculty := course.Faculty()
 			// コースの処理
 			for i := 0; i < CourseProcessLimit; i++ {
 				timer := time.After(100 * time.Millisecond)
-				faculty := course.Faculty()
 
 				// FIXME: verify class
 				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, i+1)
@@ -290,33 +297,54 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			s.addCourseLoad(ctx, step)
 
 			// コースが追加されたのでベンチのアクティブ学生も増やす
-			s.addActiveStudentLoads(1)
+			s.addActiveStudentLoads(ctx, step, 1)
 			return
 		})
 	})
 	return loadCourseWorker
 }
 
-func (s *Scenario) addActiveStudentLoads(count int) {
+func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.BenchmarkStep, count int) {
+	wg := sync.WaitGroup{}
+	wg.Add(count)
 	for i := 0; i < count; i++ {
-		userData, err := s.studentPool.newUserData()
-		if err != nil {
-			AdminLogger.Println(err)
-			break
-		}
-		student := model.NewStudent(userData)
-		s.AddActiveStudent(student)
-		s.sPubSub.Publish(student)
+		go func() {
+			userData, err := s.studentPool.newUserData()
+			if err != nil {
+				step.AddError(failure.NewError(fails.ErrCritical, err))
+				return
+			}
+			student := model.NewStudent(userData, s.BaseURL)
+
+			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
+			if err != nil {
+				ContestantLogger.Printf("学生%vのログインが失敗しました", userData.Name)
+				step.AddError(err)
+				return
+			}
+			s.AddActiveStudent(student)
+			s.sPubSub.Publish(student)
+		}()
 	}
+	wg.Wait()
 }
 
 func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
-	course := generate.Course(s.GetRandomFaculty())
+	faculty := s.GetRandomFaculty()
+	course := generate.Course(faculty)
 
-	_, err := AddCourseAction(ctx, course.Faculty(), course)
+	_, err := LoginAction(ctx, faculty.Agent, faculty.UserAccount)
+	if err != nil {
+		ContestantLogger.Printf("facultyのログインに失敗しました")
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+
+	_, res, err := AddCourseAction(ctx, course.Faculty(), course)
 	if err != nil {
 		step.AddError(err)
 	}
+	course.ID = res.ID
 
 	s.AddCourse(course)
 	s.cPubSub.Publish(course)

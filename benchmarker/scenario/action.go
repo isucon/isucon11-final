@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 
@@ -24,12 +23,27 @@ import (
 // apiパッケージでリクエストを行う関数群
 // param: modelオブジェクト
 // POSTとか return: http.Response, error
-// GETとか return: modelオブジェクト, http.Response, error
-// TODO: 返すのはmodelじゃないほうがいい気がした
+// GETとか return: apiパッケージのオブジェクト, http.Response, error
 
 const (
 	RequestDuration = 100
 )
+
+func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, error) {
+	return api.Initialize(ctx, agent)
+}
+
+func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.UserAccount) (*http.Response, error) {
+	req := api.LoginRequest{
+		Code:     useraccount.Code,
+		Password: useraccount.RawPassword,
+	}
+	hres, err := api.Login(ctx, agent, req)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	return hres, nil
+}
 
 func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.GetGradeResponse, error) {
 	res := api.GetGradeResponse{}
@@ -141,9 +155,30 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	announcement := model.NewAnnouncement("", course.ID, course.Name, "test title")
 	return hres, class, announcement, nil
 }
-func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.Course) (*http.Response, error) {
-	<-time.After(RequestDuration * time.Millisecond) // FIXME: for debug
-	return nil, nil
+
+func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.Course) (*http.Response, api.AddCourseResponse, error) {
+	req := api.AddCourseRequest{
+		Code:        course.Code,
+		Type:        api.CourseType(course.Type),
+		Name:        course.Name,
+		Description: course.Description,
+		Credit:      course.Credit,
+		Period:      course.Period,
+		DayOfWeek:   api.DayOfWeek(course.DayOfWeek),
+		Keywords:    course.Keywords,
+	}
+	res := api.AddCourseResponse{}
+	hres, err := api.AddCourse(ctx, faculty.Agent, req)
+	if err != nil {
+		return nil, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return nil, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	return hres, res, nil
 }
 
 func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, submission *model.Submission) (*http.Response, error) {

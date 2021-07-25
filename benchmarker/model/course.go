@@ -7,13 +7,15 @@ import (
 )
 
 type CourseParam struct {
-	Type      string
-	Name      string
-	Credit    int
-	Teacher   string
-	Period    int
-	DayOfWeek string
-	Keywords  string
+	Code        string
+	Type        string
+	Name        string
+	Description string
+	Credit      int
+	Teacher     string
+	Period      int
+	DayOfWeek   string
+	Keywords    string
 }
 
 type Course struct {
@@ -25,10 +27,10 @@ type Course struct {
 	rmu sync.RWMutex
 }
 
-func NewCourse(id string, param *CourseParam, faculty *Faculty) *Course {
+// idは不明
+func NewCourse(param *CourseParam, faculty *Faculty) *Course {
 	return &Course{
 		CourseParam:        param,
-		ID:                 id,
 		faculty:            faculty,
 		registeredStudents: make([]*Student, 0),
 		rmu:                sync.RWMutex{},

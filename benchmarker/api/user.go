@@ -40,6 +40,7 @@ func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, 
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -65,6 +66,7 @@ func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCour
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -109,5 +111,6 @@ func GetGrades(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
