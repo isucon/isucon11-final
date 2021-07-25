@@ -305,6 +305,7 @@ func (s *Scenario) addActiveStudentLoads(count int) {
 			break
 		}
 		student := model.NewStudent(userData)
+		student.Agent.BaseURL = s.BaseURL
 		s.AddActiveStudent(student)
 		s.sPubSub.Publish(student)
 	}

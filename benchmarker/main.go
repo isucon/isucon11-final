@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -71,6 +73,15 @@ func checkError(err error) (critical bool, timeout bool, deduction bool) {
 	critical = false  // TODO: クリティカルなエラー(起きたら即ベンチを止める)
 	timeout = false   // TODO: リクエストタイムアウト(ある程度の数許容するかも)
 	deduction = false // TODO: 減点対象になるエラー
+
+	if failure.IsCode(err, fails.ErrCritical) {
+		critical = true
+		return
+	}
+	if failure.IsCode(err, failure.TimeoutErrorCode) {
+		timeout = true
+		return
+	}
 
 	return
 }
@@ -167,10 +178,12 @@ func main() {
 	if useTLS {
 		scheme = "https"
 	}
-	s.BaseURL, err = url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
+	baseURL, err := url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
 	if err != nil {
 		panic(err)
 	}
+	s.BaseURL = baseURL
+	s.SetFacultiesURL(baseURL)
 	s.NoLoad = noLoad
 
 	benchTimeout, err := time.ParseDuration(benchTimeout)
@@ -200,7 +213,7 @@ func main() {
 			step.Cancel()
 		}
 
-		scenario.ContestantLogger.Printf("ERR: %v", err)
+		scenario.ContestantLogger.Printf("ERR: %+v", err)
 	})
 
 	b.AddScenario(s)

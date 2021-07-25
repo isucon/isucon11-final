@@ -121,3 +121,12 @@ func (s *Scenario) GetRandomFaculty() *model.Faculty {
 
 	return s.faculties[rand.Intn(len(s.faculties))]
 }
+
+func (s *Scenario) SetFacultiesURL(url *url.URL) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, v := range s.faculties {
+		v.Agent.BaseURL = url
+	}
+}
