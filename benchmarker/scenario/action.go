@@ -23,12 +23,23 @@ import (
 // apiパッケージでリクエストを行う関数群
 // param: modelオブジェクト
 // POSTとか return: http.Response, error
-// GETとか return: modelオブジェクト, http.Response, error
-// TODO: 返すのはmodelじゃないほうがいい気がした
+// GETとか return: apiパッケージのオブジェクト, http.Response, error
 
 const (
 	RequestDuration = 100
 )
+
+func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.UserAccount) (*http.Response, error) {
+	req := api.LoginRequest{
+		Code:     useraccount.Code,
+		Password: useraccount.RawPassword,
+	}
+	hres, err := api.Login(ctx, agent, req)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	return hres, nil
+}
 
 func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.GetGradeResponse, error) {
 	res := api.GetGradeResponse{}
