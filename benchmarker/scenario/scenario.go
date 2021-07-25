@@ -28,9 +28,7 @@ const (
 )
 
 type Scenario struct {
-	BaseURL *url.URL
-	UseTLS  bool
-	NoLoad  bool
+	Config
 
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
@@ -45,7 +43,13 @@ type Scenario struct {
 	mu sync.RWMutex
 }
 
-func NewScenario() (*Scenario, error) {
+type Config struct {
+	BaseURL *url.URL
+	UseTLS  bool
+	NoLoad  bool
+}
+
+func NewScenario(config *Config) (*Scenario, error) {
 	studentsData, err := generate.LoadStudentsData()
 	if err != nil {
 		return nil, err
@@ -56,10 +60,12 @@ func NewScenario() (*Scenario, error) {
 	}
 	faculties := make([]*model.Faculty, len(facultiesData))
 	for i, f := range facultiesData {
-		faculties[i] = model.NewFaculty(f)
+		faculties[i] = model.NewFaculty(f, config.BaseURL)
 	}
 
 	return &Scenario{
+		Config: *config,
+
 		sPubSub:       pubsub.NewPubSub(),
 		cPubSub:       pubsub.NewPubSub(),
 		courses:       []*model.Course{}, // 全コース
@@ -120,13 +126,4 @@ func (s *Scenario) GetRandomFaculty() *model.Faculty {
 	defer s.mu.RUnlock()
 
 	return s.faculties[rand.Intn(len(s.faculties))]
-}
-
-func (s *Scenario) SetFacultiesURL(url *url.URL) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for _, v := range s.faculties {
-		v.Agent.BaseURL = url
-	}
 }

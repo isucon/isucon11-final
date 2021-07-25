@@ -166,14 +166,6 @@ func main() {
 	if targetAddress == "" {
 		targetAddress = "localhost:9292"
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s, err := scenario.NewScenario()
-	if err != nil {
-		panic(err)
-	}
 	scheme := "http"
 	if useTLS {
 		scheme = "https"
@@ -182,9 +174,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	s.BaseURL = baseURL
-	s.SetFacultiesURL(baseURL)
-	s.NoLoad = noLoad
+	config := &scenario.Config{
+		BaseURL: baseURL,
+		UseTLS:  useTLS,
+		NoLoad:  noLoad,
+	}
+
+	s, err := scenario.NewScenario(config)
+	if err != nil {
+		panic(err)
+	}
 
 	benchTimeout, err := time.ParseDuration(benchTimeout)
 	if err != nil {
@@ -242,6 +241,8 @@ func main() {
 		}
 	})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	result := b.Start(ctx)
 
 	wg.Wait()
