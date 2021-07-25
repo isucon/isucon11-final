@@ -13,7 +13,6 @@ import (
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
-	"github.com/pborman/uuid"
 )
 
 type CourseType string
@@ -34,7 +33,7 @@ type AddCourseRequest struct {
 	Keywords    string     `json:"keywords"`
 }
 type AddCourseResponse struct {
-	ID uuid.UUID `json:"id"`
+	ID string `json:"id"`
 }
 
 func AddCourse(ctx context.Context, a *agent.Agent, courseRequest AddCourseRequest) (*http.Response, error) {

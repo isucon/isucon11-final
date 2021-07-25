@@ -1,9 +1,6 @@
 package generate
 
 import (
-	"fmt"
-	"math/rand"
-	"strconv"
 	"sync"
 	"time"
 
@@ -20,7 +17,6 @@ func init() {
 }
 
 func Course(faculty *model.Faculty) *model.Course {
-	randInt := rand.Intn(100)
 	param := &model.CourseParam{
 		Type:      "L",
 		Name:      "サンプル講義",
@@ -30,7 +26,7 @@ func Course(faculty *model.Faculty) *model.Course {
 		DayOfWeek: "monday",
 		Keywords:  "hoge hoge",
 	}
-	return model.NewCourse(fmt.Sprintf("サンプル講義%s", strconv.Itoa(randInt)), param, faculty)
+	return model.NewCourse(param, faculty)
 }
 
 func Submission() *model.Submission {

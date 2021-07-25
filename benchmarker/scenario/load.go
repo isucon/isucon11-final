@@ -313,10 +313,11 @@ func (s *Scenario) addActiveStudentLoads(count int) {
 func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
 	course := generate.Course(s.GetRandomFaculty())
 
-	_, err := AddCourseAction(ctx, course.Faculty(), course)
+	_, res, err := AddCourseAction(ctx, course.Faculty(), course)
 	if err != nil {
 		step.AddError(err)
 	}
+	course.ID = res.ID
 
 	s.AddCourse(course)
 	s.cPubSub.Publish(course)
