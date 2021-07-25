@@ -29,6 +29,10 @@ const (
 	RequestDuration = 100
 )
 
+func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, error) {
+	return api.Initialize(ctx, agent)
+}
+
 func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.UserAccount) (*http.Response, error) {
 	req := api.LoginRequest{
 		Code:     useraccount.Code,

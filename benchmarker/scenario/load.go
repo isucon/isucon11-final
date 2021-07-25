@@ -312,7 +312,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 		go func() {
 			userData, err := s.studentPool.newUserData()
 			if err != nil {
-				ContestantLogger.Printf("学生%vのログインが失敗しました", userData.Name)
 				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
@@ -321,6 +320,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
+				ContestantLogger.Printf("学生%vのログインが失敗しました", userData.Name)
 				step.AddError(err)
 				return
 			}
