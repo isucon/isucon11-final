@@ -63,6 +63,7 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 
 func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.GetCourseDetailResponse, error) {
 	// FIXME: param
+	// MEMO: model.course.DayOfWeekは処理のしやすさを優先してintで持っている.apiリクエストに詰む際はよしなに変換して(hattori)
 	hres, err := api.SearchCourse(ctx, agent, &api.SearchCourseRequest{})
 	if err != nil {
 		return nil, nil, failure.NewError(fails.ErrHTTP, err)

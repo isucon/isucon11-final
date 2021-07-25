@@ -14,7 +14,7 @@ type CourseParam struct {
 	Credit      int
 	Teacher     string
 	Period      int
-	DayOfWeek   string
+	DayOfWeek   int
 	Keywords    string
 }
 
@@ -23,6 +23,8 @@ type Course struct {
 	ID                 string
 	faculty            *Faculty
 	registeredStudents []*Student
+	registeredLimit    int // 登録学生上限
+	registrable        bool
 
 	rmu sync.RWMutex
 }
@@ -31,6 +33,7 @@ type Course struct {
 func NewCourse(param *CourseParam, faculty *Faculty) *Course {
 	return &Course{
 		CourseParam:        param,
+		registeredLimit:    50, // 引数で渡す？
 		faculty:            faculty,
 		registeredStudents: make([]*Student, 0),
 		rmu:                sync.RWMutex{},
@@ -71,4 +74,36 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 	for _, s := range c.registeredStudents {
 		s.AddAnnouncement(a)
 	}
+}
+
+func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isRegistrable bool) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	if c.registrable && len(c.registeredStudents) >= c.registeredLimit {
+		isSuccess = false
+		isRegistrable = false
+		return
+	}
+
+	c.registeredStudents = append(c.registeredStudents, student)
+	isSuccess = true
+	if len(c.registeredStudents) >= c.registeredLimit {
+		isRegistrable = false
+	} else {
+		isRegistrable = true
+	}
+	return
+}
+func (c *Course) RemoveStudent(student *Student) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	registeredStudents := make([]*Student, 0, len(c.registeredStudents))
+	for _, s := range c.registeredStudents {
+		if s != student {
+			registeredStudents = append(registeredStudents, s)
+		}
+	}
+	c.registeredStudents = registeredStudents
 }

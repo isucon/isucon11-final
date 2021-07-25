@@ -23,7 +23,7 @@ func Course(faculty *model.Faculty) *model.Course {
 		Credit:    1,
 		Teacher:   "先生A",
 		Period:    1,
-		DayOfWeek: "monday",
+		DayOfWeek: 1,
 		Keywords:  "hoge hoge",
 	}
 	return model.NewCourse(param, faculty)
