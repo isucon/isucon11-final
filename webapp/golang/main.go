@@ -600,8 +600,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	var gpts []int
 	query = "SELECT SUM(`submissions`.`score` * `courses`.`credit` / 100) AS `gpt`" +
 		" FROM `submissions`" +
-		" JOIN `classes` ON 'submissions'.'class_id' = `class`.`id`" +
-		" JOIN `courses` ON `classes'.'course_id' = `courses`.`id`" +
+		" JOIN `classes` ON `submissions`.`class_id` = `class`.`id`" +
+		" JOIN `courses` ON `classes`.`course_id` = `courses`.`id`" +
 		" GROUP BY `user_id`"
 	if err := h.DB.Select(&gpts, query); err != nil {
 		c.Logger().Error(err)
