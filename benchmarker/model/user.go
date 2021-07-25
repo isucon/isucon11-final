@@ -1,6 +1,7 @@
 package model
 
 import (
+	"math/rand"
 	"net/url"
 	"sync"
 	"time"
@@ -17,12 +18,15 @@ type UserAccount struct {
 
 type Student struct {
 	*UserAccount
-	Agent *agent.Agent
+	RegisterCourseLimit int
+	Agent               *agent.Agent
 
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
 	submissions           []*Submission
+	registeredSchedule    [30]bool // 空きコマ管理[DayOfWeek:5]*[Period:6]
+	registeringCount      int
 
 	rmu sync.RWMutex
 }
@@ -38,6 +42,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 
 	return &Student{
 		UserAccount:           userData,
+		RegisterCourseLimit:   20,
 		Agent:                 a,
 		registeredCourses:     make([]*Course, 0),
 		announcements:         make([]*AnnouncementStatus, 100),
@@ -102,6 +107,39 @@ func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 		close(ch)
 	}
 	return ch
+}
+
+func (s *Student) UnlockSchedule(dayOfWeek, period int) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.registeredSchedule[dayOfWeek*5+period] = false
+	s.registeringCount--
+}
+func (s *Student) LockRandomEmptySchedule() (dayOfWeek, period int) {
+	randTable := [30]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29}
+	for i := len(randTable) - 1; i >= 0; i-- {
+		j := rand.Intn(i + 1)
+		randTable[i], randTable[j] = randTable[j], randTable[i]
+	}
+
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	if s.registeringCount < s.RegisterCourseLimit {
+		return 0, 0
+	}
+	for i := 0; i < s.RegisterCourseLimit; i++ {
+		if !s.registeredSchedule[randTable[i]] {
+			dayOfWeek = randTable[i] / 5
+			period = randTable[i] % 5
+
+			s.registeringCount++
+			s.registeredSchedule[randTable[i]] = true
+			return
+		}
+	}
+	return 0, 0
 }
 
 type Faculty struct {
