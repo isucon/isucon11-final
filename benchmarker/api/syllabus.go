@@ -46,6 +46,7 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 	query.Add("keywords", param.Keywords)
 	req.URL.RawQuery = query.Encode()
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -57,5 +58,6 @@ func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID uuid.UUID) (*
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }

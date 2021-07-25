@@ -46,6 +46,7 @@ func AddCourse(ctx context.Context, a *agent.Agent, courseRequest AddCourseReque
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	return a.Do(ctx, req)
 }
@@ -74,6 +75,7 @@ func SetCourseStatus(ctx context.Context, a *agent.Agent, courseID string, statu
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -97,6 +99,7 @@ func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	return a.Do(ctx, req)
 }
@@ -144,6 +147,7 @@ func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID strin
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -155,5 +159,6 @@ func DownloadSubmittedAssignments(ctx context.Context, a *agent.Agent, courseID,
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }

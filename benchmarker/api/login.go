@@ -28,5 +28,6 @@ func Login(ctx context.Context, a *agent.Agent, auth LoginRequest) (*http.Respon
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
