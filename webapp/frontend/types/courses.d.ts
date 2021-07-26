@@ -1,15 +1,35 @@
+export type SearchCourseRequest = {
+  keywords?: string
+  type?: string
+  credit?: number
+  teacher?: string
+  period?: number
+  dayOfWeek?: string
+  page?: number
+}
 export type Course = {
   id: string
   code: string
-  type: string
+  type: CourseType
   name: string
   description: string
   credit: number
   teacher: string
   keywords: string
   period: number
-  dayOfWeek: string
+  dayOfWeek: DayOfWeek
 }
+
+export type DayOfWeek =
+  | 'sunday'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+
+export type CourseType = 'liberal-arts' | 'major-subjects'
 
 export type Announcement = {
   id: string
