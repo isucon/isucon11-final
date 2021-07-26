@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-auto items-center">
-    <div class="flex-shrink-0 mr-2 w-1/4">
+  <div class="flex flex-auto" :class="wrapperClass">
+    <div class="flex-shrink-0 mr-2" :class="labelClass">
       <label class="text-gray-500 font-bold text-right" :for="id">
         {{ label }}
       </label>
@@ -45,6 +45,10 @@ export default Vue.extend({
       type: String,
       required: true,
     },
+    labelDirection: {
+      type: String,
+      default: 'horizontal',
+    },
     placeholder: {
       type: String,
       default: '',
@@ -52,6 +56,22 @@ export default Vue.extend({
     defaultValue: {
       type: String,
       default: '',
+    },
+  },
+  computed: {
+    wrapperClass(): string[] {
+      if (this.labelDirection === 'vertical') {
+        return ['flex-col']
+      } else {
+        return ['items-center']
+      }
+    },
+    labelClass(): string[] {
+      if (this.labelDirection === 'vertical') {
+        return []
+      } else {
+        return ['w-1/6']
+      }
     },
   },
 })
