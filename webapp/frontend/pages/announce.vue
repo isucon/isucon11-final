@@ -26,22 +26,12 @@
               @input="filterAnnouncements"
             />
           </div>
-          <div class="mb-2">
-            <AnnouncementCard
-              v-for="announcement in announcements"
-              :key="announcement.id"
-              :announcement="announcement"
-              @open="openAnnouncement($event, announcement)"
-              @close="closeAnnouncement($event)"
-            />
-          </div>
-        </div>
-        <div class="flex justify-center">
-          <Pagination
-            :prev-disabled="!Boolean(link.prev)"
-            :next-disabled="!Boolean(link.next)"
-            @goPrev="paginate(link.prev)"
-            @goNext="paginate(link.next)"
+          <AnnouncementList
+            :announcements="announcements"
+            :link="link"
+            @movePage="paginate"
+            @open="openAnnouncement"
+            @close="closeAnnouncement"
           />
         </div>
       </Card>
@@ -54,17 +44,12 @@ import Vue from 'vue'
 import { Announcement, AnnouncementResponse } from '~/types/courses'
 import Card from '~/components/common/Card.vue'
 import TextField from '~/components/common/TextField.vue'
-import AnnouncementCard from '~/components/Announcement.vue'
-
-type Link = {
-  prev: String
-  next: String
-}
+import AnnouncementList from '~/components/AnnouncementList.vue'
 
 type AsyncAnnounceData = {
   innerAnnouncements: Array<Announcement>
   numOfUnreads: number
-  link: Link | null
+  link: string
 }
 
 type AnnounceListData = AsyncAnnounceData & {
@@ -73,34 +58,17 @@ type AnnounceListData = AsyncAnnounceData & {
   showUnreads: boolean
 }
 
-function parseLinkHeader(linkHeader: String): Link {
-  const parsedLink = { prev: '', next: '' }
-  const linkData = linkHeader.split(',')
-  for (const link of linkData) {
-    const linkInfo = /<([^>]+)>;\s+rel="([^"]+)"/gi.exec(link)
-    if (linkInfo && (linkInfo[2] === 'prev' || linkInfo[2] === 'next')) {
-      const path = '/' + linkInfo[1].split('/').splice(3, 2).join('/')
-      parsedLink[linkInfo[2]] = path
-    }
-  }
-  return parsedLink
-}
-
 export default Vue.extend({
   key(route) {
     return route.fullPath
   },
-  components: { Card, TextField, AnnouncementCard },
+  components: { Card, TextField, AnnouncementList },
   middleware: 'is_loggedin',
   async asyncData({ $axios, query }): Promise<AsyncAnnounceData> {
     const path = query.path ? (query.path as string) : '/api/announcements'
     const response = await $axios.get(path)
     const announcements: Array<AnnouncementResponse> = response.data
-    const linkHeader = response.headers.link
-    let link = null
-    if (linkHeader) {
-      link = parseLinkHeader(linkHeader)
-    }
+    const link = response.headers.link
     const result = announcements.map(
       (item: AnnouncementResponse): Announcement => {
         return {
@@ -129,7 +97,7 @@ export default Vue.extend({
       courseName: '',
       numOfUnreads: 0,
       showUnreads: false,
-      link: { prev: '', next: '' },
+      link: '',
     }
   },
   computed: {
@@ -181,7 +149,7 @@ export default Vue.extend({
       this.filterAnnouncements()
     },
     paginate(path: string) {
-      this.$router.push(`/announce?path=${path}`)
+      this.$router.push(`/announce?path=${encodeURIComponent(path)}`)
     },
   },
 })
