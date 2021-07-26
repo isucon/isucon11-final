@@ -169,7 +169,7 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.
 		Description: course.Description,
 		Credit:      course.Credit,
 		Period:      course.Period,
-		DayOfWeek:   api.DayOfWeek(course.DayOfWeek),
+		DayOfWeek:   api.DayOfWeekTable[course.DayOfWeek],
 		Keywords:    course.Keywords,
 	}
 	res := api.AddCourseResponse{}

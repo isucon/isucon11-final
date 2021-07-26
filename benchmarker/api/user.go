@@ -13,16 +13,15 @@ import (
 )
 
 type DayOfWeek string
-
-const (
-	_ DayOfWeek = "sunday"
-	_ DayOfWeek = "monday"
-	_ DayOfWeek = "tuesday"
-	_ DayOfWeek = "wednesday"
-	_ DayOfWeek = "thursday"
-	_ DayOfWeek = "friday"
-	_ DayOfWeek = "saturday"
-)
+var DayOfWeekTable = []DayOfWeek{
+	"sunday",
+	"monday",
+	"tuesday",
+	"wednesday",
+	"thursday",
+	"friday",
+	"saturday",
+}
 
 type GetRegisteredCourseResponseContent struct {
 	ID        uuid.UUID `json:"id"`
