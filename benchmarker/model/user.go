@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"math/rand"
 	"net/url"
 	"sync"
@@ -30,7 +29,7 @@ type Student struct {
 
 	registeredSchedule [30]bool // 空きコマ管理[DayOfWeek:5][Period:6]
 	registeringCount   int
-	scheduleMutex      sync.Mutex
+	scheduleMutex      sync.RWMutex
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
@@ -43,24 +42,18 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	a.BaseURL = baseURL
 
 	return &Student{
-		UserAccount:           userData,
-		RegisterCourseLimit:   20,
-		Agent:                 a,
+		UserAccount:         userData,
+		RegisterCourseLimit: 20,
+		Agent:               a,
+
 		registeredCourses:     make([]*Course, 0),
 		announcements:         make([]*AnnouncementStatus, 100),
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
 
 		registeredSchedule: [30]bool{},
-		scheduleMutex:      sync.Mutex{},
+		scheduleMutex:      sync.RWMutex{},
 	}
-}
-
-func (s *Student) RegisteredCoursesCount() int {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	return len(s.registeredCourses)
 }
 
 func (s *Student) AddCourse(course *Course) {
@@ -113,6 +106,13 @@ func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 	return ch
 }
 
+func (s *Student) RegisteringCount() int {
+	s.scheduleMutex.RLock()
+	defer s.scheduleMutex.RUnlock()
+
+	return s.registeringCount
+}
+
 func (s *Student) ReleaseTimeslot(timeslot int) {
 	s.scheduleMutex.Lock()
 	defer s.scheduleMutex.Unlock()
@@ -121,13 +121,13 @@ func (s *Student) ReleaseTimeslot(timeslot int) {
 	s.registeringCount--
 }
 
-// ScheduleMutex はstudent内で完結しない同期処理を行う際に外部で同期を管理したい場合に利用
-func (s *Student) ScheduleMutex() *sync.Mutex {
+// ScheduleMutex はstudent内で完結しない同期処理を行う際に利用
+func (s *Student) ScheduleMutex() *sync.RWMutex {
 	return &s.scheduleMutex
 }
 
 // RandomEmptyTimeSlots を参照して登録処理を行う場合は別途scheduleMutexでLockすること
-func (s *Student) RandomEmptyTimeSlots() (timeSlots []int, err error) {
+func (s *Student) RandomEmptyTimeSlots() []int {
 	randTimeSlots := [30]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29}
 	for i := len(randTimeSlots) - 1; i >= 0; i-- {
 		j := rand.Intn(i + 1)
@@ -135,7 +135,7 @@ func (s *Student) RandomEmptyTimeSlots() (timeSlots []int, err error) {
 	}
 
 	if s.registeringCount < s.RegisterCourseLimit {
-		return nil, fmt.Errorf("student reached registration limit")
+		return nil
 	}
 	registrableCount := s.RegisterCourseLimit - s.registeringCount
 	emptyTimeslots := make([]int, 0, registrableCount)
@@ -144,7 +144,7 @@ func (s *Student) RandomEmptyTimeSlots() (timeSlots []int, err error) {
 			emptyTimeslots = append(emptyTimeslots, randTimeSlots[i])
 		}
 	}
-	return emptyTimeslots, nil
+	return emptyTimeslots
 }
 
 // FillTimeslot で登録処理を行う場合は別途scheduleMutexでLockすること
