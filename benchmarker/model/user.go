@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"math/rand"
 	"net/url"
 	"sync"
@@ -25,10 +26,11 @@ type Student struct {
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
 	submissions           []*Submission
-	registeredSchedule    [30]bool // 空きコマ管理[DayOfWeek:5]*[Period:6]
-	registeringCount      int
+	rmu                   sync.RWMutex
 
-	rmu sync.RWMutex
+	registeredSchedule [30]bool // 空きコマ管理[DayOfWeek:5][Period:6]
+	registeringCount   int
+	scheduleMutex      sync.Mutex
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
@@ -47,8 +49,10 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		registeredCourses:     make([]*Course, 0),
 		announcements:         make([]*AnnouncementStatus, 100),
 		announcementIndexByID: make(map[string]int, 100),
+		rmu:                   sync.RWMutex{},
 
-		rmu: sync.RWMutex{},
+		registeredSchedule: [30]bool{},
+		scheduleMutex:      sync.Mutex{},
 	}
 }
 
@@ -109,37 +113,44 @@ func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 	return ch
 }
 
-func (s *Student) UnlockSchedule(dayOfWeek, period int) {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+func (s *Student) ReleaseTimeslot(timeslot int) {
+	s.scheduleMutex.Lock()
+	defer s.scheduleMutex.Unlock()
 
-	s.registeredSchedule[dayOfWeek*5+period] = false
+	s.registeredSchedule[timeslot] = false
 	s.registeringCount--
 }
-func (s *Student) LockRandomEmptySchedule() (dayOfWeek, period int) {
-	randTable := [30]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29}
-	for i := len(randTable) - 1; i >= 0; i-- {
-		j := rand.Intn(i + 1)
-		randTable[i], randTable[j] = randTable[j], randTable[i]
-	}
 
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+// ScheduleMutex はstudent内で完結しない同期処理を行う際に外部で同期を管理したい場合に利用
+func (s *Student) ScheduleMutex() *sync.Mutex {
+	return &s.scheduleMutex
+}
+
+// RandomEmptyTimeSlots を参照して登録処理を行う場合は別途scheduleMutexでLockすること
+func (s *Student) RandomEmptyTimeSlots() (timeSlots []int, err error) {
+	randTimeSlots := [30]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29}
+	for i := len(randTimeSlots) - 1; i >= 0; i-- {
+		j := rand.Intn(i + 1)
+		randTimeSlots[i], randTimeSlots[j] = randTimeSlots[j], randTimeSlots[i]
+	}
 
 	if s.registeringCount < s.RegisterCourseLimit {
-		return 0, 0
+		return nil, fmt.Errorf("student reached registration limit")
 	}
-	for i := 0; i < s.RegisterCourseLimit; i++ {
-		if !s.registeredSchedule[randTable[i]] {
-			dayOfWeek = randTable[i] / 5
-			period = randTable[i] % 5
-
-			s.registeringCount++
-			s.registeredSchedule[randTable[i]] = true
-			return
+	registrableCount := s.RegisterCourseLimit - s.registeringCount
+	emptyTimeslots := make([]int, 0, registrableCount)
+	for i := 0; i < registrableCount; i++ {
+		if !s.registeredSchedule[randTimeSlots[i]] {
+			emptyTimeslots = append(emptyTimeslots, randTimeSlots[i])
 		}
 	}
-	return 0, 0
+	return emptyTimeslots, nil
+}
+
+// FillTimeslot で登録処理を行う場合は別途scheduleMutexでLockすること
+func (s *Student) FillTimeslot(timeSlot int) {
+	s.registeredSchedule[timeSlot] = true
+	s.registeringCount++
 }
 
 type Faculty struct {
