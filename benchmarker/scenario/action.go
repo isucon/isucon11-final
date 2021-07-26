@@ -79,8 +79,12 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response
 	return hres, res, nil
 }
 
-func TakeCourseAction(ctx context.Context, agent *agent.Agent, course *model.Course) (*http.Response, error) {
-	req := []api.RegisterCourseRequestContent{api.RegisterCourseRequestContent{ID: course.ID}}
+func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, error) {
+	req := make([]api.RegisterCourseRequestContent, 0, len(courses))
+	for _, c := range courses {
+		req = append(req, api.RegisterCourseRequestContent{ID: c.ID})
+	}
+
 	hres, err := api.RegisterCourses(ctx, agent, req)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)

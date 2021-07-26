@@ -118,43 +118,86 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				step.AddScore(score.CountGetGrades)
 				AdminLogger.Printf("%vは成績を確認した", student.Name)
 
-				// 空きがあったら
-				// 履修登録
-				if student.RegisteredCoursesCount() < RegisterCourseLimit {
-					// 5回成功するまでだと、失敗し続けた場合永遠に負荷がかかってしまう
-					// 今は5回だけやって失敗したら終わりにした
-					for i := 0; i < SearchCourseLimit; i++ {
-						timer := time.After(300 * time.Millisecond)
+				wishRegisterCount := RegisterCourseLimit - student.RegisteringCount()
 
-						// TODO: verify course
-						_, _, err := SearchCourseAction(ctx, student.Agent)
+				// 履修希望コース * SearchCountByRegistration 回 検索を行う
+				for i := 0; i < wishRegisterCount*SearchCountByRegistration; i++ {
+					timer := time.After(300 * time.Millisecond)
 
-						if err != nil {
-							step.AddError(err)
-							<-timer
-							continue
-						}
+					// TODO: verify course
+					_, _, err := SearchCourseAction(ctx, student.Agent)
 
-						select {
-						case <-ctx.Done():
-							return
-						case <-timer:
-						}
-					}
-					AdminLogger.Printf("%vはコースを%v回検索した", student.Name, SearchCourseLimit)
-					step.AddScore(score.CountSearchCourse)
-
-					course := s.selectUnregisteredCourse(student)
-					// TODO: verify response
-					_, err := TakeCourseAction(ctx, student.Agent, course)
 					if err != nil {
 						step.AddError(err)
-						return
+						<-timer
+						continue
 					}
-					step.AddScore(score.CountRegisterCourse)
-					student.AddCourse(course)
-					AdminLogger.Printf("%vは%vを履修した", student.Name, course.Name)
+					step.AddScore(score.CountSearchCourse)
+
+					select {
+					case <-ctx.Done():
+						return
+					case <-timer:
+					}
 				}
+				AdminLogger.Printf("%vはコースを%v回検索した", student.Name, wishRegisterCount*SearchCountByRegistration)
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				// 仮登録(ベンチ内部では登録済みにする)
+				// TODO: 1度も検索成功してなかったら登録しない
+				semiRegistered := make([]*model.Course, 0, wishRegisterCount)
+				for i := 0; i < wishRegisterCount*SearchCountByRegistration; i++ {
+					// 先にベンチ内で学生の空きコマを抑えて、登録可能なコースに学生を追加する
+					studentScheduleMutex := student.ScheduleMutex()
+					studentScheduleMutex.Lock()
+
+					emptyTimeslots := student.RandomEmptyTimeSlots()
+
+					var registeredCourse *model.Course
+					for _, timeslot := range emptyTimeslots {
+						registeredCourse = s.emptyCourseManager.AddStudentForRegistrableCourse(student, timeslot)
+						if registeredCourse != nil {
+							student.FillTimeslot(timeslot)
+							semiRegistered = append(semiRegistered, registeredCourse)
+							break // ベンチ内の学生とコースにそれぞれ紐付け成功
+						}
+					}
+					studentScheduleMutex.Unlock()
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				// ベンチ内で登録できたコースがあればAPIにも登録処理を投げる
+				if len(semiRegistered) > 0 {
+					_, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
+
+					if err != nil { // API側が原因のエラー（コースが登録不可ステータスだったり満席のエラーなら非該当）
+						step.AddError(err)
+					}
+
+					isSuccess := err == nil
+					if isSuccess {
+						step.AddScore(score.CountRegisterCourses)
+						for _, c := range semiRegistered {
+							AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
+						}
+					} else {
+						for _, c := range semiRegistered {
+							c.RemoveStudent(student)
+							student.ReleaseTimeslot(c.DayOfWeek*5 + c.Period)
+						}
+					}
+				}
+				// TODO: できれば登録に失敗したコースを抜いて再度登録する
 
 				select {
 				case <-ctx.Done():
@@ -347,6 +390,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	course.ID = res.ID
 
 	s.AddCourse(course)
+	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
 	step.AddScore(score.CountAddCourse)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/isucon/isucandar/pubsub"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
+	"github.com/isucon/isucon11-final/benchmarker/scenario/util"
 )
 
 var (
@@ -20,11 +21,11 @@ var (
 )
 
 const (
-	InitialStudentsCount = 50
-	RegisterCourseLimit  = 20
-	SearchCourseLimit    = 5
-	InitialCourseCount   = 20
-	CourseProcessLimit   = 5
+	InitialStudentsCount      = 50
+	RegisterCourseLimit       = 20
+	SearchCountByRegistration = 3
+	InitialCourseCount        = 20
+	CourseProcessLimit        = 5
 )
 
 type Scenario struct {
@@ -33,6 +34,7 @@ type Scenario struct {
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
 	courses             []*model.Course
+	emptyCourseManager  *util.CourseManager
 	faculties           []*model.Faculty
 	studentPool         *userPool
 	activeStudent       []*model.Student
@@ -66,12 +68,13 @@ func NewScenario(config *Config) (*Scenario, error) {
 	return &Scenario{
 		Config: *config,
 
-		sPubSub:       pubsub.NewPubSub(),
-		cPubSub:       pubsub.NewPubSub(),
-		courses:       []*model.Course{}, // 全コース
-		faculties:     faculties,
-		studentPool:   NewUserPool(studentsData),
-		activeStudent: make([]*model.Student, 0, InitialStudentsCount),
+		sPubSub:            pubsub.NewPubSub(),
+		cPubSub:            pubsub.NewPubSub(),
+		courses:            []*model.Course{},
+		emptyCourseManager: util.NewCourseManager(),
+		faculties:          faculties,
+		studentPool:        NewUserPool(studentsData),
+		activeStudent:      make([]*model.Student, 0, InitialStudentsCount),
 	}, nil
 }
 
