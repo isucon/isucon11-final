@@ -6,11 +6,12 @@
           <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
           <div
             class="border border-gray-400 pl-1 pr-1 mr-4 cursor-pointer"
-            @click="filterUnreadAnnouncements"
+            :class="unreadFilterClasses"
+            @click="toggleUnreadFilter"
           >
-            <span class="text-primary-500 text-sm">未読</span>
+            <span class="text-sm">未読</span>
             <span
-              class="bg-primary-500 text-white font-bold text-sm pl-1 pr-1"
+              class="bg-primary-800 text-white font-bold text-sm pl-1 pr-1"
               >{{ numOfUnreads }}</span
             >
           </div>
@@ -51,6 +52,7 @@ type AsyncAnnounceData = {
 type AnnounceListData = AsyncAnnounceData & {
   courseName: string
   announcements: Array<Announcement>
+  showUnreads: boolean
 }
 
 export default Vue.extend({
@@ -86,7 +88,15 @@ export default Vue.extend({
       announcements: [],
       courseName: '',
       numOfUnreads: 0,
+      showUnreads: false,
     }
+  },
+  computed: {
+    unreadFilterClasses(): Array<String> {
+      return this.showUnreads
+        ? ['bg-primary-500', 'text-white']
+        : ['bg-white', 'text-black']
+    },
   },
   created() {
     this.announcements = this.innerAnnouncements
@@ -118,6 +128,14 @@ export default Vue.extend({
       this.announcements = this.innerAnnouncements.filter((item) => {
         return item.courseName.indexOf(this.courseName) === 0
       })
+    },
+    toggleUnreadFilter() {
+      this.showUnreads = !this.showUnreads
+      if (this.showUnreads) {
+        this.filterUnreadAnnouncements()
+      } else {
+        this.announcements = this.innerAnnouncements
+      }
     },
     filterUnreadAnnouncements() {
       this.announcements = this.innerAnnouncements.filter((item) => {
