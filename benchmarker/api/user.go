@@ -13,6 +13,7 @@ import (
 )
 
 type DayOfWeek string
+
 var DayOfWeekTable = []DayOfWeek{
 	"sunday",
 	"monday",
