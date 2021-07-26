@@ -1,10 +1,13 @@
 <template>
-  <Modal :is-shown="isShown" @close="emit('close')">
+  <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
       <p class="text-2xl text-black font-bold flex justify-center mb-4">
         {{ title }}
       </p>
-      <p class="text-black text-base mb-4">{{ description }}</p>
+      <div class="mb-4">
+        <p>{{ description }}</p>
+        <p>提出先の課題や提出ファイルが正しいか確認してください。</p>
+      </div>
       <div class="flex justify-center items-center mb-4">
         <span class="text-black text-base font-bold mr-2">提出ファイル</span>
         <label
@@ -104,6 +107,9 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import Card from '~/components/common/Card.vue'
+import Modal from '~/components/common/Modal.vue'
+import CloseIcon from '~/components/common/CloseIcon.vue'
 
 type SubmitFormData = {
   files: File[]
@@ -112,6 +118,11 @@ type SubmitFormData = {
 
 export default Vue.extend({
   name: 'SubmitModal',
+  components: {
+    Card,
+    Modal,
+    CloseIcon,
+  },
   props: {
     isShown: {
       type: Boolean,
@@ -126,11 +137,7 @@ export default Vue.extend({
       type: String,
       required: true,
     },
-    assignmentName: {
-      type: String,
-      required: true,
-    },
-    assignmentId: {
+    classId: {
       type: String,
       required: true,
     },
@@ -143,10 +150,10 @@ export default Vue.extend({
   },
   computed: {
     title(): string {
-      return `${this.assignmentName} 課題提出`
+      return `${this.classTitle} 課題提出`
     },
     description(): string {
-      return `これは科目名 ${this.courseName} の ${this.classTitle} の課題 ${this.assignmentName} の提出用です。 提出先の課題や提出ファイルが正しいか確認してください。`
+      return `これは科目 ${this.courseName} の授業 ${this.classTitle} の課題提出フォームです。 `
     },
   },
   methods: {
@@ -172,15 +179,13 @@ export default Vue.extend({
       }
       this.$axios
         .post(
-          `/api/courses/${this.$route.params.id}/assignments/${this.assignmentId}`,
+          `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignment`,
           formData
         )
-        .then((response) => {
-          console.log(response.data)
+        .then(() => {
           this.close()
         })
-        .catch((error) => {
-          console.log(error)
+        .catch(() => {
           this.showAlert()
         })
     },
