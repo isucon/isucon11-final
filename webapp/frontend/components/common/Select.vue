@@ -20,10 +20,17 @@
           focus:ring-primary-200
         "
         :placeholder="placeholder"
+        @change="onChange"
       >
         <option value="">選択してください</option>
-        <template v-for="(v, i) in value">
-          <option :key="`option-${i}`" :value="v.value">{{ v.text }}</option>
+        <template v-for="(v, i) in options">
+          <option
+            :key="`option-${i}`"
+            :value="v.value"
+            :selected="v.value === selected"
+          >
+            {{ v.text }}
+          </option>
         </template>
       </select>
     </div>
@@ -32,12 +39,16 @@
 <script lang="ts">
 import Vue, { PropType } from 'vue'
 
-export type Value = {
+export type Option = {
   text: string
   value: unknown
 }
 
 export default Vue.extend({
+  model: {
+    prop: 'selected',
+    event: 'change',
+  },
   props: {
     id: {
       type: String,
@@ -55,10 +66,14 @@ export default Vue.extend({
       type: String,
       default: '',
     },
-    value: {
-      type: Array as PropType<Value[]>,
+    options: {
+      type: Array as PropType<Option[]>,
       required: true,
       default: () => [],
+    },
+    selected: {
+      type: [String, Number],
+      default: undefined,
     },
   },
   computed: {
@@ -66,6 +81,17 @@ export default Vue.extend({
       return this.labelDirection.search(/^col/) >= 0
         ? 'flex-col items-start'
         : 'flex-row items-center'
+    },
+  },
+  updated() {
+    this.$emit('change', this.selected)
+  },
+  methods: {
+    onChange(event: Event): void {
+      const { target } = event
+      if (target instanceof HTMLSelectElement) {
+        this.$emit('change', target.value)
+      }
     },
   },
 })
