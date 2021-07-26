@@ -1,5 +1,5 @@
 <template>
-  <Modal :is-shown="isShown" @close="emit('close')">
+  <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
       <p class="text-2xl text-black font-bold flex justify-center mb-4">
         {{ title }}
