@@ -130,19 +130,15 @@ export default Vue.extend({
       this.announcements = this.innerAnnouncements.filter((item) => {
         return item.courseName.indexOf(this.courseName) === 0
       })
+      if (this.showUnreads) {
+        this.announcements = this.announcements.filter((item) => {
+          return item.unread
+        })
+      }
     },
     toggleUnreadFilter() {
       this.showUnreads = !this.showUnreads
-      if (this.showUnreads) {
-        this.filterUnreadAnnouncements()
-      } else {
-        this.announcements = this.innerAnnouncements
-      }
-    },
-    filterUnreadAnnouncements() {
-      this.announcements = this.innerAnnouncements.filter((item) => {
-        return item.unread
-      })
+      this.filterAnnouncements()
     },
   },
 })
