@@ -1370,12 +1370,10 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		})
 	}
 
-	res := GetAnnouncementsResponse{
+	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
 		UnreadCount:   unreadCount,
 		Announcements: announcementsRes,
-	}
-
-	return c.JSON(http.StatusOK, res)
+	})
 }
 
 type AnnouncementDetail struct {
