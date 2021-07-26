@@ -4,7 +4,10 @@
       <p class="text-2xl text-black font-bold flex justify-center mb-4">
         {{ title }}
       </p>
-      <p class="text-black text-base mb-4">{{ description }}</p>
+      <div class="mb-4">
+        <p>{{ description }}</p>
+        <p>提出先の課題や提出ファイルが正しいか確認してください。</p>
+      </div>
       <div class="flex justify-center items-center mb-4">
         <span class="text-black text-base font-bold mr-2">提出ファイル</span>
         <label
@@ -150,7 +153,7 @@ export default Vue.extend({
       return `${this.classTitle} 課題提出`
     },
     description(): string {
-      return `これは科目 ${this.courseName} の授業 ${this.classTitle} の課題提出フォームです。 提出先の課題や提出ファイルが正しいか確認してください。`
+      return `これは科目 ${this.courseName} の授業 ${this.classTitle} の課題提出フォームです。 `
     },
   },
   methods: {
