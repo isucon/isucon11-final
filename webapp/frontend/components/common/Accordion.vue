@@ -9,7 +9,7 @@
         <slot name="header" />
         <div v-show="isOpen" class="p-2"><slot /></div>
         <span v-show="!isOpen" class="text-primary-500"
-          >&#9660; すべて開く</span
+          >&#9660; 詳細を見る</span
         >
         <span v-show="isOpen" class="text-primary-500">&#9650; 閉じる</span>
       </a>
