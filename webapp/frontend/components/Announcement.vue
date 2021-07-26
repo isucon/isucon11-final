@@ -10,7 +10,7 @@
         </div>
       </template>
       <template #default>
-        <p class="text-black text-base mb-4">
+        <p class="text-black text-base break-all mb-4">
           {{ announcement.message || '' }}
         </p>
       </template>

@@ -1,34 +1,36 @@
 <template>
   <div>
-    <Card>
-      <div class="flex-1 flex-col">
-        <h1 class="text-2xl mb-4 font-bold">{{ course.name }}</h1>
-        <tabs
-          :tabs="[
-            { id: 'announcements', label: 'お知らせ' },
-            { id: 'classworks', label: '講義情報' },
-          ]"
-        >
-          <template slot="announcements">
-            <AnnouncementCard
-              v-for="announcement in announcements"
-              :key="announcement.id"
-              :announcement="announcement"
-              @close="closeAnnouncement($event)"
-              @open="openAnnouncement($event, announcement)"
-            />
-          </template>
-          <template slot="classworks">
-            <ClassInfoCard
-              v-for="cls in classes"
-              :key="cls.id"
-              :course="course"
-              :classinfo="cls"
-            />
-          </template>
-        </tabs>
-      </div>
-    </Card>
+    <div class="w-8/12">
+      <Card>
+        <div class="flex-1 flex-col">
+          <h1 class="text-2xl mb-4 font-bold">{{ course.name }}</h1>
+          <tabs
+            :tabs="[
+              { id: 'announcements', label: 'お知らせ' },
+              { id: 'classworks', label: '講義情報' },
+            ]"
+          >
+            <template slot="announcements">
+              <AnnouncementCard
+                v-for="announcement in announcements"
+                :key="announcement.id"
+                :announcement="announcement"
+                @close="closeAnnouncement($event)"
+                @open="openAnnouncement($event, announcement)"
+              />
+            </template>
+            <template slot="classworks">
+              <ClassInfoCard
+                v-for="cls in classes"
+                :key="cls.id"
+                :course="course"
+                :classinfo="cls"
+              />
+            </template>
+          </tabs>
+        </div>
+      </Card>
+    </div>
   </div>
 </template>
 

@@ -1,39 +1,41 @@
 <template>
   <div>
-    <Card>
-      <div class="flex-1 flex-col">
-        <div class="flex flex-row items-center mb-4">
-          <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
-          <div
-            class="border border-gray-400 pl-1 pr-1 mr-4 cursor-pointer"
-            :class="unreadFilterClasses"
-            @click="toggleUnreadFilter"
-          >
-            <span class="text-sm">未読</span>
-            <span
-              class="bg-primary-800 text-white font-bold text-sm pl-1 pr-1"
-              >{{ numOfUnreads }}</span
+    <div class="w-8/12">
+      <Card>
+        <div class="flex-1 flex-col">
+          <div class="flex flex-row items-center mb-4">
+            <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
+            <div
+              class="border border-gray-400 pl-1 pr-1 mr-4 cursor-pointer"
+              :class="unreadFilterClasses"
+              @click="toggleUnreadFilter"
             >
+              <span class="text-sm">未読</span>
+              <span
+                class="bg-primary-800 text-white font-bold text-sm pl-1 pr-1"
+                >{{ numOfUnreads }}</span
+              >
+            </div>
+            <TextField
+              id="input-course-name"
+              v-model="courseName"
+              class=""
+              label=""
+              type="text"
+              placeholder="科目名で絞り込み"
+              @input="filterAnnouncements"
+            />
           </div>
-          <TextField
-            id="input-course-name"
-            v-model="courseName"
-            class=""
-            label=""
-            type="text"
-            placeholder="科目名で絞り込み"
-            @input="filterAnnouncements"
+          <AnnouncementCard
+            v-for="announcement in announcements"
+            :key="announcement.id"
+            :announcement="announcement"
+            @open="openAnnouncement($event, announcement)"
+            @close="closeAnnouncement($event)"
           />
         </div>
-        <AnnouncementCard
-          v-for="announcement in announcements"
-          :key="announcement.id"
-          :announcement="announcement"
-          @open="openAnnouncement($event, announcement)"
-          @close="closeAnnouncement($event)"
-        />
-      </div>
-    </Card>
+      </Card>
+    </div>
   </div>
 </template>
 
