@@ -26,12 +26,22 @@
               @input="filterAnnouncements"
             />
           </div>
-          <AnnouncementCard
-            v-for="announcement in announcements"
-            :key="announcement.id"
-            :announcement="announcement"
-            @open="openAnnouncement($event, announcement)"
-            @close="closeAnnouncement($event)"
+          <div class="mb-2">
+            <AnnouncementCard
+              v-for="announcement in announcements"
+              :key="announcement.id"
+              :announcement="announcement"
+              @open="openAnnouncement($event, announcement)"
+              @close="closeAnnouncement($event)"
+            />
+          </div>
+        </div>
+        <div class="flex justify-center">
+          <Pagination
+            :prev-disabled="!Boolean(link.prev)"
+            :next-disabled="!Boolean(link.next)"
+            @goPrev="paginate(link.prev)"
+            @goNext="paginate(link.next)"
           />
         </div>
       </Card>
@@ -46,9 +56,15 @@ import Card from '~/components/common/Card.vue'
 import TextField from '~/components/common/TextField.vue'
 import AnnouncementCard from '~/components/Announcement.vue'
 
+type Link = {
+  prev: String
+  next: String
+}
+
 type AsyncAnnounceData = {
   innerAnnouncements: Array<Announcement>
   numOfUnreads: number
+  link: Link | null
 }
 
 type AnnounceListData = AsyncAnnounceData & {
@@ -57,13 +73,34 @@ type AnnounceListData = AsyncAnnounceData & {
   showUnreads: boolean
 }
 
+function parseLinkHeader(linkHeader: String): Link {
+  const parsedLink = { prev: '', next: '' }
+  const linkData = linkHeader.split(',')
+  for (const link of linkData) {
+    const linkInfo = /<([^>]+)>;\s+rel="([^"]+)"/gi.exec(link)
+    if (linkInfo && (linkInfo[2] === 'prev' || linkInfo[2] === 'next')) {
+      const path = '/' + linkInfo[1].split('/').splice(3, 2).join('/')
+      parsedLink[linkInfo[2]] = path
+    }
+  }
+  return parsedLink
+}
+
 export default Vue.extend({
+  key(route) {
+    return route.fullPath
+  },
   components: { Card, TextField, AnnouncementCard },
   middleware: 'is_loggedin',
-  async asyncData({ $axios }): Promise<AsyncAnnounceData> {
-    const announcements: Array<AnnouncementResponse> = await $axios.$get(
-      '/api/announcements'
-    )
+  async asyncData({ $axios, query }): Promise<AsyncAnnounceData> {
+    const path = query.path ? (query.path as string) : '/api/announcements'
+    const response = await $axios.get(path)
+    const announcements: Array<AnnouncementResponse> = response.data
+    const linkHeader = response.headers.link
+    let link = null
+    if (linkHeader) {
+      link = parseLinkHeader(linkHeader)
+    }
     const result = announcements.map(
       (item: AnnouncementResponse): Announcement => {
         return {
@@ -82,6 +119,7 @@ export default Vue.extend({
     return {
       innerAnnouncements: result,
       numOfUnreads: count,
+      link,
     }
   },
   data(): AnnounceListData {
@@ -91,6 +129,7 @@ export default Vue.extend({
       courseName: '',
       numOfUnreads: 0,
       showUnreads: false,
+      link: { prev: '', next: '' },
     }
   },
   computed: {
@@ -100,6 +139,7 @@ export default Vue.extend({
         : ['bg-white', 'text-black']
     },
   },
+  watchQuery: ['path'],
   created() {
     this.announcements = this.innerAnnouncements
   },
@@ -139,6 +179,9 @@ export default Vue.extend({
     toggleUnreadFilter() {
       this.showUnreads = !this.showUnreads
       this.filterAnnouncements()
+    },
+    paginate(path: string) {
+      this.$router.push(`/announce?path=${path}`)
     },
   },
 })
