@@ -3,7 +3,7 @@
     <Accordion @open="$emit('open', $event)" @close="$emit('close', $event)">
       <template #header>
         <p class="text-2xl text-primary-500 font-bold flex items-center">
-          {{ announcement.title }}
+          {{ announcement.courseName }} {{ announcement.title }}
         </p>
         <div class="text-neutral-300 text-sm mb-4">
           {{ announcement.createdAt }}
