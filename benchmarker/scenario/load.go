@@ -164,7 +164,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						if registeredCourse != nil {
 							student.FillTimeslot(timeslot)
 							semiRegistered = append(semiRegistered, registeredCourse)
-							break // ベンチ内の学生とコースにそれぞれ紐付け成功
+							break
 						}
 					}
 					studentScheduleMutex.Unlock()
@@ -188,6 +188,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					if isSuccess {
 						step.AddScore(score.CountRegisterCourses)
 						for _, c := range semiRegistered {
+							c.ReduceTempRegistered()
+							c.SetUnRegistrableAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
 							AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 						}
 					} else {
@@ -278,8 +280,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		}
 		AdminLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
 		loadCourseWorker.Do(func(ctx context.Context) {
-			// コースgoroutineは満員になるまではなにもしない
-			<-course.WaitRegister(ctx)
+			// コースgoroutineは満員 or 履修締め切りまではなにもしない
+			<-course.WaitFullOrUnRegistrable(ctx)
 
 			faculty := course.Faculty()
 			// コースの処理
