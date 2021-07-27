@@ -1,7 +1,10 @@
 package generate
 
 import (
+	"fmt"
+	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
@@ -10,23 +13,27 @@ import (
 var (
 	once          sync.Once
 	timeGenerator *timer
+
+	liberalCode int32
+	majorCode   int32
 )
 
 func init() {
 	newTimer()
 }
 
-func Course(faculty *model.Faculty) *model.Course {
-	param := &model.CourseParam{
-		Type:      "L",
+func CourseParam(faculty *model.Faculty) *model.CourseParam {
+	code := atomic.AddInt32(&liberalCode, 1)
+	return &model.CourseParam{
+		Code:      fmt.Sprintf("L%04d", code), // 重複不可, L,M+4桁の数字
+		Type:      "liberal-arts",             // or "major-subjects"
 		Name:      "サンプル講義",
-		Credit:    1,
-		Teacher:   "先生A",
-		Period:    1,
-		DayOfWeek: 1,
+		Credit:    1, // 1~3
+		Teacher:   faculty.Name,
+		Period:    rand.Intn(6),     // いいカンジに分散
+		DayOfWeek: rand.Intn(5) + 1, // いいカンジに分散
 		Keywords:  "hoge hoge",
 	}
-	return model.NewCourse(param, faculty)
 }
 
 func Submission() *model.Submission {
