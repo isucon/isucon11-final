@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -42,13 +41,13 @@ func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnoun
 }
 
 type AnnouncementResponse struct {
-	ID         string    `json:"id"`
-	CourseID   string    `json:"course_id"`
-	CourseName string    `json:"course_name"`
-	Title      string    `json:"title"`
-	Message    string    `json:"message"`
-	Unread     bool      `json:"unread"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID         string `json:"id"`
+	CourseID   string `json:"course_id"`
+	CourseName string `json:"course_name"`
+	Title      string `json:"title"`
+	Message    string `json:"message"`
+	Unread     bool   `json:"unread"`
+	CreatedAt  int64  `json:"created_at"`
 }
 type GetAnnouncementsResponse struct {
 	UnreadCount   int                    `json:"unread_count"`
