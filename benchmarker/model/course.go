@@ -31,10 +31,10 @@ type Course struct {
 	rmu  sync.RWMutex
 }
 
-// idは不明
-func NewCourse(param *CourseParam, faculty *Faculty) *Course {
+func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 	return &Course{
 		CourseParam:        param,
+		ID:                 id,
 		faculty:            faculty,
 		registeredStudents: make([]*Student, 0),
 		registeredLimit:    50, // 引数で渡す？

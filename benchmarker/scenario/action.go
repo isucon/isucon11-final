@@ -199,16 +199,16 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	return hres, class, announcement, nil
 }
 
-func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.Course) (*http.Response, api.AddCourseResponse, error) {
+func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
 	req := api.AddCourseRequest{
-		Code:        course.Code,
-		Type:        api.CourseType(course.Type),
-		Name:        course.Name,
-		Description: course.Description,
-		Credit:      course.Credit,
-		Period:      course.Period,
-		DayOfWeek:   api.DayOfWeekTable[course.DayOfWeek],
-		Keywords:    course.Keywords,
+		Code:        param.Code,
+		Type:        api.CourseType(param.Type),
+		Name:        param.Name,
+		Description: param.Description,
+		Credit:      param.Credit,
+		Period:      param.Period,
+		DayOfWeek:   api.DayOfWeekTable[param.DayOfWeek],
+		Keywords:    param.Keywords,
 	}
 	res := api.AddCourseResponse{}
 	hres, err := api.AddCourse(ctx, faculty.Agent, req)

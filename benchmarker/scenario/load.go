@@ -389,7 +389,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
 	faculty := s.GetRandomFaculty()
-	course := generate.Course(faculty)
+	courseParam := generate.CourseParam(faculty)
 
 	_, err := LoginAction(ctx, faculty.Agent, faculty.UserAccount)
 	if err != nil {
@@ -398,12 +398,12 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	_, res, err := AddCourseAction(ctx, course.Faculty(), course)
+	_, res, err := AddCourseAction(ctx, faculty, courseParam)
 	if err != nil {
 		step.AddError(err)
 		return
 	}
-	course.ID = res.ID
+	course := model.NewCourse(courseParam, res.ID, faculty)
 
 	s.AddCourse(course)
 	s.emptyCourseManager.AddEmptyCourse(course)
