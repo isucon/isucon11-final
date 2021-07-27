@@ -162,7 +162,7 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 type UserType string
 
 const (
-	_       UserType = "student" /* FIXME: Use Student */
+	Student UserType = "student"
 	Teacher UserType = "teacher"
 )
 
@@ -507,6 +507,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	// 科目毎の成績計算処理
+	res.CourseResults = make([]CourseResult, 0, len(registeredCourses))
 	for _, course := range registeredCourses {
 		// この科目を受講している学生のTotalScore一覧を取得
 		var totals []int
@@ -580,7 +581,13 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		}
 
 		// 対象科目の自分の偏差値の計算
-		totalScoreTScore := (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
+		var totalScoreTScore float64
+		if totalScoreStdDev == 0 {
+			totalScoreTScore = 50
+		} else {
+			totalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
+		}
+
 		res.CourseResults = append(res.CourseResults, CourseResult{
 			Name:          course.Name,
 			Code:          course.Code,
@@ -600,12 +607,14 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	// GPTの統計値
 	// 全学生ごとのGPT
 	var gpts []float64
-	query = "SELECT SUM(`submissions`.`score` * `courses`.`credit` / 100) AS `gpt`" +
-		" FROM `submissions`" +
-		" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
-		" JOIN `courses` ON `classes`.`course_id` = `courses`.`id`" +
+	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit` / 100), 0) AS `gpt`" +
+		" FROM `users`" +
+		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id`" +
+		" LEFT JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
+		" LEFT JOIN `courses` ON `classes`.`course_id` = `courses`.`id`" +
+		" WHERE `users`.`type` = ?" +
 		" GROUP BY `user_id`"
-	if err := h.DB.Select(&gpts, query); err != nil {
+	if err := h.DB.Select(&gpts, query, Student); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -618,7 +627,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	var gptMin = math.MaxFloat64
 	var gptStdDev float64
 	for _, gpt := range gpts {
-		res.Summary.GptAvg += gpt / float64(gptCount)
+		gptAvg += gpt / float64(gptCount)
 
 		if gptMax < gpt {
 			gptMax = gpt
@@ -634,7 +643,12 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	gptStdDev = math.Sqrt(gptStdDev)
 
 	// 自分の偏差値の計算
-	gptTScore := (res.Summary.GPT-gptAvg)/gptStdDev*10 + 50
+	var gptTScore float64
+	if gptStdDev == 0 {
+		gptTScore = 50
+	} else {
+		gptTScore = (res.Summary.GPT-gptAvg)/gptStdDev*10 + 50
+	}
 
 	res.Summary = Summary{
 		GptDev: gptTScore,
@@ -642,6 +656,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		GptMax: gptMax,
 		GptMin: gptMin,
 	}
+
+	fmt.Printf("%v\n", res)
 
 	return c.JSON(http.StatusOK, res)
 }
