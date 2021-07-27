@@ -474,7 +474,7 @@ type SubmissionWithClassName struct {
 	ID        uuid.UUID     `db:"id"`
 	UserID    uuid.UUID     `db:"user_id"`
 	ClassID   uuid.UUID     `db:"class_id"`
-	Name      string        `db:"name"`
+	Name      string        `db:"file_name"`
 	Score     sql.NullInt64 `db:"score"`
 	CreatedAt time.Time     `db:"created_at"`
 	Part      uint8         `db:"part"`
@@ -560,8 +560,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			var submissions []SubmissionWithClassName
 			query := "SELECT `submissions`.*, `classes`.`part` AS `part`, `classes`.`title` AS `title`" +
 				" FROM `submissions`" +
-				" WHERE `submission`.`class_id` = ?" +
-				" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`"
+				" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
+				" WHERE `submissions`.`class_id` = ?"
 			if err := h.DB.Select(&submissions, query, class.ID); err != nil {
 				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
@@ -660,8 +660,6 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		GptMax: gptMax,
 		GptMin: gptMin,
 	}
-
-	fmt.Printf("%v\n", res)
 
 	return c.JSON(http.StatusOK, res)
 }
@@ -900,9 +898,11 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 
 type Class struct {
 	ID                 uuid.UUID    `db:"id"`
+	CourseID           uuid.UUID    `db:"course_id"`
 	Part               uint8        `db:"part"`
 	Title              string       `db:"title"`
 	Description        string       `db:"description"`
+	CreatedAt          time.Time    `db:"created_at"`
 	SubmissionClosedAt sql.NullTime `db:"submission_closed_at"`
 }
 
@@ -931,7 +931,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	}
 
 	var classes []Class
-	if err := h.DB.Select(&classes, "SELECT `id`, `part`, `title`, `description`, `submission_closed_at` FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err == sql.ErrNoRows {
+	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No class exists yet.")
 	} else if err != nil {
 		c.Logger().Error(err)
