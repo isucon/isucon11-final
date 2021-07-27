@@ -71,7 +71,7 @@ func SetCourseStatus(ctx context.Context, a *agent.Agent, courseID string, statu
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/status", courseID), bytes.NewReader(body))
+	req, err := a.PUT(fmt.Sprintf("/api/courses/%s/status", courseID), bytes.NewReader(body))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
