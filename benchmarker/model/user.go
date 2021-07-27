@@ -1,7 +1,6 @@
 package model
 
 import (
-	"math/rand"
 	"net/url"
 	"sync"
 	"time"
@@ -126,37 +125,9 @@ func (s *Student) ScheduleMutex() *sync.RWMutex {
 	return &s.scheduleMutex
 }
 
-type Timeslot struct {
-	DayOfWeek int
-	Period    int
-}
-
-// RandomEmptyTimeSlots を参照して登録処理を行う場合は別途scheduleMutexでLockすること
-func (s *Student) RandomEmptyTimeSlots() []Timeslot {
-	if s.registeringCount >= s.RegisteringCourseLimit {
-		return nil
-	}
-
-	randTimeSlots := [30]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29}
-	for i := len(randTimeSlots) - 1; i >= 0; i-- {
-		j := rand.Intn(i + 1)
-		randTimeSlots[i], randTimeSlots[j] = randTimeSlots[j], randTimeSlots[i]
-	}
-
-	registrableCount := s.RegisteringCourseLimit - s.registeringCount
-	emptyTimeslots := make([]Timeslot, 0, registrableCount)
-	for i := 0; i < len(randTimeSlots) && len(emptyTimeslots) >= registrableCount; i++ {
-		dayOfWeek := randTimeSlots[i]/6 + 1 // 日曜日分+1
-		period := randTimeSlots[i] % 6
-		if !s.registeredSchedule[dayOfWeek][period] {
-			empty := Timeslot{
-				DayOfWeek: dayOfWeek,
-				Period:    period,
-			}
-			emptyTimeslots = append(emptyTimeslots, empty)
-		}
-	}
-	return emptyTimeslots
+// IsEmptyTimeSlots でコマを参照する場合は別途scheduleMutexで(R)Lockすること
+func (s *Student) IsEmptyTimeSlots(dayOfWeek, period int) bool {
+	return s.registeredSchedule[dayOfWeek][period]
 }
 
 // FillTimeslot で登録処理を行う場合は別途scheduleMutexでLockすること

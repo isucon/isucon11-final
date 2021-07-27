@@ -156,26 +156,33 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				// 仮登録(ベンチ内部では登録済みにする)
 				// TODO: 1度も検索成功してなかったら登録しない
 				semiRegistered := make([]*model.Course, 0, wishRegisterCount)
-				for i := 0; i < wishRegisterCount; i++ {
-					// 先に学生のスケジュールをロック.
-					// 学生の空きコマで登録可能なコースに学生を追加する
-					// 登録できたら学生の該当コマを埋める
-					studentScheduleMutex := student.ScheduleMutex()
-					studentScheduleMutex.Lock()
 
-					emptyTimeslots := student.RandomEmptyTimeSlots()
+				randTimeSlots := generate.RandomIntSlice(30) // 平日分のコマ 5*6
 
-					var registeredCourse *model.Course
-					for _, timeslot := range emptyTimeslots {
-						registeredCourse = s.emptyCourseManager.AddStudentForRegistrableCourse(student, timeslot.DayOfWeek, timeslot.Period)
-						if registeredCourse != nil {
-							student.FillTimeslot(timeslot.DayOfWeek, timeslot.Period)
-							semiRegistered = append(semiRegistered, registeredCourse)
-							break
-						}
+				studentScheduleMutex := student.ScheduleMutex()
+				studentScheduleMutex.Lock()
+				for i := 0; i < len(randTimeSlots); i++ {
+
+					dayOfWeek := randTimeSlots[i]/6 + 1 // 日曜日分+1
+					period := randTimeSlots[i] % 6
+
+					if !student.IsEmptyTimeSlots(dayOfWeek, period) {
+						continue
 					}
-					studentScheduleMutex.Unlock()
+
+					registeredCourse := s.emptyCourseManager.AddStudentForRegistrableCourse(student, dayOfWeek, period)
+					if registeredCourse == nil { // 該当コマで空きコースがなかった
+						continue
+					}
+
+					student.FillTimeslot(dayOfWeek, period)
+					semiRegistered = append(semiRegistered, registeredCourse)
+
+					if len(semiRegistered) >= wishRegisterCount {
+						break
+					}
 				}
+				studentScheduleMutex.Unlock()
 
 				select {
 				case <-ctx.Done():
