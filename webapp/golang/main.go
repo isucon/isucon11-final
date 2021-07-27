@@ -444,11 +444,11 @@ type GetGradeResponse struct {
 
 type Summary struct {
 	Credits int     `json:"credits"`
-	GPT     int     `json:"gpt"`
+	GPT     float64 `json:"gpt"`
 	GptDev  float64 `json:"gpt_dev"` // 偏差値
 	GptAvg  float64 `json:"gpt_avg"` // 平均値
-	GptMax  int     `json:"gpt_max"` // 最大値
-	GptMin  int     `json:"gpt_min"` // 最小値
+	GptMax  float64 `json:"gpt_max"` // 最大値
+	GptMin  float64 `json:"gpt_min"` // 最小値
 }
 
 type CourseResult struct {
@@ -593,13 +593,13 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		})
 
 		// 自分のGPT計算
-		res.Summary.GPT += myTotalScore * int(course.Credit) / 100
+		res.Summary.GPT += float64(myTotalScore*int(course.Credit)) / 100
 		res.Summary.Credits += int(course.Credit)
 	}
 
 	// GPTの統計値
 	// 全学生ごとのGPT
-	var gpts []int
+	var gpts []float64
 	query = "SELECT SUM(`submissions`.`score` * `courses`.`credit` / 100) AS `gpt`" +
 		" FROM `submissions`" +
 		" JOIN `classes` ON `submissions`.`class_id` = `class`.`id`" +
@@ -611,36 +611,36 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	// avg max min stdの計算
-	var GptCount = len(gpts)
-	var GptAvg float64
-	var GptMax int
-	var GptStd float64
+	var gptCount = len(gpts)
+	var gptAvg float64
+	var gptMax float64
 	// MEMO: 1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
-	var GptMin = math.MaxInt64
+	var gptMin = math.MaxFloat64
+	var gptStd float64
 	for _, gpt := range gpts {
-		res.Summary.GptAvg += float64(gpt) / float64(GptCount)
+		res.Summary.GptAvg += gpt / float64(gptCount)
 
-		if res.Summary.GptMax > gpt {
-			res.Summary.GptMax = gpt
+		if gptMax < gpt {
+			gptMax = gpt
 		}
-		if res.Summary.GptMax < gpt {
-			res.Summary.GptMax = gpt
+		if gptMin > gpt {
+			gptMin = gpt
 		}
 	}
 
 	for _, gpt := range gpts {
-		GptStd += math.Pow(float64(gpt)-res.Summary.GptAvg, 2) / float64(GptCount)
+		gptStd += math.Pow(gpt-gptAvg, 2) / float64(gptCount)
 	}
-	GptStd = math.Sqrt(GptStd)
+	gptStd = math.Sqrt(gptStd)
 
 	// 自分の偏差値の計算
-	GptDev := (float64(res.Summary.GPT)-res.Summary.GptAvg)/GptStd*10 + 50
+	GptDev := (res.Summary.GPT-gptAvg)/gptStd*10 + 50
 
 	res.Summary = Summary{
 		GptDev: GptDev,
-		GptAvg: GptAvg,
-		GptMax: GptMax,
-		GptMin: GptMin,
+		GptAvg: gptAvg,
+		GptMax: gptMax,
+		GptMin: gptMin,
 	}
 
 	return c.JSON(http.StatusOK, res)
