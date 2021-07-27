@@ -27,13 +27,13 @@ type Course struct {
 	registrable        bool
 	tempRegistered     uint32
 
+	closer chan struct{}
+
 	once sync.Once
 	rmu  sync.RWMutex
-	cond *sync.Cond
 }
 
 func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
-	mu := sync.RWMutex{}
 	return &Course{
 		CourseParam:        param,
 		ID:                 id,
@@ -41,24 +41,20 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		registeredStudents: make([]*Student, 0),
 		registeredLimit:    50, // 引数で渡す？
 		registrable:        true,
-		tempRegistered:     0,
-		rmu:                mu,
-		cond:               sync.NewCond(&mu),
+
+		tempRegistered: 0,
+		rmu:            sync.RWMutex{},
 	}
 }
 
 func (c *Course) WaitFullOrUnRegistrable(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
-		for ctx.Err() == nil {
-			// 仮登録が存在した状態でコース処理を始めるとベンチとwebappで不整合が起こるのですべて捌けるのを待つ
-			c.cond.L.Lock()
-			if c.registrable {
-				c.cond.Wait()
-			}
-			c.cond.L.Unlock()
-			ch <- struct{}{}
+		select {
+		case <-ctx.Done():
+		case <-c.closer:
 		}
+		ch <- struct{}{}
 	}()
 	return ch
 }
@@ -96,7 +92,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	if c.registrable && len(c.registeredStudents) >= c.registeredLimit {
 		isSuccess = false
 		isRegistrable = false
-		c.setRegistrable(false)
+		c.setToUnRegistrable()
 		return
 	}
 
@@ -105,7 +101,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	isSuccess = true
 	if len(c.registeredStudents) >= c.registeredLimit {
 		isRegistrable = false
-		c.setRegistrable(false)
+		c.setToUnRegistrable()
 	} else {
 		isRegistrable = true
 	}
@@ -139,12 +135,12 @@ func (c *Course) SetUnRegistrableAfterSecAtOnce(sec time.Duration) {
 
 			c.rmu.Lock()
 			defer c.rmu.Unlock()
-			c.setRegistrable(false)
+			c.setToUnRegistrable()
 		}()
 	})
 }
 
-func (c *Course) setRegistrable(b bool) {
-	c.registrable = b
-	c.cond.Broadcast()
+func (c *Course) setToUnRegistrable() {
+	c.registrable = false
+	close(c.closer)
 }
