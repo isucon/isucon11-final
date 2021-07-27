@@ -471,14 +471,14 @@ type ClassScore struct {
 }
 
 type SubmissionWithClassName struct {
-	ID        uuid.UUID `db:"id"`
-	UserID    uuid.UUID `db:"user_id"`
-	ClassID   uuid.UUID `db:"class_id"`
-	Name      string    `db:"name"`
-	Score     int       `db:"score"`
-	CreatedAt time.Time `db:"created_at"`
-	Part      uint8     `db:"part"`
-	Title     string    `db:"title"`
+	ID        uuid.UUID     `db:"id"`
+	UserID    uuid.UUID     `db:"user_id"`
+	ClassID   uuid.UUID     `db:"class_id"`
+	Name      string        `db:"name"`
+	Score     sql.NullInt64 `db:"score"`
+	CreatedAt time.Time     `db:"created_at"`
+	Part      uint8         `db:"part"`
+	Title     string        `db:"title"`
 }
 
 func (h *handlers) GetGrades(c echo.Context) error {
@@ -511,10 +511,10 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	for _, course := range registeredCourses {
 		// この科目を受講している学生のTotalScore一覧を取得
 		var totals []int
-		query := "SELECT SUM(`submissions`.`score`) AS `total_score`" +
+		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
 			" FROM `submissions`" +
 			" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
-			" WHERE `classes`.`course_id`= ?" +
+			" WHERE `classes`.`course_id` = ?" +
 			" GROUP BY `user_id`"
 		if err := h.DB.Select(&totals, query, course.ID); err != nil {
 			c.Logger().Error(err)
@@ -569,13 +569,17 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 			for _, submission := range submissions {
 				if uuid.Equal(userID, submission.UserID) {
+					var myScore int
+					if submission.Score.Valid {
+						myScore = int(submission.Score.Int64)
+					}
 					classScores = append(classScores, ClassScore{
 						Part:       submission.Part,
 						Title:      submission.Title,
-						Score:      submission.Score,
+						Score:      myScore,
 						Submitters: len(submissions),
 					})
-					myTotalScore += submission.Score
+					myTotalScore += myScore
 				}
 			}
 		}
