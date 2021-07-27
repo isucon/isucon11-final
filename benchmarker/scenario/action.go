@@ -176,7 +176,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusCreated})
 	if err != nil {
 		return hres, nil, nil, err
 	}
@@ -212,7 +212,7 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusCreated})
 	if err != nil {
 		return nil, res, err
 	}
