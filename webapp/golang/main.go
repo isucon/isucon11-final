@@ -1257,7 +1257,12 @@ type Announcement struct {
 	CreatedAt  time.Time `db:"created_at"`
 }
 
-type GetAnnouncementResponse struct {
+type GetAnnouncementsResponse struct {
+	UnreadCount   int                    `json:"unread_count"`
+	Announcements []AnnouncementResponse `json:"announcements"`
+}
+
+type AnnouncementResponse struct {
 	ID         uuid.UUID `json:"id"`
 	CourseID   uuid.UUID `json:"course_id"`
 	CourseName string    `json:"course_name"`
@@ -1319,6 +1324,12 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	var unreadCount int
+	if err := h.DB.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND `deleted_at` IS NULL", userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	var links []string
 	url, err := url.Parse(c.Request().URL.String())
 	if err != nil {
@@ -1347,9 +1358,9 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		announcements = announcements[:len(announcements)-1]
 	}
 
-	res := make([]GetAnnouncementResponse, 0, len(announcements))
+	announcementsRes := make([]AnnouncementResponse, 0, len(announcements))
 	for _, announcement := range announcements {
-		res = append(res, GetAnnouncementResponse{
+		announcementsRes = append(announcementsRes, AnnouncementResponse{
 			ID:         announcement.ID,
 			CourseID:   announcement.CourseID,
 			CourseName: announcement.CourseName,
@@ -1359,7 +1370,10 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, res)
+	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
+		UnreadCount:   unreadCount,
+		Announcements: announcementsRes,
+	})
 }
 
 type AnnouncementDetail struct {
