@@ -86,7 +86,7 @@ type AddClassRequest struct {
 	CreatedAt   int64  `json:"created_at"`
 }
 type AddClassResponse struct {
-	ID             string `json:"class_id"`
+	ClassID        string `json:"class_id"`
 	AnnouncementID string `json:"announcement_id"`
 }
 
