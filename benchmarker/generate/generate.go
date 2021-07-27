@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,8 +30,8 @@ func CourseParam(faculty *model.Faculty) *model.CourseParam {
 		Name:      "サンプル講義",
 		Credit:    1, // 1~3
 		Teacher:   faculty.Name,
-		Period:    1, // いいカンジに分散
-		DayOfWeek: 1, // いいカンジに分散
+		Period:    rand.Intn(6),     // いいカンジに分散
+		DayOfWeek: rand.Intn(5) + 1, // いいカンジに分散
 		Keywords:  "hoge hoge",
 	}
 }
