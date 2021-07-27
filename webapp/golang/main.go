@@ -554,7 +554,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		}
 
 		// クラス毎の成績計算処理
-		var classScores []ClassScore
+		classScores := make([]ClassScore, 0, len(classes))
 		var myTotalScore int
 		for _, class := range classes {
 			var submissions []SubmissionWithClassName
