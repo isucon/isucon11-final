@@ -302,6 +302,7 @@ func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	// 履修科目が0件の時は空配列を返却
 	res := make([]GetRegisteredCourseResponseContent, 0, len(courses))
 	for _, course := range courses {
 		var teacher User
@@ -735,10 +736,9 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 	condition += " LIMIT ? OFFSET ?"
 	args = append(args, limit+1, offset)
 
-	var res []GetCourseDetailResponse
-	if err := h.DB.Select(&res, query+condition, args...); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No course found")
-	} else if err != nil {
+	// 結果が0件の時は空配列を返却
+	res := make([]GetCourseDetailResponse, 0)
+	if err := h.DB.Select(&res, query+condition, args...); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -931,13 +931,12 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	}
 
 	var classes []Class
-	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No class exists yet.")
-	} else if err != nil {
+	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	// 結果が0件の時は空配列を返却
 	res := make([]GetClassResponse, 0, len(classes))
 	for _, class := range classes {
 		getClassRes := GetClassResponse{
@@ -1382,6 +1381,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		announcements = announcements[:len(announcements)-1]
 	}
 
+	// 対象になっているお知らせが0件の時は空配列を返却
 	announcementsRes := make([]AnnouncementResponse, 0, len(announcements))
 	for _, announcement := range announcements {
 		announcementsRes = append(announcementsRes, AnnouncementResponse{
