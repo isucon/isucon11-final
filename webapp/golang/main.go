@@ -524,8 +524,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		var totalScoreCount = len(totals)
 		var totalScoreAvg float64
 		var totalScoreMax int
-		var totalScoreMin = 500   // 1科目5クラスなので最大500点
-		var totalScoreStd float64 // 標準偏差
+		var totalScoreMin = 500      // 1科目5クラスなので最大500点
+		var totalScoreStdDev float64 // 標準偏差
 
 		for _, totalScore := range totals {
 			totalScoreAvg += float64(totalScore) / float64(totalScoreCount)
@@ -537,9 +537,9 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			}
 		}
 		for _, totalScore := range totals {
-			totalScoreStd += math.Pow(float64(totalScore)-totalScoreAvg, 2) / float64(totalScoreCount)
+			totalScoreStdDev += math.Pow(float64(totalScore)-totalScoreAvg, 2) / float64(totalScoreCount)
 		}
-		totalScoreStd = math.Sqrt(totalScoreStd)
+		totalScoreStdDev = math.Sqrt(totalScoreStdDev)
 
 		// クラス一覧の取得
 		var classes []Class
@@ -580,12 +580,12 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		}
 
 		// 対象科目の自分の偏差値の計算
-		totalScoreDev := (float64(myTotalScore)-totalScoreAvg)/totalScoreStd*10 + 50
+		totalScoreTScore := (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
 		res.CourseResults = append(res.CourseResults, CourseResult{
 			Name:          course.Name,
 			Code:          course.Code,
 			TotalScore:    myTotalScore,
-			TotalScoreDev: totalScoreDev,
+			TotalScoreDev: totalScoreTScore,
 			TotalScoreAvg: totalScoreAvg,
 			TotalScoreMax: totalScoreMax,
 			TotalScoreMin: totalScoreMin,
@@ -616,7 +616,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	var gptMax float64
 	// MEMO: 1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
 	var gptMin = math.MaxFloat64
-	var gptStd float64
+	var gptStdDev float64
 	for _, gpt := range gpts {
 		res.Summary.GptAvg += gpt / float64(gptCount)
 
@@ -629,15 +629,15 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	for _, gpt := range gpts {
-		gptStd += math.Pow(gpt-gptAvg, 2) / float64(gptCount)
+		gptStdDev += math.Pow(gpt-gptAvg, 2) / float64(gptCount)
 	}
-	gptStd = math.Sqrt(gptStd)
+	gptStdDev = math.Sqrt(gptStdDev)
 
 	// 自分の偏差値の計算
-	GptDev := (res.Summary.GPT-gptAvg)/gptStd*10 + 50
+	gptTScore := (res.Summary.GPT-gptAvg)/gptStdDev*10 + 50
 
 	res.Summary = Summary{
-		GptDev: GptDev,
+		GptDev: gptTScore,
 		GptAvg: gptAvg,
 		GptMax: gptMax,
 		GptMin: gptMin,
