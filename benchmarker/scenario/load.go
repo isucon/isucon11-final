@@ -303,7 +303,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				timer := time.After(100 * time.Millisecond)
 
 				// FIXME: verify class
-				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, i+1)
+				classParam := generate.ClassParam(i + 1)
+				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, classParam)
 				if err != nil {
 					step.AddError(err)
 					<-timer

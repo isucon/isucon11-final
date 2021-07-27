@@ -1,19 +1,20 @@
 package model
 
-type Class struct {
-	ID        string
+type ClassParam struct {
 	Title     string
 	Desc      string
 	Part      int // n回目のクラス
 	CreatedAt int64
 }
 
-func NewClass(id, title, desc string, createdAt int64, part int) *Class {
+type Class struct {
+	*ClassParam
+	ID string
+}
+
+func NewClass(id string, param *ClassParam) *Class {
 	return &Class{
-		ID:        id,
-		Title:     title,
-		Desc:      desc,
-		Part:      part,
-		CreatedAt: createdAt,
+		ClassParam: param,
+		ID:         id,
 	}
 }
