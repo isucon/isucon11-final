@@ -343,6 +343,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	_, res, err := AddCourseAction(ctx, course.Faculty(), course)
 	if err != nil {
 		step.AddError(err)
+		return
 	}
 	course.ID = res.ID
 
