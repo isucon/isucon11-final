@@ -405,13 +405,6 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	step.AddScore(score.CountAddCourse)
 }
 
-// studentに履修するメソッドをもたせてそこでコースを選ぶようにしてもいいかも知れない
-func (s *Scenario) selectUnregisteredCourse(student *model.Student) *model.Course {
-
-	// FIXME
-	return s.courses[0]
-}
-
 func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
