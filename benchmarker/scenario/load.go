@@ -203,6 +203,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						for _, c := range semiRegistered {
 							c.ReduceTempRegistered()
 							c.SetUnRegistrableAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+							student.AddCourse(c)
 							AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 						}
 					} else {
