@@ -535,6 +535,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			if totalScoreMin < totalScore {
 				totalScoreMin = totalScore
 			}
+		}
+		for _, totalScore := range totals {
 			totalScoreStd += math.Pow(float64(totalScore)-totalScoreAvg, 2) / float64(totalScoreCount)
 		}
 		totalScoreStd = math.Sqrt(totalScoreStd)
