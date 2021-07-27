@@ -59,7 +59,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		s.addActiveStudentLoads(ctx, step, 50)
+		s.addActiveStudentLoads(ctx, step, InitialStudentsCount)
 	}()
 	go func() {
 		defer wg.Done()
