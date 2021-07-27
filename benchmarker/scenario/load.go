@@ -369,7 +369,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 		go func() {
 			userData, err := s.studentPool.newUserData()
 			if err != nil {
-				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
