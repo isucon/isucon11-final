@@ -8,8 +8,6 @@ import (
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 
-	"github.com/isucon/isucon11-final/benchmarker/generate"
-
 	"github.com/isucon/isucandar/failure"
 
 	api "github.com/isucon/isucon11-final/benchmarker/api"
@@ -161,13 +159,12 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	return hres, res, nil
 }
 
-func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course, part int) (*http.Response, *model.Class, *model.Announcement, error) {
-	class := generate.Class(part)
+func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course, param *model.ClassParam) (*http.Response, *model.Class, *model.Announcement, error) {
 	req := api.AddClassRequest{
-		Part:        uint8(part),
-		Title:       class.Title,
-		Description: class.Desc,
-		CreatedAt:   class.CreatedAt,
+		Part:        uint8(param.Part),
+		Title:       param.Title,
+		Description: param.Desc,
+		CreatedAt:   param.CreatedAt,
 	}
 	hres, err := api.AddClass(ctx, agent, course.ID, req)
 	if err != nil {
@@ -186,8 +183,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 		return hres, nil, nil, failure.NewError(fails.ErrHTTP, err)
 	}
 
-	class.ID = res.ID
-
+	class := model.NewClass(res.ClassID, param)
 	announcement := model.NewAnnouncement(res.AnnouncementID, course.ID, course.Name, "test title")
 	return hres, class, announcement, nil
 }

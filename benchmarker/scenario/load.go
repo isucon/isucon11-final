@@ -203,6 +203,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						for _, c := range semiRegistered {
 							c.ReduceTempRegistered()
 							c.SetUnRegistrableAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+							student.AddCourse(c)
 							AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 						}
 					} else {
@@ -302,7 +303,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				timer := time.After(100 * time.Millisecond)
 
 				// FIXME: verify class
-				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, i+1)
+				classParam := generate.ClassParam(i + 1)
+				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, classParam)
 				if err != nil {
 					step.AddError(err)
 					<-timer

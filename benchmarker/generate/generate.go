@@ -42,12 +42,16 @@ func Submission() *model.Submission {
 	return model.NewSubmission(title, data)
 }
 
-func Class(part int) *model.Class {
-	id := "test id"
+func ClassParam(part int) *model.ClassParam {
 	title := "test title"
 	desc := "test desc"
 	createdAt := GenTime()
-	return model.NewClass(id, title, desc, createdAt, part)
+	return &model.ClassParam{
+		Title:     title,
+		Desc:      desc,
+		Part:      part,
+		CreatedAt: createdAt,
+	}
 }
 
 type timer struct {

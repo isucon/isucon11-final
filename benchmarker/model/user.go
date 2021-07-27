@@ -127,7 +127,7 @@ func (s *Student) ScheduleMutex() *sync.RWMutex {
 
 // IsEmptyTimeSlots でコマを参照する場合は別途scheduleMutexで(R)Lockすること
 func (s *Student) IsEmptyTimeSlots(dayOfWeek, period int) bool {
-	return s.registeredSchedule[dayOfWeek][period]
+	return !s.registeredSchedule[dayOfWeek][period]
 }
 
 // FillTimeslot で登録処理を行う場合は別途scheduleMutexでLockすること
