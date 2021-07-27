@@ -76,23 +76,23 @@ type GetGradeResponse struct {
 }
 
 type Summary struct {
-	Credits int     `json:"credits"`
-	GPT     int     `json:"gpt"`
-	GptDev  float64 `json:"gpt_dev"` // 偏差値
-	GptAvg  float64 `json:"gpt_avg"` // 平均値
-	GptMax  int     `json:"gpt_max"` // 最大値
-	GptMin  int     `json:"gpt_min"` // 最小値
+	Credits   int     `json:"credits"`
+	GPT       float64 `json:"gpt"`
+	GptTScore float64 `json:"gpt_t_score"` // 偏差値
+	GptAvg    float64 `json:"gpt_avg"`     // 平均値
+	GptMax    float64 `json:"gpt_max"`     // 最大値
+	GptMin    float64 `json:"gpt_min"`     // 最小値
 }
 
 type CourseResult struct {
-	Name          string       `json:"name"`
-	Code          string       `json:"code"`
-	TotalScore    int          `json:"total_score"`
-	TotalScoreDev float64      `json:"total_score_dev"` // 偏差値
-	TotalScoreAvg float64      `json:"total_score_avg"` // 平均値
-	TotalScoreMax int          `json:"total_score_max"` // 最大値
-	TotalScoreMin int          `json:"total_score_min"` // 最小値
-	ClassScores   []ClassScore `json:"class_scores"`
+	Name             string       `json:"name"`
+	Code             string       `json:"code"`
+	TotalScore       int          `json:"total_score"`
+	TotalScoreTScore float64      `json:"total_score_t_score"` // 偏差値
+	TotalScoreAvg    float64      `json:"total_score_avg"`     // 平均値
+	TotalScoreMax    int          `json:"total_score_max"`     // 最大値
+	TotalScoreMin    int          `json:"total_score_min"`     // 最小値
+	ClassScores      []ClassScore `json:"class_scores"`
 }
 
 type ClassScore struct {

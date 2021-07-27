@@ -187,7 +187,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				// TODO: verify announceList
 				step.AddScore(score.CountGetAnnouncements)
 
-				for _, ans := range announceList {
+				for _, ans := range announceList.Announcements {
 					if ans.Unread {
 						select {
 						case <-ctx.Done():
