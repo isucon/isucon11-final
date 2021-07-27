@@ -29,9 +29,11 @@ type Course struct {
 
 	once sync.Once
 	rmu  sync.RWMutex
+	cond *sync.Cond
 }
 
 func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
+	mu := sync.RWMutex{}
 	return &Course{
 		CourseParam:        param,
 		ID:                 id,
@@ -40,7 +42,8 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		registeredLimit:    50, // 引数で渡す？
 		registrable:        true,
 		tempRegistered:     0,
-		rmu:                sync.RWMutex{},
+		rmu:                mu,
+		cond:               sync.NewCond(&mu),
 	}
 }
 
@@ -49,14 +52,12 @@ func (c *Course) WaitFullOrUnRegistrable(ctx context.Context) <-chan struct{} {
 	go func() {
 		for ctx.Err() == nil {
 			// 仮登録が存在した状態でコース処理を始めるとベンチとwebappで不整合が起こるのですべて捌けるのを待つ
-			c.rmu.RLock()
-			if (len(c.registeredStudents) >= c.registeredLimit || !c.registrable) && c.tempRegistered < 1 {
-				c.rmu.RUnlock()
-				ch <- struct{}{}
-				return
+			c.cond.L.Lock()
+			if c.registrable {
+				c.cond.Wait()
 			}
-			c.rmu.RUnlock()
-			<-time.After(1000 * time.Millisecond)
+			c.cond.L.Unlock()
+			ch <- struct{}{}
 		}
 	}()
 	return ch
@@ -95,7 +96,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	if c.registrable && len(c.registeredStudents) >= c.registeredLimit {
 		isSuccess = false
 		isRegistrable = false
-		c.registrable = false
+		c.setRegistrable(false)
 		return
 	}
 
@@ -104,7 +105,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	isSuccess = true
 	if len(c.registeredStudents) >= c.registeredLimit {
 		isRegistrable = false
-		c.registrable = false
+		c.setRegistrable(false)
 	} else {
 		isRegistrable = true
 	}
@@ -138,7 +139,12 @@ func (c *Course) SetUnRegistrableAfterSecAtOnce(sec time.Duration) {
 
 			c.rmu.Lock()
 			defer c.rmu.Unlock()
-			c.registrable = false
+			c.setRegistrable(false)
 		}()
 	})
+}
+
+func (c *Course) setRegistrable(b bool) {
+	c.registrable = b
+	c.cond.Broadcast()
 }
