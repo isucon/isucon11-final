@@ -298,6 +298,13 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			<-course.WaitFullOrUnRegistrable(ctx)
 
 			faculty := course.Faculty()
+			_, err := SetCourseStatusInProgressAction(ctx, faculty.Agent, course.ID)
+			if err != nil {
+				step.AddError(err)
+				AdminLogger.Println("コースステータスをin-progressに変更するのが失敗しました")
+				return
+			}
+
 			// コースの処理
 			for i := 0; i < courseProcessLimit; i++ {
 				timer := time.After(100 * time.Millisecond)
