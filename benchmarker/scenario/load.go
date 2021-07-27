@@ -162,6 +162,9 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				studentScheduleMutex := student.ScheduleMutex()
 				studentScheduleMutex.Lock()
 				for i := 0; i < len(randTimeSlots); i++ {
+					if len(semiRegistered) >= wishRegisterCount {
+						break
+					}
 
 					dayOfWeek := randTimeSlots[i]/6 + 1 // 日曜日分+1
 					period := randTimeSlots[i] % 6
@@ -177,10 +180,6 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 					student.FillTimeslot(dayOfWeek, period)
 					semiRegistered = append(semiRegistered, registeredCourse)
-
-					if len(semiRegistered) >= wishRegisterCount {
-						break
-					}
 				}
 				studentScheduleMutex.Unlock()
 
