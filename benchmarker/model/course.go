@@ -42,6 +42,8 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		registeredLimit:    50, // 引数で渡す？
 		registrable:        true,
 
+		closer: make(chan struct{}),
+
 		tempRegistered: 0,
 		rmu:            sync.RWMutex{},
 	}
