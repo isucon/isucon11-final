@@ -41,7 +41,7 @@ func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnoun
 	return a.Do(ctx, req)
 }
 
-type Announcement struct {
+type AnnouncementResponse struct {
 	ID         string    `json:"id"`
 	CourseID   string    `json:"course_id"`
 	CourseName string    `json:"course_name"`
@@ -50,7 +50,10 @@ type Announcement struct {
 	Unread     bool      `json:"unread"`
 	CreatedAt  time.Time `json:"created_at"`
 }
-type AnnouncementList []*Announcement
+type GetAnnouncementsResponse struct {
+	UnreadCount   int                    `json:"unread_count"`
+	Announcements []AnnouncementResponse `json:"announcements"`
+}
 
 func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID uuid.UUID) (*http.Response, error) {
 	u, err := url.Parse(rawURL)

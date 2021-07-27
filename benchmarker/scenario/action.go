@@ -108,17 +108,11 @@ func TakeCourseAction(ctx context.Context, agent *agent.Agent, course *model.Cou
 		return hres, err
 	}
 
-	res := make([]*api.GetCourseDetailResponse, 0)
-	err = json.NewDecoder(hres.Body).Decode(&res)
-	if err != nil {
-		return hres, failure.NewError(fails.ErrHTTP, err)
-	}
-
 	return hres, nil
 }
 
-func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.AnnouncementList, error) {
-	res := api.AnnouncementList{}
+func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.GetAnnouncementsResponse, error) {
+	res := api.GetAnnouncementsResponse{}
 	if next == "" {
 		next = "/api/announcements"
 	}
@@ -130,7 +124,7 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return hres, nil, err
+		return hres, res, err
 	}
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
@@ -141,8 +135,8 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	return hres, res, nil
 }
 
-func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.Announcement, error) {
-	res := api.Announcement{}
+func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.AnnouncementResponse, error) {
+	res := api.AnnouncementResponse{}
 	hres, err := api.GetAnnouncementDetail(ctx, agent, id)
 	if err != nil {
 		return nil, res, failure.NewError(fails.ErrHTTP, err)
