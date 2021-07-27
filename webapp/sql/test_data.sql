@@ -174,3 +174,28 @@ INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `creat
   '線形代数とは',
   NOW()
 );
+
+INSERT INTO `registrations` (course_id, user_id, created_at) VALUES
+(
+  '01234567-89ab-cdef-0002-000000000001',
+  '01234567-89ab-cdef-0001-000000000001',
+  NOW()
+);
+
+INSERT INTO `submissions` (id, user_id, class_id, file_name, score, created_at) VALUES
+(
+  '01234567-89ab-cdef-0005-000000000001',
+  '01234567-89ab-cdef-0001-000000000001',
+  '01234567-89ab-cdef-0004-000000000001',
+  'test.pdf',
+  NULL,
+  NOW()
+),
+(
+  '01234567-89ab-cdef-0005-000000000002',
+  '01234567-89ab-cdef-0001-000000000001',
+  '01234567-89ab-cdef-0004-000000000002',
+  'test.pdf',
+  80,
+  NOW()
+);

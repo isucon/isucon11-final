@@ -152,7 +152,7 @@ func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID strin
 }
 
 func DownloadSubmittedAssignments(ctx context.Context, a *agent.Agent, courseID, classID string) (*http.Response, error) {
-	path := fmt.Sprintf("/api/courses/%s/assignments/%s/assignments/export", courseID, classID)
+	path := fmt.Sprintf("/api/courses/%s/classes/%s/assignments/export", courseID, classID)
 
 	req, err := a.GET(path)
 	if err != nil {
