@@ -29,8 +29,9 @@ type Course struct {
 
 	closer chan struct{}
 
-	once sync.Once
-	rmu  sync.RWMutex
+	once  sync.Once
+	once2 sync.Once
+	rmu   sync.RWMutex
 }
 
 func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
@@ -144,5 +145,9 @@ func (c *Course) SetUnRegistrableAfterSecAtOnce(sec time.Duration) {
 
 func (c *Course) setToUnRegistrable() {
 	c.registrable = false
-	close(c.closer)
+	c.once2.Do(
+		func() {
+			close(c.closer)
+		},
+	)
 }
