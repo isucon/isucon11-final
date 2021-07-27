@@ -529,10 +529,10 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 		for _, totalScore := range totals {
 			totalScoreAvg += float64(totalScore) / float64(totalScoreCount)
-			if totalScoreMax > totalScore {
+			if totalScoreMax < totalScore {
 				totalScoreMax = totalScore
 			}
-			if totalScoreMin < totalScore {
+			if totalScoreMin > totalScore {
 				totalScoreMin = totalScore
 			}
 		}
