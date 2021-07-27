@@ -226,7 +226,7 @@ func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, c
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusNoContent})
 	if err != nil {
 		return hres, err
 	}
@@ -268,7 +268,7 @@ func PostGradeAction(ctx context.Context, agent *agent.Agent, courseID, classID 
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusNoContent})
 	if err != nil {
 		return hres, err
 	}

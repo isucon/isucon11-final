@@ -123,10 +123,19 @@ func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fi
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
+	contentType := w.FormDataContentType()
+
+	err = w.Close()
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
 	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignment", courseID, classID), &body)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
+
+	req.Header.Set("Content-Type", contentType)
 
 	return a.Do(ctx, req)
 }
