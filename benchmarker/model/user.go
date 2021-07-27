@@ -27,7 +27,7 @@ type Student struct {
 	submissions           []*Submission
 	rmu                   sync.RWMutex
 
-	registeredSchedule [30]bool // 空きコマ管理[DayOfWeek:5][Period:6]
+	registeredSchedule [7][6]bool // 空きコマ管理[DayOfWeek:7][Period:6]
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
 }
@@ -51,7 +51,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
 
-		registeredSchedule: [30]bool{},
+		registeredSchedule: [7][6]bool{},
 		scheduleMutex:      sync.RWMutex{},
 	}
 }
@@ -113,11 +113,11 @@ func (s *Student) RegisteringCount() int {
 	return s.registeringCount
 }
 
-func (s *Student) ReleaseTimeslot(timeslot int) {
+func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
 	s.scheduleMutex.Lock()
 	defer s.scheduleMutex.Unlock()
 
-	s.registeredSchedule[timeslot] = false
+	s.registeredSchedule[dayOfWeek][period] = false
 	s.registeringCount--
 }
 
@@ -126,30 +126,42 @@ func (s *Student) ScheduleMutex() *sync.RWMutex {
 	return &s.scheduleMutex
 }
 
+type Timeslot struct {
+	DayOfWeek int
+	Period    int
+}
+
 // RandomEmptyTimeSlots を参照して登録処理を行う場合は別途scheduleMutexでLockすること
-func (s *Student) RandomEmptyTimeSlots() []int {
+func (s *Student) RandomEmptyTimeSlots() []Timeslot {
+	if s.registeringCount >= s.RegisterCourseLimit {
+		return nil
+	}
+
 	randTimeSlots := [30]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29}
 	for i := len(randTimeSlots) - 1; i >= 0; i-- {
 		j := rand.Intn(i + 1)
 		randTimeSlots[i], randTimeSlots[j] = randTimeSlots[j], randTimeSlots[i]
 	}
 
-	if s.registeringCount < s.RegisterCourseLimit {
-		return nil
-	}
 	registrableCount := s.RegisterCourseLimit - s.registeringCount
-	emptyTimeslots := make([]int, 0, registrableCount)
-	for i := 0; i < registrableCount; i++ {
-		if !s.registeredSchedule[randTimeSlots[i]] {
-			emptyTimeslots = append(emptyTimeslots, randTimeSlots[i])
+	emptyTimeslots := make([]Timeslot, 0, registrableCount)
+	for i := 0; i < len(randTimeSlots) && len(emptyTimeslots) >= registrableCount; i++ {
+		dayOfWeek := randTimeSlots[i]/6 + 1 // 日曜日分+1
+		period := randTimeSlots[i] % 6
+		if !s.registeredSchedule[dayOfWeek][period] {
+			empty := Timeslot{
+				DayOfWeek: dayOfWeek,
+				Period:    period,
+			}
+			emptyTimeslots = append(emptyTimeslots, empty)
 		}
 	}
 	return emptyTimeslots
 }
 
 // FillTimeslot で登録処理を行う場合は別途scheduleMutexでLockすること
-func (s *Student) FillTimeslot(timeSlot int) {
-	s.registeredSchedule[timeSlot] = true
+func (s *Student) FillTimeslot(dayOfWeek, period int) {
+	s.registeredSchedule[dayOfWeek][period] = true
 	s.registeringCount++
 }
 

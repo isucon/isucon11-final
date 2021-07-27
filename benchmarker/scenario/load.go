@@ -152,7 +152,9 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				// TODO: 1度も検索成功してなかったら登録しない
 				semiRegistered := make([]*model.Course, 0, wishRegisterCount)
 				for i := 0; i < wishRegisterCount; i++ {
-					// 先にベンチ内で学生の空きコマを抑えて、登録可能なコースに学生を追加する
+					// 先に学生のスケジュールをロック.
+					// 学生の空きコマで登録可能なコースに学生を追加する
+					// 登録できたら学生の該当コマを埋める
 					studentScheduleMutex := student.ScheduleMutex()
 					studentScheduleMutex.Lock()
 
@@ -160,9 +162,9 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 					var registeredCourse *model.Course
 					for _, timeslot := range emptyTimeslots {
-						registeredCourse = s.emptyCourseManager.AddStudentForRegistrableCourse(student, timeslot)
+						registeredCourse = s.emptyCourseManager.AddStudentForRegistrableCourse(student, timeslot.DayOfWeek, timeslot.Period)
 						if registeredCourse != nil {
-							student.FillTimeslot(timeslot)
+							student.FillTimeslot(timeslot.DayOfWeek, timeslot.Period)
 							semiRegistered = append(semiRegistered, registeredCourse)
 							break
 						}
@@ -195,7 +197,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					} else {
 						for _, c := range semiRegistered {
 							c.RemoveStudent(student)
-							student.ReleaseTimeslot(c.DayOfWeek*5 + c.Period)
+							student.ReleaseTimeslot(c.DayOfWeek, c.Period)
 						}
 					}
 				}
