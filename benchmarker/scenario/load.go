@@ -18,8 +18,13 @@ import (
 )
 
 const (
+	initialStudentsCount      = 50
+	registerCourseLimit       = 20
+	searchCountByRegistration = 3
+	initialCourseCount        = 20
+	courseProcessLimit        = 5
 	// confirmAttendanceAnsTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
-	confirmAttendanceAnsTimeout time.Duration = 5 * time.Second
+	confirmAttendanceAnsTimeout = 5 * time.Second
 )
 
 func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) error {
@@ -42,8 +47,8 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	// FIXME: コース追加前にコース登録アクションが必要
 	wg := sync.WaitGroup{}
-	wg.Add(InitialCourseCount)
-	for i := 0; i < InitialCourseCount; i++ {
+	wg.Add(initialCourseCount)
+	for i := 0; i < initialCourseCount; i++ {
 		go func() {
 			defer wg.Done()
 			s.addCourseLoad(ctx, step)
@@ -59,7 +64,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		s.addActiveStudentLoads(ctx, step, 50)
+		s.addActiveStudentLoads(ctx, step, initialStudentsCount)
 	}()
 	go func() {
 		defer wg.Done()
@@ -118,10 +123,10 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				step.AddScore(score.CountGetGrades)
 				AdminLogger.Printf("%vは成績を確認した", student.Name)
 
-				wishRegisterCount := RegisterCourseLimit - student.RegisteringCount()
+				wishRegisterCount := registerCourseLimit - student.RegisteringCount()
 
-				// 履修希望コース * SearchCountByRegistration 回 検索を行う
-				for i := 0; i < wishRegisterCount*SearchCountByRegistration; i++ {
+				// 履修希望コース * searchCountByRegistration 回 検索を行う
+				for i := 0; i < wishRegisterCount*searchCountByRegistration; i++ {
 					timer := time.After(300 * time.Millisecond)
 
 					// TODO: verify course
@@ -140,7 +145,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					case <-timer:
 					}
 				}
-				AdminLogger.Printf("%vはコースを%v回検索した", student.Name, wishRegisterCount*SearchCountByRegistration)
+				AdminLogger.Printf("%vはコースを%v回検索した", student.Name, wishRegisterCount*searchCountByRegistration)
 
 				select {
 				case <-ctx.Done():
@@ -287,7 +292,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 			faculty := course.Faculty()
 			// コースの処理
-			for i := 0; i < CourseProcessLimit; i++ {
+			for i := 0; i < courseProcessLimit; i++ {
 				timer := time.After(100 * time.Millisecond)
 
 				// FIXME: verify class
@@ -361,7 +366,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
-			student := model.NewStudent(userData, s.BaseURL)
+			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {

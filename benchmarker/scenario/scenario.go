@@ -20,14 +20,6 @@ var (
 	Cancel failure.StringCode = "scenario-cancel"
 )
 
-const (
-	InitialStudentsCount      = 50
-	RegisterCourseLimit       = 20
-	SearchCountByRegistration = 3
-	InitialCourseCount        = 20
-	CourseProcessLimit        = 5
-)
-
 type Scenario struct {
 	Config
 
@@ -74,7 +66,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		emptyCourseManager: util.NewCourseManager(),
 		faculties:          faculties,
 		studentPool:        NewUserPool(studentsData),
-		activeStudent:      make([]*model.Student, 0, InitialStudentsCount),
+		activeStudent:      make([]*model.Student, 0, initialStudentsCount),
 	}, nil
 }
 

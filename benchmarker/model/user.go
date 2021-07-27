@@ -18,8 +18,8 @@ type UserAccount struct {
 
 type Student struct {
 	*UserAccount
-	RegisterCourseLimit int
-	Agent               *agent.Agent
+	RegisteringCourseLimit int
+	Agent                  *agent.Agent
 
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
@@ -36,15 +36,15 @@ type AnnouncementStatus struct {
 	Unread       bool
 }
 
-func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
+func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student {
 	a, _ := agent.NewAgent()
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
 	return &Student{
-		UserAccount:         userData,
-		RegisterCourseLimit: 20,
-		Agent:               a,
+		UserAccount:            userData,
+		RegisteringCourseLimit: regLimit,
+		Agent:                  a,
 
 		registeredCourses:     make([]*Course, 0),
 		announcements:         make([]*AnnouncementStatus, 100),
@@ -133,7 +133,7 @@ type Timeslot struct {
 
 // RandomEmptyTimeSlots を参照して登録処理を行う場合は別途scheduleMutexでLockすること
 func (s *Student) RandomEmptyTimeSlots() []Timeslot {
-	if s.registeringCount >= s.RegisterCourseLimit {
+	if s.registeringCount >= s.RegisteringCourseLimit {
 		return nil
 	}
 
@@ -143,7 +143,7 @@ func (s *Student) RandomEmptyTimeSlots() []Timeslot {
 		randTimeSlots[i], randTimeSlots[j] = randTimeSlots[j], randTimeSlots[i]
 	}
 
-	registrableCount := s.RegisterCourseLimit - s.registeringCount
+	registrableCount := s.RegisteringCourseLimit - s.registeringCount
 	emptyTimeslots := make([]Timeslot, 0, registrableCount)
 	for i := 0; i < len(randTimeSlots) && len(emptyTimeslots) >= registrableCount; i++ {
 		dayOfWeek := randTimeSlots[i]/6 + 1 // 日曜日分+1
