@@ -1192,7 +1192,8 @@ type AddClassRequest struct {
 }
 
 type AddClassResponse struct {
-	ID uuid.UUID `json:"id"`
+	ClassID        uuid.UUID `json:"class_id"`
+	AnnouncementID uuid.UUID `json:"announcement_id"`
 }
 
 // AddClass 新規クラス(&課題)追加
@@ -1264,7 +1265,8 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	res := AddClassResponse{
-		ID: classID,
+		ClassID:        classID,
+		AnnouncementID: announcementID,
 	}
 
 	return c.JSON(http.StatusCreated, res)
