@@ -53,6 +53,7 @@ func (c *Course) WaitFullOrUnRegistrable(ctx context.Context) <-chan struct{} {
 			if (len(c.registeredStudents) >= c.registeredLimit || !c.registrable) && c.tempRegistered < 1 {
 				c.rmu.RUnlock()
 				ch <- struct{}{}
+				return
 			}
 			c.rmu.RUnlock()
 			<-time.After(1000 * time.Millisecond)
@@ -129,10 +130,12 @@ func (c *Course) ReduceTempRegistered() {
 }
 
 func (c *Course) SetUnRegistrableAfterSecAtOnce(sec time.Duration) {
-	// registrableは不可逆ので同期とらなくてヨシ
 	c.once.Do(func() {
 		go func() {
 			<-time.After(sec)
+
+			c.rmu.Lock()
+			defer c.rmu.Unlock()
 			c.registrable = false
 		}()
 	})
