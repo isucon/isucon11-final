@@ -188,8 +188,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 
 	class.ID = res.ID
 
-	// TODO
-	announcement := model.NewAnnouncement("", course.ID, course.Name, "test title")
+	announcement := model.NewAnnouncement(res.AnnouncementID, course.ID, course.Name, "test title")
 	return hres, class, announcement, nil
 }
 
