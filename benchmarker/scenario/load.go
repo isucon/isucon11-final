@@ -151,7 +151,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				// 仮登録(ベンチ内部では登録済みにする)
 				// TODO: 1度も検索成功してなかったら登録しない
 				semiRegistered := make([]*model.Course, 0, wishRegisterCount)
-				for i := 0; i < wishRegisterCount*SearchCountByRegistration; i++ {
+				for i := 0; i < wishRegisterCount; i++ {
 					// 先にベンチ内で学生の空きコマを抑えて、登録可能なコースに学生を追加する
 					studentScheduleMutex := student.ScheduleMutex()
 					studentScheduleMutex.Lock()

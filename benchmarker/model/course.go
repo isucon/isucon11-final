@@ -95,6 +95,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	if c.registrable && len(c.registeredStudents) >= c.registeredLimit {
 		isSuccess = false
 		isRegistrable = false
+		c.registrable = false
 		return
 	}
 
@@ -103,6 +104,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	isSuccess = true
 	if len(c.registeredStudents) >= c.registeredLimit {
 		isRegistrable = false
+		c.registrable = false
 	} else {
 		isRegistrable = true
 	}
