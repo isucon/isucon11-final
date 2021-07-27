@@ -18,8 +18,13 @@ import (
 )
 
 const (
+	initialStudentsCount      = 50
+	registerCourseLimit       = 20
+	searchCountByRegistration = 3
+	initialCourseCount        = 20
+	courseProcessLimit        = 5
 	// confirmAttendanceAnsTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
-	confirmAttendanceAnsTimeout time.Duration = 5 * time.Second
+	confirmAttendanceAnsTimeout = 5 * time.Second
 )
 
 func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) error {
@@ -42,8 +47,8 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	// FIXME: コース追加前にコース登録アクションが必要
 	wg := sync.WaitGroup{}
-	wg.Add(InitialCourseCount)
-	for i := 0; i < InitialCourseCount; i++ {
+	wg.Add(initialCourseCount)
+	for i := 0; i < initialCourseCount; i++ {
 		go func() {
 			defer wg.Done()
 			s.addCourseLoad(ctx, step)
@@ -59,7 +64,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		s.addActiveStudentLoads(ctx, step, InitialStudentsCount)
+		s.addActiveStudentLoads(ctx, step, initialStudentsCount)
 	}()
 	go func() {
 		defer wg.Done()
@@ -118,43 +123,96 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				step.AddScore(score.CountGetGrades)
 				AdminLogger.Printf("%vは成績を確認した", student.Name)
 
-				// 空きがあったら
-				// 履修登録
-				if student.RegisteredCoursesCount() < RegisterCourseLimit {
-					// 5回成功するまでだと、失敗し続けた場合永遠に負荷がかかってしまう
-					// 今は5回だけやって失敗したら終わりにした
-					for i := 0; i < SearchCourseLimit; i++ {
-						timer := time.After(300 * time.Millisecond)
+				wishRegisterCount := registerCourseLimit - student.RegisteringCount()
 
-						// TODO: verify course
-						_, _, err := SearchCourseAction(ctx, student.Agent)
+				// 履修希望コース * searchCountByRegistration 回 検索を行う
+				for i := 0; i < wishRegisterCount*searchCountByRegistration; i++ {
+					timer := time.After(300 * time.Millisecond)
 
-						if err != nil {
-							step.AddError(err)
-							<-timer
-							continue
-						}
+					// TODO: verify course
+					_, _, err := SearchCourseAction(ctx, student.Agent)
 
-						select {
-						case <-ctx.Done():
-							return
-						case <-timer:
-						}
-					}
-					AdminLogger.Printf("%vはコースを%v回検索した", student.Name, SearchCourseLimit)
-					step.AddScore(score.CountSearchCourse)
-
-					course := s.selectUnregisteredCourse(student)
-					// TODO: verify response
-					_, err := TakeCourseAction(ctx, student.Agent, course)
 					if err != nil {
 						step.AddError(err)
-						return
+						<-timer
+						continue
 					}
-					step.AddScore(score.CountRegisterCourse)
-					student.AddCourse(course)
-					AdminLogger.Printf("%vは%vを履修した", student.Name, course.Name)
+					step.AddScore(score.CountSearchCourse)
+
+					select {
+					case <-ctx.Done():
+						return
+					case <-timer:
+					}
 				}
+				AdminLogger.Printf("%vはコースを%v回検索した", student.Name, wishRegisterCount*searchCountByRegistration)
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				// 仮登録(ベンチ内部では登録済みにする)
+				// TODO: 1度も検索成功してなかったら登録しない
+				semiRegistered := make([]*model.Course, 0, wishRegisterCount)
+
+				randTimeSlots := generate.RandomIntSlice(30) // 平日分のコマ 5*6
+
+				studentScheduleMutex := student.ScheduleMutex()
+				studentScheduleMutex.Lock()
+				for i := 0; i < len(randTimeSlots); i++ {
+					if len(semiRegistered) >= wishRegisterCount {
+						break
+					}
+
+					dayOfWeek := randTimeSlots[i]/6 + 1 // 日曜日分+1
+					period := randTimeSlots[i] % 6
+
+					if !student.IsEmptyTimeSlots(dayOfWeek, period) {
+						continue
+					}
+
+					registeredCourse := s.emptyCourseManager.AddStudentForRegistrableCourse(student, dayOfWeek, period)
+					if registeredCourse == nil { // 該当コマで空きコースがなかった
+						continue
+					}
+
+					student.FillTimeslot(dayOfWeek, period)
+					semiRegistered = append(semiRegistered, registeredCourse)
+				}
+				studentScheduleMutex.Unlock()
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				// ベンチ内で登録できたコースがあればAPIにも登録処理を投げる
+				if len(semiRegistered) > 0 {
+					_, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
+
+					if err != nil { // API側が原因のエラー（コースが登録不可ステータスだったり満席のエラーなら非該当）
+						step.AddError(err)
+					}
+
+					isSuccess := err == nil
+					if isSuccess {
+						step.AddScore(score.CountRegisterCourses)
+						for _, c := range semiRegistered {
+							c.ReduceTempRegistered()
+							c.SetUnRegistrableAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+							AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
+						}
+					} else {
+						for _, c := range semiRegistered {
+							c.RemoveStudent(student)
+							student.ReleaseTimeslot(c.DayOfWeek, c.Period)
+						}
+					}
+				}
+				// TODO: できれば登録に失敗したコースを抜いて再度登録する
 
 				select {
 				case <-ctx.Done():
@@ -235,12 +293,12 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		}
 		AdminLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
 		loadCourseWorker.Do(func(ctx context.Context) {
-			// コースgoroutineは満員になるまではなにもしない
-			<-course.WaitRegister(ctx)
+			// コースgoroutineは満員 or 履修締め切りまではなにもしない
+			<-course.WaitFullOrUnRegistrable(ctx)
 
 			faculty := course.Faculty()
 			// コースの処理
-			for i := 0; i < CourseProcessLimit; i++ {
+			for i := 0; i < courseProcessLimit; i++ {
 				timer := time.After(100 * time.Millisecond)
 
 				// FIXME: verify class
@@ -314,7 +372,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
-			student := model.NewStudent(userData, s.BaseURL)
+			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
@@ -348,15 +406,9 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	course.ID = res.ID
 
 	s.AddCourse(course)
+	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
 	step.AddScore(score.CountAddCourse)
-}
-
-// studentに履修するメソッドをもたせてそこでコースを選ぶようにしてもいいかも知れない
-func (s *Scenario) selectUnregisteredCourse(student *model.Student) *model.Course {
-
-	// FIXME
-	return s.courses[0]
 }
 
 func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string) []error {

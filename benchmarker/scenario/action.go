@@ -75,6 +75,7 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 
 func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.GetCourseDetailResponse, error) {
 	// FIXME: param
+	// MEMO: model.course.DayOfWeekは処理のしやすさを優先してintで持っている.apiリクエストに詰む際はよしなに変換して(hattori)
 	hres, err := api.SearchCourse(ctx, agent, &api.SearchCourseRequest{})
 	if err != nil {
 		return nil, nil, failure.NewError(fails.ErrHTTP, err)
@@ -95,8 +96,12 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response
 	return hres, res, nil
 }
 
-func TakeCourseAction(ctx context.Context, agent *agent.Agent, course *model.Course) (*http.Response, error) {
-	req := []api.RegisterCourseRequestContent{api.RegisterCourseRequestContent{ID: course.ID}}
+func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, error) {
+	req := make([]api.RegisterCourseRequestContent, 0, len(courses))
+	for _, c := range courses {
+		req = append(req, api.RegisterCourseRequestContent{ID: c.ID})
+	}
+
 	hres, err := api.RegisterCourses(ctx, agent, req)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
@@ -196,7 +201,7 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, course *model.
 		Description: course.Description,
 		Credit:      course.Credit,
 		Period:      course.Period,
-		DayOfWeek:   api.DayOfWeek(course.DayOfWeek),
+		DayOfWeek:   api.DayOfWeekTable[course.DayOfWeek],
 		Keywords:    course.Keywords,
 	}
 	res := api.AddCourseResponse{}

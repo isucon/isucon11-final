@@ -17,41 +17,42 @@ type UserAccount struct {
 
 type Student struct {
 	*UserAccount
-	Agent *agent.Agent
+	RegisteringCourseLimit int
+	Agent                  *agent.Agent
 
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
 	submissions           []*Submission
+	rmu                   sync.RWMutex
 
-	rmu sync.RWMutex
+	registeredSchedule [7][6]bool // 空きコマ管理[DayOfWeek:7][Period:6]
+	registeringCount   int
+	scheduleMutex      sync.RWMutex
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
 	Unread       bool
 }
 
-func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
+func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student {
 	a, _ := agent.NewAgent()
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
 	return &Student{
-		UserAccount:           userData,
-		Agent:                 a,
+		UserAccount:            userData,
+		RegisteringCourseLimit: regLimit,
+		Agent:                  a,
+
 		registeredCourses:     make([]*Course, 0),
 		announcements:         make([]*AnnouncementStatus, 100),
 		announcementIndexByID: make(map[string]int, 100),
+		rmu:                   sync.RWMutex{},
 
-		rmu: sync.RWMutex{},
+		registeredSchedule: [7][6]bool{},
+		scheduleMutex:      sync.RWMutex{},
 	}
-}
-
-func (s *Student) RegisteredCoursesCount() int {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	return len(s.registeredCourses)
 }
 
 func (s *Student) AddCourse(course *Course) {
@@ -102,6 +103,37 @@ func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 		close(ch)
 	}
 	return ch
+}
+
+func (s *Student) RegisteringCount() int {
+	s.scheduleMutex.RLock()
+	defer s.scheduleMutex.RUnlock()
+
+	return s.registeringCount
+}
+
+func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
+	s.scheduleMutex.Lock()
+	defer s.scheduleMutex.Unlock()
+
+	s.registeredSchedule[dayOfWeek][period] = false
+	s.registeringCount--
+}
+
+// ScheduleMutex はstudent内で完結しない同期処理を行う際に利用
+func (s *Student) ScheduleMutex() *sync.RWMutex {
+	return &s.scheduleMutex
+}
+
+// IsEmptyTimeSlots でコマを参照する場合は別途scheduleMutexで(R)Lockすること
+func (s *Student) IsEmptyTimeSlots(dayOfWeek, period int) bool {
+	return s.registeredSchedule[dayOfWeek][period]
+}
+
+// FillTimeslot で登録処理を行う場合は別途scheduleMutexでLockすること
+func (s *Student) FillTimeslot(dayOfWeek, period int) {
+	s.registeredSchedule[dayOfWeek][period] = true
+	s.registeringCount++
 }
 
 type Faculty struct {
