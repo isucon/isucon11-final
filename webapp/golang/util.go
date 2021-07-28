@@ -11,3 +11,12 @@ func GetEnv(key, val string) string {
 		return v
 	}
 }
+
+func contains(arr []DayOfWeek, el DayOfWeek) bool {
+	for _, s := range arr {
+		if s == el {
+			return true
+		}
+	}
+	return false
+}

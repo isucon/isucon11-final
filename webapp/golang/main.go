@@ -177,21 +177,23 @@ type User struct {
 type CourseType string
 
 const (
-	_ CourseType = "liberal-arts"
-	_ CourseType = "major-subjects"
+	LiberalArts   CourseType = "liberal-arts"
+	MajorSubjects CourseType = "major-subjects"
 )
 
 type DayOfWeek string
 
 const (
-	_ DayOfWeek = "sunday"
-	_ DayOfWeek = "monday"
-	_ DayOfWeek = "tuesday"
-	_ DayOfWeek = "wednesday"
-	_ DayOfWeek = "thursday"
-	_ DayOfWeek = "friday"
-	_ DayOfWeek = "saturday"
+	Sunday    DayOfWeek = "sunday"
+	Monday    DayOfWeek = "monday"
+	Tuesday   DayOfWeek = "tuesday"
+	Wednesday DayOfWeek = "wednesday"
+	Thursday  DayOfWeek = "thursday"
+	Friday    DayOfWeek = "friday"
+	Saturday  DayOfWeek = "saturday"
 )
+
+var daysOfWeek = []DayOfWeek{Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday}
 
 type CourseStatus string
 
@@ -840,6 +842,13 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	var req AddCourseRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+	}
+
+	if req.Type != LiberalArts && req.Type != MajorSubjects {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid course type.")
+	}
+	if !contains(daysOfWeek, req.DayOfWeek) {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid day of week.")
 	}
 
 	tx, err := h.DB.Beginx()
