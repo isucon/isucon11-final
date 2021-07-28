@@ -11,6 +11,7 @@ import (
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
+
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
@@ -376,6 +377,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 	wg.Add(count)
 	for i := 0; i < count; i++ {
 		go func() {
+			defer wg.Done()
 			userData, err := s.studentPool.newUserData()
 			if err != nil {
 				return
