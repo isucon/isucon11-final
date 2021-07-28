@@ -177,21 +177,23 @@ type User struct {
 type CourseType string
 
 const (
-	_ CourseType = "liberal-arts"
-	_ CourseType = "major-subjects"
+	LiberalArts   CourseType = "liberal-arts"
+	MajorSubjects CourseType = "major-subjects"
 )
 
 type DayOfWeek string
 
 const (
-	_ DayOfWeek = "sunday"
-	_ DayOfWeek = "monday"
-	_ DayOfWeek = "tuesday"
-	_ DayOfWeek = "wednesday"
-	_ DayOfWeek = "thursday"
-	_ DayOfWeek = "friday"
-	_ DayOfWeek = "saturday"
+	Sunday    DayOfWeek = "sunday"
+	Monday    DayOfWeek = "monday"
+	Tuesday   DayOfWeek = "tuesday"
+	Wednesday DayOfWeek = "wednesday"
+	Thursday  DayOfWeek = "thursday"
+	Friday    DayOfWeek = "friday"
+	Saturday  DayOfWeek = "saturday"
 )
+
+var daysOfWeek = []DayOfWeek{Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday}
 
 type CourseStatus string
 
@@ -842,6 +844,13 @@ func (h *handlers) AddCourse(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
 	}
 
+	if req.Type != LiberalArts && req.Type != MajorSubjects {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid course type.")
+	}
+	if !contains(daysOfWeek, req.DayOfWeek) {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid day of week.")
+	}
+
 	tx, err := h.DB.Beginx()
 	if err != nil {
 		c.Logger().Error(err)
@@ -998,17 +1007,11 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	}
 
-	file, err := c.FormFile("file")
+	file, header, err := c.Request().FormFile("file")
 	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid file.")
 	}
-	src, err := file.Open()
-	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer src.Close()
+	defer file.Close()
 
 	submissionID := uuid.New()
 	dst, err := os.Create(AssignmentsDirectory + submissionID)
@@ -1018,12 +1021,12 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	defer dst.Close()
 
-	if _, err = io.Copy(dst, src); err != nil {
+	if _, err = io.Copy(dst, file); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, ?, NOW())", submissionID, userID, classID, file.Filename); err != nil {
+	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, ?, NOW())", submissionID, userID, classID, header.Filename); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
