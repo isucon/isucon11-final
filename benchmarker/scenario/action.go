@@ -38,13 +38,13 @@ func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.Use
 	}
 	hres, err := api.Login(ctx, agent, req)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusBadRequest, http.StatusForbidden})
 	if err != nil {
-		return nil, err
+		return hres, err
 	}
 
 	return hres, nil
@@ -54,13 +54,13 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 	res := api.GetGradeResponse{}
 	hres, err := api.GetGrades(ctx, agent)
 	if err != nil {
-		return nil, res, err
+		return hres, res, err
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return nil, res, err
+		return hres, res, err
 	}
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
@@ -76,7 +76,7 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response
 	// MEMO: model.course.DayOfWeekは処理のしやすさを優先してintで持っている.apiリクエストに詰む際はよしなに変換して(hattori)
 	hres, err := api.SearchCourse(ctx, agent, &api.SearchCourseRequest{})
 	if err != nil {
-		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, nil, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
@@ -102,7 +102,7 @@ func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model
 
 	hres, err := api.RegisterCourses(ctx, agent, req)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
@@ -121,7 +121,7 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	}
 	hres, err := api.GetAnnouncementList(ctx, agent, next, nil)
 	if err != nil {
-		return nil, res, failure.NewError(fails.ErrHTTP, err)
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
@@ -142,7 +142,7 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	res := api.AnnouncementResponse{}
 	hres, err := api.GetAnnouncementDetail(ctx, agent, id)
 	if err != nil {
-		return nil, res, failure.NewError(fails.ErrHTTP, err)
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
@@ -168,7 +168,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	}
 	hres, err := api.AddClass(ctx, agent, course.ID, req)
 	if err != nil {
-		return nil, nil, nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, nil, nil, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
@@ -202,13 +202,13 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.C
 	res := api.AddCourseResponse{}
 	hres, err := api.AddCourse(ctx, faculty.Agent, req)
 	if err != nil {
-		return nil, res, failure.NewError(fails.ErrHTTP, err)
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusCreated})
 	if err != nil {
-		return nil, res, err
+		return hres, res, err
 	}
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
@@ -222,13 +222,13 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.C
 func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, submission *model.Submission) (*http.Response, error) {
 	hres, err := api.SubmitAssignment(ctx, agent, courseID, classID, submission.Title, submission.Data)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusNoContent})
 	if err != nil {
-		return nil, err
+		return hres, err
 	}
 
 	return hres, nil
@@ -237,13 +237,13 @@ func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, c
 func DownloadSubmissionsAction(ctx context.Context, agent *agent.Agent, courseID, classID string) (*http.Response, []byte, error) {
 	hres, err := api.DownloadSubmittedAssignments(ctx, agent, courseID, classID)
 	if err != nil {
-		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, nil, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return nil, nil, err
+		return hres, nil, err
 	}
 
 	data, err := io.ReadAll(hres.Body)
@@ -264,14 +264,31 @@ func PostGradeAction(ctx context.Context, agent *agent.Agent, courseID, classID 
 	}
 	hres, err := api.RegisterScores(ctx, agent, courseID, classID, req)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusNoContent})
+	if err != nil {
+		return hres, err
+	}
+
+	return hres, nil
+}
+
+func SetCourseStatusInProgressAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, error) {
+	status := api.StatusInProgress
+	hres, err := api.SetCourseStatus(ctx, agent, courseID, status)
+	if err != nil {
+		return hres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return nil, err
+		return hres, err
 	}
 
 	return hres, nil
+
 }

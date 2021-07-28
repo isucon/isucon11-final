@@ -27,8 +27,11 @@ type Course struct {
 	registrable        bool
 	tempRegistered     uint32
 
-	once sync.Once
-	rmu  sync.RWMutex
+	closer chan struct{}
+
+	once  sync.Once
+	once2 sync.Once
+	rmu   sync.RWMutex
 }
 
 func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
@@ -39,25 +42,22 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		registeredStudents: make([]*Student, 0),
 		registeredLimit:    50, // 引数で渡す？
 		registrable:        true,
-		tempRegistered:     0,
-		rmu:                sync.RWMutex{},
+
+		closer: make(chan struct{}),
+
+		tempRegistered: 0,
+		rmu:            sync.RWMutex{},
 	}
 }
 
 func (c *Course) WaitFullOrUnRegistrable(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
-		for ctx.Err() == nil {
-			// 仮登録が存在した状態でコース処理を始めるとベンチとwebappで不整合が起こるのですべて捌けるのを待つ
-			c.rmu.RLock()
-			if (len(c.registeredStudents) >= c.registeredLimit || !c.registrable) && c.tempRegistered < 1 {
-				c.rmu.RUnlock()
-				ch <- struct{}{}
-				return
-			}
-			c.rmu.RUnlock()
-			<-time.After(1000 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+		case <-c.closer:
 		}
+		ch <- struct{}{}
 	}()
 	return ch
 }
@@ -95,7 +95,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	if c.registrable && len(c.registeredStudents) >= c.registeredLimit {
 		isSuccess = false
 		isRegistrable = false
-		c.registrable = false
+		c.setToUnRegistrable()
 		return
 	}
 
@@ -104,7 +104,7 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isR
 	isSuccess = true
 	if len(c.registeredStudents) >= c.registeredLimit {
 		isRegistrable = false
-		c.registrable = false
+		c.setToUnRegistrable()
 	} else {
 		isRegistrable = true
 	}
@@ -138,7 +138,16 @@ func (c *Course) SetUnRegistrableAfterSecAtOnce(sec time.Duration) {
 
 			c.rmu.Lock()
 			defer c.rmu.Unlock()
-			c.registrable = false
+			c.setToUnRegistrable()
 		}()
 	})
+}
+
+func (c *Course) setToUnRegistrable() {
+	c.registrable = false
+	c.once2.Do(
+		func() {
+			close(c.closer)
+		},
+	)
 }
