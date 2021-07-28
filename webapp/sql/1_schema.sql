@@ -11,7 +11,7 @@ DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users`
 (
     `id`              CHAR(36) PRIMARY KEY,
-    `code`            CHAR(8) UNIQUE              NOT NULL,
+    `code`            CHAR(6) UNIQUE              NOT NULL,
     `name`            VARCHAR(255)                NOT NULL,
     `hashed_password` BINARY(60)                  NOT NULL,
     `type`            ENUM ('student', 'teacher') NOT NULL

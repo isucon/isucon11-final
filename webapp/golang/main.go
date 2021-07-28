@@ -98,8 +98,8 @@ func (h *handlers) Initialize(c echo.Context) error {
 	dbForInit, _ := GetDB(true)
 
 	files := []string{
-		"schema.sql",
-		"test_data.sql",
+		"1_schema.sql",
+		"2_init.sql",
 	}
 	for _, file := range files {
 		data, err := ioutil.ReadFile(SQLDirectory + file)
