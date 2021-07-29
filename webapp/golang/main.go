@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -490,7 +491,6 @@ type ClassScore struct {
 }
 
 type SubmissionWithClassName struct {
-	ID        uuid.UUID     `db:"id"`
 	UserID    uuid.UUID     `db:"user_id"`
 	ClassID   uuid.UUID     `db:"class_id"`
 	Name      string        `db:"file_name"`
@@ -1029,8 +1029,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	defer file.Close()
 
-	submissionID := uuid.New()
-	dst, err := os.Create(AssignmentsDirectory + submissionID)
+	dst, err := os.Create(AssignmentsDirectory + userID.String() + "-" + classID.String())
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1042,7 +1041,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, ?, NOW())", submissionID, userID, classID, header.Filename); err != nil {
+	if _, err := h.DB.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, NOW())", userID, classID, header.Filename); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1088,7 +1087,7 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 	}
 
 	for _, score := range req {
-		if _, err := h.DB.Exec("UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?", score.Score, score.UserCode, classID); err != nil {
+		if _, err := tx.Exec("UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?", score.Score, score.UserCode, classID); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
@@ -1104,8 +1103,8 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 }
 
 type Submission struct {
-	ID       uuid.UUID `db:"id"`
-	UserName string    `db:"user_name"`
+	UserID   uuid.UUID `db:"user_id"`
+	UserCode string    `db:"user_code"`
 	FileName string    `db:"file_name"`
 }
 
@@ -1137,7 +1136,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	var submissions []Submission
-	query := "SELECT `submissions`.`id`, `users`.`name` AS `user_name`" +
+	query := "SELECT `submissions`.`user_id`, `users`.`code` AS `user_code`" +
 		" FROM `submissions`" +
 		" JOIN `users` ON `users`.`id` = `submissions`.`user_id`" +
 		" WHERE `class_id` = ? FOR SHARE"
@@ -1151,7 +1150,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	}
 
 	zipFilePath := AssignmentTmpDirectory + classID.String() + ".zip"
-	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
+	if err := createSubmissionsZip(zipFilePath, classID, submissions); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1171,13 +1170,13 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	return c.File(zipFilePath)
 }
 
-func createSubmissionsZip(zipFilePath string, submissions []Submission) error {
+func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []Submission) error {
 	// ファイル名を指定の形式に変更
 	for _, submission := range submissions {
 		if err := exec.Command(
 			"cp",
-			AssignmentsDirectory+submission.ID.String(),
-			AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.FileName,
+			AssignmentsDirectory+submission.UserID.String()+"-"+classID.String(),
+			AssignmentTmpDirectory+submission.UserCode+"-"+submission.FileName,
 		).Run(); err != nil {
 			return err
 		}
@@ -1187,7 +1186,7 @@ func createSubmissionsZip(zipFilePath string, submissions []Submission) error {
 	zipArgs = append(zipArgs, "-j", zipFilePath)
 
 	for _, submission := range submissions {
-		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.FileName)
+		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserCode+"-"+submission.FileName)
 	}
 
 	return exec.Command("zip", zipArgs...).Run()

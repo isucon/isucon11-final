@@ -58,12 +58,12 @@ CREATE TABLE `classes`
 
 CREATE TABLE `submissions`
 (
-    `id`         CHAR(36) PRIMARY KEY,
     `user_id`    CHAR(36)     NOT NULL,
     `class_id`   CHAR(36)     NOT NULL,
     `file_name`  VARCHAR(255) NOT NULL,
     `score`      TINYINT UNSIGNED,
     `created_at` DATETIME     NOT NULL,
+    PRIMARY KEY (`user_id`, `class_id`),
     CONSTRAINT FK_submissions_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
     CONSTRAINT FK_submissions_class_id FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 );
