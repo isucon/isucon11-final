@@ -1140,10 +1140,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		" FROM `submissions`" +
 		" JOIN `users` ON `users`.`id` = `submissions`.`user_id`" +
 		" WHERE `class_id` = ? FOR SHARE"
-	if err := tx.Select(&submissions, query, classID); err == sql.ErrNoRows {
-		_ = tx.Rollback()
-		return echo.NewHTTPError(http.StatusNotFound, "No submission found.")
-	} else if err != nil {
+	if err := tx.Select(&submissions, query, classID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
