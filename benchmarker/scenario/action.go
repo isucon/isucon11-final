@@ -10,7 +10,7 @@ import (
 
 	"github.com/isucon/isucandar/failure"
 
-	api "github.com/isucon/isucon11-final/benchmarker/api"
+	"github.com/isucon/isucon11-final/benchmarker/api"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 
@@ -28,7 +28,17 @@ const (
 )
 
 func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, error) {
-	return api.Initialize(ctx, agent)
+	hres, err := api.Initialize(ctx, agent)
+	if err != nil {
+		return hres, err
+	}
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, err
+	}
+
+	return hres, nil
 }
 
 func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.UserAccount) (*http.Response, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
+
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
