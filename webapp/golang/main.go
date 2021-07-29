@@ -364,6 +364,9 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
 	}
+	sort.Slice(req, func(i, j int) bool {
+		return req[i].ID < req[j].ID
+	})
 
 	tx, err := h.DB.Beginx()
 	if err != nil {
