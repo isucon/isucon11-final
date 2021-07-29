@@ -113,6 +113,19 @@ func (h *handlers) Initialize(c echo.Context) error {
 		}
 	}
 
+	if err := exec.Command("rm", "-rf", AssignmentsDirectory).Run(); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if err := exec.Command("mkdir", AssignmentsDirectory).Run(); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if err := exec.Command("mkdir", AssignmentTmpDirectory).Run(); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	res := InitializeResponse{
 		Language: "go",
 	}
@@ -1158,15 +1171,11 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 func createSubmissionsZip(zipFilePath string, submissions []Submission) error {
 	// ファイル名を指定の形式に変更
 	for _, submission := range submissions {
-		cpCmd := exec.Command(
+		if err := exec.Command(
 			"cp",
 			AssignmentsDirectory+submission.ID.String(),
 			AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.FileName,
-		)
-		if err := cpCmd.Start(); err != nil {
-			return err
-		}
-		if err := cpCmd.Wait(); err != nil {
+		).Run(); err != nil {
 			return err
 		}
 	}
@@ -1178,12 +1187,7 @@ func createSubmissionsZip(zipFilePath string, submissions []Submission) error {
 		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.FileName)
 	}
 
-	zipCmd := exec.Command("zip", zipArgs...)
-	if err := zipCmd.Start(); err != nil {
-		return err
-	}
-
-	return zipCmd.Wait()
+	return exec.Command("zip", zipArgs...).Run()
 }
 
 type AddClassRequest struct {

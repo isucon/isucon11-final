@@ -26,14 +26,13 @@ services:
       MYSQL_HOSTNAME: mysql
       DEBUG: "true"
     entrypoint: dockerize -timeout 60s -wait tcp://mysql:3306
-    command: ./isucholar
+    command: /bin/isucholar
     ports:
       - "7000:7000"
     depends_on:
       - mysql
     volumes:
-      - ./sql:/sql:ro
-      - ./assignments:/assignments
+      - ./:/webapp
 
   mysql:
     image: mysql
