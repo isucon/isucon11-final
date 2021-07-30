@@ -25,10 +25,9 @@ import (
 )
 
 const (
-	SQLDirectory           = "../sql/"
-	AssignmentsDirectory   = "../assignments/"
-	AssignmentTmpDirectory = "../assignments/tmp/"
-	SessionName            = "session"
+	SQLDirectory         = "../sql/"
+	AssignmentsDirectory = "../assignments/"
+	SessionName          = "session"
 )
 
 type handlers struct {
@@ -119,10 +118,6 @@ func (h *handlers) Initialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if err := exec.Command("mkdir", AssignmentsDirectory).Run(); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if err := exec.Command("mkdir", AssignmentTmpDirectory).Run(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1029,7 +1024,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	defer file.Close()
 
-	dst, err := os.Create(AssignmentsDirectory + userID.String() + "-" + classID.String())
+	dst, err := os.Create(AssignmentsDirectory + classID.String() + "-" + userID.String())
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1146,7 +1141,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	zipFilePath := AssignmentTmpDirectory + classID.String() + ".zip"
+	zipFilePath := AssignmentsDirectory + classID.String() + ".zip"
 	if err := createSubmissionsZip(zipFilePath, classID, submissions); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
@@ -1168,12 +1163,17 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 }
 
 func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []Submission) error {
+	tmpDir := AssignmentsDirectory + classID.String() + "/"
+	if err := exec.Command("mkdir", tmpDir).Run(); err != nil {
+		return err
+	}
+
 	// ファイル名を指定の形式に変更
 	for _, submission := range submissions {
 		if err := exec.Command(
 			"cp",
-			AssignmentsDirectory+submission.UserID.String()+"-"+classID.String(),
-			AssignmentTmpDirectory+submission.UserCode+"-"+submission.FileName,
+			AssignmentsDirectory+classID.String()+"-"+submission.UserID.String(),
+			tmpDir+submission.UserCode,
 		).Run(); err != nil {
 			return err
 		}
@@ -1183,7 +1183,7 @@ func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []S
 	zipArgs = append(zipArgs, "-j", zipFilePath)
 
 	for _, submission := range submissions {
-		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserCode+"-"+submission.FileName)
+		zipArgs = append(zipArgs, tmpDir+submission.UserCode)
 	}
 
 	return exec.Command("zip", zipArgs...).Run()
