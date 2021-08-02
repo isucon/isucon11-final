@@ -40,6 +40,7 @@ import {
   Course,
   Announcement,
   AnnouncementResponse,
+  GetAnnouncementResponse,
   ClassInfo,
 } from '~/types/courses'
 import Card from '~/components/common/Card.vue'
@@ -96,22 +97,21 @@ export default Vue.extend({
         return cls
       }
     )
-    const announcementResponses: Array<AnnouncementResponse> =
-      announcementResult.data
+    const responseBody: GetAnnouncementResponse = announcementResult.data
     const link = announcementResult.headers.link
-    const announcements: Array<Announcement> = announcementResponses.map(
-      (item: AnnouncementResponse) => {
-        const announce: Announcement = {
-          id: item.id,
-          courseId: item.courseId,
-          courseName: item.courseName,
-          title: item.title,
-          unread: item.unread,
-          createdAt: new Date(item.createdAt * 1000).toLocaleString(),
-        }
-        return announce
+    const announcements: Array<Announcement> = Object.values(
+      responseBody.announcements
+    ).map((item: AnnouncementResponse) => {
+      const announce: Announcement = {
+        id: item.id,
+        courseId: item.courseId,
+        courseName: item.courseName,
+        title: item.title,
+        unread: item.unread,
+        createdAt: new Date(item.createdAt * 1000).toLocaleString(),
       }
-    )
+      return announce
+    })
     return {
       course,
       announcements,
