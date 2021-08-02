@@ -3,9 +3,7 @@
     <div
       class="p-2 mr-6"
       :class="prevClasses"
-      @click="$emit('goPrev')"
-      @mouseover="overPrev"
-      @mouseleave="leavePrev"
+      @click="prevDisabled ? null : $emit('goPrev')"
     >
       <fa-icon class="mr-2" icon="chevron-left" size="lg" />
       <span class="text-base"> Prev </span>
@@ -13,9 +11,7 @@
     <div
       class="p-2"
       :class="nextClasses"
-      @click="$emit('goNext')"
-      @mouseover="overNext"
-      @mouseleave="leaveNext"
+      @click="nextDisabled ? null : $emit('goNext')"
     >
       <span class="text-base mr-2"> Next </span>
       <fa-icon icon="chevron-right" size="lg" />
@@ -56,30 +52,22 @@ export default Vue.extend({
     }
   },
   created() {
-    this.prevClasses = this.getClasses(this.prevDisabled, false)
-    this.nextClasses = this.getClasses(this.nextDisabled, false)
+    this.prevClasses = this.getClasses(this.prevDisabled)
+    this.nextClasses = this.getClasses(this.nextDisabled)
   },
   methods: {
-    getClasses(isDisabled: Boolean, hovered: Boolean): Array<String> {
+    getClasses(isDisabled: Boolean): Array<String> {
       if (isDisabled) {
         return ['text-gray-500']
       } else {
-        return hovered
-          ? ['cursor-pointer', 'text-white', 'bg-primary-300', 'rounded']
-          : ['cursor-pointer', 'text-black']
+        return [
+          'cursor-pointer',
+          'text-black',
+          'hover:bg-primary-300',
+          'hover:text-white',
+          'hover:rounded',
+        ]
       }
-    },
-    overPrev() {
-      this.prevClasses = this.getClasses(this.prevDisabled, true)
-    },
-    leavePrev() {
-      this.prevClasses = this.getClasses(this.prevDisabled, false)
-    },
-    overNext() {
-      this.nextClasses = this.getClasses(this.nextDisabled, true)
-    },
-    leaveNext() {
-      this.nextClasses = this.getClasses(this.nextDisabled, false)
     },
   },
 })
