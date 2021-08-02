@@ -36,6 +36,16 @@ const config = {
     '@nuxtjs/stylelint-module',
     // https://go.nuxtjs.dev/tailwindcss
     '@nuxtjs/tailwindcss',
+    [
+      '@nuxtjs/fontawesome',
+      {
+        component: 'Fa',
+        suffix: true,
+        icons: {
+          solid: ['faTimes', 'faChevronLeft', 'faChevronRight'],
+        },
+      },
+    ],
   ],
 
   // Modules: https://go.nuxtjs.dev/config-modules

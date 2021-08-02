@@ -35,6 +35,10 @@ module.exports = {
   },
   plugins: [require('@tailwindcss/forms')],
   variants: {
-    backgroundColor: ['odd'],
+    extend: {
+      backgroundColor: ['odd', 'hover'],
+      textColor: ['hover'],
+      borderRadius: ['hover'],
+    },
   },
 }

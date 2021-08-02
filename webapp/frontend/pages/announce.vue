@@ -26,12 +26,12 @@
               @input="filterAnnouncements"
             />
           </div>
-          <AnnouncementCard
-            v-for="announcement in announcements"
-            :key="announcement.id"
-            :announcement="announcement"
-            @open="openAnnouncement($event, announcement)"
-            @close="closeAnnouncement($event)"
+          <AnnouncementList
+            :announcements="announcements"
+            :link="link"
+            @movePage="paginate"
+            @open="openAnnouncement"
+            @close="closeAnnouncement"
           />
         </div>
       </Card>
@@ -41,14 +41,19 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { Announcement, AnnouncementResponse } from '~/types/courses'
+import {
+  Announcement,
+  AnnouncementResponse,
+  GetAnnouncementResponse,
+} from '~/types/courses'
 import Card from '~/components/common/Card.vue'
 import TextField from '~/components/common/TextField.vue'
-import AnnouncementCard from '~/components/Announcement.vue'
+import AnnouncementList from '~/components/AnnouncementList.vue'
 
 type AsyncAnnounceData = {
   innerAnnouncements: Array<Announcement>
   numOfUnreads: number
+  link: string
 }
 
 type AnnounceListData = AsyncAnnounceData & {
@@ -58,13 +63,17 @@ type AnnounceListData = AsyncAnnounceData & {
 }
 
 export default Vue.extend({
-  components: { Card, TextField, AnnouncementCard },
+  key(route) {
+    return route.fullPath
+  },
+  components: { Card, TextField, AnnouncementList },
   middleware: 'is_loggedin',
-  async asyncData({ $axios }): Promise<AsyncAnnounceData> {
-    const announcements: Array<AnnouncementResponse> = await $axios.$get(
-      '/api/announcements'
-    )
-    const result = announcements.map(
+  async asyncData({ $axios, query }): Promise<AsyncAnnounceData> {
+    const path = query.path ? (query.path as string) : '/api/announcements'
+    const response = await $axios.get(path)
+    const responseBody: GetAnnouncementResponse = response.data
+    const link = response.headers.link
+    const announcements = Object.values(responseBody.announcements).map(
       (item: AnnouncementResponse): Announcement => {
         return {
           id: item.id,
@@ -76,12 +85,11 @@ export default Vue.extend({
         }
       }
     )
-    const count = announcements.filter((item) => {
-      return item.unread
-    }).length
+    const count = responseBody.unreadCount
     return {
-      innerAnnouncements: result,
+      innerAnnouncements: announcements,
       numOfUnreads: count,
+      link,
     }
   },
   data(): AnnounceListData {
@@ -91,6 +99,7 @@ export default Vue.extend({
       courseName: '',
       numOfUnreads: 0,
       showUnreads: false,
+      link: '',
     }
   },
   computed: {
@@ -100,6 +109,7 @@ export default Vue.extend({
         : ['bg-white', 'text-black']
     },
   },
+  watchQuery: ['path'],
   created() {
     this.announcements = this.innerAnnouncements
   },
@@ -139,6 +149,9 @@ export default Vue.extend({
     toggleUnreadFilter() {
       this.showUnreads = !this.showUnreads
       this.filterAnnouncements()
+    },
+    paginate(path: string) {
+      this.$router.push(`/announce?path=${encodeURIComponent(path)}`)
     },
   },
 })

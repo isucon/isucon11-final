@@ -11,12 +11,12 @@
             ]"
           >
             <template slot="announcements">
-              <AnnouncementCard
-                v-for="announcement in announcements"
-                :key="announcement.id"
-                :announcement="announcement"
-                @close="closeAnnouncement($event)"
-                @open="openAnnouncement($event, announcement)"
+              <AnnouncementList
+                :announcements="announcements"
+                :link="link"
+                @movePage="paginate"
+                @open="openAnnouncement"
+                @close="closeAnnouncement"
               />
             </template>
             <template slot="classworks">
@@ -40,16 +40,18 @@ import {
   Course,
   Announcement,
   AnnouncementResponse,
+  GetAnnouncementResponse,
   ClassInfo,
 } from '~/types/courses'
 import Card from '~/components/common/Card.vue'
-import AnnouncementCard from '~/components/Announcement.vue'
+import AnnouncementList from '~/components/AnnouncementList.vue'
 import ClassInfoCard from '~/components/ClassInfo.vue'
 
 type CourseData = {
   course: Course
   announcements: Array<Announcement>
   classes: Array<ClassInfo>
+  link: string
 }
 
 type ClassResponse = {
@@ -61,17 +63,23 @@ type ClassResponse = {
 }
 
 export default Vue.extend({
+  key(route) {
+    return route.fullPath
+  },
   components: {
     Card,
-    AnnouncementCard,
+    AnnouncementList,
     ClassInfoCard,
   },
   middleware: 'is_loggedin',
-  async asyncData({ params, $axios }): Promise<CourseData> {
-    const [course, classResponses, announcementResponses] = await Promise.all([
+  async asyncData({ params, query, $axios }): Promise<CourseData> {
+    const path = query.path
+      ? (query.path as string)
+      : `/api/announcements?course_id=${params.id}`
+    const [course, classResponses, announcementResult] = await Promise.all([
       $axios.$get(`/api/syllabus/${params.id}`),
       $axios.$get(`/api/courses/${params.id}/classes`),
-      $axios.$get(`/api/announcements?course_id=${params.id}`),
+      $axios.get(path),
     ])
     const classes: Array<ClassInfo> = classResponses.map(
       (item: ClassResponse) => {
@@ -89,28 +97,32 @@ export default Vue.extend({
         return cls
       }
     )
-    const announcements: Array<Announcement> = announcementResponses.map(
-      (item: AnnouncementResponse) => {
-        const announce: Announcement = {
-          id: item.id,
-          courseId: item.courseId,
-          courseName: item.courseName,
-          title: item.title,
-          unread: item.unread,
-          createdAt: new Date(item.createdAt * 1000).toLocaleString(),
-        }
-        return announce
+    const responseBody: GetAnnouncementResponse = announcementResult.data
+    const link = announcementResult.headers.link
+    const announcements: Array<Announcement> = Object.values(
+      responseBody.announcements
+    ).map((item: AnnouncementResponse) => {
+      const announce: Announcement = {
+        id: item.id,
+        courseId: item.courseId,
+        courseName: item.courseName,
+        title: item.title,
+        unread: item.unread,
+        createdAt: new Date(item.createdAt * 1000).toLocaleString(),
       }
-    )
+      return announce
+    })
     return {
       course,
       announcements,
       classes,
+      link,
     }
   },
   data(): CourseData | undefined {
     return undefined
   },
+  watchQuery: ['path'],
   methods: {
     async openAnnouncement(
       event: { done: () => undefined },
@@ -129,6 +141,11 @@ export default Vue.extend({
     },
     closeAnnouncement(event: { done: () => undefined }) {
       event.done()
+    },
+    paginate(path: string) {
+      this.$router.push(
+        `/courses/${this.course.id}?path=${encodeURIComponent(path)}`
+      )
     },
   },
 })
