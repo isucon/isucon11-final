@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="mb-2">
+    <div class="mb-6">
       <AnnouncementCard
         v-for="announcement in announcements"
         :key="announcement.id"
