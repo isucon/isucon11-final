@@ -22,7 +22,7 @@
         "
         :type="type"
         :placeholder="placeholder"
-        :value="defaultValue"
+        :value="value"
         @input="$emit('input', $event.target.value)"
       />
     </div>
@@ -53,7 +53,7 @@ export default Vue.extend({
       type: String,
       default: '',
     },
-    defaultValue: {
+    value: {
       type: String,
       default: '',
     },
