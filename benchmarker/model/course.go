@@ -23,6 +23,7 @@ type Course struct {
 	ID                 string
 	faculty            *Faculty
 	registeredStudents []*Student
+	classes            []*Class
 	registeredLimit    int // 登録学生上限
 	registrable        bool
 	tempRegistered     uint32
@@ -48,6 +49,13 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		tempRegistered: 0,
 		rmu:            sync.RWMutex{},
 	}
+}
+
+func (c *Course) AddClass(class *Class) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.classes = append(c.classes, class)
 }
 
 func (c *Course) WaitFullOrUnRegistrable(ctx context.Context) <-chan struct{} {
@@ -77,6 +85,16 @@ func (c *Course) Students() []*Student {
 	copy(s, c.registeredStudents[:])
 
 	return s
+}
+
+func (c *Course) Classes() []*Class {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	cs := make([]*Class, len(c.classes))
+	copy(cs, c.classes[:])
+
+	return cs
 }
 
 func (c *Course) BroadCastAnnouncement(a *Announcement) {

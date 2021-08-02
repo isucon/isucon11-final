@@ -318,6 +318,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					<-timer
 					continue
 				}
+				course.AddClass(class)
 				course.BroadCastAnnouncement(announcement)
 				step.AddScore(score.CountAddClass)
 				step.AddScore(score.CountAddAssignment)
