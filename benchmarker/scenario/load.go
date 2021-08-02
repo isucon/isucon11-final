@@ -426,6 +426,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
+	mu := sync.Mutex{}
 	errs := make([]error, 0)
 	for _, s := range students {
 		s := s
@@ -444,7 +445,9 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 
 			_, _, err := GetClassesAction(ctx, s.Agent, course.ID)
 			if err != nil {
+				mu.Lock()
 				errs = append(errs, err)
+				mu.Unlock()
 				return
 			}
 
@@ -453,7 +456,9 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			submission := generate.Submission()
 			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
 			if err != nil {
+				mu.Lock()
 				errs = append(errs, err)
+				mu.Unlock()
 			} else {
 				s.AddSubmission(submission)
 			}
