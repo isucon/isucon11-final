@@ -318,6 +318,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					<-timer
 					continue
 				}
+				course.AddClass(class)
 				course.BroadCastAnnouncement(announcement)
 				step.AddScore(score.CountAddClass)
 				step.AddScore(score.CountAddAssignment)
@@ -441,8 +442,16 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
+			_, _, err := GetClassesAction(ctx, s.Agent, course.ID)
+			if err != nil {
+				errs = append(errs, err)
+				return
+			}
+
+			// TODO: classのverify
+
 			submission := generate.Submission()
-			_, err := SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
+			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
 			if err != nil {
 				errs = append(errs, err)
 			} else {

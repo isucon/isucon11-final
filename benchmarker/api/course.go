@@ -105,6 +105,26 @@ func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest
 	return a.Do(ctx, req)
 }
 
+type GetClassResponse struct {
+	ID                 string `json:"id"`
+	Part               uint8  `json:"part"`
+	Title              string `json:"title"`
+	Description        string `json:"description"`
+	SubmissionClosedAt int64  `json:"submission_closed_at"`
+}
+
+func GetClasses(ctx context.Context, a *agent.Agent, courseID string) (*http.Response, error) {
+	path := fmt.Sprintf("/api/courses/%s/classes", courseID)
+
+	req, err := a.GET(path)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	return a.Do(ctx, req)
+}
+
 func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fileName string, data []byte) (*http.Response, error) {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
