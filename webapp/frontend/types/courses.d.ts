@@ -50,6 +50,11 @@ export type AnnouncementResponse = {
   createdAt: number
 }
 
+export type GetAnnouncementResponse = {
+  unreadCount: number
+  announcements: Array<AnnouncementResponse>
+}
+
 export type ClassInfo = {
   id: string
   part: number

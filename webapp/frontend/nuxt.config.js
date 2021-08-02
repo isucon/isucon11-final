@@ -39,7 +39,7 @@ const config = {
     [
       '@nuxtjs/fontawesome',
       {
-        component: 'fa',
+        component: 'Fa',
         suffix: true,
         icons: {
           solid: ['faTimes', 'faChevronLeft', 'faChevronRight'],

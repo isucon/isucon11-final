@@ -41,7 +41,11 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { Announcement, AnnouncementResponse } from '~/types/courses'
+import {
+  Announcement,
+  AnnouncementResponse,
+  GetAnnouncementResponse,
+} from '~/types/courses'
 import Card from '~/components/common/Card.vue'
 import TextField from '~/components/common/TextField.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
@@ -67,9 +71,9 @@ export default Vue.extend({
   async asyncData({ $axios, query }): Promise<AsyncAnnounceData> {
     const path = query.path ? (query.path as string) : '/api/announcements'
     const response = await $axios.get(path)
-    const announcements: Array<AnnouncementResponse> = response.data
+    const responseBody: GetAnnouncementResponse = response.data
     const link = response.headers.link
-    const result = announcements.map(
+    const announcements = Object.values(responseBody.announcements).map(
       (item: AnnouncementResponse): Announcement => {
         return {
           id: item.id,
@@ -81,11 +85,9 @@ export default Vue.extend({
         }
       }
     )
-    const count = announcements.filter((item) => {
-      return item.unread
-    }).length
+    const count = responseBody.unreadCount
     return {
-      innerAnnouncements: result,
+      innerAnnouncements: announcements,
       numOfUnreads: count,
       link,
     }
