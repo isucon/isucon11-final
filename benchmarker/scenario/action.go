@@ -159,6 +159,27 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	return hres, res, nil
 }
 
+func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, []*api.GetClassResponse, error) {
+	res := make([]*api.GetClassResponse, 0)
+	hres, err := api.GetClasses(ctx, agent, courseID)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
+}
+
 func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course, param *model.ClassParam) (*http.Response, *model.Class, *model.Announcement, error) {
 	req := api.AddClassRequest{
 		Part:        uint8(param.Part),
