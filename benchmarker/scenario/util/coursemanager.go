@@ -35,14 +35,12 @@ func (m *CourseManager) AddStudentForRegistrableCourse(student *model.Student, d
 	if wishTakeCourse == nil { // queueに登録可能コースがない
 		return nil
 	}
-	isSuccess, isRegistrable := wishTakeCourse.RegisterStudentsIfRegistrable(student)
-	if !isRegistrable { // 満員になった or もう登録できなくなってた
+	isSuccess := wishTakeCourse.RegisterStudentsIfRegistrable(student)
+	if !isSuccess { // 満員になった or もう登録できなくなってた
 		queue.Pop()
-	}
-
-	if !isSuccess {
 		// popしたので同じqueueで再度挑戦
 		return m.AddStudentForRegistrableCourse(student, dayOfWeek, period)
 	}
+
 	return wishTakeCourse
 }

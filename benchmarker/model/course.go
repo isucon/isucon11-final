@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
 type CourseParam struct {
@@ -25,14 +27,11 @@ type Course struct {
 	registeredStudents []*Student
 	classes            []*Class
 	registeredLimit    int // 登録学生上限
-	registrable        bool
-	tempRegistered     uint32
+	rmu                sync.RWMutex
 
-	closer chan struct{}
-
-	once  sync.Once
-	once2 sync.Once
-	rmu   sync.RWMutex
+	// コース登録を締切る際に参照
+	registrationCloser *util.Closer   // 登録が締め切られるとcloseする
+	tempRegStudents    sync.WaitGroup // ベンチ内で仮登録して本登録リクエストが完了していない生徒たち
 }
 
 func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
@@ -42,12 +41,10 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		faculty:            faculty,
 		registeredStudents: make([]*Student, 0),
 		registeredLimit:    50, // 引数で渡す？
-		registrable:        true,
+		rmu:                sync.RWMutex{},
 
-		closer: make(chan struct{}),
-
-		tempRegistered: 0,
-		rmu:            sync.RWMutex{},
+		registrationCloser: util.NewCloser(),
+		tempRegStudents:    sync.WaitGroup{},
 	}
 }
 
@@ -58,14 +55,19 @@ func (c *Course) AddClass(class *Class) {
 	c.classes = append(c.classes, class)
 }
 
-func (c *Course) WaitFullOrUnRegistrable(ctx context.Context) <-chan struct{} {
-	ch := make(chan struct{})
+func (c *Course) WaitPreparedCourse(ctx context.Context) <-chan struct{} {
+	ch := make(chan struct{}, 0)
 	go func() {
 		select {
 		case <-ctx.Done():
-		case <-c.closer:
+			close(ch)
+			return
+		case <-c.registrationCloser.WaitForClosing():
 		}
-		ch <- struct{}{}
+
+		// 学生の登録リクエストが完了するのを待つ
+		c.tempRegStudents.Wait()
+		close(ch)
 	}()
 	return ch
 }
@@ -106,28 +108,6 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 	}
 }
 
-func (c *Course) RegisterStudentsIfRegistrable(student *Student) (isSuccess, isRegistrable bool) {
-	c.rmu.Lock()
-	defer c.rmu.Unlock()
-
-	if c.registrable && len(c.registeredStudents) >= c.registeredLimit {
-		isSuccess = false
-		isRegistrable = false
-		c.setToUnRegistrable()
-		return
-	}
-
-	c.registeredStudents = append(c.registeredStudents, student)
-	c.tempRegistered++
-	isSuccess = true
-	if len(c.registeredStudents) >= c.registeredLimit {
-		isRegistrable = false
-		c.setToUnRegistrable()
-	} else {
-		isRegistrable = true
-	}
-	return
-}
 func (c *Course) RemoveStudent(student *Student) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
@@ -139,33 +119,37 @@ func (c *Course) RemoveStudent(student *Student) {
 		}
 	}
 	c.registeredStudents = registeredStudents
-	c.tempRegistered--
 }
 
-func (c *Course) ReduceTempRegistered() {
+func (c *Course) RegisterStudentsIfRegistrable(student *Student) bool {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	c.tempRegistered--
-}
+	// 満員なら即終了
+	if len(c.registeredStudents) <= c.registeredLimit {
+		return false
+	}
 
-func (c *Course) SetUnRegistrableAfterSecAtOnce(sec time.Duration) {
-	c.once.Do(func() {
-		go func() {
-			<-time.After(sec)
-
-			c.rmu.Lock()
-			defer c.rmu.Unlock()
-			c.setToUnRegistrable()
-		}()
+	// 履修closeしていない場合は仮登録する
+	done := c.registrationCloser.DoIfUnclosing(func() {
+		c.registeredStudents = append(c.registeredStudents, student)
+		c.tempRegStudents.Add(1) // コース仮登録者+1
 	})
+	if done {
+		// 仮登録したので満員になっていたらcloseする
+		if len(c.registeredStudents) <= c.registeredLimit {
+			c.registrationCloser.CloseIfClosable()
+		}
+		return true
+	}
+	return false
 }
 
-func (c *Course) setToUnRegistrable() {
-	c.registrable = false
-	c.once2.Do(
-		func() {
-			close(c.closer)
-		},
-	)
+// 成功失敗に関わらず学生による本登録処理が終了した
+func (c *Course) FinishRegistration() {
+	c.tempRegStudents.Done()
+}
+
+func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
+	c.registrationCloser.CloseAfterTimeAtOnce(duration)
 }
