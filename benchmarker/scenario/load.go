@@ -443,7 +443,8 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
-			_, _, err := GetClassesAction(ctx, s.Agent, course.ID)
+			// 講義一覧を取得する
+			_, res, err := GetClassesAction(ctx, s.Agent, course.ID)
 			if err != nil {
 				mu.Lock()
 				errs = append(errs, err)
@@ -451,8 +452,17 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				return
 			}
 
-			// TODO: classのverify
+			if err := verifyClasses(res, course.Classes()); err != nil {
+				errs = append(errs, err)
+			}
 
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			// 課題を提出する
 			submission := generate.Submission()
 			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
 			if err != nil {
