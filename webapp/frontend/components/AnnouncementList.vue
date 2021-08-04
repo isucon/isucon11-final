@@ -24,27 +24,11 @@ import Vue, { PropOptions } from 'vue'
 import { Announcement } from '~/types/courses'
 import AnnouncementCard from '~/components/Announcement.vue'
 import Pagination from '~/components/common/Pagination.vue'
-
-type Link = {
-  prev: string
-  next: string
-}
+import type { Link } from '~/helpers/link_helper'
+import { parseLinkHeader } from '~/helpers/link_helper'
 
 type AnnouncementListData = {
   parsedLink: Link
-}
-
-function parseLinkHeader(linkHeader: string): Link {
-  const parsedLink = { prev: '', next: '' }
-  const linkData = linkHeader.split(',')
-  for (const link of linkData) {
-    const linkInfo = /<([^>]+)>;\s+rel="([^"]+)"/gi.exec(link)
-    if (linkInfo && (linkInfo[2] === 'prev' || linkInfo[2] === 'next')) {
-      const path = '/' + linkInfo[1].split('/').splice(3, 2).join('/')
-      parsedLink[linkInfo[2]] = path
-    }
-  }
-  return parsedLink
 }
 
 export default Vue.extend({

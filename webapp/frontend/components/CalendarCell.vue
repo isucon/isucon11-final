@@ -2,8 +2,6 @@
   <div
     class="
       border
-      h-40
-      overflow-hidden
       transition
       cursor-pointer
       duration-500
@@ -14,8 +12,10 @@
     <div
       class="
         flex flex-col
-        h-40
-        mx-auto
+        xl:h-40
+        lg:h-30
+        md:h-30
+        sm:h-full
         xl:w-40
         lg:w-30
         md:w-30
