@@ -53,7 +53,7 @@ export type AnnouncementResponse = {
 
 export type GetAnnouncementResponse = {
   unreadCount: number
-  announcements: Array<AnnouncementResponse>
+  announcements: AnnouncementResponse[]
 }
 
 export type ClassInfo = {

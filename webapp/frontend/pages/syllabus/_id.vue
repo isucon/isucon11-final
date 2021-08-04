@@ -187,10 +187,10 @@ export default Vue.extend({
     }
   },
   computed: {
-    courseType(): String {
+    courseType(): string {
       return formatType(this.course.type)
     },
-    coursePeriod(): String {
+    coursePeriod(): string {
       return formatPeriod(this.course.dayOfWeek, this.course.period)
     },
   },
