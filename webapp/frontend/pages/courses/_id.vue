@@ -49,8 +49,8 @@ import ClassInfoCard from '~/components/ClassInfo.vue'
 
 type CourseData = {
   course: Course
-  announcements: Array<Announcement>
-  classes: Array<ClassInfo>
+  announcements: Announcement[]
+  classes: ClassInfo[]
   link: string
 }
 
@@ -81,25 +81,23 @@ export default Vue.extend({
       $axios.$get(`/api/courses/${params.id}/classes`),
       $axios.get(path),
     ])
-    const classes: Array<ClassInfo> = classResponses.map(
-      (item: ClassResponse) => {
-        const cls: ClassInfo = {
-          id: item.id,
-          part: item.part,
-          title: item.title,
-          description: item.description,
-        }
-        if (item.submissionClosedAt !== undefined) {
-          cls.submissionClosedAt = new Date(
-            item.submissionClosedAt * 1000
-          ).toLocaleString()
-        }
-        return cls
+    const classes: ClassInfo[] = classResponses.map((item: ClassResponse) => {
+      const cls: ClassInfo = {
+        id: item.id,
+        part: item.part,
+        title: item.title,
+        description: item.description,
       }
-    )
+      if (item.submissionClosedAt !== undefined) {
+        cls.submissionClosedAt = new Date(
+          item.submissionClosedAt * 1000
+        ).toLocaleString()
+      }
+      return cls
+    })
     const responseBody: GetAnnouncementResponse = announcementResult.data
     const link = announcementResult.headers.link
-    const announcements: Array<Announcement> = Object.values(
+    const announcements: Announcement[] = Object.values(
       responseBody.announcements
     ).map((item: AnnouncementResponse) => {
       const announce: Announcement = {

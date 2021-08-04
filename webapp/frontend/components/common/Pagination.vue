@@ -22,9 +22,9 @@
 <script lang="ts">
 import Vue from 'vue'
 
-type paginationData = {
-  prevClasses: Array<String>
-  nextClasses: Array<String>
+type PaginationData = {
+  prevClasses: string[]
+  nextClasses: string[]
 }
 
 export default Vue.extend({
@@ -45,7 +45,7 @@ export default Vue.extend({
       },
     },
   },
-  data(): paginationData {
+  data(): PaginationData {
     return {
       prevClasses: [],
       nextClasses: [],
@@ -56,7 +56,7 @@ export default Vue.extend({
     this.nextClasses = this.getClasses(this.nextDisabled)
   },
   methods: {
-    getClasses(isDisabled: Boolean): Array<String> {
+    getClasses(isDisabled: boolean): string[] {
       if (isDisabled) {
         return ['text-gray-500']
       } else {
