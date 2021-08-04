@@ -302,9 +302,11 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			_, err := SetCourseStatusInProgressAction(ctx, faculty.Agent, course.ID)
 			if err != nil {
 				step.AddError(err)
-				AdminLogger.Println("コースステータスをin-progressに変更するのが失敗しました")
+				AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 				return
 			}
+
+			AdminLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
 
 			// コースの処理
 			for i := 0; i < courseProcessLimit; i++ {
@@ -321,11 +323,13 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				course.AddClass(class)
 				course.BroadCastAnnouncement(announcement)
 				step.AddScore(score.CountAddClass)
+				AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
 				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID)
 				for _, e := range errs {
 					step.AddError(e)
 				}
+				AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
 				// TODO: verify data
 				_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, course.ID, class.ID)
@@ -333,6 +337,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					step.AddError(err)
 					return
 				}
+				AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
 				// TODO: 採点する
 				_, err = scoringAssignments(ctx, course.ID, class.ID, faculty, course.Students(), assignmentsData)
@@ -341,6 +346,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					<-timer
 					continue
 				}
+				AdminLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
 
 				step.AddScore(score.CountSubmitAssignment)
 				step.AddScore(score.CountRegisterScore)
@@ -352,7 +358,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			}
 
 			// コースがおわった
-			AdminLogger.Println(course.Name, "は終了した")
+			AdminLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
+
 			// FIXME: Debug
 			{
 				s.mu.Lock()
@@ -386,7 +393,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
-				ContestantLogger.Printf("学生%vのログインが失敗しました", userData.Name)
+				ContestantLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
 				step.AddError(err)
 				return
 			}
