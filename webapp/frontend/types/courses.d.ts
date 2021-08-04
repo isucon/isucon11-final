@@ -1,25 +1,3 @@
-export type SearchCourseRequest = {
-  keywords?: string
-  type?: string
-  credit?: number
-  teacher?: string
-  period?: number
-  dayOfWeek?: string
-  page?: number
-}
-export type Course = {
-  id: string
-  code: string
-  type: CourseType
-  name: string
-  description: string
-  credit: number
-  teacher: string
-  keywords: string
-  period: number
-  dayOfWeek: DayOfWeek
-}
-
 export type DayOfWeek =
   | 'sunday'
   | 'monday'
@@ -30,6 +8,29 @@ export type DayOfWeek =
   | 'saturday'
 
 export type CourseType = 'liberal-arts' | 'major-subjects'
+
+export type SearchCourseRequest = {
+  keywords?: string
+  type?: string
+  credit?: number
+  teacher?: string
+  period?: number
+  dayOfWeek?: string
+  page?: number
+}
+
+export type Course = {
+  id: string
+  code: string
+  type: CourseType
+  name: string
+  description: string
+  credit: number
+  period: number
+  dayOfWeek: DayOfWeek
+  teacher: string
+  keywords: string
+}
 
 export type Announcement = {
   id: string
@@ -52,7 +53,7 @@ export type AnnouncementResponse = {
 
 export type GetAnnouncementResponse = {
   unreadCount: number
-  announcements: Array<AnnouncementResponse>
+  announcements: AnnouncementResponse[]
 }
 
 export type ClassInfo = {

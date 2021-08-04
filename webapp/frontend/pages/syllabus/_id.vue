@@ -40,7 +40,7 @@
               科目番号
             </div>
             <div class="px-2 py-2 border">
-              {{ course.id }}
+              {{ course.code }}
             </div>
             <div
               class="
@@ -57,7 +57,7 @@
               科目種別
             </div>
             <div class="px-2 py-2 border">
-              {{ course.type }}
+              {{ courseType }}
             </div>
             <div
               class="
@@ -91,7 +91,7 @@
               時限
             </div>
             <div class="px-2 py-2 border">
-              {{ course.dayOfWeek }}{{ course.period }}
+              {{ coursePeriod }}
             </div>
             <div
               class="
@@ -154,23 +154,45 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Context } from '@nuxt/types'
+import { Course } from '~/types/courses'
+import { formatType, formatPeriod } from '~/helpers/course_helper'
+
+type SyllabusData = {
+  course: Course
+}
 
 export default Vue.extend({
-  async asyncData(ctx: Context): Promise<object> {
+  middleware: 'is_loggedin',
+  async asyncData(ctx: Context): Promise<SyllabusData> {
     const id = ctx.params.id
     const res = await ctx.$axios.get(`/api/syllabus/${id}`)
-
-    let course = {}
-    if (res.status === 200) {
-      course = res.data
-    }
+    const course: Course = res.data
 
     return { course }
   },
-  data() {
+  data(): SyllabusData {
     return {
-      course: {},
+      course: {
+        id: '',
+        code: '',
+        type: 'liberal-arts',
+        name: '',
+        description: '',
+        credit: 0,
+        period: 0,
+        dayOfWeek: 'sunday',
+        teacher: '',
+        keywords: '',
+      },
     }
+  },
+  computed: {
+    courseType(): string {
+      return formatType(this.course.type)
+    },
+    coursePeriod(): string {
+      return formatPeriod(this.course.dayOfWeek, this.course.period)
+    },
   },
 })
 </script>
