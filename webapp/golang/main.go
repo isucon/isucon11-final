@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -24,10 +25,9 @@ import (
 )
 
 const (
-	SQLDirectory           = "../sql/"
-	AssignmentsDirectory   = "../assignments/"
-	AssignmentTmpDirectory = "../assignments/tmp/"
-	SessionName            = "session"
+	SQLDirectory         = "../sql/"
+	AssignmentsDirectory = "../assignments/"
+	SessionName          = "session"
 )
 
 type handlers struct {
@@ -118,10 +118,6 @@ func (h *handlers) Initialize(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if err := exec.Command("mkdir", AssignmentsDirectory).Run(); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if err := exec.Command("mkdir", AssignmentTmpDirectory).Run(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -364,6 +360,9 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
 	}
+	sort.Slice(req, func(i, j int) bool {
+		return req[i].ID < req[j].ID
+	})
 
 	tx, err := h.DB.Beginx()
 	if err != nil {
@@ -487,7 +486,6 @@ type ClassScore struct {
 }
 
 type SubmissionWithClassName struct {
-	ID        uuid.UUID     `db:"id"`
 	UserID    uuid.UUID     `db:"user_id"`
 	ClassID   uuid.UUID     `db:"class_id"`
 	Name      string        `db:"file_name"`
@@ -1026,8 +1024,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	defer file.Close()
 
-	submissionID := uuid.New()
-	dst, err := os.Create(AssignmentsDirectory + submissionID)
+	dst, err := os.Create(AssignmentsDirectory + classID.String() + "-" + userID.String())
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1039,7 +1036,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := h.DB.Exec("INSERT INTO `submissions` (`id`, `user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, ?, NOW())", submissionID, userID, classID, header.Filename); err != nil {
+	if _, err := h.DB.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, NOW())", userID, classID, header.Filename); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1085,7 +1082,7 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 	}
 
 	for _, score := range req {
-		if _, err := h.DB.Exec("UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?", score.Score, score.UserCode, classID); err != nil {
+		if _, err := tx.Exec("UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?", score.Score, score.UserCode, classID); err != nil {
 			c.Logger().Error(err)
 			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
@@ -1101,8 +1098,8 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 }
 
 type Submission struct {
-	ID       uuid.UUID `db:"id"`
-	UserName string    `db:"user_name"`
+	UserID   uuid.UUID `db:"user_id"`
+	UserCode string    `db:"user_code"`
 	FileName string    `db:"file_name"`
 }
 
@@ -1134,21 +1131,18 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	var submissions []Submission
-	query := "SELECT `submissions`.`id`, `users`.`name` AS `user_name`" +
+	query := "SELECT `submissions`.`user_id`, `users`.`code` AS `user_code`" +
 		" FROM `submissions`" +
 		" JOIN `users` ON `users`.`id` = `submissions`.`user_id`" +
 		" WHERE `class_id` = ? FOR SHARE"
-	if err := tx.Select(&submissions, query, classID); err == sql.ErrNoRows {
-		_ = tx.Rollback()
-		return echo.NewHTTPError(http.StatusNotFound, "No submission found.")
-	} else if err != nil {
+	if err := tx.Select(&submissions, query, classID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	zipFilePath := AssignmentTmpDirectory + classID.String() + ".zip"
-	if err := createSubmissionsZip(zipFilePath, submissions); err != nil {
+	zipFilePath := AssignmentsDirectory + classID.String() + ".zip"
+	if err := createSubmissionsZip(zipFilePath, classID, submissions); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
@@ -1168,13 +1162,18 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	return c.File(zipFilePath)
 }
 
-func createSubmissionsZip(zipFilePath string, submissions []Submission) error {
+func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []Submission) error {
+	tmpDir := AssignmentsDirectory + classID.String() + "/"
+	if err := exec.Command("mkdir", tmpDir).Run(); err != nil {
+		return err
+	}
+
 	// ファイル名を指定の形式に変更
 	for _, submission := range submissions {
 		if err := exec.Command(
 			"cp",
-			AssignmentsDirectory+submission.ID.String(),
-			AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.FileName,
+			AssignmentsDirectory+classID.String()+"-"+submission.UserID.String(),
+			tmpDir+submission.UserCode,
 		).Run(); err != nil {
 			return err
 		}
@@ -1184,7 +1183,7 @@ func createSubmissionsZip(zipFilePath string, submissions []Submission) error {
 	zipArgs = append(zipArgs, "-j", zipFilePath)
 
 	for _, submission := range submissions {
-		zipArgs = append(zipArgs, AssignmentTmpDirectory+submission.UserName+"-"+submission.ID.String()+"-"+submission.FileName)
+		zipArgs = append(zipArgs, tmpDir+submission.UserCode)
 	}
 
 	return exec.Command("zip", zipArgs...).Run()
