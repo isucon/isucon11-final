@@ -3,7 +3,7 @@ package model
 type ClassParam struct {
 	Title     string
 	Desc      string
-	Part      int // n回目のクラス
+	Part      uint8 // n回目のクラス
 	CreatedAt int64
 }
 

@@ -107,7 +107,7 @@ func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest
 
 type GetClassResponse struct {
 	ID                 string `json:"id"`
-	Part               int    `json:"part"`
+	Part               uint8  `json:"part"`
 	Title              string `json:"title"`
 	Description        string `json:"description"`
 	SubmissionClosedAt int64  `json:"submission_closed_at"`
