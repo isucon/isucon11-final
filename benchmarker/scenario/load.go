@@ -453,7 +453,9 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			}
 
 			if err := verifyClasses(res, course.Classes()); err != nil {
+				mu.Lock()
 				errs = append(errs, err)
+				mu.Unlock()
 			}
 
 			select {
