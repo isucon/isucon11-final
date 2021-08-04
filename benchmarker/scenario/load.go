@@ -321,7 +321,6 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				course.AddClass(class)
 				course.BroadCastAnnouncement(announcement)
 				step.AddScore(score.CountAddClass)
-				step.AddScore(score.CountAddAssignment)
 
 				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID)
 				for _, e := range errs {
@@ -344,7 +343,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				}
 
 				step.AddScore(score.CountSubmitAssignment)
-				step.AddScore(score.CountAddAssignmentScore)
+				step.AddScore(score.CountRegisterScore)
 				select {
 				case <-ctx.Done():
 					return
