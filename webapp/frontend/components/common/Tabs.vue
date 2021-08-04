@@ -35,7 +35,7 @@ export default Vue.extend({
     tabs: {
       type: Array,
       required: true,
-    } as PropOptions<Array<Tab>>,
+    } as PropOptions<Tab[]>,
   },
   data() {
     return {
@@ -48,7 +48,7 @@ export default Vue.extend({
     },
   },
   methods: {
-    tabClasses(index: number): Array<string> {
+    tabClasses(index: number): string[] {
       return index === this.activeTabIndex
         ? ['text-primary-500', 'font-bold', 'border-primary-500']
         : ['text-gray-600', 'border-gray-600']

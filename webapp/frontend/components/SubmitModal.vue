@@ -113,7 +113,7 @@ import CloseIcon from '~/components/common/CloseIcon.vue'
 
 type SubmitFormData = {
   files: File[]
-  failed: Boolean
+  failed: boolean
 }
 
 export default Vue.extend({

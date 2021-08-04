@@ -51,14 +51,14 @@ import TextField from '~/components/common/TextField.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 
 type AsyncAnnounceData = {
-  innerAnnouncements: Array<Announcement>
+  innerAnnouncements: Announcement[]
   numOfUnreads: number
   link: string
 }
 
 type AnnounceListData = AsyncAnnounceData & {
   courseName: string
-  announcements: Array<Announcement>
+  announcements: Announcement[]
   showUnreads: boolean
 }
 
@@ -103,7 +103,7 @@ export default Vue.extend({
     }
   },
   computed: {
-    unreadFilterClasses(): Array<String> {
+    unreadFilterClasses(): string[] {
       return this.showUnreads
         ? ['bg-primary-500', 'text-white']
         : ['bg-white', 'text-black']

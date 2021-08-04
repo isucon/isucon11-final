@@ -24,7 +24,7 @@ export default Vue.extend({
       type: Array,
       required: false,
       default: () => [],
-    } as PropOptions<Array<String>>,
+    } as PropOptions<string[]>,
   },
 })
 </script>

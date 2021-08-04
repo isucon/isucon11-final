@@ -26,15 +26,15 @@ import AnnouncementCard from '~/components/Announcement.vue'
 import Pagination from '~/components/common/Pagination.vue'
 
 type Link = {
-  prev: String
-  next: String
+  prev: string
+  next: string
 }
 
 type AnnouncementListData = {
   parsedLink: Link
 }
 
-function parseLinkHeader(linkHeader: String): Link {
+function parseLinkHeader(linkHeader: string): Link {
   const parsedLink = { prev: '', next: '' }
   const linkData = linkHeader.split(',')
   for (const link of linkData) {
@@ -56,7 +56,7 @@ export default Vue.extend({
     announcements: {
       type: Array,
       required: true,
-    } as PropOptions<Array<Announcement>>,
+    } as PropOptions<Announcement[]>,
     link: {
       type: String,
       required: false,
