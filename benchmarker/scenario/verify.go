@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/isucon/isucon11-final/benchmarker/model"
 
 	"github.com/isucon/isucandar/failure"
 )
@@ -26,6 +28,10 @@ func errInvalidStatusCode(res *http.Response, expected []int) error {
 		str, res.StatusCode))
 }
 
+func errInvalidResponse(message string, args ...interface{}) error {
+	return failure.NewError(fails.ErrApplication, fmt.Errorf(message, args...))
+}
+
 func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	for _, code := range allowedStatusCodes {
 		if res.StatusCode == code {
@@ -33,4 +39,39 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 		}
 	}
 	return errInvalidStatusCode(res, allowedStatusCodes)
+}
+
+func verifyClass(res *api.GetClassResponse, class *model.Class) error {
+	if res.ID != class.ID {
+		return errInvalidResponse("講義IDが期待する値と一致しません")
+	}
+
+	if res.Title != class.Title {
+		return errInvalidResponse("講義のタイトルが期待する値と一致しません")
+	}
+
+	if res.Description != class.Desc {
+		return errInvalidResponse("講義の説明文が期待する値と一致しません")
+	}
+
+	if res.Part != class.Part {
+		return errInvalidResponse("講義のパートが期待する値と一致しません")
+	}
+
+	// TODO: SubmissionClosedAtの検証
+
+	return nil
+}
+
+func verifyClasses(res []*api.GetClassResponse, classes []*model.Class) error {
+	if len(res) != len(classes) {
+		return errInvalidResponse("講義数が期待する数と一致しません")
+	}
+
+	if len(res) > 0 {
+		// 最後に追加された講義だけ中身を検証する
+		return verifyClass(res[len(res)-1], classes[len(classes)-1])
+	}
+
+	return nil
 }

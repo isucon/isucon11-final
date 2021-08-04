@@ -311,7 +311,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				timer := time.After(100 * time.Millisecond)
 
 				// FIXME: verify class
-				classParam := generate.ClassParam(i + 1)
+				classParam := generate.ClassParam(uint8(i + 1))
 				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, classParam)
 				if err != nil {
 					step.AddError(err)
@@ -443,7 +443,8 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
-			_, _, err := GetClassesAction(ctx, s.Agent, course.ID)
+			// 講義一覧を取得する
+			_, res, err := GetClassesAction(ctx, s.Agent, course.ID)
 			if err != nil {
 				mu.Lock()
 				errs = append(errs, err)
@@ -451,8 +452,19 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				return
 			}
 
-			// TODO: classのverify
+			if err := verifyClasses(res, course.Classes()); err != nil {
+				mu.Lock()
+				errs = append(errs, err)
+				mu.Unlock()
+			}
 
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			// 課題を提出する
 			submission := generate.Submission()
 			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
 			if err != nil {

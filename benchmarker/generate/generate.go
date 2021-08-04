@@ -42,7 +42,7 @@ func Submission() *model.Submission {
 	return model.NewSubmission(title, data)
 }
 
-func ClassParam(part int) *model.ClassParam {
+func ClassParam(part uint8) *model.ClassParam {
 	title := "test title"
 	desc := "test desc"
 	createdAt := GenTime()
