@@ -41,6 +41,29 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
+func verifyGrades(res *api.GetGradeResponse) error {
+	// TODO: modelとして何を渡すか
+	// TODO: 成績のverify
+	return nil
+}
+
+func verifySearchCourseResult(res []*api.GetCourseDetailResponse) error {
+	// TODO: modelとして何を渡すか
+	// TODO: 科目検索結果のverify
+	return nil
+}
+
+func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus model.AnnouncementStatus) error {
+	// TODO: お知らせ詳細のverify
+	return nil
+}
+
+func verifyAnnouncements(res *api.GetAnnouncementsResponse) error {
+	// TODO: modelとして何を渡すか
+	// TODO: お知らせ一覧のverify
+	return nil
+}
+
 func verifyClass(res *api.GetClassResponse, class *model.Class) error {
 	if res.ID != class.ID {
 		return errInvalidResponse("講義IDが期待する値と一致しません")
@@ -73,5 +96,11 @@ func verifyClasses(res []*api.GetClassResponse, classes []*model.Class) error {
 		return verifyClass(res[len(res)-1], classes[len(classes)-1])
 	}
 
+	return nil
+}
+
+func verifyAssignments(assignmentsData []byte) error {
+	// TODO: modelとして何を渡すか
+	// TODO: ダウンロードした課題データの検証
 	return nil
 }
