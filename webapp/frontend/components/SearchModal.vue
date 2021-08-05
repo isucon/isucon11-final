@@ -169,6 +169,7 @@ import {
 import { formatPeriod, formatType } from '~/helpers/course_helper'
 import Pagination from '~/components/common/Pagination.vue'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
+import { PeriodCount } from '~/constants/calendar'
 
 type Selected = {
   dayOfWeek: DayOfWeek | undefined
@@ -199,10 +200,6 @@ export default Vue.extend({
       default: false,
       required: true,
     },
-    periodCount: {
-      type: Number,
-      default: 6,
-    },
     selected: {
       type: Object as PropType<Selected>,
       default: () => ({ dayOfWeek: undefined, period: undefined }),
@@ -226,7 +223,7 @@ export default Vue.extend({
       return this.courses.length > 0
     },
     periods() {
-      return new Array(this.periodCount).fill(undefined).map((_, i) => {
+      return new Array(PeriodCount).fill(undefined).map((_, i) => {
         return { text: `${i + 1}`, value: i + 1 }
       })
     },

@@ -1,13 +1,7 @@
 <template>
   <div
-    class="
-      border
-      transition
-      cursor-pointer
-      duration-500
-      ease
-      hover:bg-primary-100
-    "
+    class="border transition duration-500 ease hover:bg-primary-100"
+    :class="cursorType"
   >
     <div
       class="
@@ -32,5 +26,17 @@
 <script lang="ts">
 import Vue from 'vue'
 
-export default Vue.extend({})
+export default Vue.extend({
+  props: {
+    cursor: {
+      type: String,
+      default: 'default',
+    },
+  },
+  computed: {
+    cursorType(): string {
+      return `cursor-${this.cursor}`
+    },
+  },
+})
 </script>
