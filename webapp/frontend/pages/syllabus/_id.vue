@@ -180,7 +180,7 @@ export default Vue.extend({
         description: '',
         credit: 0,
         period: 0,
-        dayOfWeek: 'sunday',
+        dayOfWeek: 'monday',
         teacher: '',
         keywords: '',
       },
