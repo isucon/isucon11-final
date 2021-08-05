@@ -22,11 +22,6 @@
 <script lang="ts">
 import Vue from 'vue'
 
-type PaginationData = {
-  prevClasses: string[]
-  nextClasses: string[]
-}
-
 export default Vue.extend({
   name: 'Pagination',
   props: {
@@ -45,15 +40,13 @@ export default Vue.extend({
       },
     },
   },
-  data(): PaginationData {
-    return {
-      prevClasses: [],
-      nextClasses: [],
-    }
-  },
-  created() {
-    this.prevClasses = this.getClasses(this.prevDisabled)
-    this.nextClasses = this.getClasses(this.nextDisabled)
+  computed: {
+    prevClasses(): string[] {
+      return this.getClasses(this.prevDisabled)
+    },
+    nextClasses(): string[] {
+      return this.getClasses(this.nextDisabled)
+    },
   },
   methods: {
     getClasses(isDisabled: boolean): string[] {

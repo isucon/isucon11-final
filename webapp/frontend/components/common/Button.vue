@@ -1,8 +1,15 @@
 <template>
   <button
-    class="py-2.5 px-6 border rounded"
+    class="
+      py-2
+      px-6
+      border
+      rounded
+      disabled:bg-gray-400 disabled:text-white disabled:border-gray-400
+    "
     :class="colorType"
     :type="type"
+    :disabled="disabled"
     @click="$emit('click')"
   >
     <slot />
@@ -20,6 +27,10 @@ export default Vue.extend({
     type: {
       type: String,
       default: 'button',
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
     },
   },
   computed: {

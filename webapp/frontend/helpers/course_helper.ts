@@ -13,8 +13,6 @@ export function formatType(type: CourseType): string {
 
 export function formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
   switch (dayOfWeek) {
-    case 'sunday':
-      return `日${period}`
     case 'monday':
       return `月${period}`
     case 'tuesday':
@@ -25,8 +23,6 @@ export function formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
       return `木${period}`
     case 'friday':
       return `金${period}`
-    case 'saturday':
-      return `土${period}`
     default:
       const _n: never = dayOfWeek
       return ''

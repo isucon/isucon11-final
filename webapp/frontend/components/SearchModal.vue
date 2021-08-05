@@ -1,5 +1,5 @@
 <template>
-  <Modal :is-shown="isShown" @close="$emit('close')">
+  <Modal :is-shown="isShown" @close="onClose">
     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
       <div class="flex flex-col flex-nowrap">
         <h3
@@ -8,115 +8,148 @@
         >
           科目検索
         </h3>
-        <form class="flex-1 flex-col" @submit.prevent="onSubmitSearch">
+        <form class="flex-1 flex-col" @submit.prevent="onSubmitSearch()">
           <div class="flex items-center">
             <TextField
-              id="inline-query"
+              id="params-keywords"
+              v-model="params.keywords"
               label="キーワード"
               type="text"
               placeholder="キーワードを入力してください"
             />
           </div>
           <div class="flex mt-4 space-x-1">
-            <label class="whitespace-nowrap block text-gray-500 font-bold pr-4"
-              >対象</label
+            <label
+              class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
+              >科目</label
             >
+            <div class="">
+              <TextField
+                id="params-teacher"
+                v-model="params.teacher"
+                label="担当教員"
+                label-direction="vertical"
+                type="text"
+                placeholder="教員名を入力"
+              />
+            </div>
+            <div class="flex items-center">
+              <TextField
+                id="params-credit"
+                v-model="params.credit"
+                label="単位数"
+                label-direction="vertical"
+                type="number"
+                placeholder="単位数を入力"
+              />
+            </div>
             <Select
-              id="faculty"
-              label="学部・研究科"
-              :value="[{ text: '工学部', value: 'Engineering' }]"
-            />
-            <Select
-              id="department"
-              label="学科・専攻"
-              :value="[{ text: 'xx学科', value: 'xxx' }]"
-            />
-            <Select
-              id="year"
-              label="年次"
-              :value="[{ text: '1', value: '1' }]"
+              id="params-type"
+              v-model="params.type"
+              label="科目種別"
+              :options="[
+                { text: '一般教養', value: 'liberal-arts' },
+                { text: '専門', value: 'major-subjects' },
+              ]"
             />
           </div>
           <div class="flex mt-4 space-x-1">
-            <label class="whitespace-nowrap block text-gray-500 font-bold pr-4"
+            <label
+              class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >開講</label
             >
             <Select
-              id="semester"
-              label="学期"
-              :value="[{ text: '工学部', value: 'Engineering' }]"
-            />
-            <Select
-              id="day-of-week"
+              id="params-day-of-week"
               label="曜日"
-              :value="[
-                { text: '月曜', value: '1' },
-                { text: '火曜', value: '2' },
-                { text: '水曜', value: '3' },
-                { text: '木曜', value: '4' },
-                { text: '金曜', value: '5' },
+              :options="[
+                { text: '月曜', value: 'monday' },
+                { text: '火曜', value: 'tuesday' },
+                { text: '水曜', value: 'wednesday' },
+                { text: '木曜', value: 'thursday' },
+                { text: '金曜', value: 'friday' },
               ]"
+              :selected="params.dayOfWeek || selected.dayOfWeek"
+              @change="params.dayOfWeek = $event"
             />
             <Select
-              id="period"
+              id="params-period"
               label="時限"
-              :value="[
-                { text: '1', value: '1' },
-                { text: '2', value: '2' },
-                { text: '3', value: '3' },
-                { text: '4', value: '4' },
-                { text: '5', value: '5' },
-              ]"
+              :options="periods"
+              :selected="params.period || selected.period"
+              @change="params.period = $event"
             />
           </div>
-          <Button type="submit" class="mt-6 flex-grow-0" color="primary"
-            >検索
-          </Button>
+          <div class="flex justify-center">
+            <Button type="button" class="mt-6 flex-grow-0" @click="onClickReset"
+              >リセット
+            </Button>
+            <Button type="submit" class="mt-6 flex-grow-0" color="primary"
+              >検索
+            </Button>
+          </div>
         </form>
 
-        <div v-if="isShowSearchResult">
-          <h3 class="text-xl">検索結果: xx件</h3>
-          <table class="table-auto border w-full">
-            <tr class="text-center">
-              <th>選択</th>
-              <th>科目コード</th>
-              <th>科目名</th>
-              <th>学期</th>
-              <th>時間</th>
-              <th>単位数</th>
-              <th>担当</th>
-              <th></th>
-            </tr>
-            <template v-for="(c, i) in courses">
-              <tr :key="`tr-${i}`" class="text-center">
-                <td>
-                  <input
-                    type="checkbox"
-                    class="
-                      form-input
-                      text-primary-500
-                      focus:outline-none focus:ring-primary-200
-                    "
-                    :checked="isChecked(c.id)"
-                    @change="onChangeCheckbox(c)"
-                  />
-                </td>
-                <td>{{ c.id }}</td>
-                <td>{{ c.name }}</td>
-                <td>前期</td>
-                <td>{{ c.dayOfWeek }}{{ c.period }}</td>
-                <td>{{ c.credit }}</td>
-                <td>椅子 昆</td>
-                <td>
-                  <NuxtLink :to="`/syllabus/${c.id}`" class="text-primary-500"
-                    >詳細を見る
-                  </NuxtLink>
-                </td>
+        <template v-if="isShowSearchResult">
+          <hr class="my-6" />
+          <div>
+            <Button
+              :disabled="checkedCourses.length === 0"
+              @click="onSubmitTemporaryRegistration"
+              >仮登録</Button
+            >
+            <h3 class="text-xl font-bold mt-2">検索結果</h3>
+            <table class="table-auto border w-full">
+              <tr class="text-center">
+                <th>選択</th>
+                <th>科目コード</th>
+                <th>科目名</th>
+                <th>科目種別</th>
+                <th>時間</th>
+                <th>単位数</th>
+                <th>担当</th>
+                <th></th>
               </tr>
-            </template>
-          </table>
-          <Button @click="onSubmitTemporaryRegistration">仮登録</Button>
-        </div>
+              <template v-for="(c, i) in courses">
+                <tr
+                  :key="`tr-${i}`"
+                  class="text-center bg-gray-200 odd:bg-white"
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      class="
+                        form-input
+                        text-primary-500
+                        focus:outline-none focus:ring-primary-200
+                      "
+                      :checked="isChecked(c.id)"
+                      @change="onChangeCheckbox(c)"
+                    />
+                  </td>
+                  <td>{{ c.code }}</td>
+                  <td>{{ c.name }}</td>
+                  <td>{{ formatType(c.type) }}</td>
+                  <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
+                  <td>{{ c.credit }}</td>
+                  <td>椅子 昆</td>
+                  <td>
+                    <NuxtLink :to="`/syllabus/${c.id}`" class="text-primary-500"
+                      >詳細を見る
+                    </NuxtLink>
+                  </td>
+                </tr>
+              </template>
+            </table>
+            <div class="mt-2 flex justify-center">
+              <Pagination
+                :prev-disabled="!Boolean(link.prev)"
+                :next-disabled="!Boolean(link.next)"
+                @goPrev="onClickPagination(link.prev)"
+                @goNext="onClickPagination(link.next)"
+              />
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </Modal>
@@ -127,27 +160,52 @@ import Modal from './common/Modal.vue'
 import TextField from './common/TextField.vue'
 import Select from './common/Select.vue'
 import Button from '~/components/common/Button.vue'
+import {
+  Course,
+  CourseType,
+  DayOfWeek,
+  SearchCourseRequest,
+} from '~/types/courses'
+import { formatPeriod, formatType } from '~/helpers/course_helper'
+import Pagination from '~/components/common/Pagination.vue'
+import { Link, parseLinkHeader } from '~/helpers/link_helper'
 
-type Course = {
-  id: string
-  name: string
-  credit: number
-  dayOfWeek: string
-  period: number
+type Selected = {
+  dayOfWeek: DayOfWeek | undefined
+  period: number | undefined
 }
 
 type DataType = {
   courses: Course[]
   checkedCourses: Course[]
+  params: SearchCourseRequest
+  link: Partial<Link>
+}
+
+const initParams = {
+  keywords: '',
+  type: '',
+  credit: undefined,
+  teacher: '',
+  period: undefined,
+  dayOfWeek: '',
 }
 
 export default Vue.extend({
-  components: { Button, Select, TextField, Modal },
+  components: { Pagination, Button, Select, TextField, Modal },
   props: {
     isShown: {
       type: Boolean,
       default: false,
       required: true,
+    },
+    periodCount: {
+      type: Number,
+      default: 6,
+    },
+    selected: {
+      type: Object as PropType<Selected>,
+      default: () => ({ dayOfWeek: undefined, period: undefined }),
     },
     value: {
       type: Array as PropType<Course[]>,
@@ -159,82 +217,50 @@ export default Vue.extend({
     return {
       courses: [],
       checkedCourses: this.value,
+      params: Object.assign({}, initParams),
+      link: { prev: undefined, next: undefined },
     }
   },
   computed: {
     isShowSearchResult(): boolean {
       return this.courses.length > 0
     },
+    periods() {
+      return new Array(this.periodCount).fill(undefined).map((_, i) => {
+        return { text: `${i + 1}`, value: i + 1 }
+      })
+    },
   },
   methods: {
+    formatType(type: CourseType): string {
+      return formatType(type)
+    },
+    formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
+      return formatPeriod(dayOfWeek, period)
+    },
     isChecked(courseId: string): boolean {
       const course = this.checkedCourses.find((v) => v.id === courseId)
       return course !== undefined
     },
-    async onSubmitSearch(): Promise<void> {
-      await Promise.resolve()
-      this.courses = [
-        {
-          id: '01234567-89ab-cdef-0002-000000000001',
-          name: '微分積分基礎',
-          credit: 2,
-          dayOfWeek: 'monday',
-          period: 1,
-        },
-        {
-          id: '01234567-89ab-cdef-0002-000000000002',
-          name: '線形代数基礎',
-          credit: 2,
-          dayOfWeek: 'monday',
-          period: 3,
-        },
-        {
-          id: '01234567-89ab-cdef-0002-000000000003',
-          name: 'アルゴリズム基礎',
-          credit: 2,
-          dayOfWeek: 'thursday',
-          period: 2,
-        },
-        {
-          id: '01234567-89ab-cdef-0002-000000000011',
-          name: '微分積分応用',
-          credit: 2,
-          dayOfWeek: 'thursday',
-          period: 4,
-        },
-        {
-          id: '01234567-89ab-cdef-0002-000000000012',
-          name: '線形代数応用',
-          credit: 2,
-          dayOfWeek: 'wednesday',
-          period: 3,
-        },
-        {
-          id: '01234567-89ab-cdef-0002-000000000013',
-          name: 'プログラミング',
-          credit: 2,
-          dayOfWeek: 'wednesday',
-          period: 5,
-        },
-        {
-          id: '01234567-89ab-cdef-0002-000000000014',
-          name: 'プログラミング演習A',
-          credit: 2,
-          dayOfWeek: 'friday',
-          period: 1,
-        },
-        {
-          id: '01234567-89ab-cdef-0002-000000000015',
-          name: 'プログラミング演習B',
-          credit: 1,
-          dayOfWeek: 'friday',
-          period: 2,
-        },
-      ]
-      // const res = await this.$axios.get('/api/syllabus')
-      // if (res.status === 200) {
-      //   this.courses = res.data
-      // }
+    onClickReset(): void {
+      this.reset()
+    },
+    async onSubmitSearch(url?: string): Promise<void> {
+      const u = url ?? '/api/syllabus'
+      const params = this.filterParams(this.params)
+      try {
+        const res = await this.$axios.get<Course[]>(u, { params })
+        if (res.status === 200) {
+          this.courses = res.data
+          this.link = Object.assign(
+            {},
+            this.link,
+            parseLinkHeader(res.headers.link)
+          )
+        }
+      } catch (e) {
+        console.error(e)
+      }
     },
     onChangeCheckbox(course: Course): void {
       const c = this.checkedCourses.find((v) => v.id === course.id)
@@ -248,7 +274,26 @@ export default Vue.extend({
     },
     onSubmitTemporaryRegistration(): void {
       this.$emit('input', this.checkedCourses)
+      this.onClose()
+    },
+    onClose() {
+      this.reset()
       this.$emit('close')
+    },
+    onClickPagination(link: string): void {
+      this.onSubmitSearch(link)
+    },
+    filterParams(params: SearchCourseRequest): SearchCourseRequest {
+      return (Object.keys(params) as (keyof SearchCourseRequest)[])
+        .filter((k) => params[k] !== undefined && params[k] !== '')
+        .reduce(
+          (acc, k) => ({ ...acc, [k]: params[k] }),
+          {} as SearchCourseRequest
+        )
+    },
+    reset(): void {
+      this.courses = []
+      this.params = Object.assign({}, this.params, initParams)
     },
   },
 })

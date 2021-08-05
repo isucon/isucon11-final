@@ -42,7 +42,7 @@ const config = {
         component: 'Fa',
         suffix: true,
         icons: {
-          solid: ['faTimes', 'faChevronLeft', 'faChevronRight'],
+          solid: ['faTimes', 'faChevronLeft', 'faChevronRight', 'faPen'],
         },
       },
     ],
