@@ -53,17 +53,7 @@ import Calendar from '../components/Calendar.vue'
 import CalendarCell from '../components/CalendarCell.vue'
 import SearchModal from '../components/SearchModal.vue'
 import { Course, DayOfWeek } from '~/types/courses'
-
-const dayOfWeekIndex = {
-  monday: 0,
-  tuesday: 1,
-  wednesday: 2,
-  thursday: 3,
-  friday: 4,
-}
-
-const weekdayCount = 5
-const periodCount = 6
+import { DayOfWeekMap, WeekdayCount, PeriodCount } from '~/constants/calendar'
 
 type PartialCourse = Partial<Course>
 
@@ -71,7 +61,6 @@ type DataType = {
   isShownModal: boolean
   selected: { dayOfWeek: DayOfWeek | undefined; period: number | undefined }
   willRegisterCourses: Course[]
-  periodCount: number
 }
 
 export default Vue.extend({
@@ -87,20 +76,19 @@ export default Vue.extend({
       isShownModal: false,
       selected: { dayOfWeek: undefined, period: undefined },
       willRegisterCourses: [],
-      periodCount,
     }
   },
   computed: {
     courses(): PartialCourse[] {
-      return new Array(weekdayCount * periodCount)
+      return new Array(WeekdayCount * PeriodCount)
         .fill(undefined)
         .map((_, i) => {
           const course = this.getCourse(i)
           if (!course) {
-            const dayOfWeek = (Object.keys(dayOfWeekIndex) as DayOfWeek[]).find(
-              (k) => dayOfWeekIndex[k] === i % weekdayCount
+            const dayOfWeek = (Object.keys(DayOfWeekMap) as DayOfWeek[]).find(
+              (k) => DayOfWeekMap[k] === i % WeekdayCount
             )
-            const period = Math.floor(i / weekdayCount) + 1
+            const period = Math.floor(i / WeekdayCount) + 1
 
             return { id: undefined, dayOfWeek, period }
           }
@@ -112,8 +100,8 @@ export default Vue.extend({
   methods: {
     getCourse(idx: number): Course | undefined {
       return this.willRegisterCourses.find((c) => {
-        const dayOfWeek = dayOfWeekIndex[c.dayOfWeek as DayOfWeek]
-        return idx === dayOfWeek + (c.period - 1) * weekdayCount
+        const dayOfWeek = DayOfWeekMap[c.dayOfWeek as DayOfWeek]
+        return idx === dayOfWeek + (c.period - 1) * WeekdayCount
       })
     },
     onClickSearchCourse(c: PartialCourse | undefined): void {
