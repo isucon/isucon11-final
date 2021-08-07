@@ -2,32 +2,7 @@
   <div>
     <div class="py-10 px-8 bg-white shadow-lg w-8/12">
       <div class="flex-1 flex-col">
-        <section>
-          <h1 class="text-2xl">個人成績照会</h1>
-
-          <div class="py-4">
-            <table class="table-auto border">
-              <tr>
-                <th class="bg-primary-500 text-white border py-2.5 px-2.5">
-                  氏名
-                </th>
-                <td class="border px-2.5">椅子 近</td>
-              </tr>
-              <tr>
-                <th class="bg-primary-500 text-white border py-2.5 px-2.5">
-                  学籍番号
-                </th>
-                <td class="border px-2.5">s123456789</td>
-              </tr>
-              <tr>
-                <th class="bg-primary-500 text-white border py-2.5 px-2.5">
-                  所属
-                </th>
-                <td class="border px-2.5">椅子学部椅子解析工学科</td>
-              </tr>
-            </table>
-          </div>
-        </section>
+        <h1 class="text-2xl">個人成績照会</h1>
 
         <section class="mt-10">
           <h1 class="text-xl">成績概要</h1>
@@ -48,7 +23,7 @@
                 <td class="px-4 py-2 border">{{ grades.summary.credits }}</td>
                 <td class="px-4 py-2 border">{{ grades.summary.gpt }}</td>
                 <td class="px-4 py-2 border">{{ grades.summary.gptAvg }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gptStd }}</td>
+                <td class="px-4 py-2 border">{{ grades.summary.gptTScore }}</td>
                 <td class="px-4 py-2 border">{{ grades.summary.gptMin }}</td>
                 <td class="px-4 py-2 border">{{ grades.summary.gptMax }}</td>
               </tr>
@@ -89,10 +64,10 @@
                 {{ r.totalScoreAvg }}
               </div>
               <div
-                :key="`course${i}-totalScoreStd${r.totalScoreStd}`"
+                :key="`course${i}-totalScoreTScore${r.totalScoreTScore}`"
                 class="px-4 py-2 border"
               >
-                {{ r.totalScoreStd }}
+                {{ r.totalScoreTScore }}
               </div>
               <div
                 :key="`course${i}-totalScoreMin${r.totalScoreMin}`"
@@ -166,6 +141,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { Context } from '@nuxt/types'
 import { Grade } from '~/types/courses'
 import Button from '~/components/common/Button.vue'
 
@@ -176,67 +152,17 @@ type Data = {
 
 export default Vue.extend({
   components: { Button },
-  asyncData() {
-    const grades = {
-      summary: {
-        gpt: 1,
-        credits: 200,
-        gptAvg: 50,
-        gptStd: 50,
-        gptMax: 50,
-        gptMin: 50,
-      },
-      courses: [
-        {
-          name: 'コース1',
-          code: 'course1',
-          totalScore: 50,
-          totalScoreAvg: 50,
-          totalScoreStd: 50,
-          totalScoreMax: 50,
-          totalScoreMin: 50,
-          classScores: [
-            {
-              title: '講義1',
-              part: 1,
-              score: 50,
-              submitters: 1,
-            },
-            {
-              title: '講義2',
-              part: 2,
-              score: 50,
-              submitters: 1,
-            },
-          ],
-        },
-        {
-          name: 'コース2',
-          code: 'course2',
-          totalScore: 50,
-          totalScoreAvg: 50,
-          totalScoreStd: 50,
-          totalScoreMax: 50,
-          totalScoreMin: 50,
-          classScores: [
-            {
-              title: '講義1',
-              part: 1,
-              score: 50,
-              submitters: 1,
-            },
-            {
-              title: '講義2',
-              part: 2,
-              score: 50,
-              submitters: 1,
-            },
-          ],
-        },
-      ],
+  async asyncData(ctx: Context) {
+    try {
+      const res = await ctx.$axios.get('/api/users/me/grades')
+      if (res.status === 200) {
+        return { grades: res.data }
+      }
+    } catch (e) {
+      console.error(e)
     }
 
-    return { grades }
+    return { grades: undefined }
   },
   data(): Data {
     return {
