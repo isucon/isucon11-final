@@ -343,7 +343,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			for i := 0; i < courseProcessLimit; i++ {
 				timer := time.After(100 * time.Millisecond)
 
-				classParam := generate.ClassParam(uint8(i + 1))
+				classParam := generate.ClassParam(course, uint8(i+1))
 				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, classParam)
 				if err != nil {
 					step.AddError(err)
