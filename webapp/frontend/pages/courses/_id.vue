@@ -43,6 +43,7 @@ import {
   GetAnnouncementResponse,
   ClassInfo,
 } from '~/types/courses'
+import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import ClassInfoCard from '~/components/ClassInfo.vue'
@@ -126,16 +127,20 @@ export default Vue.extend({
       event: { done: () => undefined },
       announcement: Announcement
     ) {
-      const announcementDetail: Announcement = await this.$axios.$get(
-        `/api/announcements/${announcement.id}`
-      )
-      const target = this.announcements.find(
-        (item) => item.id === announcement.id
-      )
-      if (target) {
-        target.message = announcementDetail.message
+      try {
+        const announcementDetail: Announcement = await this.$axios.$get(
+          `/api/announcements/${announcement.id}`
+        )
+        const target = this.announcements.find(
+          (item) => item.id === announcement.id
+        )
+        if (target) {
+          target.message = announcementDetail.message
+        }
+        event.done()
+      } catch (e) {
+        notify('お知らせの取得に失敗しました')
       }
-      event.done()
     },
     closeAnnouncement(event: { done: () => undefined }) {
       event.done()
