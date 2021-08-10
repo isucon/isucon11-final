@@ -54,7 +54,34 @@ func verifySearchCourseResult(res []*api.GetCourseDetailResponse) error {
 }
 
 func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus model.AnnouncementStatus) error {
-	// TODO: お知らせ詳細のverify
+	if res.ID != announcementStatus.Announcement.ID {
+		return errInvalidResponse("お知らせIDが期待する値と一致しません")
+	}
+
+	if res.CourseID != announcementStatus.Announcement.CourseID {
+		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
+	}
+
+	if res.CourseName != announcementStatus.Announcement.CourseName {
+		return errInvalidResponse("お知らせの講義名が期待する値と一致しません")
+	}
+
+	if res.Title != announcementStatus.Announcement.Title {
+		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
+	}
+
+	if res.Message != announcementStatus.Announcement.Message {
+		return errInvalidResponse("お知らせのメッセージが期待する値と一致しません")
+	}
+
+	if res.Unread != announcementStatus.Unread {
+		return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
+	}
+
+	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
+		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
+	}
+
 	return nil
 }
 
