@@ -54,10 +54,6 @@ func verifySearchCourseResult(res []*api.GetCourseDetailResponse) error {
 }
 
 func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
-	if res.ID != announcementStatus.Announcement.ID {
-		return errInvalidResponse("お知らせIDが期待する値と一致しません")
-	}
-
 	if res.CourseID != announcementStatus.Announcement.CourseID {
 		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
 	}
@@ -85,10 +81,62 @@ func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model
 	return nil
 }
 
-func verifyAnnouncements(res *api.GetAnnouncementsResponse) error {
-	// TODO: modelとして何を渡すか
-	// TODO: お知らせ一覧のverify
+// お知らせ一覧の中身の検証
+// TODO: ヘルパ関数作ってverifyAnnouncementとまとめても良いかも
+func verifyAnnouncementsContent(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
+	if res.CourseID != announcementStatus.Announcement.CourseID {
+		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
+	}
+
+	if res.CourseName != announcementStatus.Announcement.CourseName {
+		return errInvalidResponse("お知らせの講義名が期待する値と一致しません")
+	}
+
+	if res.Title != announcementStatus.Announcement.Title {
+		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
+	}
+
+	if res.Unread != announcementStatus.Unread {
+		return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
+	}
+
+	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
+		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
+	}
+
 	return nil
+}
+
+func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) []error {
+	errs := make([]error, 0)
+
+	// リストの中身の検証
+	// MEMO: ランダムで数件チェックにしてもいいかも
+	// MEMO: unreadだけ返すとハックできそう
+	for _, announcement := range res.Announcements {
+		announcementStatus := student.GetAnnouncement(announcement.ID)
+		if announcementStatus == nil {
+			// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
+			// load中には検証できないのでskip
+			continue
+		}
+
+		if err := verifyAnnouncementsContent(&announcement, announcementStatus); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// CreatedAtの降順でソートされているか
+	for i := 0; i < len(res.Announcements)-1; i++ {
+		if res.Announcements[i].CreatedAt < res.Announcements[i+1].CreatedAt {
+			errs = append(errs, errInvalidResponse("お知らせの順序が不正です"))
+			break
+		}
+	}
+
+	// MEMO: res.UnreadCountはload中には検証できなさそう
+
+	return errs
 }
 
 func verifyClass(res *api.GetClassResponse, class *model.Class) error {
