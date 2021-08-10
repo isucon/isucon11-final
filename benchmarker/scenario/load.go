@@ -275,7 +275,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 							step.AddError(err)
 							continue // 次の未読おしらせの確認へ
 						}
-						if err := verifyAnnouncement(&res, *student.GetAnnouncement(ans.ID)); err != nil {
+						if err := verifyAnnouncement(&res, student.GetAnnouncement(ans.ID)); err != nil {
 							step.AddError(err)
 						}
 

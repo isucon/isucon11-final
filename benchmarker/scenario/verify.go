@@ -53,7 +53,7 @@ func verifySearchCourseResult(res []*api.GetCourseDetailResponse) error {
 	return nil
 }
 
-func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus model.AnnouncementStatus) error {
+func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
 	if res.ID != announcementStatus.Announcement.ID {
 		return errInvalidResponse("お知らせIDが期待する値と一致しません")
 	}
