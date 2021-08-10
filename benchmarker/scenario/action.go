@@ -3,6 +3,7 @@ package scenario
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -215,7 +216,9 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	}
 
 	class := model.NewClass(res.ClassID, param)
-	announcement := model.NewAnnouncement(res.AnnouncementID, course.ID, course.Name, "test title")
+	title := fmt.Sprintf("クラス追加: %s", param.Title)
+	message := fmt.Sprintf("クラスが新しく追加されました: %s\n%s", param.Title, param.Desc)
+	announcement := model.NewAnnouncement(res.AnnouncementID, course.ID, course.Name, title, message, param.CreatedAt)
 	return hres, class, announcement, nil
 }
 
