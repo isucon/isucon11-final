@@ -46,7 +46,6 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// LoadWorkerに初期負荷を追加
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 
-	// FIXME: コース追加前にコース登録アクションが必要
 	wg := sync.WaitGroup{}
 	wg.Add(initialCourseCount)
 	for i := 0; i < initialCourseCount; i++ {
@@ -114,13 +113,16 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		studentLoadWorker.Do(func(ctx context.Context) {
 			for ctx.Err() == nil {
 				// 学生は成績を確認し続ける
-				// TODO: verify grade
-				_, _, err := GetGradeAction(ctx, student.Agent)
+				_, res, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
+				if err := verifyGrades(&res); err != nil {
+					step.AddError(err)
+				}
+
 				step.AddScore(score.CountGetGrades)
 				AdminLogger.Printf("%vは成績を確認した", student.Name)
 
@@ -136,14 +138,16 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				for i := 0; i < wishRegisterCount*searchCountByRegistration; i++ {
 					timer := time.After(300 * time.Millisecond)
 
-					// TODO: verify course
-					_, _, err := SearchCourseAction(ctx, student.Agent)
-
+					_, res, err := SearchCourseAction(ctx, student.Agent)
 					if err != nil {
 						step.AddError(err)
 						<-timer
 						continue
 					}
+					if err := verifySearchCourseResult(res); err != nil {
+						step.AddError(err)
+					}
+
 					step.AddScore(score.CountSearchCourse)
 
 					select {
@@ -244,27 +248,36 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			var next string // 次にアクセスするお知らせ一覧のページ
 			for ctx.Err() == nil {
 				// 学生はお知らせを確認し続ける
-				hres, announceList, err := GetAnnouncementListAction(ctx, student.Agent, next)
+				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
 				if err != nil {
 					step.AddError(err)
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
-				// TODO: verify announceList
+				if err := verifyAnnouncements(&res); err != nil {
+					step.AddError(err)
+				}
+
 				step.AddScore(score.CountGetAnnouncements)
 
-				for _, ans := range announceList.Announcements {
+				for _, ans := range res.Announcements {
 					if ans.Unread {
 						select {
 						case <-ctx.Done():
 							return
 						default:
 						}
-						_, _, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+
+						// お知らせの詳細を取得する
+						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
 						if err != nil {
 							step.AddError(err)
 							continue // 次の未読おしらせの確認へ
 						}
+						if err := verifyAnnouncement(&res, *student.GetAnnouncement(ans.ID)); err != nil {
+							step.AddError(err)
+						}
+
 						student.ReadAnnouncement(ans.ID)
 						step.AddScore(score.CountGetAnnouncementsDetail)
 					}
@@ -311,6 +324,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			}
 
 			faculty := course.Faculty()
+			// コースステータスをin-progressにする
 			_, err := SetCourseStatusInProgressAction(ctx, faculty.Agent, course.ID)
 			if err != nil {
 				step.AddError(err)
@@ -329,7 +343,6 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			for i := 0; i < courseProcessLimit; i++ {
 				timer := time.After(100 * time.Millisecond)
 
-				// FIXME: verify class
 				classParam := generate.ClassParam(uint8(i + 1))
 				_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, classParam)
 				if err != nil {
@@ -361,11 +374,13 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				default:
 				}
 
-				// TODO: verify data
 				_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, course.ID, class.ID)
 				if err != nil {
 					step.AddError(err)
 					return
+				}
+				if err := verifyAssignments(assignmentsData); err != nil {
+					step.AddError(err)
 				}
 				AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
@@ -408,7 +423,6 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 			// コースが追加されたのでベンチのアクティブ学生も増やす
 			s.addActiveStudentLoads(ctx, step, 1)
-			return
 		})
 	})
 	return loadCourseWorker
@@ -498,7 +512,6 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				mu.Unlock()
 				return
 			}
-
 			if err := verifyClasses(res, course.Classes()); err != nil {
 				mu.Lock()
 				errs = append(errs, err)
