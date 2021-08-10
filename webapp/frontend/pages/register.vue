@@ -52,6 +52,7 @@ import Button from '../components/common/Button.vue'
 import Calendar from '../components/Calendar.vue'
 import CalendarCell from '../components/CalendarCell.vue'
 import SearchModal from '../components/SearchModal.vue'
+import { notify } from '~/helpers/notification_helper'
 import { Course, DayOfWeek } from '~/types/courses'
 import { DayOfWeekMap, WeekdayCount, PeriodCount } from '~/constants/calendar'
 
@@ -61,6 +62,7 @@ type DataType = {
   isShownModal: boolean
   selected: { dayOfWeek: DayOfWeek | undefined; period: number | undefined }
   willRegisterCourses: Course[]
+  periodCount: number
 }
 
 export default Vue.extend({
@@ -76,6 +78,7 @@ export default Vue.extend({
       isShownModal: false,
       selected: { dayOfWeek: undefined, period: undefined },
       willRegisterCourses: [],
+      periodCount: PeriodCount,
     }
   },
   computed: {
@@ -128,8 +131,7 @@ export default Vue.extend({
           await this.$router.push('/mypage')
         }
       } catch (e) {
-        console.error(e)
-        alert('暫定のエラー表示です。履修登録に失敗しました')
+        notify('履修登録に失敗しました')
       }
     },
   },
