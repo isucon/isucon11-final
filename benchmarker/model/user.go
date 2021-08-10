@@ -78,10 +78,14 @@ func (s *Student) AddAnnouncement(announcement *Announcement) {
 }
 
 func (s *Student) GetAnnouncement(id string) *AnnouncementStatus {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
-	return s.announcements[s.announcementIndexByID[id]]
+	index, exists := s.announcementIndexByID[id]
+	if !exists {
+		return nil
+	}
+	return s.announcements[index]
 }
 
 func (s *Student) ReadAnnouncement(id string) {

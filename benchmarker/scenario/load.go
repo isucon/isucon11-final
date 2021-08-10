@@ -269,13 +269,20 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					}
 
 					if ans.Unread {
+						announcementStatus := student.GetAnnouncement(ans.ID)
+						if announcementStatus == nil {
+							// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
+							// load中には検証できないのでskip
+							continue
+						}
+
 						// お知らせの詳細を取得する
 						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
 						if err != nil {
 							step.AddError(err)
 							continue // 次の未読おしらせの確認へ
 						}
-						if err := verifyAnnouncement(&res, student.GetAnnouncement(ans.ID)); err != nil {
+						if err := verifyAnnouncement(&res, announcementStatus); err != nil {
 							step.AddError(err)
 						}
 
