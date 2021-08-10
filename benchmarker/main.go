@@ -124,6 +124,13 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 
 	logger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
 	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
+
+	// FIXME: for debug
+	logger.Printf("breakdown:")
+	for k, v := range breakdown {
+		logger.Printf("  %v: %v", k, v)
+	}
+
 	/*
 		err := reporter.Report(&isuxportalResources.BenchmarkResult{
 			SurveyResponse: &isuxportalResources.SurveyResponse{

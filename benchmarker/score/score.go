@@ -5,16 +5,15 @@ import (
 )
 
 const (
-	CountAddCourse = score.ScoreTag(rune(iota))
-	CountAddClass
-	CountAddAssignment
-	CountSubmitAssignment
-	CountAddAssignmentScore
-	CountGetAnnouncements
-	CountGetAnnouncementsDetail
-	CountGetGrades
-	CountSearchCourse
-	CountRegisterCourses
+	CountAddCourse              = "add course"
+	CountAddClass               = "add class"
+	CountSubmitAssignment       = "submit assignment"
+	CountRegisterScore          = "register score"
+	CountGetAnnouncements       = "get announcements"
+	CountGetAnnouncementsDetail = "get announcement detail"
+	CountGetGrades              = "get grades"
+	CountSearchCourse           = "search courses"
+	CountRegisterCourses        = "register courses"
 )
 
 type mag int64      // 1回でn点

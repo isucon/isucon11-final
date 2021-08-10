@@ -124,6 +124,12 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				step.AddScore(score.CountGetGrades)
 				AdminLogger.Printf("%vは成績を確認した", student.Name)
 
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
 				wishRegisterCount := registerCourseLimit - student.RegisteringCount()
 
 				// 履修希望コース * searchCountByRegistration 回 検索を行う
@@ -298,12 +304,25 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			// コースgoroutineは満員 or 履修締め切りまではなにもしない
 			<-course.WaitFullOrUnRegistrable(ctx)
 
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			faculty := course.Faculty()
 			_, err := SetCourseStatusInProgressAction(ctx, faculty.Agent, course.ID)
 			if err != nil {
 				step.AddError(err)
-				AdminLogger.Println("コースステータスをin-progressに変更するのが失敗しました")
+				AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 				return
+			}
+			AdminLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
 			}
 
 			// コースの処理
@@ -321,11 +340,25 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				course.AddClass(class)
 				course.BroadCastAnnouncement(announcement)
 				step.AddScore(score.CountAddClass)
-				step.AddScore(score.CountAddAssignment)
+				AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 
 				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID)
 				for _, e := range errs {
 					step.AddError(e)
+				}
+				step.AddScore(score.CountSubmitAssignment)
+				AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
 				}
 
 				// TODO: verify data
@@ -333,6 +366,13 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				if err != nil {
 					step.AddError(err)
 					return
+				}
+				AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
 				}
 
 				// TODO: 採点する
@@ -342,9 +382,9 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					<-timer
 					continue
 				}
+				step.AddScore(score.CountRegisterScore)
+				AdminLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
 
-				step.AddScore(score.CountSubmitAssignment)
-				step.AddScore(score.CountAddAssignmentScore)
 				select {
 				case <-ctx.Done():
 					return
@@ -353,7 +393,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			}
 
 			// コースがおわった
-			AdminLogger.Println(course.Name, "は終了した")
+			AdminLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
+
 			// FIXME: Debug
 			{
 				s.mu.Lock()
@@ -387,7 +428,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
-				ContestantLogger.Printf("学生%vのログインが失敗しました", userData.Name)
+				ContestantLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
 				step.AddError(err)
 				return
 			}
@@ -407,6 +448,12 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		ContestantLogger.Printf("facultyのログインに失敗しました")
 		step.AddError(failure.NewError(fails.ErrCritical, err))
 		return
+	}
+
+	select {
+	case <-ctx.Done():
+		return
+	default:
 	}
 
 	_, res, err := AddCourseAction(ctx, faculty, courseParam)

@@ -27,7 +27,7 @@ func CourseParam(faculty *model.Faculty) *model.CourseParam {
 	return &model.CourseParam{
 		Code:      fmt.Sprintf("L%04d", code), // 重複不可, L,M+4桁の数字
 		Type:      "liberal-arts",             // or "major-subjects"
-		Name:      "サンプル講義",
+		Name:      fmt.Sprintf("サンプル講義%04d", code),
 		Credit:    1, // 1~3
 		Teacher:   faculty.Name,
 		Period:    rand.Intn(6),     // いいカンジに分散
