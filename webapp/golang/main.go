@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
@@ -25,9 +26,10 @@ import (
 )
 
 const (
-	SQLDirectory         = "../sql/"
-	AssignmentsDirectory = "../assignments/"
-	SessionName          = "session"
+	SQLDirectory              = "../sql/"
+	AssignmentsDirectory      = "../assignments/"
+	SessionName               = "session"
+	mysqlErrNumDuplicateEntry = 1062
 )
 
 type handlers struct {
@@ -984,55 +986,84 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	courseID := uuid.Parse(c.Param("courseID"))
 	if courseID == nil {
+		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
 	}
 
 	var status CourseStatus
-	if err := h.DB.Get(&status, "SELECT `status` FROM `courses` WHERE `id` = ?", courseID); err == sql.ErrNoRows {
+	if err := tx.Get(&status, "SELECT `status` FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
+		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
 	} else if err != nil {
 		c.Logger().Error(err)
+		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if status != StatusInProgress {
+		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in progress.")
 	}
 
 	classID := uuid.Parse(c.Param("classID"))
 	if classID == nil {
+		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid classID.")
 	}
 
-	var count int
-	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `classes` WHERE `id` = ?", classID); err != nil {
+	var submissionClosed bool
+	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+	} else if err != nil {
 		c.Logger().Error(err)
+		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if count == 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+	if submissionClosed {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "Submission has been closed for this class.")
 	}
 
 	file, header, err := c.Request().FormFile("file")
 	if err != nil {
+		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid file.")
 	}
 	defer file.Close()
 
+	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, NOW())", userID, classID, header.Filename); err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			_ = tx.Rollback()
+			return echo.NewHTTPError(http.StatusBadRequest, "You have already submitted to this assignment.")
+		}
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	dst, err := os.Create(AssignmentsDirectory + classID.String() + "-" + userID.String())
 	if err != nil {
 		c.Logger().Error(err)
+		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer dst.Close()
 
 	if _, err = io.Copy(dst, file); err != nil {
 		c.Logger().Error(err)
+		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := h.DB.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, NOW())", userID, classID, header.Filename); err != nil {
+	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
