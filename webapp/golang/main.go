@@ -731,7 +731,7 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 		condition += fmt.Sprintf(" AND ((1=1%s) OR (1=1%s))", nameCondition, keywordsCondition)
 	}
 
-	condition += " ORDER BY `courses`.`code` ASC"
+	condition += " ORDER BY `courses`.`code`"
 
 	// MEMO: ページングの初期実装はページ番号形式
 	var page int
