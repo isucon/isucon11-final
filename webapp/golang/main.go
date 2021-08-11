@@ -1078,6 +1078,17 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in progress.")
 	}
 
+	var registrationCount int
+	if err := tx.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `user_id` = ? AND `course_id` = ?", userID, courseID); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if registrationCount == 0 {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "You have not taken this course.")
+	}
+
 	classID := uuid.Parse(c.Param("classID"))
 	if classID == nil {
 		_ = tx.Rollback()
