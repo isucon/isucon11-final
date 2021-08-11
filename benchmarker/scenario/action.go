@@ -307,7 +307,15 @@ func PostGradeAction(ctx context.Context, agent *agent.Agent, courseID, classID 
 	return hres, nil
 }
 
-func SetCourseStatusAction(ctx context.Context, agent *agent.Agent, courseID string, status api.CourseStatus) (*http.Response, error) {
+func SetCourseStatusInProgressAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, error) {
+	return setCourseStatusAction(ctx, agent, courseID, api.StatusInProgress)
+}
+
+func SetCourseStatusClosedAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, error) {
+	return setCourseStatusAction(ctx, agent, courseID, api.StatusClosed)
+}
+
+func setCourseStatusAction(ctx context.Context, agent *agent.Agent, courseID string, status api.CourseStatus) (*http.Response, error) {
 	hres, err := api.SetCourseStatus(ctx, agent, courseID, status)
 	if err != nil {
 		return hres, failure.NewError(fails.ErrHTTP, err)
