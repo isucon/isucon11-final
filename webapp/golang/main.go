@@ -61,6 +61,7 @@ func main() {
 	{
 		usersAPI := API.Group("/users")
 		{
+			usersAPI.GET("/me", h.GetMe)
 			usersAPI.GET("/me/courses", h.GetRegisteredCourses)
 			usersAPI.PUT("/me/courses", h.RegisterCourses)
 			usersAPI.GET("/me/grades", h.GetGrades)
@@ -284,6 +285,41 @@ func (h *handlers) Login(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+type GetMeResponse struct {
+	Code    string `json:"code"`
+	IsAdmin bool   `json:"is_admin"`
+}
+
+func (h *handlers) GetMe(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var userCode string
+	if err := h.DB.Get(&userCode, "SELECT `code` FROM `users` WHERE `id` = ?", userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	isAdmin, ok := sess.Values["isAdmin"]
+	if !ok {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, GetMeResponse{
+		Code:    userCode,
+		IsAdmin: isAdmin.(bool),
+	})
+}
+
 type GetRegisteredCourseResponseContent struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
@@ -452,6 +488,16 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusOK)
+}
+
+type Class struct {
+	ID               uuid.UUID `db:"id"`
+	CourseID         uuid.UUID `db:"course_id"`
+	Part             uint8     `db:"part"`
+	Title            string    `db:"title"`
+	Description      string    `db:"description"`
+	CreatedAt        time.Time `db:"created_at"`
+	SubmissionClosed bool      `db:"submission_closed"`
 }
 
 type GetGradeResponse struct {
@@ -918,7 +964,7 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-type Class struct {
+type ClassWithSubmitted struct {
 	ID               uuid.UUID `db:"id"`
 	CourseID         uuid.UUID `db:"course_id"`
 	Part             uint8     `db:"part"`
@@ -926,6 +972,7 @@ type Class struct {
 	Description      string    `db:"description"`
 	CreatedAt        time.Time `db:"created_at"`
 	SubmissionClosed bool      `db:"submission_closed"`
+	Submitted        bool      `db:"submitted"`
 }
 
 type GetClassResponse struct {
@@ -934,10 +981,22 @@ type GetClassResponse struct {
 	Title            string    `json:"title"`
 	Description      string    `json:"description"`
 	SubmissionClosed bool      `json:"submission_closed"`
+	Submitted        bool      `json:"submitted"`
 }
 
 // GetClasses 科目に紐づくクラス一覧の取得
 func (h *handlers) GetClasses(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	courseID := c.Param("courseID")
 	if courseID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid CourseID.")
@@ -952,8 +1011,14 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
-	var classes []Class
-	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err != nil {
+	// MEMO: N+1にしても良い
+	var classes []ClassWithSubmitted
+	query := "SELECT `classes`.*, `submissions`.`user_id` IS NOT NULL AS `submitted`" +
+		" FROM `classes`" +
+		" LEFT JOIN `submissions` ON `classes`.`id` = `submissions`.`class_id` AND `submissions`.`user_id` = ?" +
+		" WHERE `classes`.`course_id` = ?" +
+		" ORDER BY `classes`.`part`"
+	if err := h.DB.Select(&classes, query, userID, courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -967,6 +1032,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 			Title:            class.Title,
 			Description:      class.Description,
 			SubmissionClosed: class.SubmissionClosed,
+			Submitted:        class.Submitted,
 		})
 	}
 
@@ -1010,6 +1076,17 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	if status != StatusInProgress {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in progress.")
+	}
+
+	var registrationCount int
+	if err := tx.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `user_id` = ? AND `course_id` = ?", userID, courseID); err != nil {
+		c.Logger().Error(err)
+		_ = tx.Rollback()
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if registrationCount == 0 {
+		_ = tx.Rollback()
+		return echo.NewHTTPError(http.StatusBadRequest, "You have not taken this course.")
 	}
 
 	classID := uuid.Parse(c.Param("classID"))

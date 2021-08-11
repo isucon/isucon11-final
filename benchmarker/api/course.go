@@ -112,6 +112,7 @@ type GetClassResponse struct {
 	Title            string `json:"title"`
 	Description      string `json:"description"`
 	SubmissionClosed bool   `json:"submission_closed"`
+	Submitted        bool   `json:"submitted"`
 }
 
 func GetClasses(ctx context.Context, a *agent.Agent, courseID string) (*http.Response, error) {
