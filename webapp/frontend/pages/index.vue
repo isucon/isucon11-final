@@ -42,7 +42,7 @@ export default Vue.extend({
   layout: 'empty',
   middleware({ app, redirect }) {
     if (app.$cookies.get('session')) {
-      return redirect('mypage')
+      return redirect('/mypage')
     }
   },
   data() {
@@ -58,7 +58,7 @@ export default Vue.extend({
           code: this.code,
           password: this.password,
         })
-        await this.$router.push('mypage')
+        await this.$router.push('/mypage')
       } catch (e) {
         notify('学籍番号またはパスワードが誤っています')
       }

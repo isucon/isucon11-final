@@ -1,24 +1,12 @@
 version: '3'
 
 services:
-  nginx:
-    image: nginx:1.21
+  frontend:
+    build: ./frontend
     volumes:
       - ./nginx:/etc/nginx/conf.d
     ports:
       - "8080:80"
-    links:
-      - "backend"
-    depends_on:
-      - frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./frontend:/frontend
-    ports:
-      - "3000:3000"
   backend:
     build: ./golang
     restart: always

@@ -1,4 +1,7 @@
 module.exports = {
+  purge: {
+    content: ['./tailwind_safelist.txt'],
+  },
   theme: {
     extend: {
       colors: {
