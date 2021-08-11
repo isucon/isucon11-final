@@ -46,13 +46,13 @@ CREATE TABLE `registrations`
 
 CREATE TABLE `classes`
 (
-    `id`                   CHAR(36) PRIMARY KEY,
-    `course_id`            CHAR(36)         NOT NULL,
-    `part`                 TINYINT UNSIGNED NOT NULL,
-    `title`                VARCHAR(255)     NOT NULL,
-    `description`          TEXT             NOT NULL,
-    `created_at`           DATETIME         NOT NULL,
-    `submission_closed_at` DATETIME,
+    `id`                CHAR(36) PRIMARY KEY,
+    `course_id`         CHAR(36)         NOT NULL,
+    `part`              TINYINT UNSIGNED NOT NULL,
+    `title`             VARCHAR(255)     NOT NULL,
+    `description`       TEXT             NOT NULL,
+    `created_at`        DATETIME         NOT NULL,
+    `submission_closed` TINYINT(1)       NOT NULL DEFAULT false,
     CONSTRAINT FK_classes_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 );
 

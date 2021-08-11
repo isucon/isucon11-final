@@ -917,21 +917,21 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 }
 
 type Class struct {
-	ID                 uuid.UUID    `db:"id"`
-	CourseID           uuid.UUID    `db:"course_id"`
-	Part               uint8        `db:"part"`
-	Title              string       `db:"title"`
-	Description        string       `db:"description"`
-	CreatedAt          time.Time    `db:"created_at"`
-	SubmissionClosedAt sql.NullTime `db:"submission_closed_at"`
+	ID               uuid.UUID `db:"id"`
+	CourseID         uuid.UUID `db:"course_id"`
+	Part             uint8     `db:"part"`
+	Title            string    `db:"title"`
+	Description      string    `db:"description"`
+	CreatedAt        time.Time `db:"created_at"`
+	SubmissionClosed bool      `db:"submission_closed"`
 }
 
 type GetClassResponse struct {
-	ID                 uuid.UUID `json:"id"`
-	Part               uint8     `json:"part"`
-	Title              string    `json:"title"`
-	Description        string    `json:"description"`
-	SubmissionClosedAt int64     `json:"submission_closed_at,omitempty"`
+	ID               uuid.UUID `json:"id"`
+	Part             uint8     `json:"part"`
+	Title            string    `json:"title"`
+	Description      string    `json:"description"`
+	SubmissionClosed bool      `json:"submission_closed"`
 }
 
 // GetClasses 科目に紐づくクラス一覧の取得
@@ -959,17 +959,13 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	// 結果が0件の時は空配列を返却
 	res := make([]GetClassResponse, 0, len(classes))
 	for _, class := range classes {
-		getClassRes := GetClassResponse{
-			ID:          class.ID,
-			Part:        class.Part,
-			Title:       class.Title,
-			Description: class.Description,
-		}
-		if class.SubmissionClosedAt.Valid {
-			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.Unix()
-		}
-
-		res = append(res, getClassRes)
+		res = append(res, GetClassResponse{
+			ID:               class.ID,
+			Part:             class.Part,
+			Title:            class.Title,
+			Description:      class.Description,
+			SubmissionClosed: class.SubmissionClosed,
+		})
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -1061,8 +1057,8 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var closedAt sql.NullTime
-	if err := tx.Get(&closedAt, "SELECT `submission_closed_at` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
+	var submissionClosed bool
+	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
@@ -1071,7 +1067,7 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if !closedAt.Valid {
+	if !submissionClosed {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "This assignment is not closed yet.")
 	}
@@ -1121,8 +1117,8 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var closedAt sql.NullTime
-	if err := tx.Get(&closedAt, "SELECT `submission_closed_at` FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
+	var submissionClosed bool
+	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
@@ -1148,7 +1144,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed_at` = NOW() WHERE `id` = ?", classID); err != nil {
+	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed` = true WHERE `id` = ?", classID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
