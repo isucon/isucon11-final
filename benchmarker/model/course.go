@@ -4,8 +4,6 @@ import (
 	"context"
 	"sync"
 	"time"
-
-	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
 type CourseParam struct {
@@ -30,7 +28,8 @@ type Course struct {
 	rmu                sync.RWMutex
 
 	// コース登録を締切る際に参照
-	registrationCloser *util.Closer   // 登録が締め切られるとcloseする
+	registrationCloser chan struct{} // 登録が締め切られるとcloseする
+	timerOnce          sync.Once
 	tempRegStudents    sync.WaitGroup // ベンチ内で仮登録して本登録リクエストが完了していない生徒たち
 }
 
@@ -43,7 +42,8 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		registeredLimit:    50, // 引数で渡す？
 		rmu:                sync.RWMutex{},
 
-		registrationCloser: util.NewCloser(),
+		registrationCloser: make(chan struct{}, 0),
+		timerOnce:          sync.Once{},
 		tempRegStudents:    sync.WaitGroup{},
 	}
 }
@@ -62,9 +62,10 @@ func (c *Course) WaitPreparedCourse(ctx context.Context) <-chan struct{} {
 		case <-ctx.Done():
 			close(ch)
 			return
-		case <-c.registrationCloser.WaitForClosing():
+		case <-c.registrationCloser:
 		}
 
+		// webapp側に登録完了してないのにベンチがコース処理を始めると不整合がでるため
 		// 学生の登録リクエストが完了するのを待つ
 		c.tempRegStudents.Wait()
 		close(ch)
@@ -125,31 +126,46 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) bool {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	// 満員なら即終了
-	if len(c.registeredStudents) <= c.registeredLimit {
+	// 締切済み
+	if c.isRegistrationClose() {
 		return false
 	}
 
 	// 履修closeしていない場合は仮登録する
-	done := c.registrationCloser.DoIfUnclosing(func() {
-		c.registeredStudents = append(c.registeredStudents, student)
-		c.tempRegStudents.Add(1) // コース仮登録者+1
-	})
-	if done {
-		// 仮登録したので満員になっていたらcloseする
-		if len(c.registeredStudents) <= c.registeredLimit {
-			c.registrationCloser.CloseIfClosable()
-		}
-		return true
+	c.registeredStudents = append(c.registeredStudents, student)
+	c.tempRegStudents.Add(1) // コース仮登録者+1
+	if len(c.registeredStudents) >= c.registeredLimit {
+		// 満員になっていたらcloseする
+		close(c.registrationCloser)
 	}
-	return false
+
+	return true
 }
 
 // 成功失敗に関わらず学生による本登録処理が終了した
 func (c *Course) FinishRegistration() {
-	c.tempRegStudents.Done()
+	c.tempRegStudents.Done() // コース仮登録者-1
+}
+
+// ※ Lockしてない
+func (c *Course) isRegistrationClose() bool {
+	select {
+	case _, _ = <-c.registrationCloser:
+		return true
+	default:
+	}
+	return false
 }
 
 func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
-	c.registrationCloser.CloseAfterTimeAtOnce(duration)
+	c.timerOnce.Do(func() {
+		time.Sleep(duration)
+
+		c.rmu.Lock()
+		defer c.rmu.Unlock()
+
+		if !c.isRegistrationClose() {
+			close(c.registrationCloser)
+		}
+	})
 }
