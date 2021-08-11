@@ -490,6 +490,16 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+type Class struct {
+	ID               uuid.UUID `db:"id"`
+	CourseID         uuid.UUID `db:"course_id"`
+	Part             uint8     `db:"part"`
+	Title            string    `db:"title"`
+	Description      string    `db:"description"`
+	CreatedAt        time.Time `db:"created_at"`
+	SubmissionClosed bool      `db:"submission_closed"`
+}
+
 type GetGradeResponse struct {
 	Summary       Summary        `json:"summary"`
 	CourseResults []CourseResult `json:"courses"`
@@ -954,7 +964,7 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-type Class struct {
+type ClassWithSubmitted struct {
 	ID               uuid.UUID `db:"id"`
 	CourseID         uuid.UUID `db:"course_id"`
 	Part             uint8     `db:"part"`
@@ -962,6 +972,7 @@ type Class struct {
 	Description      string    `db:"description"`
 	CreatedAt        time.Time `db:"created_at"`
 	SubmissionClosed bool      `db:"submission_closed"`
+	Submitted        bool      `db:"submitted"`
 }
 
 type GetClassResponse struct {
@@ -970,10 +981,22 @@ type GetClassResponse struct {
 	Title            string    `json:"title"`
 	Description      string    `json:"description"`
 	SubmissionClosed bool      `json:"submission_closed"`
+	Submitted        bool      `json:"submitted"`
 }
 
 // GetClasses 科目に紐づくクラス一覧の取得
 func (h *handlers) GetClasses(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	courseID := c.Param("courseID")
 	if courseID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid CourseID.")
@@ -988,8 +1011,14 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
-	var classes []Class
-	if err := h.DB.Select(&classes, "SELECT * FROM `classes` WHERE `course_id` = ? ORDER BY `part`", courseID); err != nil {
+	// MEMO: N+1にしても良い
+	var classes []ClassWithSubmitted
+	query := "SELECT `classes`.*, `submissions`.`user_id` IS NOT NULL AS `submitted`" +
+		" FROM `classes`" +
+		" LEFT JOIN `submissions` ON `classes`.`id` = `submissions`.`class_id` AND `submissions`.`user_id` = ?" +
+		" WHERE `classes`.`course_id` = ?" +
+		" ORDER BY `classes`.`part`"
+	if err := h.DB.Select(&classes, query, userID, courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1003,6 +1032,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 			Title:            class.Title,
 			Description:      class.Description,
 			SubmissionClosed: class.SubmissionClosed,
+			Submitted:        class.Submitted,
 		})
 	}
 
