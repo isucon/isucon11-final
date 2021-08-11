@@ -12,6 +12,7 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
+
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
@@ -106,11 +107,11 @@ func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest
 }
 
 type GetClassResponse struct {
-	ID                 string `json:"id"`
-	Part               uint8  `json:"part"`
-	Title              string `json:"title"`
-	Description        string `json:"description"`
-	SubmissionClosedAt int64  `json:"submission_closed_at"`
+	ID               string `json:"id"`
+	Part             uint8  `json:"part"`
+	Title            string `json:"title"`
+	Description      string `json:"description"`
+	SubmissionClosed bool   `json:"submission_closed"`
 }
 
 func GetClasses(ctx context.Context, a *agent.Agent, courseID string) (*http.Response, error) {
