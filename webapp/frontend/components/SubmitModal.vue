@@ -107,6 +107,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
@@ -183,9 +184,11 @@ export default Vue.extend({
           formData
         )
         .then(() => {
+          notify('課題の提出が完了しました')
           this.close()
         })
         .catch(() => {
+          notify('課題の提出に失敗しました')
           this.showAlert()
         })
     },

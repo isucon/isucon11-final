@@ -166,6 +166,7 @@ import {
   DayOfWeek,
   SearchCourseRequest,
 } from '~/types/courses'
+import { notify } from '~/helpers/notification_helper'
 import { formatPeriod, formatType } from '~/helpers/course_helper'
 import Pagination from '~/components/common/Pagination.vue'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
@@ -248,6 +249,9 @@ export default Vue.extend({
       try {
         const res = await this.$axios.get<Course[]>(u, { params })
         if (res.status === 200) {
+          if (res.data.length === 0) {
+            notify('検索条件に一致する科目がありません')
+          }
           this.courses = res.data
           this.link = Object.assign(
             {},
@@ -256,7 +260,7 @@ export default Vue.extend({
           )
         }
       } catch (e) {
-        console.error(e)
+        notify('検索結果を取得できませんでした')
       }
     },
     onChangeCheckbox(course: Course): void {

@@ -33,12 +33,13 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { notify } from '~/helpers/notification_helper'
 import Button from '~/components/common/Button.vue'
 import TextField from '~/components/common/TextField.vue'
 
 export default Vue.extend({
-  layout: 'empty',
   components: { TextInput: TextField, Button },
+  layout: 'empty',
   middleware({ app, redirect }) {
     if (app.$cookies.get('session')) {
       return redirect('mypage')
@@ -59,8 +60,7 @@ export default Vue.extend({
         })
         await this.$router.push('mypage')
       } catch (e) {
-        // TODO: 通知を出すなど適切に処理する
-        console.error(e)
+        notify('学籍番号またはパスワードが誤っています')
       }
     },
   },
