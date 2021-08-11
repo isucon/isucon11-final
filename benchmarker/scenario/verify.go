@@ -82,6 +82,7 @@ func verifyClass(res *api.GetClassResponse, class *model.Class) error {
 	}
 
 	// TODO: SubmissionClosedAtの検証
+	// TODO: Submittedの検証
 
 	return nil
 }
