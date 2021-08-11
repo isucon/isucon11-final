@@ -12,6 +12,7 @@ import (
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
 
+	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
@@ -325,7 +326,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 			faculty := course.Faculty()
 			// コースステータスをin-progressにする
-			_, err := SetCourseStatusInProgressAction(ctx, faculty.Agent, course.ID)
+			_, err := SetCourseStatusAction(ctx, faculty.Agent, course.ID, api.StatusInProgress)
 			if err != nil {
 				step.AddError(err)
 				AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
@@ -407,7 +408,14 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				}
 			}
 
-			// コースがおわった
+			// コースステータスをclosedにする
+			_, err = SetCourseStatusAction(ctx, faculty.Agent, course.ID, api.StatusClosed)
+			if err != nil {
+				step.AddError(err)
+				AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
+				return
+			}
+
 			AdminLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
 
 			// FIXME: Debug

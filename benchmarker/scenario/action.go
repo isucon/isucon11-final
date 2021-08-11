@@ -307,8 +307,7 @@ func PostGradeAction(ctx context.Context, agent *agent.Agent, courseID, classID 
 	return hres, nil
 }
 
-func SetCourseStatusInProgressAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, error) {
-	status := api.StatusInProgress
+func SetCourseStatusAction(ctx context.Context, agent *agent.Agent, courseID string, status api.CourseStatus) (*http.Response, error) {
 	hres, err := api.SetCourseStatus(ctx, agent, courseID, status)
 	if err != nil {
 		return hres, failure.NewError(fails.ErrHTTP, err)
@@ -321,5 +320,4 @@ func SetCourseStatusInProgressAction(ctx context.Context, agent *agent.Agent, co
 	}
 
 	return hres, nil
-
 }
