@@ -917,13 +917,13 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 }
 
 type Class struct {
-	ID                 uuid.UUID    `db:"id"`
-	CourseID           uuid.UUID    `db:"course_id"`
-	Part               uint8        `db:"part"`
-	Title              string       `db:"title"`
-	Description        string       `db:"description"`
-	CreatedAt          time.Time    `db:"created_at"`
-	SubmissionClosedAt sql.NullTime `db:"submission_closed_at"`
+	ID               uuid.UUID `db:"id"`
+	CourseID         uuid.UUID `db:"course_id"`
+	Part             uint8     `db:"part"`
+	Title            string    `db:"title"`
+	Description      string    `db:"description"`
+	CreatedAt        time.Time `db:"created_at"`
+	SubmissionClosed bool      `db:"submission_closed"`
 }
 
 type GetClassResponse struct {
@@ -964,7 +964,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 			Part:             class.Part,
 			Title:            class.Title,
 			Description:      class.Description,
-			SubmissionClosed: class.SubmissionClosedAt.Valid,
+			SubmissionClosed: class.SubmissionClosed,
 		})
 	}
 
@@ -1057,8 +1057,8 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var closedAt sql.NullTime
-	if err := tx.Get(&closedAt, "SELECT `submission_closed_at` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
+	var submissionClosed bool
+	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
@@ -1067,7 +1067,7 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if !closedAt.Valid {
+	if !submissionClosed {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "This assignment is not closed yet.")
 	}
@@ -1117,8 +1117,8 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var closedAt sql.NullTime
-	if err := tx.Get(&closedAt, "SELECT `submission_closed_at` FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
+	var submissionClosed bool
+	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
 		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
@@ -1144,7 +1144,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed_at` = NOW() WHERE `id` = ?", classID); err != nil {
+	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed` = true WHERE `id` = ?", classID); err != nil {
 		c.Logger().Error(err)
 		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
