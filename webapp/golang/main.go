@@ -61,6 +61,7 @@ func main() {
 	{
 		usersAPI := API.Group("/users")
 		{
+			usersAPI.GET("/me", h.GetMe)
 			usersAPI.GET("/me/courses", h.GetRegisteredCourses)
 			usersAPI.PUT("/me/courses", h.RegisterCourses)
 			usersAPI.GET("/me/grades", h.GetGrades)
@@ -282,6 +283,41 @@ func (h *handlers) Login(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusOK)
+}
+
+type GetMeResponse struct {
+	Code    string `json:"code"`
+	IsAdmin bool   `json:"is_admin"`
+}
+
+func (h *handlers) GetMe(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	userID := uuid.Parse(sess.Values["userID"].(string))
+	if userID == nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	var userCode string
+	if err := h.DB.Get(&userCode, "SELECT `code` FROM `users` WHERE `id` = ?", userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	isAdmin, ok := sess.Values["isAdmin"]
+	if !ok {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, GetMeResponse{
+		Code:    userCode,
+		IsAdmin: isAdmin.(bool),
+	})
 }
 
 type GetRegisteredCourseResponseContent struct {
