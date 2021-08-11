@@ -1,0 +1,28 @@
+---
+- name: "common roles"
+  hosts: all
+  tags:
+    - contestant
+    - bench
+    - standalone
+  become: true
+  roles:
+    - common
+    - langs.go
+
+- name: "contestant roles"
+  hosts: [contestant, standalone]
+  tags: [contestant, standalone]
+  become: true
+  roles:
+    - langs.nodejs
+    - langs.rust
+    #- contestant
+
+#- name: "bench roles"
+#  hosts: [bench, standalone]
+#  tags: [bench, standalone]
+#  become: true
+#  roles:
+#    - bench
+#    - bench.supervisor
