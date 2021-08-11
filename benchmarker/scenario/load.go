@@ -315,6 +315,12 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		}
 		AdminLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
 		loadCourseWorker.Do(func(ctx context.Context) {
+			defer func() {
+				for _, student := range course.Students() {
+					student.ReleaseTimeslot(course.DayOfWeek, course.Period)
+				}
+			}()
+
 			// コースgoroutineは満員 or 履修締め切りまではなにもしない
 			<-course.WaitFullOrUnRegistrable(ctx)
 
