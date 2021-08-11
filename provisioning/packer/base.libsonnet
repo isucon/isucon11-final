@@ -178,7 +178,7 @@
       output: 'output/manifest-' + $.arg_arch + '-' + $.arg_variant + '.json',
       strip_path: true,
       custom_data: {
-        family: 'isucon11qf' + $.arg_arch + '-' + $.arg_variant,
+        family: 'isucon11f-' + $.arg_arch + '-' + $.arg_variant,
         name: '{{user "name"}}',
       },
     },
