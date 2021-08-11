@@ -927,11 +927,11 @@ type Class struct {
 }
 
 type GetClassResponse struct {
-	ID                 uuid.UUID `json:"id"`
-	Part               uint8     `json:"part"`
-	Title              string    `json:"title"`
-	Description        string    `json:"description"`
-	SubmissionClosedAt int64     `json:"submission_closed_at,omitempty"`
+	ID               uuid.UUID `json:"id"`
+	Part             uint8     `json:"part"`
+	Title            string    `json:"title"`
+	Description      string    `json:"description"`
+	SubmissionClosed bool      `json:"submission_closed"`
 }
 
 // GetClasses 科目に紐づくクラス一覧の取得
@@ -959,17 +959,13 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	// 結果が0件の時は空配列を返却
 	res := make([]GetClassResponse, 0, len(classes))
 	for _, class := range classes {
-		getClassRes := GetClassResponse{
-			ID:          class.ID,
-			Part:        class.Part,
-			Title:       class.Title,
-			Description: class.Description,
-		}
-		if class.SubmissionClosedAt.Valid {
-			getClassRes.SubmissionClosedAt = class.SubmissionClosedAt.Time.Unix()
-		}
-
-		res = append(res, getClassRes)
+		res = append(res, GetClassResponse{
+			ID:               class.ID,
+			Part:             class.Part,
+			Title:            class.Title,
+			Description:      class.Description,
+			SubmissionClosed: class.SubmissionClosedAt.Valid,
+		})
 	}
 
 	return c.JSON(http.StatusOK, res)
