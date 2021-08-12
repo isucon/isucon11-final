@@ -314,6 +314,12 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		}
 		AdminLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
 		loadCourseWorker.Do(func(ctx context.Context) {
+			defer func() {
+				for _, student := range course.Students() {
+					student.ReleaseTimeslot(course.DayOfWeek, course.Period)
+				}
+			}()
+
 			// コースgoroutineは満員 or 履修締め切りまではなにもしない
 			<-course.WaitFullOrUnRegistrable(ctx)
 
@@ -407,7 +413,14 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				}
 			}
 
-			// コースがおわった
+			// コースステータスをclosedにする
+			_, err = SetCourseStatusClosedAction(ctx, faculty.Agent, course.ID)
+			if err != nil {
+				step.AddError(err)
+				AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
+				return
+			}
+
 			AdminLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
 
 			// FIXME: Debug
