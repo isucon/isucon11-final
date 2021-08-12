@@ -212,13 +212,14 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					if isSuccess {
 						step.AddScore(score.CountRegisterCourses)
 						for _, c := range semiRegistered {
-							c.ReduceTempRegistered()
-							c.SetUnRegistrableAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+							c.FinishRegistration()
+							c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
 							student.AddCourse(c)
 							AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 						}
 					} else {
 						for _, c := range semiRegistered {
+							c.FinishRegistration()
 							c.RemoveStudent(student)
 							student.ReleaseTimeslot(c.DayOfWeek, c.Period)
 						}
@@ -321,7 +322,13 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			}()
 
 			// コースgoroutineは満員 or 履修締め切りまではなにもしない
-			<-course.WaitFullOrUnRegistrable(ctx)
+			<-course.WaitPreparedCourse(ctx)
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 
 			select {
 			case <-ctx.Done():
@@ -383,7 +390,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, course.ID, class.ID)
 				if err != nil {
 					step.AddError(err)
-					return
+					continue
 				}
 				if err := verifyAssignments(assignmentsData); err != nil {
 					step.AddError(err)
