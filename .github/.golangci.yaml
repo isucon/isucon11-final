@@ -1,0 +1,6 @@
+run:
+  timeout: 3m
+
+linters-settings:
+  errcheck:
+    ignore: database/sql:Rollback
