@@ -158,7 +158,7 @@ func (c *Course) isRegistrationClose() bool {
 }
 
 func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
-	c.timerOnce.Do(func() {
+	go c.timerOnce.Do(func() {
 		time.Sleep(duration)
 
 		c.rmu.Lock()
