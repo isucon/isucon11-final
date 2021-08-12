@@ -150,17 +150,19 @@ func (c *Course) FinishRegistration() {
 }
 
 func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
-	go c.timerOnce.Do(func() {
-		time.Sleep(duration)
+	c.timerOnce.Do(func() {
+		go func() {
+			time.Sleep(duration)
 
-		c.rmu.Lock()
-		defer c.rmu.Unlock()
+			c.rmu.Lock()
+			defer c.rmu.Unlock()
 
-		select {
-		case _, _ = <-c.registrationCloser:
-			// close済み
-		default:
-			close(c.registrationCloser)
-		}
+			select {
+			case _, _ = <-c.registrationCloser:
+				// close済み
+			default:
+				close(c.registrationCloser)
+			}
+		}()
 	})
 }
