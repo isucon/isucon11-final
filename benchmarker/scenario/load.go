@@ -138,7 +138,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 				wishRegisterCount := registerCourseLimit - student.RegisteringCount()
 
-				if wishRegisterCount > 0 {
+				if wishRegisterCount > 0 { //nolint:staticcheck // TODO
 					// BrowserAccess(register)
 					// resource Verify
 				}
