@@ -226,7 +226,7 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.C
 		Name:        param.Name,
 		Description: param.Description,
 		Credit:      param.Credit,
-		Period:      param.Period,
+		Period:      param.Period + 1,
 		DayOfWeek:   api.DayOfWeekTable[param.DayOfWeek],
 		Keywords:    param.Keywords,
 	}
