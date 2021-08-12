@@ -112,6 +112,10 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 		studentLoadWorker.Do(func(ctx context.Context) {
 			for ctx.Err() == nil {
+
+				// BrowserAccess(grade)
+				// resource Verify
+
 				// 学生は成績を確認し続ける
 				_, res, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
@@ -133,6 +137,11 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				}
 
 				wishRegisterCount := registerCourseLimit - student.RegisteringCount()
+
+				if wishRegisterCount > 0 { //nolint:staticcheck // TODO
+					// BrowserAccess(register)
+					// resource Verify
+				}
 
 				// 履修希望コース * searchCountByRegistration 回 検索を行う
 				for i := 0; i < wishRegisterCount*searchCountByRegistration; i++ {
@@ -217,6 +226,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 							student.AddCourse(c)
 							AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 						}
+						// BrowserAccess(mypage)
+						// resource Verify
 					} else {
 						for _, c := range semiRegistered {
 							c.FinishRegistration()
@@ -248,6 +259,10 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		studentLoadWorker.Do(func(ctx context.Context) {
 			var next string // 次にアクセスするお知らせ一覧のページ
 			for ctx.Err() == nil {
+
+				// BrowserAccess(announce)
+				// resource Verify
+
 				// 学生はお知らせを確認し続ける
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
 				if err != nil {
@@ -460,12 +475,18 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			}
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
+			// BrowserAccess(ログイン)
+			// resource Verify
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
 				ContestantLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
 				step.AddError(err)
 				return
 			}
+
+			// BrowserAccess(mypage)
+			// resource Verify
+
 			s.AddActiveStudent(student)
 			s.sPubSub.Publish(student)
 		}()
@@ -523,6 +544,9 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			case <-s.WaitReadAnnouncement(announcementID):
 				// 学生sが課題お知らせを読むまで待つ
 			}
+
+			// BrowserAccess(courses/<course.UUID>)
+			// resource Verify
 
 			// 講義一覧を取得する
 			_, res, err := GetClassesAction(ctx, s.Agent, course.ID)
