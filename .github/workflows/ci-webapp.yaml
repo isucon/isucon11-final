@@ -30,4 +30,4 @@ jobs:
         with:
           version: latest
           working-directory: ./webapp/golang
-          args: "--timeout 3m0s"
+          args: "-c ../../.github/.golangci.yaml"
