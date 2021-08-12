@@ -275,13 +275,21 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				}
 
 				step.AddScore(score.CountGetAnnouncements)
+				AdminLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
 
 				for _, ans := range res.Announcements {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+
 					if ans.Unread {
-						select {
-						case <-ctx.Done():
-							return
-						default:
+						announcementStatus := student.GetAnnouncement(ans.ID)
+						if announcementStatus == nil {
+							// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
+							// load中には検証できないのでskip
+							continue
 						}
 
 						// お知らせの詳細を取得する
@@ -290,12 +298,13 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 							step.AddError(err)
 							continue // 次の未読おしらせの確認へ
 						}
-						if err := verifyAnnouncement(&res, *student.GetAnnouncement(ans.ID)); err != nil {
+						if err := verifyAnnouncement(&res, announcementStatus); err != nil {
 							step.AddError(err)
 						}
 
 						student.ReadAnnouncement(ans.ID)
 						step.AddScore(score.CountGetAnnouncementsDetail)
+						AdminLogger.Printf("%vはお知らせ詳細を確認した", student.Name)
 					}
 				}
 
@@ -539,7 +548,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			case <-ctx.Done():
 				return
 			case <-time.After(confirmAttendanceAnsTimeout):
-				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", confirmAttendanceAnsTimeout)
+				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", confirmAttendanceAnsTimeout/time.Second)
 				return
 			case <-s.WaitReadAnnouncement(announcementID):
 				// 学生sが課題お知らせを読むまで待つ

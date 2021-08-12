@@ -1,7 +1,6 @@
 package model
 
 import (
-	"math/rand"
 	"sync"
 )
 
@@ -10,18 +9,20 @@ type Announcement struct {
 	CourseID   string
 	CourseName string
 	Title      string
+	Message    string
 	CreatedAt  int64
 
 	rmu sync.RWMutex
 }
 
-func NewAnnouncement(id, courseID, courseName, title string) *Announcement {
+func NewAnnouncement(id, courseID, courseName, title, message string, createdAt int64) *Announcement {
 	return &Announcement{
 		ID:         id,
 		CourseID:   courseID,
 		CourseName: courseName,
 		Title:      title,
-		CreatedAt:  rand.Int63(),
+		Message:    message,
+		CreatedAt:  createdAt,
 		rmu:        sync.RWMutex{},
 	}
 }
