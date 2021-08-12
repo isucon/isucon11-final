@@ -7,6 +7,8 @@ services:
       - ./nginx:/etc/nginx/conf.d
     ports:
       - "8080:80"
+    depends_on:
+      - backend
   backend:
     build: ./golang
     restart: always
