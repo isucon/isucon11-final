@@ -126,9 +126,11 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) bool {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	// 締切済み
-	if c.isRegistrationClose() {
+	select {
+	case _, _ = <-c.registrationCloser:
+		// close済み
 		return false
+	default:
 	}
 
 	// 履修closeしていない場合は仮登録する
@@ -147,16 +149,6 @@ func (c *Course) FinishRegistration() {
 	c.tempRegStudents.Done() // コース仮登録者-1
 }
 
-// ※ Lockしてない
-func (c *Course) isRegistrationClose() bool {
-	select {
-	case _, _ = <-c.registrationCloser:
-		return true
-	default:
-	}
-	return false
-}
-
 func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
 	go c.timerOnce.Do(func() {
 		time.Sleep(duration)
@@ -164,7 +156,10 @@ func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
 		c.rmu.Lock()
 		defer c.rmu.Unlock()
 
-		if !c.isRegistrationClose() {
+		select {
+		case _, _ = <-c.registrationCloser:
+			// close済み
+		default:
 			close(c.registrationCloser)
 		}
 	})
