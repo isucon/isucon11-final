@@ -1,0 +1,15 @@
+---
+
+- name: "roles/bench/tasks/bench: Deploy isucon11-final bench"
+  become_user: isucon
+  copy:
+    remote_src: yes
+    src: /tmp/isucon11-final/benchmarker
+    dest: /home/isucon/
+    owner: isucon
+    group: isucon
+
+- name: "roles/bench/tasks/bench: Build Web Application Go"
+  make:
+    chdir: /home/isucon/
+    target: all
