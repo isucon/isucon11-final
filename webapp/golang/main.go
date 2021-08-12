@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -52,12 +53,10 @@ func main() {
 		DB: db,
 	}
 
-	// e.POST("/initialize", h.Initialize, h.IsLoggedIn, h.IsAdmin)
 	e.POST("/initialize", h.Initialize)
 
 	e.POST("/login", h.Login)
-	// API := e.Group("/api", h.IsLoggedIn)
-	API := e.Group("/api")
+	API := e.Group("/api", h.IsLoggedIn)
 	{
 		usersAPI := API.Group("/users")
 		{
@@ -140,10 +139,11 @@ func (h *handlers) IsLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 		if sess.IsNew {
-			return echo.NewHTTPError(http.StatusInternalServerError, "You are not logged in.")
+			return echo.NewHTTPError(http.StatusUnauthorized, "You are not logged in.")
 		}
-		if _, ok := sess.Values["userID"]; !ok {
-			return echo.NewHTTPError(http.StatusInternalServerError, "You are not logged in.")
+		_, ok := sess.Values["userID"]
+		if !ok {
+			return echo.NewHTTPError(http.StatusUnauthorized, "You are not logged in.")
 		}
 
 		return next(c)
@@ -160,7 +160,7 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		isAdmin, ok := sess.Values["isAdmin"]
 		if !ok {
-			c.Logger().Error(err)
+			c.Logger().Error("failed to get isAdmin from session")
 			return c.NoContent(http.StatusInternalServerError)
 		}
 		if !isAdmin.(bool) {
@@ -169,6 +169,22 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 
 		return next(c)
 	}
+}
+
+func getUserID(c echo.Context) (userID uuid.UUID, isAdmin bool, err error) {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		return nil, false, err
+	}
+	_userID, ok := sess.Values["userID"]
+	if !ok {
+		return nil, false, errors.New("failed to get userID from session")
+	}
+	_isAdmin, ok := sess.Values["isAdmin"]
+	if !ok {
+		return nil, false, errors.New("failed to get isAdmin from session")
+	}
+	return uuid.Parse(_userID.(string)), _isAdmin.(bool), nil
 }
 
 type UserType string
@@ -291,13 +307,8 @@ type GetMeResponse struct {
 }
 
 func (h *handlers) GetMe(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, isAdmin, err := getUserID(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -308,15 +319,9 @@ func (h *handlers) GetMe(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	isAdmin, ok := sess.Values["isAdmin"]
-	if !ok {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
 	return c.JSON(http.StatusOK, GetMeResponse{
 		Code:    userCode,
-		IsAdmin: isAdmin.(bool),
+		IsAdmin: isAdmin,
 	})
 }
 
@@ -330,13 +335,8 @@ type GetRegisteredCourseResponseContent struct {
 
 // GetRegisteredCourses 履修中の科目一覧取得
 func (h *handlers) GetRegisteredCourses(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -346,7 +346,7 @@ func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 		" FROM `courses`" +
 		" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
 		" WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?"
-	if err = h.DB.Select(&courses, query, StatusClosed, userID); err != nil {
+	if err := h.DB.Select(&courses, query, StatusClosed, userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -383,13 +383,8 @@ type RegisterCoursesErrorResponse struct {
 }
 
 func (h *handlers) RegisterCourses(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -540,13 +535,8 @@ type SubmissionWithClassName struct {
 }
 
 func (h *handlers) GetGrades(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -846,9 +836,9 @@ type GetCourseDetailResponse struct {
 
 // GetCourseDetail 科目詳細の取得
 func (h *handlers) GetCourseDetail(c echo.Context) error {
-	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid CourseID.")
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
 	}
 
 	var res GetCourseDetailResponse
@@ -883,13 +873,8 @@ type AddCourseResponse struct {
 
 // AddCourse 新規科目登録
 func (h *handlers) AddCourse(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -982,20 +967,15 @@ type GetClassResponse struct {
 
 // GetClasses 科目に紐づくクラス一覧の取得
 func (h *handlers) GetClasses(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
 
-	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid CourseID.")
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
 	}
 
 	var count int
@@ -1037,15 +1017,19 @@ func (h *handlers) GetClasses(c echo.Context) error {
 
 // SubmitAssignment 課題ファイルのアップロード
 func (h *handlers) SubmitAssignment(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
+
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
+	}
+	classID := uuid.Parse(c.Param("classID"))
+	if classID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid classID.")
 	}
 
 	tx, err := h.DB.Beginx()
@@ -1054,11 +1038,6 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
-
-	courseID := uuid.Parse(c.Param("courseID"))
-	if courseID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
-	}
 
 	var status CourseStatus
 	if err := tx.Get(&status, "SELECT `status` FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
@@ -1078,11 +1057,6 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	if registrationCount == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "You have not taken this course.")
-	}
-
-	classID := uuid.Parse(c.Param("classID"))
-	if classID == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid classID.")
 	}
 
 	var submissionClosed bool
@@ -1192,7 +1166,6 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	if courseID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
 	}
-
 	classID := uuid.Parse(c.Param("classID"))
 	if classID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid classID.")
@@ -1282,9 +1255,9 @@ type AddClassResponse struct {
 
 // AddClass 新規クラス(&課題)追加
 func (h *handlers) AddClass(c echo.Context) error {
-	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid CourseID.")
+	courseID := uuid.Parse(c.Param("courseID"))
+	if courseID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
 	}
 
 	var count int
@@ -1378,13 +1351,8 @@ type AnnouncementResponse struct {
 
 // GetAnnouncementList お知らせ一覧取得
 func (h *handlers) GetAnnouncementList(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1503,18 +1471,16 @@ type GetAnnouncementDetailResponse struct {
 }
 
 func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
-	sess, err := session.Get(SessionName, c)
+	userID, _, err := getUserID(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	userID := uuid.Parse(sess.Values["userID"].(string))
-	if userID == nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
 
-	announcementID := c.Param("announcementID")
+	announcementID := uuid.Parse(c.Param("announcementID"))
+	if announcementID == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid announcementID.")
+	}
 
 	var announcement AnnouncementDetail
 	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
