@@ -407,6 +407,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer tx.Rollback()
 
 	var errors RegisterCoursesErrorResponse
 	var newlyAdded []Course
@@ -423,7 +424,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 			continue
 		} else if err != nil {
 			c.Logger().Error(err)
-			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
@@ -436,7 +436,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		var count int
 		if err := tx.Get(&count, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID); err != nil {
 			c.Logger().Error(err)
-			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 		if count > 0 {
@@ -454,7 +453,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		" WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?"
 	if err := tx.Select(&alreadyRegistered, query, StatusClosed, userID); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -469,7 +467,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	}
 
 	if len(errors.CourseNotFound) > 0 || len(errors.NotRegistrableStatus) > 0 || len(errors.ScheduleConflict) > 0 {
-		_ = tx.Rollback()
 		return c.JSON(http.StatusBadRequest, errors)
 	}
 
@@ -477,7 +474,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", course.ID, userID)
 		if err != nil {
 			c.Logger().Error(err)
-			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
@@ -915,13 +911,13 @@ func (h *handlers) AddCourse(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer tx.Rollback()
 
 	courseID := uuid.NewRandom()
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -1057,86 +1053,72 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer tx.Rollback()
 
 	courseID := uuid.Parse(c.Param("courseID"))
 	if courseID == nil {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid courseID.")
 	}
 
 	var status CourseStatus
 	if err := tx.Get(&status, "SELECT `status` FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
 	} else if err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if status != StatusInProgress {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in progress.")
 	}
 
 	var registrationCount int
 	if err := tx.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `user_id` = ? AND `course_id` = ?", userID, courseID); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if registrationCount == 0 {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "You have not taken this course.")
 	}
 
 	classID := uuid.Parse(c.Param("classID"))
 	if classID == nil {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid classID.")
 	}
 
 	var submissionClosed bool
 	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if submissionClosed {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "Submission has been closed for this class.")
 	}
 
 	file, header, err := c.Request().FormFile("file")
 	if err != nil {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid file.")
 	}
 	defer file.Close()
 
 	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, NOW())", userID, classID, header.Filename); err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
-			_ = tx.Rollback()
 			return echo.NewHTTPError(http.StatusBadRequest, "You have already submitted to this assignment.")
 		}
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	dst, err := os.Create(AssignmentsDirectory + classID.String() + "-" + userID.String())
 	if err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer dst.Close()
 
 	if _, err = io.Copy(dst, file); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -1164,19 +1146,17 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer tx.Rollback()
 
 	var submissionClosed bool
 	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	if !submissionClosed {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "This assignment is not closed yet.")
 	}
 
@@ -1188,7 +1168,6 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 	for _, score := range req {
 		if _, err := tx.Exec("UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?", score.Score, score.UserCode, classID); err != nil {
 			c.Logger().Error(err)
-			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
@@ -1224,14 +1203,13 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer tx.Rollback()
 
 	var submissionClosed bool
 	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
-		_ = tx.Rollback()
 		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	} else if err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	var submissions []Submission
@@ -1241,20 +1219,17 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		" WHERE `class_id` = ? FOR SHARE"
 	if err := tx.Select(&submissions, query, classID); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	zipFilePath := AssignmentsDirectory + classID.String() + ".zip"
 	if err := createSubmissionsZip(zipFilePath, classID, submissions); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	if _, err := tx.Exec("UPDATE `classes` SET `submission_closed` = true WHERE `id` = ?", classID); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -1331,13 +1306,13 @@ func (h *handlers) AddClass(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer tx.Rollback()
 
 	classID := uuid.NewRandom()
 	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, ?)",
 		classID, courseID, req.Part, req.Title, req.Description, createdAt); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -1345,7 +1320,6 @@ func (h *handlers) AddClass(c echo.Context) error {
 	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
 		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description), createdAt); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -1356,14 +1330,12 @@ func (h *handlers) AddClass(c echo.Context) error {
 		" WHERE `registrations`.`course_id` = ?"
 	if err := tx.Select(&targets, query, courseID); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	for _, user := range targets {
 		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
 			c.Logger().Error(err)
-			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
@@ -1615,13 +1587,13 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	defer tx.Rollback()
 
 	announcementID := uuid.NewRandom()
 	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
 		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
@@ -1631,14 +1603,12 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		" WHERE `registrations`.`course_id` = ?"
 	if err := tx.Select(&targets, query, req.CourseID); err != nil {
 		c.Logger().Error(err)
-		_ = tx.Rollback()
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	for _, user := range targets {
 		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
 			c.Logger().Error(err)
-			_ = tx.Rollback()
 			return c.NoContent(http.StatusInternalServerError)
 		}
 	}
