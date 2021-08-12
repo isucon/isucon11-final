@@ -59,7 +59,8 @@ export type ClassInfo = {
   part: number
   title: string
   description: string
-  submissionClosedAt?: string
+  submissionClosed: boolean
+  submitted: boolean
 }
 
 type SummaryGrade = {
