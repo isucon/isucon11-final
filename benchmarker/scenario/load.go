@@ -147,13 +147,15 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				for i := 0; i < wishRegisterCount*searchCountByRegistration; i++ {
 					timer := time.After(300 * time.Millisecond)
 
-					_, res, err := SearchCourseAction(ctx, student.Agent)
+					param := generate.SearchCourseParam()
+					_, res, err := SearchCourseAction(ctx, student.Agent, param)
 					if err != nil {
 						step.AddError(err)
 						<-timer
 						continue
 					}
-					if err := verifySearchCourseResult(res); err != nil {
+					errs := verifySearchCourseResults(res, param)
+					for _, err := range errs {
 						step.AddError(err)
 					}
 
