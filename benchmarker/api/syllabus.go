@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -19,6 +20,7 @@ type SearchCourseRequest struct {
 	DayOfWeek DayOfWeek
 	Keywords  string
 }
+
 type GetCourseDetailResponse struct {
 	ID          uuid.UUID  `json:"id"`
 	Code        string     `json:"code"`
@@ -38,12 +40,24 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 	query := req.URL.Query()
-	query.Add("type", string(param.Type))
-	query.Add("credit", string(param.Credit))
-	query.Add("teacher", param.Teacher)
-	query.Add("period", string(param.Period))
-	query.Add("day_of_week", string(param.DayOfWeek))
-	query.Add("keywords", param.Keywords)
+	if param.Type != "" {
+		query.Add("type", string(param.Type))
+	}
+	if param.Credit != 0 {
+		query.Add("credit", strconv.Itoa((int(param.Credit))))
+	}
+	if param.Teacher != "" {
+		query.Add("teacher", param.Teacher)
+	}
+	if param.Period != 0 {
+		query.Add("period", strconv.Itoa((int(param.Period))))
+	}
+	if param.DayOfWeek != "" {
+		query.Add("day_of_week", string(param.DayOfWeek))
+	}
+	if param.Keywords != "" {
+		query.Add("keywords", param.Keywords)
+	}
 	req.URL.RawQuery = query.Encode()
 
 	req.Header.Set("Content-Type", "application/json")
