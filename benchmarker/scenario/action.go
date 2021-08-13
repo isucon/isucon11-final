@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 
@@ -82,10 +83,19 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 	return hres, res, nil
 }
 
-func SearchCourseAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.GetCourseDetailResponse, error) {
-	// FIXME: param
-	// MEMO: model.course.DayOfWeekは処理のしやすさを優先してintで持っている.apiリクエストに詰む際はよしなに変換して(hattori)
-	hres, err := api.SearchCourse(ctx, agent, &api.SearchCourseRequest{})
+func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.SearchCourseParam) (*http.Response, []*api.GetCourseDetailResponse, error) {
+	req := api.SearchCourseRequest{
+		Type:     api.CourseType(param.Type),
+		Credit:   uint8(param.Credit),
+		Teacher:  param.Teacher,
+		Period:   uint8(param.Period + 1),
+		Keywords: strings.Join(param.Keywords, " "),
+	}
+	if param.DayOfWeek != -1 {
+		req.DayOfWeek = api.DayOfWeekTable[param.DayOfWeek]
+	}
+
+	hres, err := api.SearchCourse(ctx, agent, &req)
 	if err != nil {
 		return hres, nil, failure.NewError(fails.ErrHTTP, err)
 	}

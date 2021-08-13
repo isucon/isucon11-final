@@ -136,3 +136,15 @@ func CourseParam(faculty *model.Faculty) *model.CourseParam {
 		return liberalCourseParam(faculty)
 	}
 }
+
+func SearchCourseParam() *model.SearchCourseParam {
+	// FIXME: 検索パラメータ生成
+	return &model.SearchCourseParam{
+		Type:      "",
+		Credit:    0,
+		Teacher:   "",
+		Period:    -1, // 0-6, -1で指定なし
+		DayOfWeek: -1, // 0-7, -1で指定なし
+		Keywords:  []string{},
+	}
+}

@@ -33,6 +33,15 @@ type Course struct {
 	tempRegStudents    sync.WaitGroup // ベンチ内で仮登録して本登録リクエストが完了していない生徒たち
 }
 
+type SearchCourseParam struct {
+	Type      string
+	Credit    int
+	Teacher   string
+	Period    int
+	DayOfWeek int
+	Keywords  []string
+}
+
 func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 	return &Course{
 		CourseParam:        param,

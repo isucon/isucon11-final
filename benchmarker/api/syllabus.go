@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -19,6 +20,7 @@ type SearchCourseRequest struct {
 	DayOfWeek DayOfWeek
 	Keywords  string
 }
+
 type GetCourseDetailResponse struct {
 	ID          uuid.UUID  `json:"id"`
 	Code        string     `json:"code"`
@@ -39,9 +41,9 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 	}
 	query := req.URL.Query()
 	query.Add("type", string(param.Type))
-	query.Add("credit", string(param.Credit))
+	query.Add("credit", strconv.Itoa((int(param.Credit))))
 	query.Add("teacher", param.Teacher)
-	query.Add("period", string(param.Period))
+	query.Add("period", strconv.Itoa((int(param.Period))))
 	query.Add("day_of_week", string(param.DayOfWeek))
 	query.Add("keywords", param.Keywords)
 	req.URL.RawQuery = query.Encode()
