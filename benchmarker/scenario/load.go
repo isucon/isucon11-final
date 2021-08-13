@@ -154,7 +154,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						<-timer
 						continue
 					}
-					if err := verifySearchCourseResult(res); err != nil {
+					errs := verifySearchCourseResults(res, param)
+					for _, err := range errs {
 						step.AddError(err)
 					}
 
