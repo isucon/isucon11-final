@@ -270,7 +270,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
-				if err := verifyAnnouncements(&res); err != nil {
+				errs := verifyAnnouncements(&res, student)
+				for _, err := range errs {
 					step.AddError(err)
 				}
 
