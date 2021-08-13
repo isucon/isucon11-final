@@ -11,13 +11,15 @@
     "
   >
     <div class="flex items-center flex-no-shrink text-white mr-6">
-      <span class="text-xl tracking-tight">ISUCHOLAR</span>
+      <span class="text-xl tracking-tight">
+        <NuxtLink to="/">ISUCHOLAR</NuxtLink>
+      </span>
     </div>
 
     <div class="w-full flex-grow lg:flex lg:items-center lg:w-auto text-white">
       <div class="text-sm lg:flex-grow"></div>
       <div :class="state">
-        <NuxtLink to="announce">お知らせ</NuxtLink>
+        <NuxtLink to="/announce">お知らせ</NuxtLink>
         <span>学籍番号: xxxxxx</span>
       </div>
     </div>

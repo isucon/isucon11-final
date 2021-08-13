@@ -37,7 +37,7 @@
           <p class="py-2">今期の成績は成績照会ページで確認してください</p>
 
           <div class="py-4">
-            <NuxtLink to="grade">
+            <NuxtLink to="/grade">
               <Button>成績照会</Button>
             </NuxtLink>
           </div>
@@ -52,7 +52,7 @@
           </div>
 
           <div class="py-4">
-            <NuxtLink to="register">
+            <NuxtLink to="/register">
               <Button color="primary">履修登録</Button>
             </NuxtLink>
           </div>
