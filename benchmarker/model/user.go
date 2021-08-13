@@ -3,7 +3,6 @@ package model
 import (
 	"net/url"
 	"sync"
-	"time"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
@@ -23,6 +22,7 @@ type Student struct {
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
+	announcementCond      *sync.Cond
 	submissions           []*Submission
 	rmu                   sync.RWMutex
 
@@ -40,12 +40,12 @@ func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student 
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
-	return &Student{
+	s := &Student{
 		UserAccount:            userData,
 		RegisteringCourseLimit: regLimit,
 		Agent:                  a,
 
-		registeredCourses:     make([]*Course, 0),
+		registeredCourses:     make([]*Course, 0, 20),
 		announcements:         make([]*AnnouncementStatus, 0, 100),
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
@@ -53,6 +53,8 @@ func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student 
 		registeredSchedule: [7][6]bool{},
 		scheduleMutex:      sync.RWMutex{},
 	}
+	s.announcementCond = sync.NewCond(&s.rmu)
+	return s
 }
 
 func (s *Student) AddCourse(course *Course) {
@@ -93,26 +95,30 @@ func (s *Student) ReadAnnouncement(id string) {
 	defer s.rmu.Unlock()
 
 	s.announcements[s.announcementIndexByID[id]].Unread = false
+	s.announcementCond.Broadcast()
 }
-func (s *Student) isUnreadAnnouncement(id string) bool {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
 
+func (s *Student) isUnreadAnnouncement(id string) bool {
 	return s.announcements[s.announcementIndexByID[id]].Unread
 }
+
 func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 	ch := make(chan struct{})
 
+	s.rmu.RLock()
 	if s.isUnreadAnnouncement(id) {
 		go func() {
+			s.announcementCond.L.Lock()
 			for s.isUnreadAnnouncement(id) {
-				<-time.After(1 * time.Millisecond)
+				s.announcementCond.Wait()
 			}
+			s.announcementCond.L.Unlock()
 			close(ch)
 		}()
 	} else {
 		close(ch)
 	}
+	s.rmu.RUnlock()
 	return ch
 }
 
