@@ -3,7 +3,6 @@ package model
 import (
 	"net/url"
 	"sync"
-	"time"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
@@ -23,6 +22,7 @@ type Student struct {
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
+	announcementCond      *sync.Cond
 	submissions           []*Submission
 	rmu                   sync.RWMutex
 
@@ -45,9 +45,10 @@ func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student 
 		RegisteringCourseLimit: regLimit,
 		Agent:                  a,
 
-		registeredCourses:     make([]*Course, 0),
-		announcements:         make([]*AnnouncementStatus, 100),
+		registeredCourses:     make([]*Course, 0, 20),
+		announcements:         make([]*AnnouncementStatus, 0, 100),
 		announcementIndexByID: make(map[string]int, 100),
+		announcementCond:      sync.NewCond(&sync.Mutex{}),
 		rmu:                   sync.RWMutex{},
 
 		registeredSchedule: [7][6]bool{},
@@ -93,21 +94,28 @@ func (s *Student) ReadAnnouncement(id string) {
 	defer s.rmu.Unlock()
 
 	s.announcements[s.announcementIndexByID[id]].Unread = false
+	s.announcementCond.L.Lock()
+	s.announcementCond.Broadcast()
+	s.announcementCond.L.Unlock()
 }
+
 func (s *Student) isUnreadAnnouncement(id string) bool {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
 	return s.announcements[s.announcementIndexByID[id]].Unread
 }
+
 func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 	ch := make(chan struct{})
 
 	if s.isUnreadAnnouncement(id) {
 		go func() {
+			s.announcementCond.L.Lock()
 			for s.isUnreadAnnouncement(id) {
-				<-time.After(1 * time.Millisecond)
+				s.announcementCond.Wait()
 			}
+			s.announcementCond.L.Unlock()
 			close(ch)
 		}()
 	} else {
