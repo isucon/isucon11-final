@@ -46,7 +46,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student 
 		Agent:                  a,
 
 		registeredCourses:     make([]*Course, 0),
-		announcements:         make([]*AnnouncementStatus, 100),
+		announcements:         make([]*AnnouncementStatus, 0, 100),
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
 
