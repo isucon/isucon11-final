@@ -2,11 +2,19 @@
   <div class="mt-2 flex-grow-0">
     <Accordion @open="$emit('open', $event)" @close="$emit('close', $event)">
       <template #header>
-        <p class="text-2xl text-primary-500 font-bold flex items-center">
-          {{ announcement.courseName }} {{ announcement.title }}
-        </p>
-        <div class="text-neutral-300 text-sm mb-4">
-          {{ announcement.createdAt }}
+        <div class="text-2xl text-primary-500 flex items-center">
+          <span class="font-light mr-2">
+            {{ announcement.courseName }}
+          </span>
+          <span class="font-bold">
+            {{ announcement.title }}
+          </span>
+        </div>
+        <div class="text-gray-500 mb-4">
+          <fa-icon class="mr-1" icon="clock" size="sm" />
+          <span class="text-sm">
+            {{ announcement.createdAt }}
+          </span>
         </div>
       </template>
       <template #default>
