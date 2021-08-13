@@ -40,7 +40,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student 
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
-	return &Student{
+	s := &Student{
 		UserAccount:            userData,
 		RegisteringCourseLimit: regLimit,
 		Agent:                  a,
@@ -48,12 +48,13 @@ func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student 
 		registeredCourses:     make([]*Course, 0, 20),
 		announcements:         make([]*AnnouncementStatus, 0, 100),
 		announcementIndexByID: make(map[string]int, 100),
-		announcementCond:      sync.NewCond(&sync.Mutex{}),
 		rmu:                   sync.RWMutex{},
 
 		registeredSchedule: [7][6]bool{},
 		scheduleMutex:      sync.RWMutex{},
 	}
+	s.announcementCond = sync.NewCond(&s.rmu)
+	return s
 }
 
 func (s *Student) AddCourse(course *Course) {
@@ -94,21 +95,17 @@ func (s *Student) ReadAnnouncement(id string) {
 	defer s.rmu.Unlock()
 
 	s.announcements[s.announcementIndexByID[id]].Unread = false
-	s.announcementCond.L.Lock()
 	s.announcementCond.Broadcast()
-	s.announcementCond.L.Unlock()
 }
 
 func (s *Student) isUnreadAnnouncement(id string) bool {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
 	return s.announcements[s.announcementIndexByID[id]].Unread
 }
 
 func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 	ch := make(chan struct{})
 
+	s.rmu.RLock()
 	if s.isUnreadAnnouncement(id) {
 		go func() {
 			s.announcementCond.L.Lock()
@@ -121,6 +118,7 @@ func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
 	} else {
 		close(ch)
 	}
+	s.rmu.RUnlock()
 	return ch
 }
 
