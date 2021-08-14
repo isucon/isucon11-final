@@ -153,6 +153,16 @@ func (s *Student) FillTimeslot(dayOfWeek, period int) {
 	s.registeringCount++
 }
 
+func (s *Student) Course() []*Course {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	res := make([]*Course, len(s.registeredCourses))
+	copy(res, s.registeredCourses[:])
+
+	return res
+}
+
 type Faculty struct {
 	*UserAccount
 	Agent *agent.Agent
