@@ -581,7 +581,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			}
 
 			// 課題を提出する
-			submission := generate.Submission()
+			submission := generate.Submission(course, class, s.UserAccount)
 			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
 			if err != nil {
 				mu.Lock()
