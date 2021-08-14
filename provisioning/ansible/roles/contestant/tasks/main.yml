@@ -1,15 +1,12 @@
 ---
-
 - name: "Include nginx.yml"
   include: nginx.yml
   become_user: root
 
 - name: "Include mysql.yml"
-  include: mariadb.yml
+  include: mysql.yml
   become_user: root
 
 - name: "Include isucholar.yml"
   include: isucholar.yml
   become_user: root
-
-

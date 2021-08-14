@@ -33,4 +33,3 @@
     name: "nginx"
     state: "reloaded"
     enabled: "yes"
-

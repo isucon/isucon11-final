@@ -55,4 +55,3 @@
     name: "mysql.service"
     state: "restarted"
     enabled: "yes"
-
