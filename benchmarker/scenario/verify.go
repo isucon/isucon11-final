@@ -47,10 +47,89 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
-func verifyGrades(res *api.GetGradeResponse) error {
-	// TODO: modelとして何を渡すか
-	// TODO: 成績のverify
+func verifyGrades(res *api.GetGradeResponse, student *model.Student) []error {
+	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
+	courses := student.Course()
+	simpleCourseResults := make([]*model.SimpleCourseResult, 0, len(courses))
+	for _, course := range courses {
+		if v, ok := course.UserScores[student.Code]; ok {
+			simpleCourseResults = append(simpleCourseResults, v)
+		}
+	}
+
+	errs := make([]error, 0)
+	ContestantLogger.Println(len(simpleCourseResults), len(courses), len(res.CourseResults))
+
+	if len(simpleCourseResults) != len(res.CourseResults) {
+		errs = append(errs, errInvalidResponse("成績確認でのコース結果の数が一致しません"))
+		return errs
+	}
+
+	for i := 0; i < len(simpleCourseResults); i++ {
+		courseResultErrs := verifySimpleCourseResult(simpleCourseResults[i], &res.CourseResults[i])
+		if len(courseResultErrs) > 0 {
+			errs = append(errs, courseResultErrs...)
+			return errs
+		}
+	}
+
 	return nil
+}
+
+func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult) []error {
+	errs := make([]error, 0)
+	if expected.Name != res.Name {
+		errs = append(errs, errInvalidResponse("成績確認結果のコース名が違います"))
+		return errs
+	}
+
+	if expected.Code != res.Code {
+		errs = append(errs, errInvalidResponse("成績確認の生徒のCodeが一致しません"))
+		return errs
+	}
+
+	if expected.TotalScore != res.TotalScore {
+		errs = append(errs, errInvalidResponse("成績確認のコースのトータルスコアが一致しません"))
+		return errs
+	}
+
+	if len(expected.ClassScores) != len(res.ClassScores) {
+		errs = append(errs, errInvalidResponse("成績確認でのクラスの数が一致しません"))
+		return errs
+	}
+
+	for i := 0; i < len(res.ClassScores); i++ {
+		scoreErrs := verifyClassScores(expected.ClassScores[i], &res.ClassScores[i])
+		if len(scoreErrs) > 0 {
+			errs = append(errs, scoreErrs...)
+			return errs
+		}
+	}
+
+	return errs
+}
+
+func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) []error {
+	errs := make([]error, 0)
+
+	if expected.ClassID != res.ClassID {
+		errs = append(errs, errInvalidResponse("成績確認でのクラスのIDが一致しません"))
+		return errs
+	}
+	if expected.Part != res.Part {
+		errs = append(errs, errInvalidResponse("成績確認でのクラスのpartが一致しません"))
+		return errs
+	}
+
+	if expected.Score != res.Score {
+		errs = append(errs, errInvalidResponse("成績確認でのクラスのスコアが一致しません"))
+	}
+
+	if expected.Title != res.Title {
+		errs = append(errs, errInvalidResponse("成績確認でのクラスのスコアのタイトルが一致しません"))
+	}
+
+	return errs
 }
 
 func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
