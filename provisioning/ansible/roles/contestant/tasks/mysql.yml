@@ -1,0 +1,58 @@
+---
+- name: "roles/contestant/tasks/mysql: Install MYSQL Package"
+  become: yes
+  become_user: root
+  apt:
+    name:
+    - mysql-server-5.7
+    - mysql-server-core-5.7
+    - mysql-common
+    - mysql-client-5.7
+    - mysql-client-core-5.7
+    - libmysqld-dev
+    update_cache: yes
+
+- name: "roles/contestant/tasks/mysql: Set Temporary password"
+  become: yes
+  become_user: root
+  blockinfile:
+    create: yes
+    dest: &myCnf /root/.my.cnf
+    content: |
+      [client]
+      user = root
+      password = root
+
+- name: "roles/contestant/tasks/mysql: Create isucon user on MySQL"
+  become: yes
+  become_user: root
+  shell: >
+      mysql -uroot -proot -e "
+        CREATE USER IF NOT EXISTS `isucon`@`localhost` IDENTIFIED BY 'isucon';
+        GRANT ALL PRIVILEGES ON *.* TO `isucon`@`localhost` WITH GRANT OPTION;
+        FLUSH PRIVILEGES;
+      "
+
+- name: "roles/contestant/tasks/mysql: Remove temporary file"
+  file:
+    path: *myCnf
+    state: absent
+
+- name: "roles/contestant/tasks/mysql: Copy configs"
+  copy:
+    src: "{{ item }}"
+    dest: "/{{ item }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_items:
+  - etc/mysql/mysql.conf.d/mysqld.cnf
+  - etc/mysql/conf.d/my.cnf
+
+- name: "roles/contestant/tasks/mysql: Start mysql-server"
+  systemd:
+    daemon_reload: "yes"
+    name: "mysql.service"
+    state: "restarted"
+    enabled: "yes"
+
