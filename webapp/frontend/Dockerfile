@@ -1,11 +1,8 @@
-FROM node:14 as builder
+FROM node:14 as ci
 WORKDIR /src/app
 
 COPY package*.json .
 RUN npm ci
 
-COPY . .
-RUN npm run build
-
 FROM nginx:1.21 as runner
-COPY --from=builder /src/app/dist /www/data
+COPY ./dist /www/data
