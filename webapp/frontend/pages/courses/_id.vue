@@ -137,6 +137,9 @@ export default Vue.extend({
         if (target) {
           target.message = announcementDetail.message
         }
+        if (announcement.unread) {
+          announcement.unread = false
+        }
         event.done()
       } catch (e) {
         notify('お知らせの取得に失敗しました')
