@@ -39,13 +39,8 @@ const config = {
         component: 'Fa',
         suffix: true,
         icons: {
-          solid: [
-            'faTimes',
-            'faChevronLeft',
-            'faChevronRight',
-            'faPen',
-            'faClock',
-          ],
+          solid: ['faTimes', 'faChevronLeft', 'faChevronRight', 'faPen'],
+          regular: ['faClock'],
         },
       },
     ],

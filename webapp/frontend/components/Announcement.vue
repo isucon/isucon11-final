@@ -11,7 +11,11 @@
           </span>
         </div>
         <div class="mb-4">
-          <fa-icon class="mr-1" icon="clock" size="sm" />
+          <fa-icon
+            class="mr-1 text-gray-500"
+            :icon="['far', 'clock']"
+            size="sm"
+          />
           <span class="text-gray-500 text-sm mr-2">
             {{ announcement.createdAt }}
           </span>
