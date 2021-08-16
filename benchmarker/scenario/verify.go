@@ -1,7 +1,11 @@
 package scenario
 
 import (
+	"archive/zip"
+	"bytes"
+	"crypto/md5"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -20,8 +24,10 @@ import (
 // param: http.Response, 検証用modelオブジェクト
 // return: error
 
+// TODO: 決め打ちではなく外から指定できるようにする
 const (
 	searchCourseVerifyRate = 0.2
+	assignmentsVerifyRate  = 0.2
 )
 
 func errInvalidStatusCode(res *http.Response, expected []int) error {
@@ -239,8 +245,41 @@ func verifyClasses(res []*api.GetClassResponse, classes []*model.Class) error {
 	return nil
 }
 
-func verifyAssignments(assignmentsData []byte) error {
-	// TODO: modelとして何を渡すか
-	// TODO: ダウンロードした課題データの検証
+func verifyAssignments(assignmentsData []byte, class *model.Class) error {
+	if rand.Float64() < assignmentsVerifyRate {
+		r, err := zip.NewReader(bytes.NewReader(assignmentsData), int64(len(assignmentsData)))
+		if err != nil {
+			return errInvalidResponse("課題zipの展開に失敗しました")
+		}
+
+		downloadedAssignments := make(map[string][16]byte)
+		for _, f := range r.File {
+			rc, err := f.Open()
+			if err != nil {
+				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
+			}
+			assignmentData, err := ioutil.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
+			}
+			downloadedAssignments[f.Name] = md5.Sum(assignmentData)
+		}
+
+		// mapのサイズが等しく、ダウンロードされた課題がすべて実際に提出した課題ならば、ダウンロードされた課題と提出した課題は集合として等しい
+		if len(downloadedAssignments) != class.GetSubmittedCount() {
+			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
+		}
+
+		for name, hashDownloaded := range downloadedAssignments {
+			hashSubmitted, exists := class.GetAssignmentHash(name)
+			if !exists {
+				return errInvalidResponse("課題を提出していない学生のファイルが課題zipに含まれています")
+			} else if hashDownloaded != hashSubmitted {
+				return errInvalidResponse("ダウンロードされた課題が提出された課題と一致しません")
+			}
+		}
+	}
+
 	return nil
 }
