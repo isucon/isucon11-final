@@ -3,8 +3,8 @@ package scenario
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/md5"
 	"fmt"
+	"hash/crc32"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -252,7 +252,7 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			return errInvalidResponse("課題zipの展開に失敗しました")
 		}
 
-		downloadedAssignments := make(map[string][16]byte)
+		downloadedAssignments := make(map[string]uint32)
 		for _, f := range r.File {
 			rc, err := f.Open()
 			if err != nil {
@@ -263,7 +263,7 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			if err != nil {
 				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
 			}
-			downloadedAssignments[f.Name] = md5.Sum(assignmentData)
+			downloadedAssignments[f.Name] = crc32.ChecksumIEEE(assignmentData)
 		}
 
 		// mapのサイズが等しく、ダウンロードされた課題がすべて実際に提出した課題ならば、ダウンロードされた課題と提出した課題は集合として等しい
@@ -271,11 +271,11 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
 		}
 
-		for name, hashDownloaded := range downloadedAssignments {
-			hashSubmitted, exists := class.GetAssignmentHash(name)
+		for name, checksumDownloaded := range downloadedAssignments {
+			checksumSubmitted, exists := class.GetAssignmentChecksum(name)
 			if !exists {
 				return errInvalidResponse("課題を提出していない学生のファイルが課題zipに含まれています")
-			} else if hashDownloaded != hashSubmitted {
+			} else if checksumDownloaded != checksumSubmitted {
 				return errInvalidResponse("ダウンロードされた課題が提出された課題と一致しません")
 			}
 		}
