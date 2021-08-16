@@ -10,11 +10,25 @@
             {{ announcement.title }}
           </span>
         </div>
-        <div class="text-gray-500 mb-4">
+        <div class="mb-4">
           <fa-icon class="mr-1" icon="clock" size="sm" />
-          <span class="text-sm">
+          <span class="text-gray-500 text-sm mr-2">
             {{ announcement.createdAt }}
           </span>
+          <template v-if="announcement.unread">
+            <span
+              class="
+                pt-1
+                pl-2
+                pr-2
+                pb-1
+                text-xs text-white
+                rounded-sm
+                bg-primary-500
+              "
+              >未読</span
+            >
+          </template>
         </div>
       </template>
       <template #default>
