@@ -68,8 +68,7 @@ func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode s
 
 	for _, resCourseResult := range res.CourseResults {
 		if _, ok := simpleCourseResults[resCourseResult.Code]; !ok {
-			// ここには来ないはず
-			panic("cannot find course")
+			return []error{errInvalidResponse("成績確認で期待しないコースが含まれています")}
 		}
 
 		courseResultErrs := verifySimpleCourseResult(simpleCourseResults[resCourseResult.Code], &resCourseResult)
@@ -83,40 +82,34 @@ func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode s
 }
 
 func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult) []error {
-	errs := make([]error, 0)
 	if expected.Name != res.Name {
-		errs = append(errs, errInvalidResponse("成績確認結果のコース名が違います"))
 		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Name, res.Name))
-		return errs
+		return []error{errInvalidResponse("成績確認結果のコース名が違います")}
 	}
 
 	if expected.Code != res.Code {
-		errs = append(errs, errInvalidResponse("成績確認の生徒のCodeが一致しません"))
 		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Code, res.Code))
-		return errs
+		return []error{errInvalidResponse("成績確認の生徒のCodeが一致しません")}
 	}
 
 	if expected.TotalScore != res.TotalScore {
-		errs = append(errs, errInvalidResponse("成績確認のコースのトータルスコアが一致しません"))
 		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", expected.TotalScore, res.TotalScore))
-		return errs
+		return []error{errInvalidResponse("成績確認のコースのトータルスコアが一致しません")}
 	}
 
 	if len(expected.ClassScores) != len(res.ClassScores) {
-		errs = append(errs, errInvalidResponse("成績確認でのクラスの数が一致しません"))
 		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d\n", len(expected.ClassScores), len(res.ClassScores)))
-		return errs
+		return []error{errInvalidResponse("成績確認でのクラスの数が一致しません")}
 	}
 
 	for i := 0; i < len(res.ClassScores); i++ {
 		scoreErrs := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
 		if len(scoreErrs) > 0 {
-			errs = append(errs, scoreErrs...)
-			return errs
+			return scoreErrs
 		}
 	}
 
-	return errs
+	return nil
 }
 
 func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) []error {
