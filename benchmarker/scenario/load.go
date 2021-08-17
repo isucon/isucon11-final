@@ -117,14 +117,22 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				// resource Verify
 
 				// 学生は成績を確認し続ける
+				courses := student.Course()
 				_, res, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
-				if err := verifyGrades(&res); err != nil {
+				errs := verifyGrades(&res, courses, student.Code)
+				for _, err := range errs {
+					ContestantLogger.Println(err)
 					step.AddError(err)
+				}
+
+				if len(errs) > 0 {
+					<-time.After(3000 * time.Millisecond)
+					continue
 				}
 
 				step.AddScore(score.CountGetGrades)
@@ -431,7 +439,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				}
 
 				// TODO: 採点する
-				_, err = scoringAssignments(ctx, course.ID, class.ID, faculty, course.Students(), assignmentsData)
+				_, err = scoringAssignments(ctx, course, class, faculty, course.Students(), assignmentsData)
 				if err != nil {
 					step.AddError(err)
 					<-timer
@@ -603,7 +611,7 @@ type StudentScore struct {
 	code  string
 }
 
-func scoringAssignments(ctx context.Context, courseID, classID string, faculty *model.Faculty, students []*model.Student, assignments []byte) (*http.Response, error) {
+func scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, faculty *model.Faculty, students []*model.Student, assignments []byte) (*http.Response, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -614,8 +622,11 @@ func scoringAssignments(ctx context.Context, courseID, classID string, faculty *
 			score: score,
 			code:  s.Code,
 		})
+
+		// TODO: エラーハンドリング
+		class.InsertUserScores(s.Code, score)
 	}
-	res, err := PostGradeAction(ctx, faculty.Agent, courseID, classID, scores)
+	res, err := PostGradeAction(ctx, faculty.Agent, course.ID, class.ID, scores)
 	if err != nil {
 		return nil, err
 	}
