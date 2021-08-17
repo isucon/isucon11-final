@@ -493,8 +493,21 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			}
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
-			// BrowserAccess(ログイン)
-			// resource Verify
+			hres, resources, err := AccessTopPageAction(ctx, student.Agent)
+			if err != nil {
+				AdminLogger.Printf("学生 %vがログイン画面にアクセスできませんでした", userData.Name) // TODO: debug
+				step.AddError(err)
+				return
+			}
+			errs := verifyTopPageAccess(hres, resources)
+			if len(errs) != 0 {
+				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", userData.Name) // TODO: debug
+				for _, err := range errs {
+					step.AddError(err)
+				}
+				return
+			}
+
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
 				ContestantLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
