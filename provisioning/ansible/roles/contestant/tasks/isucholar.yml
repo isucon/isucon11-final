@@ -1,5 +1,5 @@
 ---
-- name: "Deploy isucon11-final"
+- name: "roles/contestant/tasks/isucholar: Deploy isucon11-final"
   become_user: isucon
   copy:
     remote_src: yes
@@ -8,13 +8,13 @@
     owner: isucon
     group: isucon
 
-- name: "Deploy hosts"
+- name: "roles/contestant/tasks/isucholar: Deploy hosts"
   become_user: root
   copy:
     src: "etc/hosts"
     dest: "/etc/hosts"
 
-- name: "Deploy env file"
+- name: "roles/contestant/tasks/isucholar: Deploy env file"
   become_user: isucon
   copy:
     src: "home/isucon/env.sh"
