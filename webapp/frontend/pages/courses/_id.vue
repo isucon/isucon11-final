@@ -21,10 +21,11 @@
             </template>
             <template slot="classworks">
               <ClassInfoCard
-                v-for="cls in classes"
+                v-for="(cls, index) in classes"
                 :key="cls.id"
                 :course="course"
                 :classinfo="cls"
+                @submitted="submissionComplete(index)"
               />
             </template>
           </tabs>
@@ -55,14 +56,6 @@ type CourseData = {
   link: string
 }
 
-type ClassResponse = {
-  id: string
-  part: number
-  title: string
-  description: string
-  submissionClosedAt?: number
-}
-
 export default Vue.extend({
   key(route) {
     return route.fullPath
@@ -77,25 +70,11 @@ export default Vue.extend({
     const path = query.path
       ? (query.path as string)
       : `/api/announcements?course_id=${params.id}`
-    const [course, classResponses, announcementResult] = await Promise.all([
+    const [course, classes, announcementResult] = await Promise.all([
       $axios.$get(`/api/syllabus/${params.id}`),
       $axios.$get(`/api/courses/${params.id}/classes`),
       $axios.get(path),
     ])
-    const classes: ClassInfo[] = classResponses.map((item: ClassResponse) => {
-      const cls: ClassInfo = {
-        id: item.id,
-        part: item.part,
-        title: item.title,
-        description: item.description,
-      }
-      if (item.submissionClosedAt !== undefined) {
-        cls.submissionClosedAt = new Date(
-          item.submissionClosedAt * 1000
-        ).toLocaleString()
-      }
-      return cls
-    })
     const responseBody: GetAnnouncementResponse = announcementResult.data
     const link = announcementResult.headers.link
     const announcements: Announcement[] = Object.values(
@@ -149,6 +128,9 @@ export default Vue.extend({
       this.$router.push(
         `/courses/${this.course.id}?path=${encodeURIComponent(path)}`
       )
+    },
+    submissionComplete(classIdx: number) {
+      this.classes[classIdx].submitted = true
     },
   },
 })

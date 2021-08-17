@@ -8,9 +8,11 @@
           </p>
           <p class="text-black text-base mb-4">{{ classinfo.description }}</p>
           <div class="flex flex-row items-center">
-            <Button @click="openModal"> 課題を提出する </Button>
+            <Button :disabled="submissionDisabled" @click="openModal">
+              課題を提出する
+            </Button>
             <div class="text-neutral-300 text-sm ml-4">
-              締め切り：{{ classinfo.submissionClosedAt || '未設定' }}
+              締め切り：{{ submissionStatus }}
             </div>
           </div>
         </div>
@@ -21,6 +23,7 @@
       :course-name="course.name"
       :class-title="classinfo.title"
       :class-id="classinfo.id"
+      @submitted="$emit('submitted')"
       @close="closeModal"
     />
   </div>
@@ -58,8 +61,18 @@ export default Vue.extend({
     }
   },
   computed: {
-    classTitle() {
+    classTitle(): string {
       return `第${this.classinfo.part}回 ${this.classinfo.title}`
+    },
+    submissionStatus(): string {
+      if (this.classinfo.submitted) {
+        return '提出済み'
+      } else {
+        return this.classinfo.submissionClosed ? '締切済み' : '受付中'
+      }
+    },
+    submissionDisabled(): boolean {
+      return this.classinfo.submitted || this.classinfo.submissionClosed
     },
   },
   methods: {

@@ -48,6 +48,7 @@ func main() {
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("trapnomura"))))
 
 	db, _ := GetDB(false)
+	db.SetMaxOpenConns(10)
 
 	h := &handlers{
 		DB: db,
@@ -1231,14 +1232,8 @@ func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []S
 		}
 	}
 
-	var zipArgs []string
-	zipArgs = append(zipArgs, "-j", zipFilePath)
-
-	for _, submission := range submissions {
-		zipArgs = append(zipArgs, tmpDir+submission.UserCode)
-	}
-
-	return exec.Command("zip", zipArgs...).Run()
+	// -i 'tmpDir/*': 空zipを許す
+	return exec.Command("zip", "-j", "-r", zipFilePath, tmpDir, "-i", tmpDir+"*").Run()
 }
 
 type AddClassRequest struct {

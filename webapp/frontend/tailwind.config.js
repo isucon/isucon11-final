@@ -47,9 +47,11 @@ module.exports = {
   plugins: [require('@tailwindcss/forms')],
   variants: {
     extend: {
-      backgroundColor: ['odd', 'hover'],
-      textColor: ['hover'],
+      backgroundColor: ['odd', 'hover', 'disabled'],
+      textColor: ['hover', 'disabled'],
       borderRadius: ['hover'],
+      borderColor: ['disabled'],
+      cursor: ['disabled'],
     },
   },
 }
