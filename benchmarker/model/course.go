@@ -180,7 +180,7 @@ func (c *Course) CollectUserScores(userCode string) []*ClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	res := make([]*ClassScore, 0, 5)
+	res := make([]*ClassScore, 0, len(c.classes))
 	for _, v := range c.classes {
 		if v, ok := v.userScores[userCode]; ok {
 			res = append(res, v)
