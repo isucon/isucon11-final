@@ -3,7 +3,7 @@ package model
 // CourseResultのうち計算しなくていいやつ
 type SimpleCourseResult struct {
 	Name        string // course name
-	Code        string // student code
+	Code        string // course code
 	TotalScore  int    // コースのトータルスコア(生徒ごと)
 	ClassScores []*ClassScore
 }

@@ -61,9 +61,6 @@ func (c *Course) AddClass(class *Class) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	//for _, student := range c.registeredStudents {
-	//	class.InsertUserScores(student.Code, 0)
-	//}
 	c.classes = append(c.classes, class)
 }
 
