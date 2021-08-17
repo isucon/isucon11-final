@@ -8,15 +8,13 @@ type SimpleCourseResult struct {
 	ClassScores []*ClassScore
 }
 
-func NewSimpleCourseResult(name, code string, score int, class *Class) *SimpleCourseResult {
-	classScore := make([]*ClassScore, 0, 5)
-	classScore = append(classScore, NewClassScore(class, score))
+func NewSimpleCourseResult(name, code string, totalScore int, classScores []*ClassScore) *SimpleCourseResult {
 
 	return &SimpleCourseResult{
 		Name:        name,
 		Code:        code,
-		TotalScore:  score,
-		ClassScores: classScore,
+		TotalScore:  totalScore,
+		ClassScores: classScores,
 	}
 
 }

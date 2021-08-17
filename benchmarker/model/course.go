@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -62,6 +61,9 @@ func (c *Course) AddClass(class *Class) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
+	//for _, student := range c.registeredStudents {
+	//	class.InsertUserScores(student.Code, 0)
+	//}
 	c.classes = append(c.classes, class)
 }
 
@@ -183,11 +185,8 @@ func (c *Course) CollectUserScores(userCode string) []*ClassScore {
 
 	res := make([]*ClassScore, 0, 5)
 	for _, v := range c.classes {
-		if s, ok := v.userScores[userCode]; ok {
-			res = append(res, s)
-		} else {
-			// TODO
-			panic(fmt.Errorf("userCode: %s does not exists", userCode))
+		if v, ok := v.userScores[userCode]; ok {
+			res = append(res, v)
 		}
 	}
 

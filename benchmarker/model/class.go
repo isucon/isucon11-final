@@ -35,5 +35,16 @@ func (c *Class) InsertUserScores(userCode string, score int) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	c.userScores[userCode] = NewClassScore(c, score)
+	if _, ok := c.userScores[userCode]; !ok {
+		c.userScores[userCode] = NewClassScore(c, score)
+	}
+
+	c.userScores[userCode].Score = score
+}
+
+func (c *Class) RemoveUserScores(userCode string) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	delete(c.userScores, userCode)
 }

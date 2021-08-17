@@ -47,39 +47,33 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
-// registerCourseLimitを参照している
-// load用
-func verifyGrades(res *api.GetGradeResponse, student *model.Student) []error {
+func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode string) []error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
-	courses := student.Course()
 
 	errs := make([]error, 0)
 
-	if len(courses) != len(res.CourseResults) {
+	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
+	for _, course := range courses {
+		classScore := course.CollectUserScores(userCode)
+		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, model.CalculateTotalScore(classScore), classScore)
+	}
+
+	if len(simpleCourseResults) != len(res.CourseResults) {
 		errs = append(errs, errInvalidResponse("成績確認でのコース結果の数が一致しません"))
 		return errs
 	}
+	for _, resCourseResult := range res.CourseResults {
+		if _, ok := simpleCourseResults[resCourseResult.Code]; !ok {
+			// ここには来ないはず
+			panic("cannot find course")
+		}
 
-	var simpleCourseResult = model.SimpleCourseResult{
-		Name:        "",
-		Code:        "",
-		TotalScore:  0,
-		ClassScores: make([]*model.ClassScore, registerCourseLimit),
-	}
-
-	for i := 0; i < len(courses); i++ {
-		classScores := courses[i].CollectUserScores(student.Code)
-
-		simpleCourseResult.Name = courses[i].Name
-		simpleCourseResult.Code = student.Code
-		simpleCourseResult.TotalScore = model.CalculateTotalScore(classScores)
-		simpleCourseResult.ClassScores = classScores
-
-		courseResultErrs := verifySimpleCourseResult(&simpleCourseResult, &res.CourseResults[i])
+		courseResultErrs := verifySimpleCourseResult(simpleCourseResults[resCourseResult.Code], &resCourseResult)
 		if len(courseResultErrs) > 0 {
 			errs = append(errs, courseResultErrs...)
 			return errs
 		}
+
 	}
 
 	return nil
@@ -89,26 +83,30 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	errs := make([]error, 0)
 	if expected.Name != res.Name {
 		errs = append(errs, errInvalidResponse("成績確認結果のコース名が違います"))
+		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Name, res.Name))
 		return errs
 	}
 
 	if expected.Code != res.Code {
 		errs = append(errs, errInvalidResponse("成績確認の生徒のCodeが一致しません"))
+		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Code, res.Code))
 		return errs
 	}
 
 	if expected.TotalScore != res.TotalScore {
 		errs = append(errs, errInvalidResponse("成績確認のコースのトータルスコアが一致しません"))
+		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", expected.TotalScore, res.TotalScore))
 		return errs
 	}
 
 	if len(expected.ClassScores) != len(res.ClassScores) {
 		errs = append(errs, errInvalidResponse("成績確認でのクラスの数が一致しません"))
+		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d\n", len(expected.ClassScores), len(res.ClassScores)))
 		return errs
 	}
 
 	for i := 0; i < len(res.ClassScores); i++ {
-		scoreErrs := verifyClassScores(expected.ClassScores[i], &res.ClassScores[i])
+		scoreErrs := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
 		if len(scoreErrs) > 0 {
 			errs = append(errs, scoreErrs...)
 			return errs
@@ -123,10 +121,12 @@ func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) []error 
 
 	if expected.ClassID != res.ClassID {
 		errs = append(errs, errInvalidResponse("成績確認でのクラスのIDが一致しません"))
+		AdminLogger.Println("expected: ", expected.ClassID, "actual: ", res.ClassID)
 		return errs
 	}
 	if expected.Part != res.Part {
 		errs = append(errs, errInvalidResponse("成績確認でのクラスのpartが一致しません"))
+		AdminLogger.Println("expected: ", expected.Part, "actual: ", res.Part)
 		return errs
 	}
 
