@@ -25,7 +25,7 @@ func NewClass(id string, param *ClassParam) *Class {
 	return &Class{
 		ClassParam:           param,
 		ID:                   id,
-		userScores:           make(map[string]*ClassScore, 20),
+		userScores:           make(map[string]*ClassScore, 50), // とりあえずclassの履修人数上限にする
 		submittedAssignments: make(map[string]uint32),
 
 		rmu: sync.RWMutex{},

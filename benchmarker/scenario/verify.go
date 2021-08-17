@@ -56,8 +56,6 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode string) []error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 
-	errs := make([]error, 0)
-
 	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
 	for _, course := range courses {
 		classScore := course.CollectUserScores(userCode)
@@ -65,9 +63,9 @@ func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode s
 	}
 
 	if len(simpleCourseResults) != len(res.CourseResults) {
-		errs = append(errs, errInvalidResponse("成績確認でのコース結果の数が一致しません"))
-		return errs
+		return []error{errInvalidResponse("成績確認でのコース結果の数が一致しません")}
 	}
+
 	for _, resCourseResult := range res.CourseResults {
 		if _, ok := simpleCourseResults[resCourseResult.Code]; !ok {
 			// ここには来ないはず
@@ -76,8 +74,7 @@ func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode s
 
 		courseResultErrs := verifySimpleCourseResult(simpleCourseResults[resCourseResult.Code], &resCourseResult)
 		if len(courseResultErrs) > 0 {
-			errs = append(errs, courseResultErrs...)
-			return errs
+			return courseResultErrs
 		}
 
 	}
