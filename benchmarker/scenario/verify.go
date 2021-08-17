@@ -141,7 +141,7 @@ func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) []error 
 	}
 
 	if expected.Title != res.Title {
-		errs = append(errs, errInvalidResponse("成績確認でのクラスのスコアのタイトルが一致しません"))
+		errs = append(errs, errInvalidResponse("成績確認でのクラスのタイトルが一致しません"))
 	}
 
 	return errs
