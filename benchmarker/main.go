@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"runtime/pprof"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,7 +19,9 @@ import (
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
+	score2 "github.com/isucon/isucandar/score"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
+
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 	"github.com/isucon/isucon11-final/benchmarker/score"
 )
@@ -127,8 +130,15 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 
 	// FIXME: for debug
 	logger.Printf("breakdown:")
-	for k, v := range breakdown {
-		logger.Printf("  %v: %v", k, v)
+	scoreTags := make([]score2.ScoreTag, 0, len(breakdown))
+	for k := range breakdown {
+		scoreTags = append(scoreTags, k)
+	}
+	sort.Slice(scoreTags, func(i, j int) bool {
+		return scoreTags[i] < scoreTags[j]
+	})
+	for _, tag := range scoreTags {
+		logger.Printf("  %v: %v", tag, breakdown[tag])
 	}
 
 	/*
