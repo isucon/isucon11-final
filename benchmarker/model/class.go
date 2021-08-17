@@ -1,5 +1,9 @@
 package model
 
+import (
+	"sync"
+)
+
 type ClassParam struct {
 	Title     string
 	Desc      string
@@ -10,11 +14,26 @@ type ClassParam struct {
 type Class struct {
 	*ClassParam
 	ID string
+
+	userScores map[string]*ClassScore
+
+	rmu sync.RWMutex
 }
 
 func NewClass(id string, param *ClassParam) *Class {
 	return &Class{
 		ClassParam: param,
 		ID:         id,
+
+		userScores: make(map[string]*ClassScore, 20),
+
+		rmu: sync.RWMutex{},
 	}
+}
+
+func (c *Class) InsertUserScores(userCode string, score int) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.userScores[userCode] = NewClassScore(c, score)
 }

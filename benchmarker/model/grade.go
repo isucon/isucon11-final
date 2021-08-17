@@ -38,3 +38,12 @@ func NewClassScore(class *Class, score int) *ClassScore {
 		Score:   score,
 	}
 }
+
+func CalculateTotalScore(scores []*ClassScore) int {
+	total := 0
+	for _, v := range scores {
+		total += v.Score
+	}
+
+	return total
+}

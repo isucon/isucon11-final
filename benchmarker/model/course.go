@@ -2,7 +2,7 @@ package model
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -32,8 +32,6 @@ type Course struct {
 	registrationCloser chan struct{} // 登録が締め切られるとcloseする
 	timerOnce          sync.Once
 	tempRegStudents    sync.WaitGroup // ベンチ内で仮登録して本登録リクエストが完了していない生徒たち
-
-	UserScores map[string]*SimpleCourseResult
 }
 
 type SearchCourseParam struct {
@@ -57,8 +55,6 @@ func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
 		registrationCloser: make(chan struct{}, 0),
 		timerOnce:          sync.Once{},
 		tempRegStudents:    sync.WaitGroup{},
-
-		UserScores: make(map[string]*SimpleCourseResult, 20),
 	}
 }
 
@@ -181,16 +177,19 @@ func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
 	})
 }
 
-func (c *Course) InsertUserScores(userCode string, score int, class *Class) {
-	c.rmu.Lock()
-	defer c.rmu.Unlock()
+func (c *Course) CollectUserScores(userCode string) []*ClassScore {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
 
-	log.Println("here")
-	if v, ok := c.UserScores[userCode]; ok {
-		log.Println("here1")
-		v.ClassScores = append(v.ClassScores, NewClassScore(class, score))
-	} else {
-		log.Println("here2")
-		c.UserScores[userCode] = NewSimpleCourseResult(c.Name, userCode, score, class)
+	res := make([]*ClassScore, 0, 5)
+	for _, v := range c.classes {
+		if s, ok := v.userScores[userCode]; ok {
+			res = append(res, s)
+		} else {
+			// TODO
+			panic(fmt.Errorf("userCode: %s does not exists", userCode))
+		}
 	}
+
+	return res
 }

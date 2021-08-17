@@ -47,26 +47,35 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
+// registerCourseLimitを参照している
+// load用
 func verifyGrades(res *api.GetGradeResponse, student *model.Student) []error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 	courses := student.Course()
-	simpleCourseResults := make([]*model.SimpleCourseResult, 0, len(courses))
-	for _, course := range courses {
-		if v, ok := course.UserScores[student.Code]; ok {
-			simpleCourseResults = append(simpleCourseResults, v)
-		}
-	}
 
 	errs := make([]error, 0)
-	ContestantLogger.Println(len(simpleCourseResults), len(courses), len(res.CourseResults))
 
-	if len(simpleCourseResults) != len(res.CourseResults) {
+	if len(courses) != len(res.CourseResults) {
 		errs = append(errs, errInvalidResponse("成績確認でのコース結果の数が一致しません"))
 		return errs
 	}
 
-	for i := 0; i < len(simpleCourseResults); i++ {
-		courseResultErrs := verifySimpleCourseResult(simpleCourseResults[i], &res.CourseResults[i])
+	var simpleCourseResult = model.SimpleCourseResult{
+		Name:        "",
+		Code:        "",
+		TotalScore:  0,
+		ClassScores: make([]*model.ClassScore, registerCourseLimit),
+	}
+
+	for i := 0; i < len(courses); i++ {
+		classScores := courses[i].CollectUserScores(student.Code)
+
+		simpleCourseResult.Name = courses[i].Name
+		simpleCourseResult.Code = student.Code
+		simpleCourseResult.TotalScore = model.CalculateTotalScore(classScores)
+		simpleCourseResult.ClassScores = classScores
+
+		courseResultErrs := verifySimpleCourseResult(&simpleCourseResult, &res.CourseResults[i])
 		if len(courseResultErrs) > 0 {
 			errs = append(errs, courseResultErrs...)
 			return errs
