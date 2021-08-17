@@ -1,5 +1,5 @@
 ---
-- name: "Remove frontend source code"
+- name: "roles/contestant/tasks/isucholar-frontend: Remove frontend source code"
   become_user: root
   file:
     path: /home/isucon/webapp/frontend

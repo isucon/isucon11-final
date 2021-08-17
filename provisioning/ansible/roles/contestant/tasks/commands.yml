@@ -1,0 +1,5 @@
+- name: "roles/contestant/tasks/connmands: Install commands"
+  apt:
+    name:
+    - zip
+    update_cache: yes
