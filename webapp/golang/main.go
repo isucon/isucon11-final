@@ -623,6 +623,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 						myScore = int(submission.Score.Int64)
 					}
 					classScores = append(classScores, ClassScore{
+						ClassID:    class.ID,
 						Part:       submission.Part,
 						Title:      submission.Title,
 						Score:      myScore,
