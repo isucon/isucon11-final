@@ -125,9 +125,10 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				}
 				if err := verifyGrades(&res); err != nil {
 					step.AddError(err)
+				} else {
+					step.AddScore(score.CountGetGrades)
 				}
 
-				step.AddScore(score.CountGetGrades)
 				AdminLogger.Printf("%vは成績を確認した", student.Name)
 
 				select {
@@ -158,8 +159,9 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					for _, err := range errs {
 						step.AddError(err)
 					}
-
-					step.AddScore(score.CountSearchCourse)
+					if len(errs) == 0 {
+						step.AddScore(score.CountSearchCourse)
+					}
 
 					select {
 					case <-ctx.Done():
@@ -276,8 +278,10 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 				for _, err := range errs {
 					step.AddError(err)
 				}
+				if len(errs) == 0 {
+					step.AddScore(score.CountGetAnnouncements)
+				}
 
-				step.AddScore(score.CountGetAnnouncements)
 				AdminLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
 
 				for _, ans := range res.Announcements {
@@ -303,10 +307,11 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 						}
 						if err := verifyAnnouncement(&res, announcementStatus); err != nil {
 							step.AddError(err)
+						} else {
+							step.AddScore(score.CountGetAnnouncementsDetail)
 						}
 
 						student.ReadAnnouncement(ans.ID)
-						step.AddScore(score.CountGetAnnouncementsDetail)
 						AdminLogger.Printf("%vはお知らせ詳細を確認した", student.Name)
 					}
 				}
@@ -389,10 +394,11 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					step.AddError(err)
 					<-timer
 					continue
+				} else {
+					step.AddScore(score.CountAddClass)
 				}
 				course.AddClass(class)
 				course.BroadCastAnnouncement(announcement)
-				step.AddScore(score.CountAddClass)
 				AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
 				select {
@@ -401,11 +407,10 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				default:
 				}
 
-				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID)
+				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
 				for _, e := range errs {
 					step.AddError(e)
 				}
-				step.AddScore(score.CountSubmitAssignment)
 				AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
 				select {
@@ -436,8 +441,9 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					step.AddError(err)
 					<-timer
 					continue
+				} else {
+					step.AddScore(score.CountRegisterScore)
 				}
-				step.AddScore(score.CountRegisterScore)
 				AdminLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
 
 				select {
@@ -527,16 +533,17 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	if err != nil {
 		step.AddError(err)
 		return
+	} else {
+		step.AddScore(score.CountAddCourse)
 	}
-	course := model.NewCourse(courseParam, res.ID, faculty)
 
+	course := model.NewCourse(courseParam, res.ID, faculty)
 	s.AddCourse(course)
 	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
-	step.AddScore(score.CountAddCourse)
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string) []error {
+func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -588,6 +595,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				errs = append(errs, err)
 				mu.Unlock()
 			} else {
+				step.AddScore(score.CountSubmitAssignment)
 				class.AddSubmittedAssignment(s.Code, submission.Data)
 				s.AddSubmission(submission)
 			}
