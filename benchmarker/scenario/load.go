@@ -486,7 +486,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(err)
 				return
 			}
-			errs := verifyTopPageAccess(hres, resources)
+			errs := verifyTopPageResource(hres, resources)
 			if len(errs) != 0 {
 				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", userData.Name)
 				for _, err := range errs {

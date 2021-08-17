@@ -20,7 +20,7 @@ func BrowserAccess(ctx context.Context, a *agent.Agent, path string) (*http.Resp
 		return nil, nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	if res.StatusCode == http.StatusNotModified {
+	if ctx.Err() != nil {
 		return res, nil, nil
 	}
 

@@ -295,11 +295,16 @@ func joinURL(base *url.URL, target string) string {
 	return u
 }
 
-func verifyTopPageAccess(res *http.Response, resources agent.Resources) []error {
-	return verifyBrowserAccess("", res, resources)
+func verifyTopPageResource(res *http.Response, resources agent.Resources) []error {
+	return verifyResources("", res, resources)
 }
 
-func verifyBrowserAccess(expectPath string, res *http.Response, resources agent.Resources) []error {
+func verifyResources(expectPath string, res *http.Response, resources agent.Resources) []error {
+	if resources == nil && res.StatusCode != http.StatusOK {
+		// 期待するリソースはstatus:200のページのみなのでそれ以外は無視する
+		return []error{}
+	}
+
 	var checks []error
 	switch expectPath {
 	case "": // login
