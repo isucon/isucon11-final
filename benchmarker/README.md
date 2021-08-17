@@ -6,6 +6,6 @@ make build
 ```
 ### Benchmark
 ```
-# localhost:9292 (デフォルト) に向けてベンチマーク実行
+# localhost:8080 (デフォルト) に向けてベンチマーク実行
 ./bin/benchmark
 ```
