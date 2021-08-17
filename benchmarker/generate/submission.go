@@ -3,6 +3,8 @@ package generate
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
+	"time"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 )
@@ -12,7 +14,7 @@ func Submission(course *model.Course, class *model.Class, user *model.UserAccoun
 
 	var title string
 	var data []byte
-	isValidExtension := rand > 0.9
+	isValidExtension := rand > 0.1
 
 	if isValidExtension {
 		if rand > 0.7 {
@@ -41,5 +43,6 @@ func genSubmissionContents() string {
 		"2: false\n" +
 		"3: false\n" +
 		"4: true\n" +
-		"5: true"
+		"5: true\n" +
+		"timestamp: " + strconv.Itoa((int(time.Now().UnixNano()))) // FIXME: hashを変えるための一時措置
 }

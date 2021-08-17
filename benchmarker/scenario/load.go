@@ -419,7 +419,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 					step.AddError(err)
 					continue
 				}
-				if err := verifyAssignments(assignmentsData); err != nil {
+				if err := verifyAssignments(assignmentsData, class); err != nil {
 					step.AddError(err)
 				}
 				AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
@@ -588,6 +588,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				errs = append(errs, err)
 				mu.Unlock()
 			} else {
+				class.AddSubmittedAssignment(s.Code, submission.Data)
 				s.AddSubmission(submission)
 			}
 		}()
