@@ -407,13 +407,9 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				default:
 				}
 
-				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID)
+				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
 				for _, e := range errs {
 					step.AddError(e)
-				}
-				// MEMO: CountSubmitAssignmentの加算は課題1件ごとにするべき？
-				if len(errs) == 0 {
-					step.AddScore(score.CountSubmitAssignment)
 				}
 				AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
@@ -547,7 +543,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	s.cPubSub.Publish(course)
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string) []error {
+func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -599,6 +595,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				errs = append(errs, err)
 				mu.Unlock()
 			} else {
+				step.AddScore(score.CountSubmitAssignment)
 				class.AddSubmittedAssignment(s.Code, submission.Data)
 				s.AddSubmission(submission)
 			}
