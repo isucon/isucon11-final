@@ -342,3 +342,32 @@ func setCourseStatusAction(ctx context.Context, agent *agent.Agent, courseID str
 
 	return hres, nil
 }
+
+func AccessTopPageAction(ctx context.Context, agent *agent.Agent) (*http.Response, agent.Resources, error) {
+	hres, resources, err := api.BrowserAccess(ctx, agent, "")
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
+	if err != nil {
+		return hres, nil, err
+	}
+
+	return hres, resources, nil
+}
+
+func AccessTopPageActionWithoutCache(ctx context.Context, agent *agent.Agent) (*http.Response, agent.Resources, error) {
+	hres, resources, err := api.BrowserAccess(ctx, agent, "")
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	// 検証用として200のみ許可
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, nil, err
+	}
+
+	return hres, resources, nil
+}

@@ -9,67 +9,26 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
-func AccessLoginPage(ctx context.Context, a *agent.Agent) []error {
-	return browserAccess(ctx, a, "/login")
-}
-func AccessMyPage(ctx context.Context, a *agent.Agent) []error {
-	return browserAccess(ctx, a, "/mypage")
-}
-func AccessCourseRegPage(ctx context.Context, a *agent.Agent) []error {
-	return browserAccess(ctx, a, "/mypage/registration")
-}
-func AccessSyllabusPage(ctx context.Context, a *agent.Agent, courseID string) []error {
-	return browserAccess(ctx, a, "/syllabus?id="+courseID)
-}
-
-func browserAccess(ctx context.Context, a *agent.Agent, path string) []error {
+func BrowserAccess(ctx context.Context, a *agent.Agent, path string) (*http.Response, agent.Resources, error) {
 	req, err := a.GET(path)
 	if err != nil {
-		return []error{failure.NewError(fails.ErrCritical, err)}
+		return nil, nil, failure.NewError(fails.ErrCritical, err)
 	}
 
 	res, err := a.Do(ctx, req)
 	if err != nil {
-		return []error{failure.NewError(fails.ErrHTTP, err)}
+		return nil, nil, failure.NewError(fails.ErrCritical, err)
 	}
-	defer res.Body.Close()
 
-	if err := assertStatusCode(res, http.StatusOK); err != nil {
-		if err := assertStatusCode(res, http.StatusNotModified); err != nil {
-			return []error{err}
-		}
+	if res.StatusCode == http.StatusNotModified {
+		return res, nil, nil
 	}
 
 	// HTMLファイルから追加リソースを参照する
 	resources, err := a.ProcessHTML(ctx, res, res.Body)
 	if err != nil {
-		return []error{failure.NewError(fails.ErrCritical, err)}
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
 	}
 
-	var errs []error
-	for _, resource := range resources {
-		if resource.Error != nil {
-			errs = append(errs, failure.NewError(fails.ErrHTTP, resource.Error))
-			continue
-		}
-
-		if resource.Response.StatusCode == 304 {
-			continue
-		}
-
-		if err := assertStatusCode(resource.Response, http.StatusOK); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-
-		if err := assertChecksum(resource.Response); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-	}
-	if len(errs) > 0 {
-		return errs
-	}
-
-	return nil
+	return res, resources, nil
 }

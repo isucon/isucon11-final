@@ -11,4 +11,5 @@ const (
 	// ErrHTTP はアプリケーションへの接続周りでのエラー。ある程度許容される。
 	ErrHTTP          failure.StringCode = "http-error"
 	ErrInvalidStatus failure.StringCode = "invalid status code"
+	ErrChecksum      failure.StringCode = "invalid checksum"
 )
