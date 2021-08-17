@@ -185,6 +185,7 @@ export default Vue.extend({
         )
         .then(() => {
           notify('課題の提出が完了しました')
+          this.$emit('submitted')
           this.close()
         })
         .catch(() => {
