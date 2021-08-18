@@ -1,5 +1,4 @@
 ---
-
 - name: "roles/bench/tasks/kernel: Increase file limits for sysctl"
   copy:
     dest: /etc/sysctl.d/99-isucon.conf

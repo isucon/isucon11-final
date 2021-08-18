@@ -1,5 +1,4 @@
 ---
-
 - name: "roles/bench.supervisor/tasks/main: Create directory"
   file:
     path: /tmp/isucon11-portal

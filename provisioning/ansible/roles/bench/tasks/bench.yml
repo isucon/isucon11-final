@@ -1,5 +1,4 @@
 ---
-
 - name: "roles/bench/tasks/bench: Deploy isucon11-final bench"
   become_user: isucon
   copy:
@@ -9,7 +8,7 @@
     owner: isucon
     group: isucon
 
-- name: "roles/bench/tasks/bench: Build Web Application Go"
+- name: "roles/bench/tasks/bench: Build bench"
   make:
     chdir: /home/isucon/
     target: all
