@@ -53,6 +53,18 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
+func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, expectedAdminFlag bool) error {
+	if res.Code != expectedUserAccount.Code {
+		return errInvalidResponse("学籍番号が期待する値と一致しません")
+	}
+
+	if res.IsAdmin != expectedAdminFlag {
+		return errInvalidResponse("管理者フラグが期待する値と一致しません")
+	}
+
+	return nil
+}
+
 func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode string) []error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 

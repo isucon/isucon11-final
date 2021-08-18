@@ -181,7 +181,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 	if targetAddress == "" {
-		targetAddress = "localhost:9292"
+		targetAddress = "localhost:8080"
 	}
 	scheme := "http"
 	if useTLS {

@@ -62,6 +62,27 @@ func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.Use
 	return hres, nil
 }
 
+func GetMeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.GetMeResponse, error) {
+	res := api.GetMeResponse{}
+	hres, err := api.GetMe(ctx, agent)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
+}
+
 func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.GetGradeResponse, error) {
 	res := api.GetGradeResponse{}
 	hres, err := api.GetGrades(ctx, agent)
