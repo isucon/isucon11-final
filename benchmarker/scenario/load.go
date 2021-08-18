@@ -508,9 +508,13 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			default:
 			}
 
-			_, _, err = GetMeAction(ctx, student.Agent)
+			_, res, err := GetMeAction(ctx, student.Agent)
 			if err != nil {
 				ContestantLogger.Printf("学生 %vのユーザ情報取得に失敗しました", userData.Name)
+				step.AddError(err)
+				return
+			}
+			if err := verifyMe(&res, userData, false); err != nil {
 				step.AddError(err)
 				return
 			}
@@ -542,9 +546,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	default:
 	}
 
-	_, _, err = GetMeAction(ctx, faculty.Agent)
+	_, getMeRes, err := GetMeAction(ctx, faculty.Agent)
 	if err != nil {
 		ContestantLogger.Printf("facultyのユーザ情報取得に失敗しました")
+		step.AddError(err)
+		return
+	}
+	if err := verifyMe(&getMeRes, faculty.UserAccount, true); err != nil {
 		step.AddError(err)
 		return
 	}
@@ -555,7 +563,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	default:
 	}
 
-	_, res, err := AddCourseAction(ctx, faculty, courseParam)
+	_, addCourseRes, err := AddCourseAction(ctx, faculty, courseParam)
 	if err != nil {
 		step.AddError(err)
 		return
@@ -563,7 +571,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		step.AddScore(score.CountAddCourse)
 	}
 
-	course := model.NewCourse(courseParam, res.ID, faculty)
+	course := model.NewCourse(courseParam, addCourseRes.ID, faculty)
 	s.AddCourse(course)
 	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
