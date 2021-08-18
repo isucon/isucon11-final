@@ -182,6 +182,19 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 
 			// ----------------------------------------
 
+			_, _, err = GetRegisteredCoursesAction(ctx, student.Agent)
+			if err != nil {
+				step.AddError(err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			// ----------------------------------------
+
 			// 仮登録(ベンチ内部では登録済みにする)
 			// TODO: 1度も検索成功してなかったら登録しない
 			semiRegistered := make([]*model.Course, 0, remainingRegistrationCapacity)
@@ -210,7 +223,7 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					continue
 				}
 
-				student.FillTimeslot(dayOfWeek, period)
+				student.FillTimeslot(registeredCourse)
 				semiRegistered = append(semiRegistered, registeredCourse)
 			}
 			studentScheduleMutex.Unlock()
