@@ -75,6 +75,49 @@ func verifyGrades(res *api.GetGradeResponse) error {
 	return nil
 }
 
+func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expected *model.Course) error {
+	if actual.ID.String() != expected.ID {
+		return errInvalidResponse("コースのIDが期待する値と一致しません")
+	}
+
+	if actual.Name != expected.Name {
+		return errInvalidResponse("コース名が期待する値と一致しません")
+	}
+
+	if actual.Teacher != expected.Teacher {
+		return errInvalidResponse("コースの講師が期待する値と一致しません")
+	}
+
+	// DayOfWeekとPeriodは、ベンチのスケジュールと突き合わせている時点で一致しているはずなのでここでは検証しない
+
+	return nil
+}
+
+func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, registeredSchedule [7][6]*model.Course) error {
+	// DayOfWeekの逆引きテーブル（string -> int）
+	dayOfWeekIndexTable := map[api.DayOfWeek]int{
+		"sunday":    0,
+		"monday":    1,
+		"tuesday":   2,
+		"wednesday": 3,
+		"thursday":  4,
+		"friday":    5,
+		"saturday":  6,
+	}
+
+	for _, resContent := range res {
+		dayOfWeekIndex := dayOfWeekIndexTable[resContent.DayOfWeek]
+		periodIndex := int(resContent.Period) - 1
+		if registeredSchedule[dayOfWeekIndex][periodIndex] != nil {
+			if err := verifyRegisteredCourse(resContent, registeredSchedule[dayOfWeekIndex][periodIndex]); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
 	if param.Type != "" && res.Type != api.CourseType(param.Type) {
 		return errInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています")

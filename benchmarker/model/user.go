@@ -153,6 +153,11 @@ func (s *Student) FillTimeslot(course *Course) {
 	s.registeringCount++
 }
 
+// RegisteredSchedule でスケジュールを取得する場合は別途scheduleMutexで(R)Lockすること
+func (s *Student) RegisteredSchedule() [7][6]*Course {
+	return s.registeredSchedule
+}
+
 type Faculty struct {
 	*UserAccount
 	Agent *agent.Agent

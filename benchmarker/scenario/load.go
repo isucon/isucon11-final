@@ -118,13 +118,13 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 		for ctx.Err() == nil {
 
 			// 学生は成績を確認し続ける
-			_, res, err := GetGradeAction(ctx, student.Agent)
+			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
 				<-time.After(3000 * time.Millisecond)
 				continue
 			}
-			if err := verifyGrades(&res); err != nil {
+			if err := verifyGrades(&getGradeRes); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CountGetGrades)
@@ -182,8 +182,15 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 
 			// ----------------------------------------
 
-			_, _, err = GetRegisteredCoursesAction(ctx, student.Agent)
+			studentScheduleMutex := student.ScheduleMutex()
+			studentScheduleMutex.RLock()
+			registeredSchedule := student.RegisteredSchedule()
+			studentScheduleMutex.RUnlock()
+			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
+				step.AddError(err)
+			}
+			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
 				step.AddError(err)
 			}
 
@@ -201,7 +208,6 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 
 			randTimeSlots := generate.ShuffledInts(30) // 平日分のコマ 5*6
 
-			studentScheduleMutex := student.ScheduleMutex()
 			studentScheduleMutex.Lock()
 			for _, timeSlot := range randTimeSlots {
 				// 仮登録数が追加履修可能数を超えていたら抜ける
