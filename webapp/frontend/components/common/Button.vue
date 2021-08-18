@@ -5,7 +5,10 @@
       px-6
       border
       rounded
-      disabled:bg-gray-400 disabled:text-white disabled:border-gray-400
+      disabled:bg-gray-400
+      disabled:text-white
+      disabled:border-gray-400
+      disabled:cursor-default
     "
     :class="colorType"
     :type="type"
@@ -15,6 +18,7 @@
     <slot />
   </button>
 </template>
+
 <script lang="ts">
 import Vue from 'vue'
 

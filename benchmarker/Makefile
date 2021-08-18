@@ -6,6 +6,9 @@ GOLDFLAGS=-X main.COMMIT=$(COMMIT)$(DIRTY)
 
 GOFILES=$(wildcard *.go **/*.go)
 
+PUBLIC_FILES_DIR=$(abspath ../webapp/frontend/dist)
+PUBLIC_FILES=$(abspath $(wildcard ../webapp/frontend/dist/*.* ../webapp/frontend/dist/**/*.*))
+
 EXE=./bin/benchmarker
 
 .PHONY: all
@@ -23,6 +26,9 @@ clean: ## Cleanup working directory
 help: ## Display this help screen
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+.PHONY: assets
+assets: $(PUBLIC_FILES) ## regenerate checksum of assets
+	@PUBLIC_FILES_DIR="$(PUBLIC_FILES_DIR)" PUBLIC_FILES="$(PUBLIC_FILES)" go generate ./assets/gen.go
 
-$(EXE): Makefile go.mod $(GOFILES)
-	GOPRIVATE=$(GOPRIVATES) go build -ldflags "$(GOLDFLAGS)" -o $(EXE) -v github.com/isucon/isucon11-final/benchmarker
+$(EXE): Makefile go.mod $(GOFILES) assets
+	@GOPRIVATE=$(GOPRIVATES) go build -ldflags "$(GOLDFLAGS)" -o $(EXE) -v github.com/isucon/isucon11-final/benchmarker
