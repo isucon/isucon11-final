@@ -17,7 +17,14 @@
                 >
                   <div class="flex flex-col">
                     <span class="text-primary-500">
-                      <span>{{ c.code }}</span>
+                      <template
+                        v-if="c.code && c.displayType === 'will_register'"
+                      >
+                        <span>{{ c.code }}</span>
+                      </template>
+                      <template v-else-if="c.displayType === 'registered'">
+                        <span>履修済</span>
+                      </template>
                       <span class="font-bold">{{ c.name }}</span>
                     </span>
                     <span class="text-sm">{{ c.teacher }}</span>
@@ -48,20 +55,23 @@
 </template>
 <script lang="ts">
 import Vue from 'vue'
+import { Context } from '@nuxt/types'
 import Button from '../components/common/Button.vue'
 import Calendar from '../components/Calendar.vue'
 import CalendarCell from '../components/CalendarCell.vue'
 import SearchModal from '../components/SearchModal.vue'
 import { notify } from '~/helpers/notification_helper'
 import { Course, DayOfWeek } from '~/types/courses'
-import { DayOfWeekMap, WeekdayCount, PeriodCount } from '~/constants/calendar'
+import { DayOfWeekMap, PeriodCount, WeekdayCount } from '~/constants/calendar'
 
-type PartialCourse = Partial<Course>
+type DisplayType = 'registered' | 'will_register' | 'none'
+type PartialCourse = Partial<Course> & { displayType: DisplayType }
 
 type DataType = {
   isShownModal: boolean
   selected: { dayOfWeek: DayOfWeek | undefined; period: number | undefined }
   willRegisterCourses: Course[]
+  registeredCourses: Course[]
   periodCount: number
 }
 
@@ -73,11 +83,25 @@ export default Vue.extend({
     Button,
   },
   middleware: 'is_loggedin',
+  async asyncData(ctx: Context) {
+    try {
+      const registeredCourses = await ctx.$axios.$get<Course[]>(
+        `/api/users/me/courses`
+      )
+      return { registeredCourses }
+    } catch (e) {
+      console.error(e)
+      notify('履修登録済み科目の取得に失敗しました')
+    }
+
+    return { registeredCourses: [] }
+  },
   data(): DataType {
     return {
       isShownModal: false,
       selected: { dayOfWeek: undefined, period: undefined },
       willRegisterCourses: [],
+      registeredCourses: [],
       periodCount: PeriodCount,
     }
   },
@@ -85,24 +109,34 @@ export default Vue.extend({
     courses(): PartialCourse[] {
       return new Array(WeekdayCount * PeriodCount)
         .fill(undefined)
-        .map((_, i) => {
-          const course = this.getCourse(i)
-          if (!course) {
-            const dayOfWeek = (Object.keys(DayOfWeekMap) as DayOfWeek[]).find(
-              (k) => DayOfWeekMap[k] === i % WeekdayCount
-            )
-            const period = Math.floor(i / WeekdayCount) + 1
-
-            return { id: undefined, dayOfWeek, period }
+        .map((_, i): PartialCourse => {
+          const dayOfWeek = (Object.keys(DayOfWeekMap) as DayOfWeek[]).find(
+            (k) => DayOfWeekMap[k] === i % WeekdayCount
+          )
+          const period = Math.floor(i / WeekdayCount) + 1
+          const willRegisterCourse = this.getWillRegisterCourse(i)
+          if (willRegisterCourse) {
+            return { ...willRegisterCourse, displayType: 'will_register' }
           }
 
-          return course
+          const registeredCourse = this.getRegisteredCourse(i)
+          if (registeredCourse) {
+            return { ...registeredCourse, displayType: 'registered' }
+          }
+
+          return { id: undefined, dayOfWeek, period, displayType: 'none' }
         })
     },
   },
   methods: {
-    getCourse(idx: number): Course | undefined {
+    getWillRegisterCourse(idx: number): Course | undefined {
       return this.willRegisterCourses.find((c) => {
+        const dayOfWeek = DayOfWeekMap[c.dayOfWeek as DayOfWeek]
+        return idx === dayOfWeek + (c.period - 1) * WeekdayCount
+      })
+    },
+    getRegisteredCourse(idx: number): Course | undefined {
+      return this.registeredCourses.find((c) => {
         const dayOfWeek = DayOfWeekMap[c.dayOfWeek as DayOfWeek]
         return idx === dayOfWeek + (c.period - 1) * WeekdayCount
       })
