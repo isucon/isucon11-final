@@ -56,6 +56,7 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode string) []error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 
+	// ここで集めなくてレスポンスごとにやるようにしたほうが効率が良い
 	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
 	for _, course := range courses {
 		classScore := course.CollectUserScores(userCode)
@@ -75,7 +76,6 @@ func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode s
 		if len(courseResultErrs) > 0 {
 			return courseResultErrs
 		}
-
 	}
 
 	return nil
@@ -102,7 +102,11 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 		return []error{errInvalidResponse("成績確認でのクラスの数が一致しません")}
 	}
 
-	for i := 0; i < len(res.ClassScores); i++ {
+	// 最新のクラスの成績はまだ更新されているか判断できない
+	// 一つ前のクラスの処理が終わらないと次のクラスの処理は始まらないので、
+	// 一つ前のクラスまでの成績は正しくなっているはず
+	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
+	for i := 0; i < len(expected.ClassScores)-1; i++ {
 		scoreErrs := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
 		if len(scoreErrs) > 0 {
 			return scoreErrs
