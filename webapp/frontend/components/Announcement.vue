@@ -1,8 +1,8 @@
 <template>
-  <div class="mt-2 flex-grow-0">
+  <div class="mt-7 flex-grow-0">
     <Accordion @open="$emit('open', $event)" @close="$emit('close', $event)">
       <template #header>
-        <div class="text-2xl text-primary-500 flex items-center">
+        <div class="text-2xl text-primary-500 flex items-center mb-1">
           <span class="font-light mr-2">
             {{ announcement.courseName }}
           </span>
@@ -10,12 +10,8 @@
             {{ announcement.title }}
           </span>
         </div>
-        <div class="mb-4">
-          <fa-icon
-            class="mr-1 text-gray-500"
-            :icon="['far', 'clock']"
-            size="sm"
-          />
+        <div class="mb-4 flex items-center">
+          <fa-icon class="text-gray-500" :icon="['far', 'clock']" size="sm" />
           <span class="text-gray-500 text-sm mr-2">
             {{ announcement.createdAt }}
           </span>
