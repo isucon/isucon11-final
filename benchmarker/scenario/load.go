@@ -502,6 +502,19 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			_, _, err = GetMeAction(ctx, student.Agent)
+			if err != nil {
+				ContestantLogger.Printf("学生 %vのユーザ情報取得に失敗しました", userData.Name)
+				step.AddError(err)
+				return
+			}
+
 			// BrowserAccess(mypage)
 			// resource Verify
 
@@ -520,6 +533,19 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	if err != nil {
 		ContestantLogger.Printf("facultyのログインに失敗しました")
 		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
+	_, _, err = GetMeAction(ctx, faculty.Agent)
+	if err != nil {
+		ContestantLogger.Printf("facultyのユーザ情報取得に失敗しました")
+		step.AddError(err)
 		return
 	}
 
