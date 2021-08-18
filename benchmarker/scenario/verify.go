@@ -295,48 +295,18 @@ func joinURL(base *url.URL, target string) string {
 	return u
 }
 
-func verifyTopPageResource(res *http.Response, resources agent.Resources) []error {
-	return verifyResources("", res, resources)
-}
-
-func verifyResources(expectPath string, res *http.Response, resources agent.Resources) []error {
+func verifyPageResource(res *http.Response, resources agent.Resources) []error {
 	if resources == nil && res.StatusCode != http.StatusOK {
 		// 期待するリソースはstatus:200のページのみなのでそれ以外は無視する
 		return []error{}
 	}
 
-	var checks []error
-	switch expectPath {
-	case "": // login
-		checks = []error{
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
-		}
-	case "mypage":
-		checks = []error{
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
-		}
-	case "grade":
-		checks = []error{
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
-		}
-	case "register":
-		checks = []error{
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
-		}
-	case "announce":
-		checks = []error{
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
-			verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
-		}
+	checks := []error{
+		// TODO: sync FE assets
+		// hattoriがあとでassetsの生成方法も含めて修正する
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
 	}
 
 	var errs []error
