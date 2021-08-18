@@ -72,7 +72,7 @@ func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode s
 	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
 	for _, course := range courses {
 		classScore := course.CollectUserScores(userCode)
-		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, model.CalculateTotalScore(classScore), classScore)
+		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
 	}
 
 	if len(simpleCourseResults) != len(res.CourseResults) {
@@ -102,16 +102,6 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	if expected.Code != res.Code {
 		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Code, res.Code))
 		return []error{errInvalidResponse("成績確認の生徒のCodeが一致しません")}
-	}
-
-	if expected.TotalScore != res.TotalScore {
-		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", expected.TotalScore, res.TotalScore))
-		return []error{errInvalidResponse("成績確認のコースのトータルスコアが一致しません")}
-	}
-
-	if len(expected.ClassScores) != len(res.ClassScores) {
-		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d\n", len(expected.ClassScores), len(res.ClassScores)))
-		return []error{errInvalidResponse("成績確認でのクラスの数が一致しません")}
 	}
 
 	// 最新のクラスの成績はまだ更新されているか判断できない

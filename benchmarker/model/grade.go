@@ -4,16 +4,14 @@ package model
 type SimpleCourseResult struct {
 	Name        string // course name
 	Code        string // course code
-	TotalScore  int    // コースのトータルスコア(生徒ごと)
 	ClassScores []*ClassScore
 }
 
-func NewSimpleCourseResult(name, code string, totalScore int, classScores []*ClassScore) *SimpleCourseResult {
+func NewSimpleCourseResult(name, code string, classScores []*ClassScore) *SimpleCourseResult {
 
 	return &SimpleCourseResult{
 		Name:        name,
 		Code:        code,
-		TotalScore:  totalScore,
 		ClassScores: classScores,
 	}
 
@@ -35,13 +33,4 @@ func NewClassScore(class *Class, score int) *ClassScore {
 		Part:    class.Part,
 		Score:   score,
 	}
-}
-
-func CalculateTotalScore(scores []*ClassScore) int {
-	total := 0
-	for _, v := range scores {
-		total += v.Score
-	}
-
-	return total
 }
