@@ -40,6 +40,7 @@ const config = {
         suffix: true,
         icons: {
           solid: ['faTimes', 'faChevronLeft', 'faChevronRight', 'faPen'],
+          regular: ['faClock'],
         },
       },
     ],
