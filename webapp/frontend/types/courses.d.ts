@@ -30,6 +30,8 @@ export type Course = {
   keywords: string
 }
 
+export type AddCourseRequest = Omit<Course, 'id' | 'teacher'>
+
 export type Announcement = {
   id: string
   courseId: string
