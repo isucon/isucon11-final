@@ -117,9 +117,9 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expe
 		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
 			return errInvalidResponse("履修済み科目のリストに時限の重複が存在します")
-		} else {
-			actualSchedule[dayOfWeekIndex][periodIndex] = resContent
 		}
+
+		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
 	}
 
 	// コースの終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
