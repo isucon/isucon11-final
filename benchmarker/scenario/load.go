@@ -153,8 +153,11 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 				param := generate.SearchCourseParam()
 				_, res, err := SearchCourseAction(ctx, student.Agent, param)
 				if err != nil {
-					step.AddError(err)
-					<-timer
+					select {
+					case <-ctx.Done():
+						return
+					case <-timer:
+					}
 					continue
 				}
 				errs := verifySearchCourseResults(res, param)
@@ -168,7 +171,7 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 				select {
 				case <-ctx.Done():
 					return
-				case <-timer:
+				default:
 				}
 
 				// TODO: シラバス検索フローを考え直す
@@ -176,6 +179,12 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					_, _, err := GetCourseDetailAction(ctx, student.Agent, res[0].ID.String())
 					if err != nil {
 						step.AddError(err)
+						select {
+						case <-ctx.Done():
+							return
+						case <-timer:
+						}
+						continue
 					}
 				}
 			}
