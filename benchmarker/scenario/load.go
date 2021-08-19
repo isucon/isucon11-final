@@ -147,25 +147,38 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			}
 
 			// remainingRegistrationCapacity * searchCountPerRegistration 回 検索を行う
-			for i := 0; i < remainingRegistrationCapacity*searchCountPerRegistration; i++ {
-				timer := time.After(300 * time.Millisecond)
-
-				param := generate.SearchCourseParam()
-				_, res, err := SearchCourseAction(ctx, student.Agent, param)
-				if err != nil {
+			// remainingRegistrationCapacity 分のシラバス確認を行う
+			for i := 0; i < remainingRegistrationCapacity; i++ {
+				var checkTargetID string
+				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
+				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
 					select {
 					case <-ctx.Done():
 						return
-					case <-timer:
+					default:
 					}
-					continue
-				}
-				errs := verifySearchCourseResults(res, param)
-				for _, err := range errs {
-					step.AddError(err)
-				}
-				if len(errs) == 0 {
+
+					param := generate.SearchCourseParam()
+					_, res, err := SearchCourseAction(ctx, student.Agent, param)
+					if err != nil {
+						step.AddError(err)
+						continue
+					}
+					errs := verifySearchCourseResults(res, param)
+					for _, err := range errs {
+						step.AddError(err)
+						continue
+					}
 					step.AddScore(score.CountSearchCourse)
+
+					if len(res) > 0 {
+						checkTargetID = res[0].ID.String()
+					}
+				}
+
+				// 検索で得たコースのシラバスを確認する
+				if checkTargetID == "" {
+					continue
 				}
 
 				select {
@@ -174,24 +187,16 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 				default:
 				}
 
-				// TODO: シラバス検索フローを考え直す
-				if len(res) > 0 {
-					_, res, err := GetCourseDetailAction(ctx, student.Agent, res[0].ID.String())
-					if err != nil {
+				_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
+				if err != nil {
+					step.AddError(err)
+					continue
+				}
+				expected, exists := s.GetCourse(res.ID.String())
+				// ベンチ側の登録がまだの場合は検証スキップ
+				if exists {
+					if err := verifyCourseDetail(&res, expected); err != nil {
 						step.AddError(err)
-						select {
-						case <-ctx.Done():
-							return
-						case <-timer:
-						}
-						continue
-					}
-					expected, exists := s.GetCourse(res.ID.String())
-					// ベンチ側の登録がまだの場合は検証スキップ
-					if exists {
-						if err := verifyCourseDetail(&res, expected); err != nil {
-							step.AddError(err)
-						}
 					}
 				}
 			}
