@@ -480,7 +480,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			}
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
-			hres, resources, err := AccessPageAction(ctx, student.Agent)
+			hres, resources, err := AccessTopPageAction(ctx, student.Agent)
 			if err != nil {
 				AdminLogger.Printf("学生 %vがログイン画面にアクセスできませんでした", userData.Name)
 				step.AddError(err)

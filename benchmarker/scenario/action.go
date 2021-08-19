@@ -364,7 +364,7 @@ func setCourseStatusAction(ctx context.Context, agent *agent.Agent, courseID str
 	return hres, nil
 }
 
-func AccessPageAction(ctx context.Context, agent *agent.Agent) (*http.Response, agent.Resources, error) {
+func AccessTopPageAction(ctx context.Context, agent *agent.Agent) (*http.Response, agent.Resources, error) {
 	hres, resources, err := api.BrowserAccess(ctx, agent, "")
 	if err != nil {
 		return nil, nil, failure.NewError(fails.ErrHTTP, err)

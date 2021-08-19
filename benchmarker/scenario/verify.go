@@ -333,7 +333,7 @@ func verifyPageResource(res *http.Response, resources agent.Resources) []error {
 
 func verifyResource(resource *agent.Resource, expectPath string) error {
 	if resource == nil || resource.Response == nil {
-		return failure.NewError(fails.ErrChecksum, fmt.Errorf("期待するリソースが読み込まれませんでした(%s)", expectPath))
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("期待するリソースが読み込まれませんでした(%s)", expectPath))
 	}
 
 	if resource.Error != nil {
@@ -343,7 +343,7 @@ func verifyResource(resource *agent.Resource, expectPath string) error {
 				return nerr
 			}
 		}
-		return failure.NewError(fails.ErrChecksum, fmt.Errorf("リソースの取得に失敗しました: %s: %v", expectPath, resource.Error))
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("リソースの取得に失敗しました: %s: %v", expectPath, resource.Error))
 	}
 
 	return verifyChecksum(resource.Response, expectPath)
@@ -371,7 +371,7 @@ func verifyChecksum(res *http.Response, expectPath string) error {
 	actual := fmt.Sprintf("%x", hash.Sum(nil))
 
 	if expected != actual {
-		return failure.NewError(fails.ErrChecksum, fmt.Errorf("期待するチェックサムと一致しません(%s)", expectPath))
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("期待するチェックサムと一致しません(%s)", expectPath))
 	}
 	return nil
 }
