@@ -154,8 +154,8 @@ func (s *Student) FillTimeslot(dayOfWeek, period int) {
 }
 
 func (s *Student) Course() []*Course {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
 	res := make([]*Course, len(s.registeredCourses))
 	copy(res, s.registeredCourses[:])
