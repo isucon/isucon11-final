@@ -176,7 +176,7 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 
 				// TODO: シラバス検索フローを考え直す
 				if len(res) > 0 {
-					_, _, err := GetCourseDetailAction(ctx, student.Agent, res[0].ID.String())
+					_, res, err := GetCourseDetailAction(ctx, student.Agent, res[0].ID.String())
 					if err != nil {
 						step.AddError(err)
 						select {
@@ -185,6 +185,13 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 						case <-timer:
 						}
 						continue
+					}
+					expected, exists := s.GetCourse(res.ID.String())
+					// ベンチ側の登録がまだの場合は検証スキップ
+					if exists {
+						if err := verifyCourseDetail(&res, expected); err != nil {
+							step.AddError(err)
+						}
 					}
 				}
 			}

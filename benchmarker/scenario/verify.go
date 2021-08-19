@@ -206,6 +206,46 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 	return errs
 }
 
+func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Course) error {
+	if actual.Code != expected.Code {
+		return errInvalidResponse("科目のコードが期待する値と一致しません")
+	}
+
+	if actual.Type != api.CourseType(expected.Type) {
+		return errInvalidResponse("科目のタイプが期待する値と一致しません")
+	}
+
+	if actual.Name != expected.Name {
+		return errInvalidResponse("科目名が期待する値と一致しません")
+	}
+
+	if actual.Description != expected.Description {
+		return errInvalidResponse("科目の詳細が期待する値と一致しません")
+	}
+
+	if actual.Credit != uint8(expected.Credit) {
+		return errInvalidResponse("科目の単位数が期待する値と一致しません")
+	}
+
+	if actual.Period != uint8(expected.Period+1) {
+		return errInvalidResponse("科目の開講時限が期待する値と一致しません")
+	}
+
+	if actual.DayOfWeek != api.DayOfWeekTable[expected.DayOfWeek] {
+		return errInvalidResponse("科目の開講曜日が期待する値と一致しません")
+	}
+
+	if actual.Teacher != expected.Teacher {
+		return errInvalidResponse("科目の講師が期待する値と一致しません")
+	}
+
+	if actual.Keywords != expected.Keywords {
+		return errInvalidResponse("科目のキーワードが期待する値と一致しません")
+	}
+
+	return nil
+}
+
 func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
 	if res.CourseID != announcementStatus.Announcement.CourseID {
 		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")

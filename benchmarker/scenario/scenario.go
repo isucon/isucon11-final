@@ -25,7 +25,7 @@ type Scenario struct {
 
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
-	courses             []*model.Course
+	courses             map[string]*model.Course
 	emptyCourseManager  *util.CourseManager
 	faculties           []*model.Faculty
 	studentPool         *userPool
@@ -62,7 +62,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
-		courses:            []*model.Course{},
+		courses:            map[string]*model.Course{},
 		emptyCourseManager: util.NewCourseManager(),
 		faculties:          faculties,
 		studentPool:        NewUserPool(studentsData),
@@ -113,7 +113,15 @@ func (s *Scenario) AddCourse(course *model.Course) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.courses = append(s.courses, course)
+	s.courses[course.ID] = course
+}
+
+func (s *Scenario) GetCourse(id string) (*model.Course, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	course, exists := s.courses[id]
+	return course, exists
 }
 
 func (s *Scenario) GetRandomFaculty() *model.Faculty {
