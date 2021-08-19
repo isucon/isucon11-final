@@ -170,6 +170,14 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					return
 				case <-timer:
 				}
+
+				// TODO: シラバス検索フローを考え直す
+				if len(res) > 0 {
+					_, _, err := GetCourseDetailAction(ctx, student.Agent, res[0].ID.String())
+					if err != nil {
+						step.AddError(err)
+					}
+				}
 			}
 
 			AdminLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
