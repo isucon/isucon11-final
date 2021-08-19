@@ -103,6 +103,12 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Code, res.Code))
 		return errInvalidResponse("成績確認の生徒のCodeが一致しません")
 	}
+
+	// res.ClassScoresはexpected.ClassScoresと同じ長さか、それより一つ短いはず
+	// それ以外だったらおかしいのでエラー
+	if len(expected.ClassScores)-1 > len(res.ClassScores) {
+		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.ClassScores), len(res.ClassScores)))
+		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
 	}
 
 	// 最新のクラスの成績はまだ更新されているか判断できない
