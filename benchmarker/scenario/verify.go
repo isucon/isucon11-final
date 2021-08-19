@@ -107,8 +107,14 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expe
 
 	actualSchedule := [7][6]*api.GetRegisteredCourseResponseContent{}
 	for _, resContent := range res {
-		dayOfWeekIndex := dayOfWeekIndexTable[resContent.DayOfWeek]
+		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
+		if !ok {
+			return errInvalidResponse("科目の開講曜日が不正です")
+		}
 		periodIndex := int(resContent.Period) - 1
+		if periodIndex < 0 || periodIndex >= 6 {
+			return errInvalidResponse("科目の開講時限が不正です")
+		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
 			return errInvalidResponse("履修済み科目のリストに時限の重複が存在します")
 		} else {
