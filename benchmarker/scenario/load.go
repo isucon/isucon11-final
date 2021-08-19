@@ -186,6 +186,8 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
+				<-time.After(3000 * time.Millisecond)
+				continue
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
 				step.AddError(err)
