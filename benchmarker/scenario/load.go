@@ -124,17 +124,12 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 					<-time.After(3000 * time.Millisecond)
 					continue
 				}
-				errs := verifyGrades(&res, courses, student.Code)
-				for _, err := range errs {
-					ContestantLogger.Println(err)
-					step.AddError(err)
-				}
-				if len(errs) > 0 {
+				err = verifyGrades(&res, courses, student.Code)
+				if err != nil {
 					<-time.After(3000 * time.Millisecond)
 					continue
-				} else {
-					step.AddScore(score.CountGetGrades)
 				}
+				step.AddScore(score.CountGetGrades)
 
 				AdminLogger.Printf("%vは成績を確認した", student.Name)
 

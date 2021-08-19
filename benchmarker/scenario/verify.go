@@ -65,7 +65,7 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 	return nil
 }
 
-func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode string) []error {
+func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode string) error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 
 	// ここで集めなくてレスポンスごとにやるようにしたほうが効率が良い
@@ -76,32 +76,33 @@ func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode s
 	}
 
 	if len(simpleCourseResults) != len(res.CourseResults) {
-		return []error{errInvalidResponse("成績確認でのコース結果の数が一致しません")}
+		return errInvalidResponse("成績確認でのコース結果の数が一致しません")
 	}
 
 	for _, resCourseResult := range res.CourseResults {
 		if _, ok := simpleCourseResults[resCourseResult.Code]; !ok {
-			return []error{errInvalidResponse("成績確認で期待しないコースが含まれています")}
+			return errInvalidResponse("成績確認で期待しないコースが含まれています")
 		}
 
-		courseResultErrs := verifySimpleCourseResult(simpleCourseResults[resCourseResult.Code], &resCourseResult)
-		if len(courseResultErrs) > 0 {
-			return courseResultErrs
+		err := verifySimpleCourseResult(simpleCourseResults[resCourseResult.Code], &resCourseResult)
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult) []error {
+func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult) error {
 	if expected.Name != res.Name {
 		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Name, res.Name))
-		return []error{errInvalidResponse("成績確認結果のコース名が違います")}
+		return errInvalidResponse("成績確認結果のコース名が違います")
 	}
 
 	if expected.Code != res.Code {
 		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Code, res.Code))
-		return []error{errInvalidResponse("成績確認の生徒のCodeが一致しません")}
+		return errInvalidResponse("成績確認の生徒のCodeが一致しません")
+	}
 	}
 
 	// 最新のクラスの成績はまだ更新されているか判断できない
@@ -109,38 +110,37 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	// 一つ前のクラスまでの成績は正しくなっているはず
 	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
 	for i := 0; i < len(expected.ClassScores)-1; i++ {
-		scoreErrs := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
-		if len(scoreErrs) > 0 {
-			return scoreErrs
+		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
+		err := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) []error {
-	errs := make([]error, 0)
-
+func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) error {
 	if expected.ClassID != res.ClassID {
-		errs = append(errs, errInvalidResponse("成績確認でのクラスのIDが一致しません"))
 		AdminLogger.Println("expected: ", expected.ClassID, "actual: ", res.ClassID)
-		return errs
+		return errInvalidResponse("成績確認でのクラスのIDが一致しません")
 	}
 	if expected.Part != res.Part {
-		errs = append(errs, errInvalidResponse("成績確認でのクラスのpartが一致しません"))
 		AdminLogger.Println("expected: ", expected.Part, "actual: ", res.Part)
-		return errs
-	}
-
-	if expected.Score != res.Score {
-		errs = append(errs, errInvalidResponse("成績確認でのクラスのスコアが一致しません"))
+		return errInvalidResponse("成績確認でのクラスのpartが一致しません")
 	}
 
 	if expected.Title != res.Title {
-		errs = append(errs, errInvalidResponse("成績確認でのクラスのタイトルが一致しません"))
+		AdminLogger.Println("expected: ", expected.Title, "actual: ", res.Title)
+		return errInvalidResponse("成績確認でのクラスのタイトルが一致しません")
 	}
 
-	return errs
+	if expected.Score != res.Score {
+		AdminLogger.Println("expected: ", expected.Score, "actual: ", res.Score)
+		return errInvalidResponse("成績確認でのクラスのスコアが一致しません")
+	}
+
+	return nil
 }
 
 func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
