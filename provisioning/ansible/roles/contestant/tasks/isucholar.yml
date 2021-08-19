@@ -8,12 +8,6 @@
     owner: isucon
     group: isucon
 
-- name: "roles/contestant/tasks/isucholar: Deploy hosts"
-  become_user: root
-  copy:
-    src: "etc/hosts"
-    dest: "/etc/hosts"
-
 - name: "roles/contestant/tasks/isucholar: Deploy env file"
   become_user: isucon
   copy:
@@ -21,9 +15,6 @@
     dest: "/home/isucon/env.sh"
     owner: isucon
     group: isucon
-
-- name: "roles/contestant/tasks/isucholar: Include isucholar-frontend.yml"
-  include: isucholar-frontend.yml
 
 - name: "roles/contestant/tasks/isucholar: Include isucholar-go.yml"
   include: isucholar-go.yml
@@ -41,4 +32,5 @@
   become_user: isucon
   shell: |
     mysql -uisucon -pisucon -e 'CREATE DATABASE isucholar'
-    bash /home/isucon/webapp/sql/init.sh
+    curl -X POST http://127.0.0.1/initialize
+

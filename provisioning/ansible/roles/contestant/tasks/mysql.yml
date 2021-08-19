@@ -12,17 +12,6 @@
     - libmysqld-dev
     update_cache: yes
 
-- name: "roles/contestant/tasks/mysql: Set Temporary password"
-  become: yes
-  become_user: root
-  blockinfile:
-    create: yes
-    dest: &myCnf /root/.my.cnf
-    content: |
-      [client]
-      user = root
-      password = root
-
 - name: "roles/contestant/tasks/mysql: Create isucon user on MySQL"
   become: yes
   become_user: root
@@ -32,12 +21,7 @@
         GRANT ALL PRIVILEGES ON *.* TO `isucon`@`localhost` WITH GRANT OPTION;
         FLUSH PRIVILEGES;
       "
-
-- name: "roles/contestant/tasks/mysql: Remove temporary file"
-  file:
-    path: *myCnf
-    state: absent
-
+      
 - name: "roles/contestant/tasks/mysql: Copy configs"
   copy:
     src: "{{ item }}"

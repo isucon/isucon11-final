@@ -4,7 +4,6 @@
   shell: |
     curl https://sh.rustup.rs -sSf | sh -s -- -y
 
-
 - name: "Add PATH for Rust"
   become_user: isucon
   blockinfile:
