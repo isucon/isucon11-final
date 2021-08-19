@@ -352,8 +352,8 @@ func verifyResource(resource *agent.Resource, expectPath string) error {
 func verifyChecksum(res *http.Response, expectPath string) error {
 	defer res.Body.Close()
 
-	expected := resourcesHash[expectPath]
-	if expected == "" {
+	expected, ok := resourcesHash[expectPath]
+	if !ok {
 		AdminLogger.Printf("意図していないリソース(%s)への検証が発生しました。verify.goとassets.goを確認してください。", expectPath)
 		return nil
 	}
