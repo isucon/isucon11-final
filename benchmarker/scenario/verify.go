@@ -93,7 +93,7 @@ func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expe
 	return nil
 }
 
-func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, registeredSchedule [7][6]*model.Course) error {
+func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expectedSchedule [7][6]*model.Course) error {
 	// DayOfWeekの逆引きテーブル（string -> int）
 	dayOfWeekIndexTable := map[api.DayOfWeek]int{
 		"sunday":    0,
@@ -105,13 +105,31 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, regi
 		"saturday":  6,
 	}
 
-	// コースの終了によるベンチ内部のスケジュール解放は並列で走るが、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降変更されないため、レスポンスにある科目は必ずベンチ側にも存在する。
-	// ただし、ベンチにある科目がレスポンスに含まれない可能性はある。
+	actualSchedule := [7][6]*api.GetRegisteredCourseResponseContent{}
 	for _, resContent := range res {
 		dayOfWeekIndex := dayOfWeekIndexTable[resContent.DayOfWeek]
 		periodIndex := int(resContent.Period) - 1
-		if err := verifyRegisteredCourse(resContent, registeredSchedule[dayOfWeekIndex][periodIndex]); err != nil {
-			return err
+		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
+			return errInvalidResponse("履修済み科目のリストに時限の重複が存在します")
+		} else {
+			actualSchedule[dayOfWeekIndex][periodIndex] = resContent
+		}
+	}
+
+	// コースの終了によるベンチ内部のスケジュール解放は並列で走るが、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降変更されないため、レスポンスにある科目は必ずベンチ側にも存在する。
+	// ただし、ベンチにある科目がレスポンスに含まれない可能性はある。
+	for d := 0; d < 7; d++ {
+		for p := 0; p < 6; p++ {
+			// レスポンスで埋まっている時限は、ベンチでも同じ科目で埋まっていることを検証
+			if actualSchedule[d][p] != nil {
+				if expectedSchedule[d][p] != nil {
+					if err := verifyRegisteredCourse(actualSchedule[d][p], expectedSchedule[d][p]); err != nil {
+						return err
+					}
+				} else {
+					return errInvalidResponse("履修済み科目のリストに期待しない科目が含まれています")
+				}
+			}
 		}
 	}
 
