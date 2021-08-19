@@ -105,15 +105,13 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, regi
 		"saturday":  6,
 	}
 
+	// コースの終了によるベンチ内部のスケジュール解放は並列で走るが、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降変更されないため、レスポンスにある科目は必ずベンチ側にも存在する。
+	// ただし、ベンチにある科目がレスポンスに含まれない可能性はある。
 	for _, resContent := range res {
 		dayOfWeekIndex := dayOfWeekIndexTable[resContent.DayOfWeek]
 		periodIndex := int(resContent.Period) - 1
-		// コースの終了によるベンチ内部のスケジュール解放が並列で走る可能性があるため、レスポンスにある科目がベンチ側に存在しないことは許容する。
-		// 履修による科目追加は履修済み科目確認とは直列のため、レスポンスの科目と同じ時限にベンチでは別の科目が登録されていた、ということは起きない。
-		if registeredSchedule[dayOfWeekIndex][periodIndex] != nil {
-			if err := verifyRegisteredCourse(resContent, registeredSchedule[dayOfWeekIndex][periodIndex]); err != nil {
-				return err
-			}
+		if err := verifyRegisteredCourse(resContent, registeredSchedule[dayOfWeekIndex][periodIndex]); err != nil {
+			return err
 		}
 	}
 
