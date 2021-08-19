@@ -108,6 +108,8 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, regi
 	for _, resContent := range res {
 		dayOfWeekIndex := dayOfWeekIndexTable[resContent.DayOfWeek]
 		periodIndex := int(resContent.Period) - 1
+		// コースの終了によるベンチ内部のスケジュール解放が並列で走る可能性があるため、レスポンスにある科目がベンチ側に存在しないことは許容する。
+		// 履修による科目追加は履修済み科目確認とは直列のため、レスポンスの科目と同じ時限にベンチでは別の科目が登録されていた、ということは起きない。
 		if registeredSchedule[dayOfWeekIndex][periodIndex] != nil {
 			if err := verifyRegisteredCourse(resContent, registeredSchedule[dayOfWeekIndex][periodIndex]); err != nil {
 				return err
