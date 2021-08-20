@@ -64,7 +64,7 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 	return a.Do(ctx, req)
 }
 
-func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID uuid.UUID) (*http.Response, error) {
+func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID string) (*http.Response, error) {
 	path := fmt.Sprintf("/api/syllabus/%s", courseID)
 
 	req, err := a.GET(path)

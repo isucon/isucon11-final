@@ -157,6 +157,27 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 	return hres, res, nil
 }
 
+func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.GetCourseDetailResponse, error) {
+	res := api.GetCourseDetailResponse{}
+	hres, err := api.GetCourseDetail(ctx, agent, id)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
+}
+
 func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, error) {
 	req := make([]api.RegisterCourseRequestContent, 0, len(courses))
 	for _, c := range courses {
