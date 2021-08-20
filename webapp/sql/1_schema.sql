@@ -78,6 +78,7 @@ CREATE TABLE `unread_announcements`
 (
     `announcement_id` CHAR(36) NOT NULL,
     `user_id`         CHAR(36) NOT NULL,
+    `deleted_at`      DATETIME,
     PRIMARY KEY (`announcement_id`, `user_id`),
     CONSTRAINT FK_unread_announcements_announcement_id FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`),
     CONSTRAINT FK_unread_announcements_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)

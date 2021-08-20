@@ -1351,23 +1351,23 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	var announcements []Announcement
 	var args []interface{}
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `unread_announcements`.`user_id` IS NOT NULL AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
 		" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
-		" LEFT JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id` AND `unread_announcements`.`user_id` = ?" +
+		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
 		" WHERE 1=1"
-	args = append(args, userID)
 
 	if courseID := c.QueryParam("course_id"); courseID != "" {
 		query += " AND `announcements`.`course_id` = ?"
 		args = append(args, courseID)
 	}
 
-	query += " AND `registrations`.`user_id` = ?" +
+	query += " AND `unread_announcements`.`user_id` = ?" +
+		" AND `registrations`.`user_id` = ?" +
 		" ORDER BY `announcements`.`created_at` DESC" +
 		" LIMIT ? OFFSET ?"
-	args = append(args, userID)
+	args = append(args, userID, userID)
 
 	// MEMO: ページングの初期実装はページ番号形式
 	var page int
@@ -1390,7 +1390,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	var unreadCount int
-	if err := h.DB.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ?", userID); err != nil {
+	if err := h.DB.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND `deleted_at` IS NULL", userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1475,12 +1475,13 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	}
 
 	var announcement AnnouncementDetail
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`user_id` IS NOT NULL AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
-		" LEFT JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id` AND `unread_announcements`.`user_id` = ?" +
-		" WHERE `announcements`.`id` = ?"
-	if err := h.DB.Get(&announcement, query, userID, announcementID); err == sql.ErrNoRows {
+		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
+		" WHERE `announcements`.`id` = ?" +
+		" AND `unread_announcements`.`user_id` = ?"
+	if err := h.DB.Get(&announcement, query, announcementID, userID); err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
 	} else if err != nil {
 		c.Logger().Error(err)
@@ -1496,7 +1497,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
 	}
 
-	if _, err := h.DB.Exec("DELETE FROM `unread_announcements` WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `deleted_at` = NOW() WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
