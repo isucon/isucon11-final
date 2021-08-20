@@ -152,12 +152,6 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 				var checkTargetID string
 				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
-					select {
-					case <-ctx.Done():
-						return
-					default:
-					}
-
 					param := generate.SearchCourseParam()
 					_, res, err := SearchCourseAction(ctx, student.Agent, param)
 					if err != nil {
@@ -174,17 +168,17 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					if len(res) > 0 {
 						checkTargetID = res[0].ID.String()
 					}
+
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
 				}
 
 				// 検索で得たコースのシラバスを確認する
 				if checkTargetID == "" {
 					continue
-				}
-
-				select {
-				case <-ctx.Done():
-					return
-				default:
 				}
 
 				_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
@@ -199,15 +193,15 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 						step.AddError(err)
 					}
 				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 			}
 
 			AdminLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
-
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
 
 			// ----------------------------------------
 
