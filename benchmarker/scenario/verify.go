@@ -3,19 +3,23 @@ package scenario
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/model"
-
-	"github.com/isucon/isucandar/failure"
 )
 
 // verify.go
@@ -293,5 +297,81 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 		}
 	}
 
+	return nil
+}
+
+func joinURL(base *url.URL, target string) string {
+	b := *base
+	t, _ := url.Parse(target)
+	u := b.ResolveReference(t).String()
+	return u
+}
+
+func verifyPageResource(res *http.Response, resources agent.Resources) []error {
+	if resources == nil && res.StatusCode != http.StatusOK {
+		// 期待するリソースはstatus:200のページのみなのでそれ以外は無視する
+		return []error{}
+	}
+
+	checks := []error{
+		// TODO: sync FE assets
+		// hattoriがあとでassetsの生成方法も含めて修正する
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
+	}
+
+	var errs []error
+	for _, err := range checks {
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errs
+}
+
+func verifyResource(resource *agent.Resource, expectPath string) error {
+	if resource == nil || resource.Response == nil {
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("期待するリソースが読み込まれませんでした(%s)", expectPath))
+	}
+
+	if resource.Error != nil {
+		var nerr net.Error
+		if failure.As(resource.Error, &nerr) {
+			if nerr.Timeout() || nerr.Temporary() {
+				return nerr
+			}
+		}
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("リソースの取得に失敗しました: %s: %v", expectPath, resource.Error))
+	}
+
+	return verifyChecksum(resource.Response, expectPath)
+}
+
+func verifyChecksum(res *http.Response, expectPath string) error {
+	defer res.Body.Close()
+
+	expected, ok := resourcesHash[expectPath]
+	if !ok {
+		AdminLogger.Printf("意図していないリソース(%s)への検証が発生しました。verify.goとassets.goを確認してください。", expectPath)
+		return nil
+	}
+
+	err := verifyStatusCode(res, []int{http.StatusOK, http.StatusNotModified})
+	if err != nil {
+		return err
+	}
+	if res.StatusCode == http.StatusNotModified {
+		return nil
+	}
+
+	hash := md5.New()
+	io.Copy(hash, res.Body)
+	actual := fmt.Sprintf("%x", hash.Sum(nil))
+
+	if expected != actual {
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("期待するチェックサムと一致しません(%s)", expectPath))
+	}
 	return nil
 }

@@ -301,6 +301,7 @@ func readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkS
 						step.AddError(err)
 						continue // 次の未読おしらせの確認へ
 					}
+
 					if err := verifyAnnouncement(&res, announcementStatus); err != nil {
 						step.AddError(err)
 					} else {
@@ -492,8 +493,21 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			}
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
-			// BrowserAccess(ログイン)
-			// resource Verify
+			hres, resources, err := AccessTopPageAction(ctx, student.Agent)
+			if err != nil {
+				AdminLogger.Printf("学生 %vがログイン画面にアクセスできませんでした", userData.Name)
+				step.AddError(err)
+				return
+			}
+			errs := verifyPageResource(hres, resources)
+			if len(errs) != 0 {
+				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", userData.Name)
+				for _, err := range errs {
+					step.AddError(err)
+				}
+				return
+			}
+
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
 				ContestantLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
@@ -517,9 +531,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(err)
 				return
 			}
-
-			// BrowserAccess(mypage)
-			// resource Verify
 
 			s.AddActiveStudent(student)
 			s.sPubSub.Publish(student)
@@ -596,9 +607,6 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			case <-s.WaitReadAnnouncement(announcementID):
 				// 学生sが課題お知らせを読むまで待つ
 			}
-
-			// BrowserAccess(courses/<course.UUID>)
-			// resource Verify
 
 			// 講義一覧を取得する
 			_, res, err := GetClassesAction(ctx, s.Agent, course.ID)
