@@ -40,6 +40,7 @@
                 label="単位数"
                 label-direction="vertical"
                 type="number"
+                min="1"
                 placeholder="単位数を入力"
               />
             </div>
@@ -139,8 +140,8 @@
             <div class="flex justify-between mt-2">
               <Button
                 :disabled="checkedCourses.length === 0"
-                @click="onSubmitTemporaryRegistration"
                 class="w-28"
+                @click="onSubmitTemporaryRegistration"
                 >仮登録</Button
               >
               <div class="">
