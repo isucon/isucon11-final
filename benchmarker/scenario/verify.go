@@ -17,6 +17,7 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
+
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/model"
@@ -84,7 +85,7 @@ func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expe
 		return errInvalidResponse("コース名が期待する値と一致しません")
 	}
 
-	if actual.Teacher != expected.Teacher {
+	if actual.Teacher != expected.Teacher().Name {
 		return errInvalidResponse("コースの講師が期待する値と一致しません")
 	}
 
@@ -235,7 +236,7 @@ func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Cou
 		return errInvalidResponse("科目の開講曜日が期待する値と一致しません")
 	}
 
-	if actual.Teacher != expected.Teacher {
+	if actual.Teacher != expected.Teacher().Name {
 		return errInvalidResponse("科目の講師が期待する値と一致しません")
 	}
 

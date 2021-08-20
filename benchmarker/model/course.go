@@ -21,7 +21,7 @@ type CourseParam struct {
 type Course struct {
 	*CourseParam
 	ID                 string
-	faculty            *Faculty
+	teacher            *Teacher
 	registeredStudents []*Student
 	classes            []*Class
 	registeredLimit    int // 登録学生上限
@@ -42,11 +42,11 @@ type SearchCourseParam struct {
 	Keywords  []string
 }
 
-func NewCourse(param *CourseParam, id string, faculty *Faculty) *Course {
+func NewCourse(param *CourseParam, id string, teacher *Teacher) *Course {
 	return &Course{
 		CourseParam:        param,
 		ID:                 id,
-		faculty:            faculty,
+		teacher:            teacher,
 		registeredStudents: make([]*Student, 0),
 		registeredLimit:    50, // 引数で渡す？
 		rmu:                sync.RWMutex{},
@@ -82,11 +82,11 @@ func (c *Course) WaitPreparedCourse(ctx context.Context) <-chan struct{} {
 	return ch
 }
 
-func (c *Course) Faculty() *Faculty {
+func (c *Course) Teacher() *Teacher {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	return c.faculty
+	return c.teacher
 }
 
 func (c *Course) Students() []*Student {
