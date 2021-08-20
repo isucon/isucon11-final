@@ -19,11 +19,14 @@ import (
 )
 
 const (
+	// 初期パラメータ
 	initialStudentsCount      = 50
 	registerCourseLimit       = 20
 	searchCountByRegistration = 3
 	initialCourseCount        = 20
 	courseProcessLimit        = 5
+	// 乱数パラメータ
+	invalidSubmitFrequency = 0.1
 	// confirmAttendanceAnsTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
 	confirmAttendanceAnsTimeout = 5 * time.Second
 )
@@ -622,7 +625,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			}
 
 			// 課題を提出する
-			isCorrectSubmit := rand.Float32() > 0.1 // 一定確率でdocxのファイルを投げる
+			isCorrectSubmit := rand.Float32() > invalidSubmitFrequency // 一定確率でdocxのファイルを投げる
 			for { // 提出成功するまでループ
 				var submission *model.Submission
 				if isCorrectSubmit {
