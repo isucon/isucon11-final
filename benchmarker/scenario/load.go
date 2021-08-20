@@ -407,7 +407,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				default:
 				}
 
-				errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
+				submitResult, errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
 				for _, e := range errs {
 					step.AddError(e)
 				}
@@ -435,8 +435,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 				default:
 				}
 
-				// TODO: 採点する
-				_, err = scoringAssignments(ctx, course.ID, class.ID, faculty, course.Students(), assignmentsData)
+				_, err = scoringAssignments(ctx, course.ID, class.ID, faculty, course.Students(), submitResult)
 				if err != nil {
 					step.AddError(err)
 					<-timer
@@ -577,12 +576,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	s.cPubSub.Publish(course)
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) []error {
+func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) (map[string]bool, []error) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
 	mu := sync.Mutex{}
 	errs := make([]error, 0)
+	submitResult := make(map[string]bool, len(students))
 	for _, s := range students {
 		s := s
 		go func() {
@@ -622,22 +622,47 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			}
 
 			// 課題を提出する
-			submission := generate.Submission(course, class, s.UserAccount)
-			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
-			if err != nil {
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
-			} else {
-				step.AddScore(score.CountSubmitAssignment)
-				class.AddSubmittedAssignment(s.Code, submission.Data)
-				s.AddSubmission(submission)
+			isCorrectSubmit := rand.Float32() > 0.1 // 一定確率でdocxのファイルを投げる
+			for { // 提出成功するまでループ
+				var submission *model.Submission
+				if isCorrectSubmit {
+					submission = generate.Submission(course, class, s.UserAccount)
+				} else {
+					submission = generate.InvalidSubmission(course, class, s.UserAccount)
+				}
+
+				hres, err := SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
+				if err != nil {
+					if hres.StatusCode == http.StatusBadRequest {
+						isCorrectSubmit = true // 次は正しいSubmissionを提出
+					} else {
+						mu.Lock()
+						errs = append(errs, err)
+						mu.Unlock()
+					}
+				} else {
+					if isCorrectSubmit {
+						step.AddScore(score.CountSubmitPDF)
+
+						mu.Lock()
+						submitResult[s.Code] = true
+						mu.Unlock()
+					}
+					class.AddSubmittedAssignment(s.Code, submission.Data)
+					break
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 			}
 		}()
 	}
 	wg.Wait()
 
-	return errs
+	return submitResult, errs
 }
 
 // これここじゃないほうがいいかも知れない
@@ -646,13 +671,14 @@ type StudentScore struct {
 	code  string
 }
 
-func scoringAssignments(ctx context.Context, courseID, classID string, faculty *model.Faculty, students []*model.Student, assignments []byte) (*http.Response, error) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(students))
-
+func scoringAssignments(ctx context.Context, courseID, classID string, faculty *model.Faculty, students []*model.Student, submissionResult map[string]bool) (*http.Response, error) {
 	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {
-		score := rand.Intn(101)
+		var score int
+		if submissionResult[s.Code] {
+			score = rand.Intn(101)
+		}
+
 		scores = append(scores, StudentScore{
 			score: score,
 			code:  s.Code,
