@@ -24,6 +24,7 @@ func (m *CourseManager) AddEmptyCourse(course *model.Course) {
 	m.EmptyCoursesQueues[course.DayOfWeek][course.Period].Push(course)
 }
 
+// AddStudentForRegistrableCourse timeslotを受け取って、適切なコースに学生を登録する
 func (m *CourseManager) AddStudentForRegistrableCourse(student *model.Student, dayOfWeek, period int) *model.Course {
 	// 1. 渡された学生と希望Timeslotで登録できるコースがあれば、そのコースに学生を登録
 	// 2. 登録できたコースを返却

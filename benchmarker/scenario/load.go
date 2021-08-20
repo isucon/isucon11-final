@@ -117,9 +117,6 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 	return func(ctx context.Context) {
 		for ctx.Err() == nil {
 
-			// BrowserAccess(grade)
-			// resource Verify
-
 			// 学生は成績を確認し続ける
 			_, res, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
@@ -141,15 +138,16 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			default:
 			}
 
-			wishRegisterCount := registerCourseLimit - student.RegisteringCount()
+			// ----------------------------------------
 
-			if wishRegisterCount > 0 { //nolint:staticcheck // TODO
-				// BrowserAccess(register)
-				// resource Verify
+			// Gradeが早くなった時、常にCapacityが0だとGradeを効率的に回せるようになって点数が高くなるという不正ができるかもしれない
+			remainingRegistrationCapacity := registerCourseLimit - student.RegisteringCount()
+			if remainingRegistrationCapacity == 0 {
+				continue
 			}
 
-			// 履修希望コース * searchCountPerRegistration 回 検索を行う
-			for i := 0; i < wishRegisterCount*searchCountPerRegistration; i++ {
+			// remainingRegistrationCapacity * searchCountPerRegistration 回 検索を行う
+			for i := 0; i < remainingRegistrationCapacity*searchCountPerRegistration; i++ {
 				timer := time.After(300 * time.Millisecond)
 
 				param := generate.SearchCourseParam()
@@ -173,7 +171,8 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 				case <-timer:
 				}
 			}
-			AdminLogger.Printf("%vはコースを%v回検索した", student.Name, wishRegisterCount*searchCountPerRegistration)
+
+			AdminLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
 
 			select {
 			case <-ctx.Done():
@@ -181,28 +180,33 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			default:
 			}
 
+			// ----------------------------------------
+
 			// 仮登録(ベンチ内部では登録済みにする)
 			// TODO: 1度も検索成功してなかったら登録しない
-			semiRegistered := make([]*model.Course, 0, wishRegisterCount)
+			semiRegistered := make([]*model.Course, 0, remainingRegistrationCapacity)
 
-			randTimeSlots := generate.RandomIntSlice(30) // 平日分のコマ 5*6
+			randTimeSlots := generate.ShuffledInts(30) // 平日分のコマ 5*6
 
 			studentScheduleMutex := student.ScheduleMutex()
 			studentScheduleMutex.Lock()
-			for i := 0; i < len(randTimeSlots); i++ {
-				if len(semiRegistered) >= wishRegisterCount {
+			for _, timeSlot := range randTimeSlots {
+				// 仮登録数が追加履修可能数を超えていたら抜ける
+				if len(semiRegistered) >= remainingRegistrationCapacity {
 					break
 				}
 
-				dayOfWeek := randTimeSlots[i]/6 + 1 // 日曜日分+1
-				period := randTimeSlots[i] % 6
+				dayOfWeek := timeSlot/6 + 1 // 日曜日分+1
+				period := timeSlot % 6
 
 				if !student.IsEmptyTimeSlots(dayOfWeek, period) {
 					continue
 				}
 
+				// コースへの配分はCourseManagerが担うので、学生のワーカーは学生の空いているtimeslotを決めるところまで行えば良い
 				registeredCourse := s.emptyCourseManager.AddStudentForRegistrableCourse(student, dayOfWeek, period)
-				if registeredCourse == nil { // 該当コマで空きコースがなかった
+				// 該当コマで履修可能なコースがなかった
+				if registeredCourse == nil {
 					continue
 				}
 
@@ -217,30 +221,26 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			default:
 			}
 
-			// ベンチ内で登録できたコースがあればAPIにも登録処理を投げる
+			// ----------------------------------------
+
+			// ベンチ内で仮登録できたコースがあればAPIに登録処理を投げる
 			if len(semiRegistered) > 0 {
 				_, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
-
-				if err != nil { // API側が原因のエラー（コースが登録不可ステータスだったり満席のエラーなら非該当）
+				if err != nil {
 					step.AddError(err)
-				}
-
-				isSuccess := err == nil
-				if isSuccess {
+					// 失敗時の仮登録情報のロールバック
+					for _, c := range semiRegistered {
+						c.FinishRegistration()
+						c.RemoveStudent(student)
+						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
+					}
+				} else {
 					step.AddScore(score.CountRegisterCourses)
 					for _, c := range semiRegistered {
 						c.FinishRegistration()
 						c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
 						student.AddCourse(c)
 						AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
-					}
-					// BrowserAccess(mypage)
-					// resource Verify
-				} else {
-					for _, c := range semiRegistered {
-						c.FinishRegistration()
-						c.RemoveStudent(student)
-						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
 					}
 				}
 			}
@@ -249,7 +249,7 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(3000 * time.Millisecond):
+			default:
 			}
 		}
 	}
