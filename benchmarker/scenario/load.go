@@ -118,13 +118,13 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 		for ctx.Err() == nil {
 
 			// 学生は成績を確認し続ける
-			_, res, err := GetGradeAction(ctx, student.Agent)
+			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
 				<-time.After(3000 * time.Millisecond)
 				continue
 			}
-			if err := verifyGrades(&res); err != nil {
+			if err := verifyGrades(&getGradeRes); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CountGetGrades)
@@ -182,6 +182,25 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 
 			// ----------------------------------------
 
+			registeredSchedule := student.RegisteredSchedule()
+			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
+			if err != nil {
+				step.AddError(err)
+				<-time.After(3000 * time.Millisecond)
+				continue
+			}
+			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
+				step.AddError(err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			// ----------------------------------------
+
 			// 仮登録(ベンチ内部では登録済みにする)
 			// TODO: 1度も検索成功してなかったら登録しない
 			semiRegistered := make([]*model.Course, 0, remainingRegistrationCapacity)
@@ -210,7 +229,7 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					continue
 				}
 
-				student.FillTimeslot(dayOfWeek, period)
+				student.FillTimeslot(registeredCourse)
 				semiRegistered = append(semiRegistered, registeredCourse)
 			}
 			studentScheduleMutex.Unlock()

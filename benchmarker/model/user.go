@@ -26,7 +26,7 @@ type Student struct {
 	submissions           []*Submission
 	rmu                   sync.RWMutex
 
-	registeredSchedule [7][6]bool // 空きコマ管理[DayOfWeek:7][Period:6]
+	registeredSchedule [7][6]*Course // 空きコマ管理[DayOfWeek:7][Period:6]
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
 }
@@ -50,7 +50,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student 
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
 
-		registeredSchedule: [7][6]bool{},
+		registeredSchedule: [7][6]*Course{},
 		scheduleMutex:      sync.RWMutex{},
 	}
 	s.announcementCond = sync.NewCond(&s.rmu)
@@ -133,7 +133,7 @@ func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
 	s.scheduleMutex.Lock()
 	defer s.scheduleMutex.Unlock()
 
-	s.registeredSchedule[dayOfWeek][period] = false
+	s.registeredSchedule[dayOfWeek][period] = nil
 	s.registeringCount--
 }
 
@@ -144,13 +144,20 @@ func (s *Student) ScheduleMutex() *sync.RWMutex {
 
 // IsEmptyTimeSlots でコマを参照する場合は別途scheduleMutexで(R)Lockすること
 func (s *Student) IsEmptyTimeSlots(dayOfWeek, period int) bool {
-	return !s.registeredSchedule[dayOfWeek][period]
+	return s.registeredSchedule[dayOfWeek][period] == nil
 }
 
 // FillTimeslot で登録処理を行う場合は別途scheduleMutexでLockすること
-func (s *Student) FillTimeslot(dayOfWeek, period int) {
-	s.registeredSchedule[dayOfWeek][period] = true
+func (s *Student) FillTimeslot(course *Course) {
+	s.registeredSchedule[course.DayOfWeek][course.Period] = course
 	s.registeringCount++
+}
+
+func (s *Student) RegisteredSchedule() [7][6]*Course {
+	s.scheduleMutex.RLock()
+	defer s.scheduleMutex.RUnlock()
+
+	return s.registeredSchedule
 }
 
 type Faculty struct {

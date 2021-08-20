@@ -75,6 +75,73 @@ func verifyGrades(res *api.GetGradeResponse) error {
 	return nil
 }
 
+func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expected *model.Course) error {
+	if actual.ID.String() != expected.ID {
+		return errInvalidResponse("コースのIDが期待する値と一致しません")
+	}
+
+	if actual.Name != expected.Name {
+		return errInvalidResponse("コース名が期待する値と一致しません")
+	}
+
+	if actual.Teacher != expected.Teacher {
+		return errInvalidResponse("コースの講師が期待する値と一致しません")
+	}
+
+	// DayOfWeekとPeriodは、ベンチのスケジュールと突き合わせている時点で一致しているはずなのでここでは検証しない
+
+	return nil
+}
+
+func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expectedSchedule [7][6]*model.Course) error {
+	// DayOfWeekの逆引きテーブル（string -> int）
+	dayOfWeekIndexTable := map[api.DayOfWeek]int{
+		"sunday":    0,
+		"monday":    1,
+		"tuesday":   2,
+		"wednesday": 3,
+		"thursday":  4,
+		"friday":    5,
+		"saturday":  6,
+	}
+
+	actualSchedule := [7][6]*api.GetRegisteredCourseResponseContent{}
+	for _, resContent := range res {
+		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
+		if !ok {
+			return errInvalidResponse("科目の開講曜日が不正です")
+		}
+		periodIndex := int(resContent.Period) - 1
+		if periodIndex < 0 || periodIndex >= 6 {
+			return errInvalidResponse("科目の開講時限が不正です")
+		}
+		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
+			return errInvalidResponse("履修済み科目のリストに時限の重複が存在します")
+		}
+
+		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
+	}
+
+	// コースの終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
+	// ただし、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降削除されず、また履修登録は直列であるため、レスポンスに存在する科目は必ずベンチにも存在することを期待する。
+	// したがって、レスポンスに含まれる科目はベンチにある科目(registeredSchedule)の部分集合であることを確認すれば十分である。
+	for d := 0; d < 7; d++ {
+		for p := 0; p < 6; p++ {
+			if actualSchedule[d][p] != nil {
+				if expectedSchedule[d][p] != nil {
+					if err := verifyRegisteredCourse(actualSchedule[d][p], expectedSchedule[d][p]); err != nil {
+						return err
+					}
+				} else {
+					return errInvalidResponse("履修済み科目のリストに期待しない科目が含まれています")
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
 	if param.Type != "" && res.Type != api.CourseType(param.Type) {
 		return errInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています")
