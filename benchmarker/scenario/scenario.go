@@ -29,9 +29,8 @@ type Scenario struct {
 	emptyCourseManager  *util.CourseManager
 	faculties           []*model.Faculty
 	studentPool         *userPool
-	activeStudent       []*model.Student
-	activeStudentCount  int // FIXME Debug
-	finishedCourseCount int // FIXME Debug
+	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
+	finishedCourseCount int              // FIXME Debug
 	language            string
 
 	mu sync.RWMutex
@@ -52,6 +51,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	faculties := make([]*model.Faculty, len(facultiesData))
 	for i, f := range facultiesData {
 		faculties[i] = model.NewFaculty(f, config.BaseURL)
@@ -66,7 +66,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		emptyCourseManager: util.NewCourseManager(),
 		faculties:          faculties,
 		studentPool:        NewUserPool(studentsData),
-		activeStudent:      make([]*model.Student, 0, initialStudentsCount),
+		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 	}, nil
 }
 
@@ -87,13 +87,13 @@ func (s *Scenario) AddActiveStudent(student *model.Student) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.activeStudent = append(s.activeStudent, student)
+	s.activeStudents = append(s.activeStudents, student)
 }
 func (s *Scenario) ActiveStudentCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.activeStudentCount
+	return len(s.activeStudents)
 }
 
 func (s *Scenario) CourseCount() int {
