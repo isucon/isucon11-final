@@ -626,7 +626,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 
 			// 課題を提出する
 			isCorrectSubmit := rand.Float32() > invalidSubmitFrequency // 一定確率でdocxのファイルを投げる
-			for { // 提出成功するまでループ
+			for {
 				var submission *model.Submission
 				if isCorrectSubmit {
 					submission = generate.Submission(course, class, s.UserAccount)
