@@ -37,6 +37,7 @@ func main() {
 
 	for _, t := range targetPaths {
 		path := strings.TrimPrefix(t, baseDirPath)
+		path = strings.TrimSuffix(path, "/index.html")
 		hashes[path] = hashMD5(t)
 	}
 

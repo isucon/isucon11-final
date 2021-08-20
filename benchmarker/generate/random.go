@@ -2,7 +2,7 @@ package generate
 
 import "math/rand"
 
-func RandomIntSlice(length int) []int {
+func ShuffledInts(length int) []int {
 	randSlice := make([]int, length)
 	for i := 0; i < length; i++ {
 		randSlice[i] = i
