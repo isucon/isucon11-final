@@ -51,7 +51,7 @@ if File.exist?("init.sql")
 end
 
 teachers = gen_user_data(50, true)
-save_tsv(teachers, "faculty.tsv")
+save_tsv(teachers, "teacher.tsv")
 save_sql(teachers, "init.sql", true)
 
 students = gen_user_data(5000, false)

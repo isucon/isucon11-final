@@ -27,7 +27,7 @@ type Scenario struct {
 	cPubSub             *pubsub.PubSub
 	courses             map[string]*model.Course
 	emptyCourseManager  *util.CourseManager
-	faculties           []*model.Faculty
+	faculties           []*model.Teacher
 	studentPool         *userPool
 	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
 	finishedCourseCount int              // FIXME Debug
@@ -52,9 +52,9 @@ func NewScenario(config *Config) (*Scenario, error) {
 		return nil, err
 	}
 
-	faculties := make([]*model.Faculty, len(facultiesData))
+	faculties := make([]*model.Teacher, len(facultiesData))
 	for i, f := range facultiesData {
-		faculties[i] = model.NewFaculty(f, config.BaseURL)
+		faculties[i] = model.NewTeacher(f, config.BaseURL)
 	}
 
 	return &Scenario{
@@ -124,7 +124,7 @@ func (s *Scenario) GetCourse(id string) (*model.Course, bool) {
 	return course, exists
 }
 
-func (s *Scenario) GetRandomFaculty() *model.Faculty {
+func (s *Scenario) GetRandomTeacher() *model.Teacher {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

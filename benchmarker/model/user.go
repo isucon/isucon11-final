@@ -160,18 +160,18 @@ func (s *Student) RegisteredSchedule() [7][6]*Course {
 	return s.registeredSchedule
 }
 
-type Faculty struct {
+type Teacher struct {
 	*UserAccount
 	Agent *agent.Agent
 }
 
-const facultyUserAgent = "isucholar-agent-faculty/1.0.0"
+const teacherUserAgent = "isucholar-agent-teacher/1.0.0"
 
-func NewFaculty(userData *UserAccount, baseURL *url.URL) *Faculty {
+func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
 	a, _ := agent.NewAgent()
 	a.BaseURL = baseURL
-	a.Name = facultyUserAgent
-	return &Faculty{
+	a.Name = teacherUserAgent
+	return &Teacher{
 		UserAccount: userData,
 		Agent:       a,
 	}

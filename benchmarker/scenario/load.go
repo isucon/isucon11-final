@@ -412,9 +412,9 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		default:
 		}
 
-		faculty := course.Faculty()
+		teacher := course.Teacher()
 		// コースステータスをin-progressにする
-		_, err := SetCourseStatusInProgressAction(ctx, faculty.Agent, course.ID)
+		_, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 		if err != nil {
 			step.AddError(err)
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
@@ -433,7 +433,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			timer := time.After(100 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
-			_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, classParam)
+			_, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -463,7 +463,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			default:
 			}
 
-			_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, course.ID, class.ID)
+			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
 				step.AddError(err)
 				continue
@@ -480,7 +480,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 
 			// TODO: 採点する
-			_, err = scoringAssignments(ctx, course.ID, class.ID, faculty, course.Students(), assignmentsData)
+			_, err = scoringAssignments(ctx, course.ID, class.ID, teacher, course.Students(), assignmentsData)
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -498,7 +498,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 
 		// コースステータスをclosedにする
-		_, err = SetCourseStatusClosedAction(ctx, faculty.Agent, course.ID)
+		_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
 		if err != nil {
 			step.AddError(err)
 			AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
@@ -582,12 +582,12 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 }
 
 func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
-	faculty := s.GetRandomFaculty()
-	courseParam := generate.CourseParam(faculty)
+	teacher := s.GetRandomTeacher()
+	courseParam := generate.CourseParam(teacher)
 
-	_, err := LoginAction(ctx, faculty.Agent, faculty.UserAccount)
+	_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 	if err != nil {
-		ContestantLogger.Printf("facultyのログインに失敗しました")
+		ContestantLogger.Printf("teacherのログインに失敗しました")
 		step.AddError(failure.NewError(fails.ErrCritical, err))
 		return
 	}
@@ -598,13 +598,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	default:
 	}
 
-	_, getMeRes, err := GetMeAction(ctx, faculty.Agent)
+	_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
 	if err != nil {
-		ContestantLogger.Printf("facultyのユーザ情報取得に失敗しました")
+		ContestantLogger.Printf("teacherのユーザ情報取得に失敗しました")
 		step.AddError(err)
 		return
 	}
-	if err := verifyMe(&getMeRes, faculty.UserAccount, true); err != nil {
+	if err := verifyMe(&getMeRes, teacher.UserAccount, true); err != nil {
 		step.AddError(err)
 		return
 	}
@@ -615,7 +615,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	default:
 	}
 
-	_, addCourseRes, err := AddCourseAction(ctx, faculty, courseParam)
+	_, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
 	if err != nil {
 		step.AddError(err)
 		return
@@ -623,7 +623,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		step.AddScore(score.CountAddCourse)
 	}
 
-	course := model.NewCourse(courseParam, addCourseRes.ID, faculty)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher)
 	s.AddCourse(course)
 	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
@@ -695,7 +695,7 @@ type StudentScore struct {
 	code  string
 }
 
-func scoringAssignments(ctx context.Context, courseID, classID string, faculty *model.Faculty, students []*model.Student, assignments []byte) (*http.Response, error) {
+func scoringAssignments(ctx context.Context, courseID, classID string, teacher *model.Teacher, students []*model.Student, assignments []byte) (*http.Response, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -707,7 +707,7 @@ func scoringAssignments(ctx context.Context, courseID, classID string, faculty *
 			code:  s.Code,
 		})
 	}
-	res, err := PostGradeAction(ctx, faculty.Agent, courseID, classID, scores)
+	res, err := PostGradeAction(ctx, teacher.Agent, courseID, classID, scores)
 	if err != nil {
 		return nil, err
 	}

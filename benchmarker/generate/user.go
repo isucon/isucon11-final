@@ -10,7 +10,7 @@ import (
 
 var (
 	studentFile = "./generate/data/student.tsv"
-	facultyFile = "./generate/data/faculty.tsv"
+	teacherFile = "./generate/data/teacher.tsv"
 )
 
 func LoadStudentsData() ([]*model.UserAccount, error) {
@@ -18,7 +18,7 @@ func LoadStudentsData() ([]*model.UserAccount, error) {
 }
 
 func LoadFacultiesData() ([]*model.UserAccount, error) {
-	return loadUserAccountData(facultyFile)
+	return loadUserAccountData(teacherFile)
 }
 
 func loadUserAccountData(path string) ([]*model.UserAccount, error) {
