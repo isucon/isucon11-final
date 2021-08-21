@@ -284,8 +284,8 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.C
 	return hres, res, nil
 }
 
-func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, submission *model.Submission) (*http.Response, error) {
-	hres, err := api.SubmitAssignment(ctx, agent, courseID, classID, submission.Title, submission.Data)
+func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, title string, data []byte) (*http.Response, error) {
+	hres, err := api.SubmitAssignment(ctx, agent, courseID, classID, title, data)
 	if err != nil {
 		return hres, failure.NewError(fails.ErrHTTP, err)
 	}

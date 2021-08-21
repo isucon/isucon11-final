@@ -19,7 +19,7 @@ func init() {
 	docxFiles[2] = []byte{0x50, 0x4b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 }
 
-func Submission(course *model.Course, class *model.Class, user *model.UserAccount) *model.Submission {
+func SubmissionData(course *model.Course, class *model.Class, user *model.UserAccount) ([]byte, string) {
 	tRand := rand.Float32()
 
 	var title string
@@ -31,29 +31,23 @@ func Submission(course *model.Course, class *model.Class, user *model.UserAccoun
 		title = fmt.Sprintf("%s.pdf", user.Code)
 	}
 
-	return &model.Submission{
-		Title: title,
-		Data:  PDF(genSubmissionContents()),
-		Valid: true,
-	}
+	return PDF(genSubmissionContents()), title
 }
 
-func InvalidSubmission(course *model.Course, class *model.Class, user *model.UserAccount) *model.Submission {
+func InvalidSubmissionData(course *model.Course, class *model.Class, user *model.UserAccount) ([]byte, string) {
 	tRand := rand.Float32()
 	var title string
 	if tRand > 0.7 {
-		title = fmt.Sprintf("%s_%s_%s.docx", course.Name, class.Title, user.Code)
+		// 拡張子だけpdfに変えたdocxファイル
+		title = fmt.Sprintf("%s_%s_%s.pdf", course.Name, class.Title, user.Code)
 	} else if tRand > 0.4 {
-		title = fmt.Sprintf("%s_%s.docx", class.Title, user.Name)
+		// 拡張子だけpdfに変えたdocxファイル
+		title = fmt.Sprintf("%s_%s.pdf", class.Title, user.Name)
 	} else {
 		title = fmt.Sprintf("%s.docx", user.Code)
 	}
 
-	return &model.Submission{
-		Title: title,
-		Data:  docxFiles[rand.Intn(len(docxFiles))],
-		Valid: true,
-	}
+	return docxFiles[rand.Intn(len(docxFiles))], title
 }
 
 // TODO: いい感じにする

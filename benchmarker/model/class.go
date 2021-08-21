@@ -1,7 +1,6 @@
 package model
 
 import (
-	"hash/crc32"
 	"sync"
 )
 
@@ -14,38 +13,37 @@ type ClassParam struct {
 
 type Class struct {
 	*ClassParam
-	ID                   string
-	submittedAssignments map[string]uint32 // 学籍番号 -> 課題ファイルchecksum
-	rmu                  sync.RWMutex
+	ID                string
+	submissionSummary map[string]*SubmissionSummary // 学籍番号 -> 課題ファイルchecksum
+	rmu               sync.RWMutex
 }
 
 func NewClass(id string, param *ClassParam) *Class {
 	return &Class{
-		ClassParam:           param,
-		ID:                   id,
-		submittedAssignments: make(map[string]uint32),
-		rmu:                  sync.RWMutex{},
+		ClassParam:        param,
+		ID:                id,
+		submissionSummary: make(map[string]*SubmissionSummary),
+		rmu:               sync.RWMutex{},
 	}
 }
 
-func (c *Class) AddSubmittedAssignment(studentCode string, data []byte) {
+func (c *Class) AddSubmissionSummary(studentCode string, summary *SubmissionSummary) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	c.submittedAssignments[studentCode] = crc32.ChecksumIEEE(data)
+	c.submissionSummary[studentCode] = summary
 }
 
-func (c *Class) GetAssignmentChecksum(studentCode string) (uint32, bool) {
+func (c *Class) SubmissionSummary(studentCode string) *SubmissionSummary {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	hash, exists := c.submittedAssignments[studentCode]
-	return hash, exists
+	return c.submissionSummary[studentCode]
 }
 
 func (c *Class) GetSubmittedCount() int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	return len(c.submittedAssignments)
+	return len(c.submissionSummary)
 }
