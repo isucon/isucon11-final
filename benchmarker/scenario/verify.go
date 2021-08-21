@@ -423,11 +423,9 @@ func verifyPageResource(res *http.Response, resources agent.Resources) []error {
 	}
 
 	checks := []error{
-		// TODO: sync FE assets
-		// hattoriがあとでassetsの生成方法も含めて修正する
-		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
-		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
-		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/app.js")], "/_nuxt/app.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/runtime.js")], "/_nuxt/runtime.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/css/app.css")], "/_nuxt/css/app.css"),
 	}
 
 	var errs []error
