@@ -7,6 +7,8 @@ export type DayOfWeek =
 
 export type CourseType = 'liberal-arts' | 'major-subjects'
 
+export type CourseStatus = 'registration' | 'in-progress' | 'closed'
+
 export type SearchCourseRequest = {
   keywords?: string
   type?: string
@@ -31,6 +33,10 @@ export type Course = {
 }
 
 export type AddCourseRequest = Omit<Course, 'id' | 'teacher'>
+
+export type SetCourseStatusRequest = {
+  status: CourseStatus
+}
 
 export type Announcement = {
   id: string
@@ -63,6 +69,18 @@ export type ClassInfo = {
   description: string
   submissionClosed: boolean
   submitted: boolean
+}
+
+export type AddClassRequest = {
+  part: number
+  title: string
+  description: string
+  createdAt: number
+}
+
+export type RegisterScoreRequest = {
+  userCode: string
+  score: number
 }
 
 type SummaryGrade = {

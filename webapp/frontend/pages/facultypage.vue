@@ -8,17 +8,19 @@
             <Button @click="visibleModal = 'AddCourse'">新規登録</Button>
           </div>
           <div class="py-4">
-            <Button>ステータス変更</Button>
+            <Button @click="visibleModal = 'SetCourseStatus'"
+              >ステータス変更</Button
+            >
           </div>
         </section>
 
         <section class="mt-10">
           <h1 class="text-2xl">講義</h1>
           <div class="py-4">
-            <Button>新規登録</Button>
+            <Button @click="visibleModal = 'AddClass'">新規登録</Button>
           </div>
           <div class="py-4">
-            <Button>成績登録</Button>
+            <Button @click="visibleModal = 'RegisterScores'">成績登録</Button>
           </div>
           <div class="py-4">
             <Button>提出課題のダウンロード</Button>
@@ -30,6 +32,18 @@
       :is-shown="visibleModal === 'AddCourse'"
       @close="visibleModal = null"
     />
+    <SetCourseStatusModal
+      :is-shown="visibleModal === 'SetCourseStatus'"
+      @close="visibleModal = null"
+    />
+    <AddClassModal
+      :is-shown="visibleModal === 'AddClass'"
+      @close="visibleModal = null"
+    />
+    <RegisterScoresModal
+      :is-shown="visibleModal === 'RegisterScores'"
+      @close="visibleModal = null"
+    />
   </div>
 </template>
 
@@ -37,6 +51,9 @@
 import Vue from 'vue'
 import Button from '~/components/common/Button.vue'
 import AddCourseModal from '~/components/AddCourseModal.vue'
+import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
+import AddClassModal from '~/components/AddClassModal.vue'
+import RegisterScoresModal from '~/components/RegisterScoresModal.vue'
 
 type modalKinds =
   | 'AddCourse'
@@ -53,6 +70,9 @@ export default Vue.extend({
   components: {
     Button,
     AddCourseModal,
+    SetCourseStatusModal,
+    AddClassModal,
+    RegisterScoresModal,
   },
   middleware: 'is_loggedin',
   data(): FacultyPageData {
