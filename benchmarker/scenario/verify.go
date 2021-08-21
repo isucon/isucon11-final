@@ -186,12 +186,11 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 	return nil
 }
 
-func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.SearchCourseParam) []error {
-	errs := make([]error, 0)
+func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
 	for _, course := range res {
 		if rand.Float64() < searchCourseVerifyRate {
 			if err := verifySearchCourseResult(course, param); err != nil {
-				errs = append(errs, err)
+				return err
 			}
 		}
 	}
@@ -199,12 +198,11 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 	// CreatedAtの降順でソートされているか
 	for i := 0; i < len(res)-1; i++ {
 		if res[i].Code > res[i+1].Code {
-			errs = append(errs, errInvalidResponse("科目検索結果の順序が不正です"))
-			break
+			return errInvalidResponse("科目検索結果の順序が不正です")
 		}
 	}
 
-	return errs
+	return nil
 }
 
 func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Course) error {
@@ -301,9 +299,7 @@ func verifyAnnouncementsContent(res *api.AnnouncementResponse, announcementStatu
 	return nil
 }
 
-func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) []error {
-	errs := make([]error, 0)
-
+func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) error {
 	// リストの中身の検証
 	// MEMO: ランダムで数件チェックにしてもいいかも
 	// MEMO: unreadだけ返すとハックできそう
@@ -316,21 +312,20 @@ func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Stude
 		}
 
 		if err := verifyAnnouncementsContent(&announcement, announcementStatus); err != nil {
-			errs = append(errs, err)
+			return err
 		}
 	}
 
 	// CreatedAtの降順でソートされているか
 	for i := 0; i < len(res.Announcements)-1; i++ {
 		if res.Announcements[i].CreatedAt < res.Announcements[i+1].CreatedAt {
-			errs = append(errs, errInvalidResponse("お知らせの順序が不正です"))
-			break
+			return errInvalidResponse("お知らせの順序が不正です")
 		}
 	}
 
 	// MEMO: res.UnreadCountはload中には検証できなさそう
 
-	return errs
+	return nil
 }
 
 func verifyClass(res *api.GetClassResponse, class *model.Class) error {

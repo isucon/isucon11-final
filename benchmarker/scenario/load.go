@@ -160,8 +160,7 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 						step.AddError(err)
 						continue
 					}
-					errs := verifySearchCourseResults(res, param)
-					for _, err := range errs {
+					if err := verifySearchCourseResults(res, param); err != nil {
 						step.AddError(err)
 						continue
 					}
@@ -314,11 +313,9 @@ func readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkS
 				<-time.After(3000 * time.Millisecond)
 				continue
 			}
-			errs := verifyAnnouncements(&res, student)
-			for _, err := range errs {
+			if err := verifyAnnouncements(&res, student); err != nil {
 				step.AddError(err)
-			}
-			if len(errs) == 0 {
+			} else {
 				step.AddScore(score.CountGetAnnouncements)
 			}
 
@@ -453,10 +450,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			default:
 			}
 
-			errs := submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
-			for _, e := range errs {
-				step.AddError(e)
-			}
+			submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
 			AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
 			select {
@@ -630,12 +624,10 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	s.cPubSub.Publish(course)
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) []error {
+func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
-	mu := sync.Mutex{}
-	errs := make([]error, 0)
 	for _, s := range students {
 		s := s
 		go func() {
@@ -654,15 +646,11 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			// 講義一覧を取得する
 			_, res, err := GetClassesAction(ctx, s.Agent, course.ID)
 			if err != nil {
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
+				step.AddError(err)
 				return
 			}
 			if err := verifyClasses(res, course.Classes()); err != nil {
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
+				step.AddError(err)
 			}
 
 			select {
@@ -690,9 +678,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 						isCorrectSubmit = true // 次は正しいSubmissionを提出
 						// 400エラーのときのみ再送をする
 					} else {
-						mu.Lock()
-						errs = append(errs, err)
-						mu.Unlock()
+						step.AddError(err)
 						break
 					}
 				} else {
@@ -716,8 +702,6 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 		}()
 	}
 	wg.Wait()
-
-	return errs
 }
 
 // これここじゃないほうがいいかも知れない
