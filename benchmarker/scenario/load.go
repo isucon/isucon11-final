@@ -25,6 +25,8 @@ const (
 	searchCountPerRegistration = 3
 	// classCountPerCourse は科目あたりのクラス数
 	classCountPerCourse = 5
+	// invalidSubmitFrequency は誤ったFileTypeのファイルを提出する確率
+	invalidSubmitFrequency = 0.1
 	// waitReadClassAnnouncementTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
 	waitReadClassAnnouncementTimeout = 5 * time.Second
 )
@@ -479,8 +481,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			default:
 			}
 
-			// TODO: 採点する
-			_, err = scoringAssignments(ctx, course.ID, class.ID, teacher, course.Students(), assignmentsData)
+			_, err = scoringAssignments(ctx, course, class, teacher)
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -671,16 +672,46 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			}
 
 			// 課題を提出する
-			submission := generate.Submission(course, class, s.UserAccount)
-			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
-			if err != nil {
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
-			} else {
-				step.AddScore(score.CountSubmitAssignment)
-				class.AddSubmittedAssignment(s.Code, submission.Data)
-				s.AddSubmission(submission)
+			isCorrectSubmit := rand.Float32() > invalidSubmitFrequency // 一定確率でdocxのファイルを投げる
+			for {
+				var (
+					submissionData []byte
+					fileName       string
+				)
+				if isCorrectSubmit {
+					submissionData, fileName = generate.SubmissionData(course, class, s.UserAccount)
+				} else {
+					submissionData, fileName = generate.InvalidSubmissionData(course, class, s.UserAccount)
+				}
+
+				hres, err := SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, fileName, submissionData)
+				if err != nil {
+					if !isCorrectSubmit && hres.StatusCode == http.StatusBadRequest {
+						isCorrectSubmit = true // 次は正しいSubmissionを提出
+						// 400エラーのときのみ再送をする
+					} else {
+						mu.Lock()
+						errs = append(errs, err)
+						mu.Unlock()
+						break
+					}
+				} else {
+					// 提出課題がwebappで受理された
+					if isCorrectSubmit {
+						step.AddScore(score.CountSubmitPDF)
+					} else {
+						step.AddScore(score.CountSubmitDocx)
+					}
+					submissionSummary := model.NewSubmissionSummary(fileName, submissionData, isCorrectSubmit)
+					class.AddSubmissionSummary(s.Code, submissionSummary)
+					break
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 			}
 		}()
 	}
@@ -695,22 +726,37 @@ type StudentScore struct {
 	code  string
 }
 
-func scoringAssignments(ctx context.Context, courseID, classID string, teacher *model.Teacher, students []*model.Student, assignments []byte) (*http.Response, error) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(students))
-
+func scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, teacher *model.Teacher) (*http.Response, error) {
+	students := course.Students()
 	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {
-		score := rand.Intn(101)
+		sub := class.SubmissionSummary(s.Code)
+		if sub == nil {
+			continue
+		}
+
+		var scoreData int
+		if sub.IsValid {
+			scoreData = rand.Intn(101)
+		}
 		scores = append(scores, StudentScore{
-			score: score,
+			score: scoreData,
 			code:  s.Code,
 		})
 	}
-	res, err := PostGradeAction(ctx, teacher.Agent, courseID, classID, scores)
+
+	res, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
 	if err != nil {
 		return nil, err
 	}
 
+	// POST成功したスコアをベンチ内に保存する
+	for _, scoreData := range scores {
+		sub := class.SubmissionSummary(scoreData.code)
+		if sub == nil {
+			continue
+		}
+		sub.SetScore(scoreData.score)
+	}
 	return res, nil
 }

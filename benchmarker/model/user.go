@@ -23,7 +23,6 @@ type Student struct {
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
 	announcementCond      *sync.Cond
-	submissions           []*Submission
 	rmu                   sync.RWMutex
 
 	registeredSchedule [7][6]*Course // 空きコマ管理[DayOfWeek:7][Period:6]
@@ -62,13 +61,6 @@ func (s *Student) AddCourse(course *Course) {
 	defer s.rmu.Unlock()
 
 	s.registeredCourses = append(s.registeredCourses, course)
-}
-
-func (s *Student) AddSubmission(sub *Submission) {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
-
-	s.submissions = append(s.submissions, sub)
 }
 
 func (s *Student) AddAnnouncement(announcement *Announcement) {

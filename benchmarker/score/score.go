@@ -7,7 +7,8 @@ import (
 const (
 	CountAddCourse              = "add course"
 	CountAddClass               = "add class"
-	CountSubmitAssignment       = "submit assignment"
+	CountSubmitPDF              = "submit pdf assignment"
+	CountSubmitDocx             = "submit docx assignment"
 	CountRegisterScore          = "register score"
 	CountGetAnnouncements       = "get announcements"
 	CountGetAnnouncementsDetail = "get announcement detail"
@@ -20,8 +21,8 @@ type mag int64      // 1回でn点
 type fraction int64 // n回で1点
 
 var scoreCoefTable = map[score.ScoreTag]interface{}{
-	CountSubmitAssignment: mag(5),
-	CountRegisterCourses:  mag(10),
+	CountSubmitPDF:       mag(5),
+	CountRegisterCourses: mag(10),
 
 	CountGetAnnouncements: fraction(10),
 	CountGetGrades:        fraction(10),
