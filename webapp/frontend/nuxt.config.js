@@ -59,7 +59,39 @@ const config = {
   },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
-  build: {},
+  build: {
+    filenames: {
+      app: ({ isModern }) => `[name]${isModern ? '.modern' : ''}.js`,
+      chunk: ({ isModern }) => `[name]${isModern ? '.modern' : ''}.js`,
+      css: ({ isDev }) => (isDev ? '[name].css' : 'css/[name].css'),
+      img: ({ isDev }) => (isDev ? '[path][name].[ext]' : 'img/[name].[ext]'),
+      font: ({ isDev }) =>
+        isDev ? '[path][name].[ext]' : 'fonts/[name].[ext]',
+      video: ({ isDev }) =>
+        isDev ? '[path][name].[ext]' : 'videos/[name].[ext]',
+    },
+    extractCSS: true,
+    optimization: {
+      splitChunks: {
+        chunks: 'async',
+      },
+    },
+    splitChunks: {
+      pages: false,
+      vendor: false,
+      commons: false,
+      runtime: false,
+      layouts: false,
+      cacheGroups: {
+        styles: {
+          name: 'styles',
+          test: /\.(css|vue)$/,
+          chunks: 'all',
+          enforce: true,
+        },
+      },
+    },
+  },
 }
 
 const isProd = process.env.NODE_ENV === 'production'
