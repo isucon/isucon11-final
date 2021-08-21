@@ -6,10 +6,11 @@
     <div
       class="
         flex flex-col
-        xl:h-40
-        lg:h-30
-        md:h-30
-        sm:h-full
+        h-full
+        xl:min-h-40
+        lg:min-h-32
+        md:min-h-32
+        sm:min-h-full
         xl:w-40
         lg:w-30
         md:w-30

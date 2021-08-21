@@ -8,38 +8,49 @@
           <Button color="primary" @click="onClickConfirm">内容の確定</Button>
         </div>
         <Calendar :period-count="periodCount">
-          <template v-for="(c, i) in courses">
-            <CalendarCell :key="`course-${i}`">
-              <template v-if="c.id !== undefined">
-                <NuxtLink
-                  :to="`/courses/${c.id}`"
-                  class="flex-grow h-30 py-1 w-full cursor-pointer"
-                >
-                  <div class="flex flex-col">
-                    <span class="text-primary-500">
-                      <template
-                        v-if="c.code && c.displayType === 'will_register'"
-                      >
-                        <span>{{ c.code }}</span>
-                      </template>
-                      <template v-else-if="c.displayType === 'registered'">
-                        <span>履修済</span>
-                      </template>
-                      <span class="font-bold">{{ c.name }}</span>
-                    </span>
-                    <span class="text-sm">{{ c.teacher }}</span>
-                  </div>
-                </NuxtLink>
-              </template>
-              <template v-else>
-                <button
-                  class="flex-grow h-30 w-full cursor-pointer"
-                  @click="onClickSearchCourse(c)"
-                >
-                  <fa-icon icon="pen" size="lg" class="text-primary-500" />
-                </button>
-              </template>
-            </CalendarCell>
+          <template v-for="(periodCourses, p) in courses">
+            <template v-for="(weekdayCourses, w) in periodCourses">
+              <CalendarCell :key="`course-${p}-${w}`">
+                <template v-for="(course, i) in weekdayCourses">
+                  <template v-if="course.id">
+                    <NuxtLink
+                      :key="`link-${p}-${w}-${i}`"
+                      :to="`/courses/${course.id}`"
+                      class="flex-grow h-30 py-1 w-full cursor-pointer"
+                    >
+                      <div class="flex flex-col">
+                        <span class="text-primary-500">
+                          <template
+                            v-if="
+                              course.code &&
+                              course.displayType === 'will_register'
+                            "
+                          >
+                            <span>{{ course.code }}</span>
+                          </template>
+                          <template
+                            v-else-if="course.displayType === 'registered'"
+                          >
+                            <span>履修済</span>
+                          </template>
+                          <span class="font-bold">{{ course.name }}</span>
+                        </span>
+                        <span class="text-sm">{{ course.teacher }}</span>
+                      </div>
+                    </NuxtLink>
+                  </template>
+                  <template v-else>
+                    <button
+                      :key="`button-${p}-${w}-${i}`"
+                      class="h-full w-full cursor-pointer"
+                      @click="onClickSearchCourse(course)"
+                    >
+                      <fa-icon icon="pen" size="lg" class="text-primary-500" />
+                    </button>
+                  </template>
+                </template>
+              </CalendarCell>
+            </template>
           </template>
         </Calendar>
       </div>
@@ -65,7 +76,8 @@ import { Course, DayOfWeek } from '~/types/courses'
 import { DayOfWeekMap, PeriodCount, WeekdayCount } from '~/constants/calendar'
 
 type DisplayType = 'registered' | 'will_register' | 'none'
-type PartialCourse = Partial<Course> & { displayType: DisplayType }
+type DisplayCourse = Partial<Course> & { displayType: DisplayType }
+type CalendarCourses = DisplayCourse[][][]
 
 type DataType = {
   isShownModal: boolean
@@ -106,42 +118,67 @@ export default Vue.extend({
     }
   },
   computed: {
-    courses(): PartialCourse[] {
-      return new Array(WeekdayCount * PeriodCount)
-        .fill(undefined)
-        .map((_, i): PartialCourse => {
+    courses(): CalendarCourses {
+      const periodCourses: CalendarCourses = []
+      for (let period = 1; period <= PeriodCount; period++) {
+        const weekdayCourses = []
+        for (let weekday = 1; weekday <= WeekdayCount; weekday++) {
           const dayOfWeek = (Object.keys(DayOfWeekMap) as DayOfWeek[]).find(
-            (k) => DayOfWeekMap[k] === i % WeekdayCount
+            (k) => DayOfWeekMap[k] === weekday
           )
-          const period = Math.floor(i / WeekdayCount) + 1
-          const willRegisterCourse = this.getWillRegisterCourse(i)
+
+          const courses: DisplayCourse[] = []
+          const willRegisterCourse = this.getWillRegisterCourse(period, weekday)
           if (willRegisterCourse) {
-            return { ...willRegisterCourse, displayType: 'will_register' }
+            willRegisterCourse.forEach((c) => {
+              courses.push({
+                ...c,
+                displayType: 'will_register',
+              })
+            })
           }
 
-          const registeredCourse = this.getRegisteredCourse(i)
+          const registeredCourse = this.getRegisteredCourse(period, weekday)
           if (registeredCourse) {
-            return { ...registeredCourse, displayType: 'registered' }
+            courses.push({ ...registeredCourse, displayType: 'registered' })
           }
 
-          return { id: undefined, dayOfWeek, period, displayType: 'none' }
-        })
+          if (courses.length === 0) {
+            courses.push({
+              id: undefined,
+              period,
+              dayOfWeek,
+              displayType: 'none',
+            })
+          }
+
+          weekdayCourses.push(courses)
+        }
+        periodCourses.push(weekdayCourses)
+      }
+
+      return periodCourses
     },
   },
   methods: {
-    getWillRegisterCourse(idx: number): Course | undefined {
-      return this.willRegisterCourses.find((c) => {
+    getWillRegisterCourse(
+      period: number,
+      weekday: number
+    ): Course[] | undefined {
+      const course = this.willRegisterCourses.filter((c) => {
         const dayOfWeek = DayOfWeekMap[c.dayOfWeek as DayOfWeek]
-        return idx === dayOfWeek + (c.period - 1) * WeekdayCount
+        return period === c.period && weekday === dayOfWeek
       })
+
+      return course.length > 0 ? course : undefined
     },
-    getRegisteredCourse(idx: number): Course | undefined {
+    getRegisteredCourse(period: number, weekday: number): Course | undefined {
       return this.registeredCourses.find((c) => {
         const dayOfWeek = DayOfWeekMap[c.dayOfWeek as DayOfWeek]
-        return idx === dayOfWeek + (c.period - 1) * WeekdayCount
+        return period === c.period && weekday === dayOfWeek
       })
     },
-    onClickSearchCourse(c: PartialCourse | undefined): void {
+    onClickSearchCourse(c: Partial<Course> | undefined): void {
       if (c) {
         this.selected = Object.assign({}, this.selected, {
           dayOfWeek: c?.dayOfWeek,
@@ -159,7 +196,7 @@ export default Vue.extend({
     },
     async onClickConfirm(): Promise<void> {
       try {
-        const ids = this.willRegisterCourses.map((c) => ({ id: c.id }))
+        const ids = this.willRegisterCourses.flat().map((c) => ({ id: c.id }))
         const res = await this.$axios.put(`/api/users/me/courses`, ids)
         if (res.status === 200) {
           await this.$router.push('/mypage')

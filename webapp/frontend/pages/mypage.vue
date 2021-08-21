@@ -61,26 +61,28 @@
         <section>
           <h2 class="text-lg">2021年度前期</h2>
           <Calendar>
-            <template v-for="(c, i) in courses">
-              <CalendarCell
-                :key="`course-${i}`"
-                :cursor="c !== undefined ? 'pointer' : 'default'"
-              >
-                <template v-if="c !== undefined">
-                  <NuxtLink
-                    :to="`/courses/${c.id}`"
-                    class="flex-grow h-30 py-1 w-full"
-                  >
-                    <div class="flex flex-col">
-                      <span class="text-primary-500 font-bold">{{
-                        c.name
-                      }}</span>
-                      <span class="text-sm">{{ c.teacher }}</span>
-                    </div>
-                  </NuxtLink>
-                </template>
-                <template v-else></template>
-              </CalendarCell>
+            <template v-for="(periodCourses, p) in courses">
+              <template v-for="(course, w) in periodCourses">
+                <CalendarCell
+                  :key="`course-${p}-${w}`"
+                  :cursor="course !== undefined ? 'pointer' : 'default'"
+                >
+                  <template v-if="course !== undefined">
+                    <NuxtLink
+                      :to="`/courses/${course.id}`"
+                      class="flex-grow h-30 py-1 w-full"
+                    >
+                      <div class="flex flex-col">
+                        <span class="text-primary-500 font-bold">{{
+                          course.name
+                        }}</span>
+                        <span class="text-sm">{{ course.teacher }}</span>
+                      </div>
+                    </NuxtLink>
+                  </template>
+                  <template v-else></template>
+                </CalendarCell>
+              </template>
             </template>
           </Calendar>
         </section>
@@ -103,6 +105,7 @@ type MinimalCourse = Pick<
   Course,
   'id' | 'name' | 'teacher' | 'period' | 'dayOfWeek'
 >
+type CalendarCourses = (MinimalCourse | undefined)[][]
 
 type DataType = {
   registeredCourses: MinimalCourse[]
@@ -151,24 +154,30 @@ export default Vue.extend({
     }, 1000 /* 10秒ごと */)
   },
   computed: {
-    courses(): (MinimalCourse | undefined)[] {
-      return new Array(WeekdayCount * PeriodCount)
-        .fill(undefined)
-        .map((_, i) => {
-          return this.getCourse(i)
-        })
+    courses(): CalendarCourses {
+      const periodCourses: CalendarCourses = []
+      for (let period = 1; period <= PeriodCount; period++) {
+        const weekdayCourses = []
+        for (let weekday = 1; weekday <= WeekdayCount; weekday++) {
+          const course = this.getCourse(period, weekday)
+          weekdayCourses.push(course)
+        }
+        periodCourses.push(weekdayCourses)
+      }
+
+      return periodCourses
     },
     currentCourse(): MinimalCourse | undefined {
-      const idx =
-        this.current.dayOfWeek + (this.current.period - 1) * WeekdayCount
-      return this.courses[idx]
+      return this.courses?.[this.current.period - 1]?.[
+        this.current.dayOfWeek - 1
+      ]
     },
   },
   methods: {
-    getCourse(idx: number): MinimalCourse | undefined {
+    getCourse(period: number, weekday: number): MinimalCourse | undefined {
       const course = this.registeredCourses.find((c) => {
         const dayOfWeek = DayOfWeekMap[c.dayOfWeek as DayOfWeek]
-        return idx === dayOfWeek + (c.period - 1) * WeekdayCount
+        return period === c.period && weekday === dayOfWeek
       })
       return course
     },
