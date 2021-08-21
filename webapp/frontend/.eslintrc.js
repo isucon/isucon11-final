@@ -12,5 +12,5 @@ module.exports = {
   plugins: [],
   // add your custom rules here
   rules: {},
-  ignorePatterns: ['dist/_nuxt/*.js'],
+  ignorePatterns: ['dist/**/*.js'],
 }

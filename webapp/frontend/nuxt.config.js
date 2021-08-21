@@ -60,6 +60,22 @@ const config = {
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {
+    filenames: {
+      app: ({ isDev, isModern }) =>
+        isDev
+          ? `[name]${isModern ? '.modern' : ''}.js`
+          : `[name]${isModern ? '.modern' : ''}.js`,
+      chunk: ({ isDev, isModern }) =>
+        isDev
+          ? `[name]${isModern ? '.modern' : ''}.js`
+          : `[name]${isModern ? '.modern' : ''}.js`,
+      css: ({ isDev }) => (isDev ? '[name].css' : 'css/[name].css'),
+      img: ({ isDev }) => (isDev ? '[path][name].[ext]' : 'img/[name].[ext]'),
+      font: ({ isDev }) =>
+        isDev ? '[path][name].[ext]' : 'fonts/[name].[ext]',
+      video: ({ isDev }) =>
+        isDev ? '[path][name].[ext]' : 'videos/[name].[ext]',
+    },
     extractCSS: true,
     optimization: {
       splitChunks: {
