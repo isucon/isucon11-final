@@ -7,7 +7,8 @@ import (
 const (
 	CountAddCourse              = "add course"
 	CountAddClass               = "add class"
-	CountSubmitPDF              = "submit assignment"
+	CountSubmitPDF              = "submit pdf assignment"
+	CountSubmitDocx             = "submit docx assignment"
 	CountRegisterScore          = "register score"
 	CountGetAnnouncements       = "get announcements"
 	CountGetAnnouncementsDetail = "get announcement detail"

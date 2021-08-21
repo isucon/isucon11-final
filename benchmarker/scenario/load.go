@@ -636,7 +636,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 
 				hres, err := SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
 				if err != nil {
-					if hres.StatusCode == http.StatusBadRequest {
+					if !isCorrectSubmit && hres.StatusCode == http.StatusBadRequest {
 						isCorrectSubmit = true // 次は正しいSubmissionを提出
 					} else {
 						mu.Lock()
@@ -650,6 +650,8 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 						mu.Lock()
 						submitResult[s.Code] = true
 						mu.Unlock()
+					} else {
+						step.AddScore(score.CountSubmitDocx)
 					}
 					class.AddSubmittedAssignment(s.Code, submission.Data)
 					break
