@@ -676,7 +676,7 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			for {
 				var (
 					submissionData []byte
-					fileName string
+					fileName       string
 				)
 				if isCorrectSubmit {
 					submissionData, fileName = generate.SubmissionData(course, class, s.UserAccount)

@@ -20,7 +20,7 @@ func NewSubmissionSummary(title string, data []byte, isValid bool) *SubmissionSu
 		Title:    title,
 		IsValid:  isValid,
 		Checksum: crc32.ChecksumIEEE(data),
-		rmu: sync.RWMutex{},
+		rmu:      sync.RWMutex{},
 	}
 }
 
