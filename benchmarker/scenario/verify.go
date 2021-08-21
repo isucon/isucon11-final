@@ -111,7 +111,7 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 
 	// res.ClassScoresはexpected.ClassScoresと同じ長さか、それより一つ短いはず
 	// それ以外だったらおかしいのでエラー
-	if len(expected.ClassScores)-1 > len(res.ClassScores) {
+	if len(expected.ClassScores) > len(res.ClassScores) {
 		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.ClassScores), len(res.ClassScores)))
 		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
 	}

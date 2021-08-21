@@ -746,9 +746,6 @@ func scoringAssignments(ctx context.Context, course *model.Course, class *model.
 			score: scoreData,
 			code:  s.Code,
 		})
-
-		// TODO: エラーハンドリング
-		class.InsertUserScores(s.Code, score)
 	}
 
 	res, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)

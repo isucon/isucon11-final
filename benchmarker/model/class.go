@@ -27,24 +27,6 @@ func NewClass(id string, param *ClassParam) *Class {
 	}
 }
 
-func (c *Class) InsertUserScores(userCode string, score int) {
-	c.rmu.Lock()
-	defer c.rmu.Unlock()
-
-	if _, ok := c.userScores[userCode]; !ok {
-		c.userScores[userCode] = NewClassScore(c, score)
-	}
-
-	c.userScores[userCode].Score = score
-}
-
-func (c *Class) RemoveUserScores(userCode string) {
-	c.rmu.Lock()
-	defer c.rmu.Unlock()
-
-	delete(c.userScores, userCode)
-}
-
 func (c *Class) AddSubmissionSummary(studentCode string, summary *SubmissionSummary) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
