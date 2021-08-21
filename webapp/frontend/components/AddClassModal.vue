@@ -1,7 +1,7 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold justify-center mb-4">科目登録</p>
+      <p class="text-2xl text-black font-bold justify-center mb-4">講義登録</p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
           <Select
@@ -59,14 +59,14 @@
         role="alert"
       >
         <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">科目の登録に失敗しました</span>
+        <span class="block sm:inline">講義の登録に失敗しました</span>
         <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
           <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
         </span>
       </div>
       <div class="px-4 py-3 flex justify-center">
         <Button @click="close"> 閉じる </Button>
-        <Button @click="submit"> 提出 </Button>
+        <Button @click="submit"> 登録 </Button>
       </div>
     </Card>
   </Modal>

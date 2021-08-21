@@ -110,7 +110,7 @@
       </div>
       <div class="px-4 py-3 flex justify-center">
         <Button @click="close"> 閉じる </Button>
-        <Button @click="submit"> 提出 </Button>
+        <Button @click="submit"> 登録 </Button>
       </div>
     </Card>
   </Modal>

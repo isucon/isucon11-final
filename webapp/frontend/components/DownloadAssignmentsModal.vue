@@ -1,7 +1,9 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold justify-center mb-4">成績登録</p>
+      <p class="text-2xl text-black font-bold justify-center mb-4">
+        提出課題のダウンロード
+      </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
           <Select
@@ -19,29 +21,6 @@
             :options="classOptions"
           />
         </div>
-        <div class="flex flex-row space-x-2">
-          <div class="flex-1">
-            <TextField
-              id="params-usercode"
-              v-model="params.userCode"
-              label="生徒の学籍番号"
-              label-direction="vertical"
-              type="text"
-              placeholder="生徒の学籍番号を入力"
-            />
-          </div>
-          <div class="flex-1">
-            <TextField
-              id="params-score"
-              label="成績"
-              label-direction="vertical"
-              type="number"
-              placeholder="成績を入力"
-              :value="String(params.score)"
-              @input="updateNumberParam('score', $event)"
-            />
-          </div>
-        </div>
       </div>
       <div
         v-if="failed"
@@ -57,14 +36,16 @@
         role="alert"
       >
         <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">成績の登録に失敗しました</span>
+        <span class="block sm:inline"
+          >提出課題のダウンロードに失敗しました</span
+        >
         <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
           <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
         </span>
       </div>
       <div class="px-4 py-3 flex justify-center">
         <Button @click="close"> 閉じる </Button>
-        <Button @click="submit"> 登録 </Button>
+        <Button @click="submit"> ダウンロード </Button>
       </div>
     </Card>
   </Modal>
@@ -78,7 +59,7 @@ import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import Select, { Option } from '~/components/common/Select.vue'
-import { Course, RegisterScoreRequest, ClassInfo } from '~/types/courses'
+import { Course, ClassInfo } from '~/types/courses'
 
 type AsyncLoadData = {
   courses: Course[]
@@ -89,13 +70,7 @@ type SubmitFormData = {
   failed: boolean
   courseId: string
   classId: string
-  params: RegisterScoreRequest
 } & AsyncLoadData
-
-const initParams: RegisterScoreRequest = {
-  userCode: '',
-  score: 0,
-}
 
 export default Vue.extend({
   components: {
@@ -148,7 +123,6 @@ export default Vue.extend({
         },
       ],
       classes: [],
-      params: Object.assign({}, initParams),
     }
   },
   computed: {
@@ -170,24 +144,19 @@ export default Vue.extend({
     },
   },
   methods: {
-    updateNumberParam(fieldname: string, value: string) {
-      this.$set(this.params, fieldname, Number(value))
-    },
     async submit() {
       try {
-        await this.$axios.post(
-          `/api/courses/${this.courseId}/classes/${this.classId}/assignments`,
-          this.params
+        await this.$axios.get(
+          `/api/courses/${this.courseId}/classes/${this.classId}/assignments/export`
         )
-        notify('成績の登録が完了しました')
+        notify('ダウンロードに成功しました')
         this.close()
       } catch (e) {
-        notify('成績の登録に失敗しました')
+        notify('ダウンロードに失敗しました')
         this.showAlert()
       }
     },
     close() {
-      this.params = Object.assign({}, initParams)
       this.hideAlert()
       this.$emit('close')
     },

@@ -23,7 +23,9 @@
             <Button @click="visibleModal = 'RegisterScores'">成績登録</Button>
           </div>
           <div class="py-4">
-            <Button>提出課題のダウンロード</Button>
+            <Button @click="visibleModal = 'DownloadAssignments'"
+              >提出課題のダウンロード</Button
+            >
           </div>
         </section>
       </div>
@@ -44,6 +46,10 @@
       :is-shown="visibleModal === 'RegisterScores'"
       @close="visibleModal = null"
     />
+    <DownloadAssignmentsModal
+      :is-shown="visibleModal === 'DownloadAssignments'"
+      @close="visibleModal = null"
+    />
   </div>
 </template>
 
@@ -54,12 +60,14 @@ import AddCourseModal from '~/components/AddCourseModal.vue'
 import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
 import AddClassModal from '~/components/AddClassModal.vue'
 import RegisterScoresModal from '~/components/RegisterScoresModal.vue'
+import DownloadAssignmentsModal from '~/components/DownloadAssignmentsModal.vue'
 
 type modalKinds =
   | 'AddCourse'
   | 'SetCourseStatus'
   | 'AddClass'
   | 'RegisterScores'
+  | 'DownloadAssignments'
   | null
 
 type FacultyPageData = {
@@ -73,6 +81,7 @@ export default Vue.extend({
     SetCourseStatusModal,
     AddClassModal,
     RegisterScoresModal,
+    DownloadAssignmentsModal,
   },
   middleware: 'is_loggedin',
   data(): FacultyPageData {
