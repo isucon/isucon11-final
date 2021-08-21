@@ -12,7 +12,7 @@ type SubmissionSummary struct {
 
 	// score は課題に対する講師によって追加されるスコア（提出直後は0で扱う）
 	score int
-	mu    sync.RWMutex
+	rmu   sync.RWMutex
 }
 
 func NewSubmissionSummary(title string, data []byte, isValid bool) *SubmissionSummary {
@@ -20,19 +20,20 @@ func NewSubmissionSummary(title string, data []byte, isValid bool) *SubmissionSu
 		Title:    title,
 		IsValid:  isValid,
 		Checksum: crc32.ChecksumIEEE(data),
+		rmu: sync.RWMutex{},
 	}
 }
 
 func (s *SubmissionSummary) SetScore(score int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
 
 	s.score = score
 }
 
 func (s *SubmissionSummary) Score() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
 	return s.score
 }
