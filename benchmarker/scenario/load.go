@@ -637,10 +637,12 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				if err != nil {
 					if !isCorrectSubmit && hres.StatusCode == http.StatusBadRequest {
 						isCorrectSubmit = true // 次は正しいSubmissionを提出
+						// 400エラーのときのみ再送をする
 					} else {
 						mu.Lock()
 						errs = append(errs, err)
 						mu.Unlock()
+						break
 					}
 				} else {
 					// 提出課題がwebappで受理された

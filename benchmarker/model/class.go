@@ -31,6 +31,7 @@ func (c *Class) AddSubmissionSummary(studentCode string, summary *SubmissionSumm
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
+	// ここでsummary=nilをセットするとSubmissionSummary(studentCode)で存在チェックしたいときに区別つかなくなる
 	c.submissionSummary[studentCode] = summary
 }
 
