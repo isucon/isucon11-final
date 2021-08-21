@@ -25,6 +25,8 @@ const (
 	searchCountPerRegistration = 3
 	// classCountPerCourse は科目あたりのクラス数
 	classCountPerCourse = 5
+	// invalidSubmitFrequency は誤ったFileTypeのファイルを提出する確率
+	invalidSubmitFrequency = 0.1
 	// waitReadClassAnnouncementTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
 	waitReadClassAnnouncementTimeout = 5 * time.Second
 )
@@ -150,38 +152,61 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			}
 
 			// remainingRegistrationCapacity * searchCountPerRegistration 回 検索を行う
-			for i := 0; i < remainingRegistrationCapacity*searchCountPerRegistration; i++ {
-				timer := time.After(300 * time.Millisecond)
+			// remainingRegistrationCapacity 分のシラバス確認を行う
+			for i := 0; i < remainingRegistrationCapacity; i++ {
+				var checkTargetID string
+				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
+				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
+					param := generate.SearchCourseParam()
+					_, res, err := SearchCourseAction(ctx, student.Agent, param)
+					if err != nil {
+						step.AddError(err)
+						continue
+					}
+					errs := verifySearchCourseResults(res, param)
+					for _, err := range errs {
+						step.AddError(err)
+						continue
+					}
+					step.AddScore(score.CountSearchCourse)
 
-				param := generate.SearchCourseParam()
-				_, res, err := SearchCourseAction(ctx, student.Agent, param)
-				if err != nil {
-					step.AddError(err)
-					<-timer
+					if len(res) > 0 {
+						checkTargetID = res[0].ID.String()
+					}
+
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+				}
+
+				// 検索で得たコースのシラバスを確認する
+				if checkTargetID == "" {
 					continue
 				}
-				errs := verifySearchCourseResults(res, param)
-				for _, err := range errs {
+
+				_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
+				if err != nil {
 					step.AddError(err)
+					continue
 				}
-				if len(errs) == 0 {
-					step.AddScore(score.CountSearchCourse)
+				expected, exists := s.GetCourse(res.ID.String())
+				// ベンチ側の登録がまだの場合は検証スキップ
+				if exists {
+					if err := verifyCourseDetail(&res, expected); err != nil {
+						step.AddError(err)
+					}
 				}
 
 				select {
 				case <-ctx.Done():
 					return
-				case <-timer:
+				default:
 				}
 			}
 
 			AdminLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
-
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
 
 			// ----------------------------------------
 
@@ -392,9 +417,9 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		default:
 		}
 
-		faculty := course.Faculty()
+		teacher := course.Teacher()
 		// コースステータスをin-progressにする
-		_, err := SetCourseStatusInProgressAction(ctx, faculty.Agent, course.ID)
+		_, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 		if err != nil {
 			step.AddError(err)
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
@@ -413,7 +438,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			timer := time.After(100 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
-			_, class, announcement, err := AddClassAction(ctx, faculty.Agent, course, classParam)
+			_, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -443,7 +468,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			default:
 			}
 
-			_, assignmentsData, err := DownloadSubmissionsAction(ctx, faculty.Agent, course.ID, class.ID)
+			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
 				step.AddError(err)
 				continue
@@ -459,7 +484,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			default:
 			}
 
-			_, err = scoringAssignments(ctx, course, class, faculty, course.Students(), assignmentsData)
+			_, err = scoringAssignments(ctx, course, class, teacher)
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -477,7 +502,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 
 		// コースステータスをclosedにする
-		_, err = SetCourseStatusClosedAction(ctx, faculty.Agent, course.ID)
+		_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
 		if err != nil {
 			step.AddError(err)
 			AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
@@ -561,12 +586,12 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 }
 
 func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
-	faculty := s.GetRandomFaculty()
-	courseParam := generate.CourseParam(faculty)
+	teacher := s.GetRandomTeacher()
+	courseParam := generate.CourseParam(teacher)
 
-	_, err := LoginAction(ctx, faculty.Agent, faculty.UserAccount)
+	_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 	if err != nil {
-		ContestantLogger.Printf("facultyのログインに失敗しました")
+		ContestantLogger.Printf("teacherのログインに失敗しました")
 		step.AddError(failure.NewError(fails.ErrCritical, err))
 		return
 	}
@@ -577,13 +602,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	default:
 	}
 
-	_, getMeRes, err := GetMeAction(ctx, faculty.Agent)
+	_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
 	if err != nil {
-		ContestantLogger.Printf("facultyのユーザ情報取得に失敗しました")
+		ContestantLogger.Printf("teacherのユーザ情報取得に失敗しました")
 		step.AddError(err)
 		return
 	}
-	if err := verifyMe(&getMeRes, faculty.UserAccount, true); err != nil {
+	if err := verifyMe(&getMeRes, teacher.UserAccount, true); err != nil {
 		step.AddError(err)
 		return
 	}
@@ -594,7 +619,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	default:
 	}
 
-	_, addCourseRes, err := AddCourseAction(ctx, faculty, courseParam)
+	_, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
 	if err != nil {
 		step.AddError(err)
 		return
@@ -602,7 +627,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		step.AddScore(score.CountAddCourse)
 	}
 
-	course := model.NewCourse(courseParam, addCourseRes.ID, faculty)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher)
 	s.AddCourse(course)
 	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
@@ -650,16 +675,46 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			}
 
 			// 課題を提出する
-			submission := generate.Submission(course, class, s.UserAccount)
-			_, err = SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, submission)
-			if err != nil {
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
-			} else {
-				step.AddScore(score.CountSubmitAssignment)
-				class.AddSubmittedAssignment(s.Code, submission.Data)
-				s.AddSubmission(submission)
+			isCorrectSubmit := rand.Float32() > invalidSubmitFrequency // 一定確率でdocxのファイルを投げる
+			for {
+				var (
+					submissionData []byte
+					fileName       string
+				)
+				if isCorrectSubmit {
+					submissionData, fileName = generate.SubmissionData(course, class, s.UserAccount)
+				} else {
+					submissionData, fileName = generate.InvalidSubmissionData(course, class, s.UserAccount)
+				}
+
+				hres, err := SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, fileName, submissionData)
+				if err != nil {
+					if !isCorrectSubmit && hres.StatusCode == http.StatusBadRequest {
+						isCorrectSubmit = true // 次は正しいSubmissionを提出
+						// 400エラーのときのみ再送をする
+					} else {
+						mu.Lock()
+						errs = append(errs, err)
+						mu.Unlock()
+						break
+					}
+				} else {
+					// 提出課題がwebappで受理された
+					if isCorrectSubmit {
+						step.AddScore(score.CountSubmitPDF)
+					} else {
+						step.AddScore(score.CountSubmitDocx)
+					}
+					submissionSummary := model.NewSubmissionSummary(fileName, submissionData, isCorrectSubmit)
+					class.AddSubmissionSummary(s.Code, submissionSummary)
+					break
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 			}
 		}()
 	}
@@ -674,25 +729,40 @@ type StudentScore struct {
 	code  string
 }
 
-func scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, faculty *model.Faculty, students []*model.Student, assignments []byte) (*http.Response, error) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(students))
-
+func scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, teacher *model.Teacher) (*http.Response, error) {
+	students := course.Students()
 	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {
-		score := rand.Intn(101)
+		sub := class.SubmissionSummary(s.Code)
+		if sub == nil {
+			continue
+		}
+
+		var scoreData int
+		if sub.IsValid {
+			scoreData = rand.Intn(101)
+		}
 		scores = append(scores, StudentScore{
-			score: score,
+			score: scoreData,
 			code:  s.Code,
 		})
 
 		// TODO: エラーハンドリング
 		class.InsertUserScores(s.Code, score)
 	}
-	res, err := PostGradeAction(ctx, faculty.Agent, course.ID, class.ID, scores)
+
+	res, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
 	if err != nil {
 		return nil, err
 	}
 
+	// POST成功したスコアをベンチ内に保存する
+	for _, scoreData := range scores {
+		sub := class.SubmissionSummary(scoreData.code)
+		if sub == nil {
+			continue
+		}
+		sub.SetScore(scoreData.score)
+	}
 	return res, nil
 }

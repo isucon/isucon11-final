@@ -157,6 +157,27 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 	return hres, res, nil
 }
 
+func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.GetCourseDetailResponse, error) {
+	res := api.GetCourseDetailResponse{}
+	hres, err := api.GetCourseDetail(ctx, agent, id)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
+}
+
 func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, error) {
 	req := make([]api.RegisterCourseRequestContent, 0, len(courses))
 	for _, c := range courses {
@@ -274,7 +295,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	return hres, class, announcement, nil
 }
 
-func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
+func AddCourseAction(ctx context.Context, teacher *model.Teacher, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
 	req := api.AddCourseRequest{
 		Code:        param.Code,
 		Type:        api.CourseType(param.Type),
@@ -286,7 +307,7 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.C
 		Keywords:    param.Keywords,
 	}
 	res := api.AddCourseResponse{}
-	hres, err := api.AddCourse(ctx, faculty.Agent, req)
+	hres, err := api.AddCourse(ctx, teacher.Agent, req)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
@@ -305,8 +326,8 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.C
 	return hres, res, nil
 }
 
-func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, submission *model.Submission) (*http.Response, error) {
-	hres, err := api.SubmitAssignment(ctx, agent, courseID, classID, submission.Title, submission.Data)
+func SubmitAssignmentAction(ctx context.Context, agent *agent.Agent, courseID, classID string, title string, data []byte) (*http.Response, error) {
+	hres, err := api.SubmitAssignment(ctx, agent, courseID, classID, title, data)
 	if err != nil {
 		return hres, failure.NewError(fails.ErrHTTP, err)
 	}

@@ -17,6 +17,7 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
+
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/model"
@@ -162,7 +163,7 @@ func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expe
 		return errInvalidResponse("コース名が期待する値と一致しません")
 	}
 
-	if actual.Teacher != expected.Teacher {
+	if actual.Teacher != expected.Teacher().Name {
 		return errInvalidResponse("コースの講師が期待する値と一致しません")
 	}
 
@@ -282,6 +283,46 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 	}
 
 	return errs
+}
+
+func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Course) error {
+	if actual.Code != expected.Code {
+		return errInvalidResponse("科目のコードが期待する値と一致しません")
+	}
+
+	if actual.Type != api.CourseType(expected.Type) {
+		return errInvalidResponse("科目のタイプが期待する値と一致しません")
+	}
+
+	if actual.Name != expected.Name {
+		return errInvalidResponse("科目名が期待する値と一致しません")
+	}
+
+	if actual.Description != expected.Description {
+		return errInvalidResponse("科目の詳細が期待する値と一致しません")
+	}
+
+	if actual.Credit != uint8(expected.Credit) {
+		return errInvalidResponse("科目の単位数が期待する値と一致しません")
+	}
+
+	if actual.Period != uint8(expected.Period+1) {
+		return errInvalidResponse("科目の開講時限が期待する値と一致しません")
+	}
+
+	if actual.DayOfWeek != api.DayOfWeekTable[expected.DayOfWeek] {
+		return errInvalidResponse("科目の開講曜日が期待する値と一致しません")
+	}
+
+	if actual.Teacher != expected.Teacher().Name {
+		return errInvalidResponse("科目の講師が期待する値と一致しません")
+	}
+
+	if actual.Keywords != expected.Keywords {
+		return errInvalidResponse("科目のキーワードが期待する値と一致しません")
+	}
+
+	return nil
 }
 
 func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
@@ -424,7 +465,8 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			if err != nil {
 				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
 			}
-			downloadedAssignments[f.Name] = crc32.ChecksumIEEE(assignmentData)
+			studentCode := f.Name
+			downloadedAssignments[studentCode] = crc32.ChecksumIEEE(assignmentData)
 		}
 
 		// mapのサイズが等しく、ダウンロードされた課題がすべて実際に提出した課題ならば、ダウンロードされた課題と提出した課題は集合として等しい
@@ -432,11 +474,11 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
 		}
 
-		for name, checksumDownloaded := range downloadedAssignments {
-			checksumSubmitted, exists := class.GetAssignmentChecksum(name)
-			if !exists {
+		for studentCode, checksumDownloaded := range downloadedAssignments {
+			summary := class.SubmissionSummary(studentCode)
+			if summary == nil {
 				return errInvalidResponse("課題を提出していない学生のファイルが課題zipに含まれています")
-			} else if checksumDownloaded != checksumSubmitted {
+			} else if checksumDownloaded != summary.Checksum {
 				return errInvalidResponse("ダウンロードされた課題が提出された課題と一致しません")
 			}
 		}

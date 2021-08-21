@@ -11,7 +11,7 @@
     "lint:style": "stylelint \"**/*.{vue,css}\" --ignore-path .gitignore",
     "lint": "npm run lint:js && npm run lint:style",
     "lint:fix": "npm run lint:js --fix && npm run lint:style --fix",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "diff:assets": "npm run build && cd ../../benchmarker && make assets && git diff --name-only --exit-code"
   },
   "lint-staged": {
