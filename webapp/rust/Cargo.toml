@@ -1,0 +1,24 @@
+[package]
+name = "isucholar"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-files = "0.6.0-beta.6"
+actix-multipart = "0.4.0-beta.5"
+actix-session = "0.5.0-beta.2"
+actix-web = { version = "4.0.0-beta.8", default-features = false }
+bcrypt = "0.10.1"
+chrono = "0.4.19"
+env_logger = "0.9"
+futures = "0.3"
+listenfd = "0.3"
+log = "0.4.14"
+mime = "0.3.16"
+serde = { version = "1", features = ["derive"] }
+sqlx = { version = "0.5", default-features = false, features = ["macros", "runtime-actix-rustls", "mysql", "chrono"] }
+tokio = { version = "1", features = ["fs", "process"] }
+url = "2"
+uuid = { version = "0.8", features = ["v4", "serde"] }
