@@ -274,16 +274,15 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					step.AddError(err)
 					// 失敗時の仮登録情報のロールバック
 					for _, c := range semiRegistered {
-						c.FinishRegistration()
-						c.RemoveStudent(student)
+						c.FailRegistration()
 						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
 					}
 				} else {
 					step.AddScore(score.CountRegisterCourses)
 					for _, c := range semiRegistered {
-						c.FinishRegistration()
-						c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+						c.SuccessRegistration(student)
 						student.AddCourse(c)
+						c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
 						AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 					}
 				}
@@ -399,14 +398,8 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 		}()
 
-		// コースgoroutineは満員 or 履修締め切りまではなにもしない
+		// コースgoroutineは満員 or 履修締め切りまではなにもしない or ctx.Done()
 		<-course.WaitPreparedCourse(ctx)
-
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
 
 		select {
 		case <-ctx.Done():

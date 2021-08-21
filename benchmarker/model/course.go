@@ -29,8 +29,9 @@ type Course struct {
 
 	// コース登録を締切る際に参照
 	registrationCloser chan struct{} // 登録が締め切られるとcloseする
+	tempRegCount       int
+	tempRegCountCond   *sync.Cond
 	timerOnce          sync.Once
-	tempRegStudents    sync.WaitGroup // ベンチ内で仮登録して本登録リクエストが完了していない生徒たち
 }
 
 type SearchCourseParam struct {
@@ -43,7 +44,7 @@ type SearchCourseParam struct {
 }
 
 func NewCourse(param *CourseParam, id string, teacher *Teacher) *Course {
-	return &Course{
+	c := &Course{
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
@@ -52,9 +53,11 @@ func NewCourse(param *CourseParam, id string, teacher *Teacher) *Course {
 		rmu:                sync.RWMutex{},
 
 		registrationCloser: make(chan struct{}, 0),
+		tempRegCount:       0,
 		timerOnce:          sync.Once{},
-		tempRegStudents:    sync.WaitGroup{},
 	}
+	c.tempRegCountCond = sync.NewCond(&c.rmu)
+	return c
 }
 
 func (c *Course) AddClass(class *Class) {
@@ -64,9 +67,11 @@ func (c *Course) AddClass(class *Class) {
 	c.classes = append(c.classes, class)
 }
 
+// WaitPreparedCourse はコースに学生が追加されなくなるか、ctx.Done()になるのを待つ
 func (c *Course) WaitPreparedCourse(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{}, 0)
 	go func() {
+		// 内部的な履修締切（時間 or 人数）までwaitする
 		select {
 		case <-ctx.Done():
 			close(ch)
@@ -74,9 +79,14 @@ func (c *Course) WaitPreparedCourse(ctx context.Context) <-chan struct{} {
 		case <-c.registrationCloser:
 		}
 
+		// 全員の仮登録が完了する(=仮登録者が0になる)のを待つ
 		// webapp側に登録完了してないのにベンチがコース処理を始めると不整合がでるため
-		// 学生の登録リクエストが完了するのを待つ
-		c.tempRegStudents.Wait()
+		c.tempRegCountCond.L.Lock()
+		for c.tempRegCount > 0 {
+			c.tempRegCountCond.Wait()
+		}
+		c.tempRegCountCond.L.Unlock()
+
 		close(ch)
 	}()
 	return ch
@@ -118,20 +128,8 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 	}
 }
 
-func (c *Course) RemoveStudent(student *Student) {
-	c.rmu.Lock()
-	defer c.rmu.Unlock()
-
-	registeredStudents := make([]*Student, 0, len(c.registeredStudents))
-	for _, s := range c.registeredStudents {
-		if s != student {
-			registeredStudents = append(registeredStudents, s)
-		}
-	}
-	c.registeredStudents = registeredStudents
-}
-
-func (c *Course) RegisterStudentsIfRegistrable(student *Student) bool {
+// TempRegistrationIfRegistrable は履修受付中なら仮登録者を1人増やす
+func (c *Course) TempRegistrationIfRegistrable() bool {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
@@ -143,19 +141,30 @@ func (c *Course) RegisterStudentsIfRegistrable(student *Student) bool {
 	}
 
 	// 履修closeしていない場合は仮登録する
-	c.registeredStudents = append(c.registeredStudents, student)
-	c.tempRegStudents.Add(1) // コース仮登録者+1
-	if len(c.registeredStudents) >= c.registeredLimit {
-		// 満員になっていたらcloseする
+	c.tempRegCount++ // コース仮登録者+1
+	if len(c.registeredStudents)+c.tempRegCount >= c.registeredLimit {
+		// 本登録 + 仮登録が上限以上ならcloseする
 		close(c.registrationCloser)
 	}
 
 	return true
 }
 
-// 成功失敗に関わらず学生による本登録処理が終了した
-func (c *Course) FinishRegistration() {
-	c.tempRegStudents.Done() // コース仮登録者-1
+func (c *Course) SuccessRegistration(student *Student) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.registeredStudents = append(c.registeredStudents, student)
+	c.tempRegCount--
+	c.tempRegCountCond.Broadcast()
+}
+
+func (c *Course) FailRegistration() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.tempRegCount--
+	c.tempRegCountCond.Broadcast()
 }
 
 func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
