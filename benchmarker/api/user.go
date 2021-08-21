@@ -12,6 +12,23 @@ import (
 	"github.com/pborman/uuid"
 )
 
+type GetMeResponse struct {
+	Code    string `json:"code"`
+	IsAdmin bool   `json:"is_admin"`
+}
+
+func GetMe(ctx context.Context, a *agent.Agent) (*http.Response, error) {
+	path := "/api/users/me"
+
+	req, err := a.GET(path)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	return a.Do(ctx, req)
+}
+
 type DayOfWeek string
 
 var DayOfWeekTable = []DayOfWeek{

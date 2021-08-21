@@ -3,19 +3,24 @@ package scenario
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/isucon/isucandar/agent"
+	"github.com/isucon/isucandar/failure"
 
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/model"
-
-	"github.com/isucon/isucandar/failure"
 )
 
 // verify.go
@@ -53,9 +58,88 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
+func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, expectedAdminFlag bool) error {
+	if res.Code != expectedUserAccount.Code {
+		return errInvalidResponse("学籍番号が期待する値と一致しません")
+	}
+
+	if res.IsAdmin != expectedAdminFlag {
+		return errInvalidResponse("管理者フラグが期待する値と一致しません")
+	}
+
+	return nil
+}
+
 func verifyGrades(res *api.GetGradeResponse) error {
 	// TODO: modelとして何を渡すか
 	// TODO: 成績のverify
+	return nil
+}
+
+func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expected *model.Course) error {
+	if actual.ID.String() != expected.ID {
+		return errInvalidResponse("コースのIDが期待する値と一致しません")
+	}
+
+	if actual.Name != expected.Name {
+		return errInvalidResponse("コース名が期待する値と一致しません")
+	}
+
+	if actual.Teacher != expected.Teacher().Name {
+		return errInvalidResponse("コースの講師が期待する値と一致しません")
+	}
+
+	// DayOfWeekとPeriodは、ベンチのスケジュールと突き合わせている時点で一致しているはずなのでここでは検証しない
+
+	return nil
+}
+
+func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expectedSchedule [7][6]*model.Course) error {
+	// DayOfWeekの逆引きテーブル（string -> int）
+	dayOfWeekIndexTable := map[api.DayOfWeek]int{
+		"sunday":    0,
+		"monday":    1,
+		"tuesday":   2,
+		"wednesday": 3,
+		"thursday":  4,
+		"friday":    5,
+		"saturday":  6,
+	}
+
+	actualSchedule := [7][6]*api.GetRegisteredCourseResponseContent{}
+	for _, resContent := range res {
+		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
+		if !ok {
+			return errInvalidResponse("科目の開講曜日が不正です")
+		}
+		periodIndex := int(resContent.Period) - 1
+		if periodIndex < 0 || periodIndex >= 6 {
+			return errInvalidResponse("科目の開講時限が不正です")
+		}
+		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
+			return errInvalidResponse("履修済み科目のリストに時限の重複が存在します")
+		}
+
+		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
+	}
+
+	// コースの終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
+	// ただし、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降削除されず、また履修登録は直列であるため、レスポンスに存在する科目は必ずベンチにも存在することを期待する。
+	// したがって、レスポンスに含まれる科目はベンチにある科目(registeredSchedule)の部分集合であることを確認すれば十分である。
+	for d := 0; d < 7; d++ {
+		for p := 0; p < 6; p++ {
+			if actualSchedule[d][p] != nil {
+				if expectedSchedule[d][p] != nil {
+					if err := verifyRegisteredCourse(actualSchedule[d][p], expectedSchedule[d][p]); err != nil {
+						return err
+					}
+				} else {
+					return errInvalidResponse("履修済み科目のリストに期待しない科目が含まれています")
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -121,6 +205,46 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 	}
 
 	return errs
+}
+
+func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Course) error {
+	if actual.Code != expected.Code {
+		return errInvalidResponse("科目のコードが期待する値と一致しません")
+	}
+
+	if actual.Type != api.CourseType(expected.Type) {
+		return errInvalidResponse("科目のタイプが期待する値と一致しません")
+	}
+
+	if actual.Name != expected.Name {
+		return errInvalidResponse("科目名が期待する値と一致しません")
+	}
+
+	if actual.Description != expected.Description {
+		return errInvalidResponse("科目の詳細が期待する値と一致しません")
+	}
+
+	if actual.Credit != uint8(expected.Credit) {
+		return errInvalidResponse("科目の単位数が期待する値と一致しません")
+	}
+
+	if actual.Period != uint8(expected.Period+1) {
+		return errInvalidResponse("科目の開講時限が期待する値と一致しません")
+	}
+
+	if actual.DayOfWeek != api.DayOfWeekTable[expected.DayOfWeek] {
+		return errInvalidResponse("科目の開講曜日が期待する値と一致しません")
+	}
+
+	if actual.Teacher != expected.Teacher().Name {
+		return errInvalidResponse("科目の講師が期待する値と一致しません")
+	}
+
+	if actual.Keywords != expected.Keywords {
+		return errInvalidResponse("科目のキーワードが期待する値と一致しません")
+	}
+
+	return nil
 }
 
 func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
@@ -263,7 +387,8 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			if err != nil {
 				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
 			}
-			downloadedAssignments[f.Name] = crc32.ChecksumIEEE(assignmentData)
+			studentCode := f.Name
+			downloadedAssignments[studentCode] = crc32.ChecksumIEEE(assignmentData)
 		}
 
 		// mapのサイズが等しく、ダウンロードされた課題がすべて実際に提出した課題ならば、ダウンロードされた課題と提出した課題は集合として等しい
@@ -271,15 +396,91 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
 		}
 
-		for name, checksumDownloaded := range downloadedAssignments {
-			checksumSubmitted, exists := class.GetAssignmentChecksum(name)
-			if !exists {
+		for studentCode, checksumDownloaded := range downloadedAssignments {
+			summary := class.SubmissionSummary(studentCode)
+			if summary == nil {
 				return errInvalidResponse("課題を提出していない学生のファイルが課題zipに含まれています")
-			} else if checksumDownloaded != checksumSubmitted {
+			} else if checksumDownloaded != summary.Checksum {
 				return errInvalidResponse("ダウンロードされた課題が提出された課題と一致しません")
 			}
 		}
 	}
 
+	return nil
+}
+
+func joinURL(base *url.URL, target string) string {
+	b := *base
+	t, _ := url.Parse(target)
+	u := b.ResolveReference(t).String()
+	return u
+}
+
+func verifyPageResource(res *http.Response, resources agent.Resources) []error {
+	if resources == nil && res.StatusCode != http.StatusOK {
+		// 期待するリソースはstatus:200のページのみなのでそれ以外は無視する
+		return []error{}
+	}
+
+	checks := []error{
+		// TODO: sync FE assets
+		// hattoriがあとでassetsの生成方法も含めて修正する
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
+	}
+
+	var errs []error
+	for _, err := range checks {
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errs
+}
+
+func verifyResource(resource *agent.Resource, expectPath string) error {
+	if resource == nil || resource.Response == nil {
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("期待するリソースが読み込まれませんでした(%s)", expectPath))
+	}
+
+	if resource.Error != nil {
+		var nerr net.Error
+		if failure.As(resource.Error, &nerr) {
+			if nerr.Timeout() || nerr.Temporary() {
+				return nerr
+			}
+		}
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("リソースの取得に失敗しました: %s: %v", expectPath, resource.Error))
+	}
+
+	return verifyChecksum(resource.Response, expectPath)
+}
+
+func verifyChecksum(res *http.Response, expectPath string) error {
+	defer res.Body.Close()
+
+	expected, ok := resourcesHash[expectPath]
+	if !ok {
+		AdminLogger.Printf("意図していないリソース(%s)への検証が発生しました。verify.goとassets.goを確認してください。", expectPath)
+		return nil
+	}
+
+	err := verifyStatusCode(res, []int{http.StatusOK, http.StatusNotModified})
+	if err != nil {
+		return err
+	}
+	if res.StatusCode == http.StatusNotModified {
+		return nil
+	}
+
+	hash := md5.New()
+	io.Copy(hash, res.Body)
+	actual := fmt.Sprintf("%x", hash.Sum(nil))
+
+	if expected != actual {
+		return failure.NewError(fails.ErrStaticResource, fmt.Errorf("期待するチェックサムと一致しません(%s)", expectPath))
+	}
 	return nil
 }

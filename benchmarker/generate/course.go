@@ -63,7 +63,7 @@ func courseDescription() string {
 	return randElt(courseDescription1) + randElt(courseDescription2)
 }
 
-func majorCourseParam(faculty *model.Faculty) *model.CourseParam {
+func majorCourseParam(teacher *model.Teacher) *model.CourseParam {
 	code := atomic.AddInt32(&majorCode, 1)
 
 	var (
@@ -91,14 +91,14 @@ func majorCourseParam(faculty *model.Faculty) *model.CourseParam {
 		Name:        name.String(),
 		Description: courseDescription(),
 		Credit:      rand.Intn(3) + 1, // 1-3
-		Teacher:     faculty.Name,
+		Teacher:     teacher.Name,
 		Period:      rand.Intn(6),     // いいカンジに分散
 		DayOfWeek:   rand.Intn(5) + 1, // いいカンジに分散
 		Keywords:    strings.Join(keywords, " "),
 	}
 }
 
-func liberalCourseParam(faculty *model.Faculty) *model.CourseParam {
+func liberalCourseParam(teacher *model.Teacher) *model.CourseParam {
 	code := atomic.AddInt32(&liberalCode, 1)
 
 	var (
@@ -122,18 +122,18 @@ func liberalCourseParam(faculty *model.Faculty) *model.CourseParam {
 		Name:        name.String(),
 		Description: courseDescription(),
 		Credit:      rand.Intn(3) + 1, // 1-3
-		Teacher:     faculty.Name,
+		Teacher:     teacher.Name,
 		Period:      rand.Intn(6),     // いいカンジに分散
 		DayOfWeek:   rand.Intn(5) + 1, // いいカンジに分散
 		Keywords:    strings.Join(keywords, " "),
 	}
 }
 
-func CourseParam(faculty *model.Faculty) *model.CourseParam {
+func CourseParam(teacher *model.Teacher) *model.CourseParam {
 	if rand.Float64() < majorCourseProb {
-		return majorCourseParam(faculty)
+		return majorCourseParam(teacher)
 	} else {
-		return liberalCourseParam(faculty)
+		return liberalCourseParam(teacher)
 	}
 }
 
