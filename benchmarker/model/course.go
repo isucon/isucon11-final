@@ -81,12 +81,27 @@ func (c *Course) WaitPreparedCourse(ctx context.Context) <-chan struct{} {
 
 		// 全員の仮登録が完了する(=仮登録者が0になる)のを待つ
 		// webapp側に登録完了してないのにベンチがコース処理を始めると不整合がでるため
+		select {
+		case <-ctx.Done():
+			close(ch)
+			return
+		case <-c.waitTempRegCountIsZero():
+		}
+
+		close(ch)
+	}()
+	return ch
+}
+
+func (c *Course) waitTempRegCountIsZero() <-chan struct{} {
+	ch := make(chan struct{}, 0)
+	// MEMO: このgoroutineはWaitPreparedCourseがctx.Done()で抜けた場合放置される
+	go func() {
 		c.tempRegCountCond.L.Lock()
 		for c.tempRegCount > 0 {
 			c.tempRegCountCond.Wait()
 		}
 		c.tempRegCountCond.L.Unlock()
-
 		close(ch)
 	}()
 	return ch
