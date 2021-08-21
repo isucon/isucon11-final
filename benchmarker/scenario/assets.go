@@ -2,6 +2,7 @@
 package scenario
 var (
 	resourcesHash = map[string]string{ 
+		"": "7ed084a3582da2762d7b564a117137a7",
 		"/200.html": "7ed084a3582da2762d7b564a117137a7",
 		"/README.md": "5034cfd9edf3fa7d7d23589ecb2488f9",
 		"/_nuxt/07815c5.js": "430b83fed65971f6b1197dc6bfa070c9",
@@ -33,11 +34,10 @@ var (
 		"/_nuxt/efb8eb7.js": "031db12cbf4c3bd57269e3e358ee77f1",
 		"/_nuxt/f4c5c59.js": "7ff991b1aac4fbfd82f54d328f15e144",
 		"/_nuxt/f6612a2.js": "346617864aae86c76603db63710b1d0d",
-		"/announce/index.html": "7ed084a3582da2762d7b564a117137a7",
+		"/announce": "7ed084a3582da2762d7b564a117137a7",
 		"/favicon.ico": "ddf2e14a825fc1fff4b1d5f0cb48acda",
-		"/grade/index.html": "7ed084a3582da2762d7b564a117137a7",
-		"/index.html": "7ed084a3582da2762d7b564a117137a7",
-		"/mypage/index.html": "7ed084a3582da2762d7b564a117137a7",
-		"/register/index.html": "7ed084a3582da2762d7b564a117137a7",
+		"/grade": "7ed084a3582da2762d7b564a117137a7",
+		"/mypage": "7ed084a3582da2762d7b564a117137a7",
+		"/register": "7ed084a3582da2762d7b564a117137a7",
 	}
 )

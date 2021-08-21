@@ -244,7 +244,6 @@ type Course struct {
 	TeacherID   uuid.UUID    `db:"teacher_id"`
 	Keywords    string       `db:"keywords"`
 	Status      CourseStatus `db:"status"`
-	CreatedAt   time.Time    `db:"created_at"`
 }
 
 type LoginRequest struct {
@@ -467,7 +466,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	}
 
 	for _, course := range newlyAdded {
-		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`, `created_at`) VALUES (?, ?, NOW())", course.ID, userID)
+		_, err = tx.Exec("INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)", course.ID, userID)
 		if err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
@@ -488,7 +487,6 @@ type Class struct {
 	Part             uint8     `db:"part"`
 	Title            string    `db:"title"`
 	Description      string    `db:"description"`
-	CreatedAt        time.Time `db:"created_at"`
 	SubmissionClosed bool      `db:"submission_closed"`
 }
 
@@ -526,13 +524,12 @@ type ClassScore struct {
 }
 
 type SubmissionWithClassName struct {
-	UserID    uuid.UUID     `db:"user_id"`
-	ClassID   uuid.UUID     `db:"class_id"`
-	Name      string        `db:"file_name"`
-	Score     sql.NullInt64 `db:"score"`
-	CreatedAt time.Time     `db:"created_at"`
-	Part      uint8         `db:"part"`
-	Title     string        `db:"title"`
+	UserID  uuid.UUID     `db:"user_id"`
+	ClassID uuid.UUID     `db:"class_id"`
+	Name    string        `db:"file_name"`
+	Score   sql.NullInt64 `db:"score"`
+	Part    uint8         `db:"part"`
+	Title   string        `db:"title"`
 }
 
 func (h *handlers) GetGrades(c echo.Context) error {
@@ -901,7 +898,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	defer tx.Rollback()
 
 	courseID := uuid.NewRandom()
-	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
 		c.Logger().Error(err)
@@ -953,7 +950,6 @@ type ClassWithSubmitted struct {
 	Part             uint8     `db:"part"`
 	Title            string    `db:"title"`
 	Description      string    `db:"description"`
-	CreatedAt        time.Time `db:"created_at"`
 	SubmissionClosed bool      `db:"submission_closed"`
 	Submitted        bool      `db:"submitted"`
 }
@@ -1078,7 +1074,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	defer file.Close()
 
-	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`, `created_at`) VALUES (?, ?, ?, NOW())", userID, classID, header.Filename); err != nil {
+	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?)", userID, classID, header.Filename); err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
 			return echo.NewHTTPError(http.StatusBadRequest, "You have already submitted to this assignment.")
 		}
@@ -1278,14 +1274,14 @@ func (h *handlers) AddClass(c echo.Context) error {
 	defer tx.Rollback()
 
 	classID := uuid.NewRandom()
-	createdAt := time.Unix(req.CreatedAt, 0)
-	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`, `created_at`) VALUES (?, ?, ?, ?, ?, ?)",
-		classID, courseID, req.Part, req.Title, req.Description, createdAt); err != nil {
+	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
+		classID, courseID, req.Part, req.Title, req.Description); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	announcementID := uuid.NewRandom()
+	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
 		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description), createdAt); err != nil {
 		c.Logger().Error(err)
@@ -1303,7 +1299,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", announcementID, user.ID); err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
@@ -1569,7 +1565,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`, `created_at`) VALUES (?, ?, ?)", announcementID, user.ID, createdAt); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", announcementID, user.ID); err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}

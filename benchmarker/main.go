@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	benchTimeout       string = "60s"
+	loadTimeout        string = "60s"
 	errorFailThreshold int64  = 100
 )
 
@@ -202,11 +202,11 @@ func main() {
 		panic(err)
 	}
 
-	benchTimeout, err := time.ParseDuration(benchTimeout)
+	loadTimeout, err := time.ParseDuration(loadTimeout)
 	if err != nil {
 		panic(err)
 	}
-	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(benchTimeout))
+	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout))
 	if err != nil {
 		panic(err)
 	}
@@ -218,12 +218,11 @@ func main() {
 
 	errorCount := int64(0)
 	b.OnError(func(err error, step *isucandar.BenchmarkStep) {
+		critical, timeout, deduction := checkError(err)
 		// Load 中の timeout のみログから除外
-		if failure.IsCode(err, failure.TimeoutErrorCode) && failure.IsCode(err, isucandar.ErrLoad) {
+		if timeout && failure.IsCode(err, isucandar.ErrLoad) {
 			return
 		}
-
-		critical, _, deduction := checkError(err)
 
 		if critical || (deduction && atomic.AddInt64(&errorCount, 1) >= errorFailThreshold) {
 			step.Cancel()
@@ -235,6 +234,7 @@ func main() {
 	b.AddScenario(s)
 
 	wg := sync.WaitGroup{}
+	// 経過時間の記録用
 	b.Load(func(ctx context.Context, step *isucandar.BenchmarkStep) error {
 		if noLoad {
 			return nil

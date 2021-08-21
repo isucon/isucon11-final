@@ -104,6 +104,27 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 	return hres, res, nil
 }
 
+func GetRegisteredCoursesAction(ctx context.Context, agent *agent.Agent) (*http.Response, []*api.GetRegisteredCourseResponseContent, error) {
+	hres, err := api.GetRegisteredCourses(ctx, agent)
+	if err != nil {
+		return hres, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, nil, err
+	}
+
+	res := make([]*api.GetRegisteredCourseResponseContent, 0)
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
+}
+
 func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.SearchCourseParam) (*http.Response, []*api.GetCourseDetailResponse, error) {
 	req := api.SearchCourseRequest{
 		Type:     api.CourseType(param.Type),
@@ -128,6 +149,27 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 	}
 
 	res := make([]*api.GetCourseDetailResponse, 0)
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
+}
+
+func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.GetCourseDetailResponse, error) {
+	res := api.GetCourseDetailResponse{}
+	hres, err := api.GetCourseDetail(ctx, agent, id)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, res, err
+	}
+
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
@@ -253,7 +295,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	return hres, class, announcement, nil
 }
 
-func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
+func AddCourseAction(ctx context.Context, teacher *model.Teacher, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
 	req := api.AddCourseRequest{
 		Code:        param.Code,
 		Type:        api.CourseType(param.Type),
@@ -265,7 +307,7 @@ func AddCourseAction(ctx context.Context, faculty *model.Faculty, param *model.C
 		Keywords:    param.Keywords,
 	}
 	res := api.AddCourseResponse{}
-	hres, err := api.AddCourse(ctx, faculty.Agent, req)
+	hres, err := api.AddCourse(ctx, teacher.Agent, req)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
@@ -362,4 +404,33 @@ func setCourseStatusAction(ctx context.Context, agent *agent.Agent, courseID str
 	}
 
 	return hres, nil
+}
+
+func AccessTopPageAction(ctx context.Context, agent *agent.Agent) (*http.Response, agent.Resources, error) {
+	hres, resources, err := api.BrowserAccess(ctx, agent, "")
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
+	if err != nil {
+		return hres, nil, err
+	}
+
+	return hres, resources, nil
+}
+
+func AccessTopPageActionWithoutCache(ctx context.Context, agent *agent.Agent) (*http.Response, agent.Resources, error) {
+	hres, resources, err := api.BrowserAccess(ctx, agent, "")
+	if err != nil {
+		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	// 検証用として200のみ許可
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, nil, err
+	}
+
+	return hres, resources, nil
 }
