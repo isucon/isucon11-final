@@ -7,7 +7,7 @@ GOLDFLAGS=-X main.COMMIT=$(COMMIT)$(DIRTY)
 GOFILES=$(wildcard *.go **/*.go)
 
 PUBLIC_FILES_DIR=$(abspath ../webapp/frontend/dist)
-PUBLIC_FILES=$(abspath $(wildcard ../webapp/frontend/dist/*.* ../webapp/frontend/dist/**/*.*))
+PUBLIC_FILES=$(abspath $(wildcard ../webapp/frontend/dist/*.* ../webapp/frontend/dist/**/*.* ../webapp/frontend/dist/**/**/*.*))
 
 EXE=./bin/benchmarker
 

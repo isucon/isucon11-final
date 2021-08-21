@@ -6,6 +6,7 @@ var (
 		"/200.html": "55920142e0aadbaa284119f0c7ed599c",
 		"/README.md": "5034cfd9edf3fa7d7d23589ecb2488f9",
 		"/_nuxt/app.js": "213f6a4852f3538d0f7db2747cb70768",
+		"/_nuxt/css/app.css": "4cdd357c4eedd6150dc68404c55fda6e",
 		"/_nuxt/runtime.js": "c51ffc86f28b62f78d641758e2dab72e",
 		"/announce": "55920142e0aadbaa284119f0c7ed599c",
 		"/favicon.ico": "ddf2e14a825fc1fff4b1d5f0cb48acda",

@@ -425,6 +425,7 @@ func verifyPageResource(res *http.Response, resources agent.Resources) []error {
 	checks := []error{
 		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/app.js")], "/_nuxt/app.js"),
 		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/runtime.js")], "/_nuxt/runtime.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/css/app.css")], "/_nuxt/css/app.css"),
 	}
 
 	var errs []error
