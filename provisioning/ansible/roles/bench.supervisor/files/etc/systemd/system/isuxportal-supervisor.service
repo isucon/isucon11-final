@@ -5,7 +5,7 @@ After=network.target cloud-config.service
 [Service]
 # 基本設定
 User=isucon
-ExecStart=/home/isucon/bin/isuxportal-supervisor /home/isucon/bench/bench
+ExecStart=/home/isucon/bin/isuxportal-supervisor /home/isucon/benchmarker/bin/benchmarker
 WorkingDirectory=/home/isucon/bench
 LogsDirectory=isuxportal-supervisor
 LimitNOFILE=2000000
@@ -20,7 +20,7 @@ EnvironmentFile=/home/isucon/isuxportal-supervisor.env
 
 # bench 差し替えを graceful に行うための設定
 ExecStartPre=-/bin/mv /tmp/isuxportal-supervisor /home/isucon/bin/isuxportal-supervisor
-ExecStartPre=-/bin/mv /tmp/bench /home/isucon/bench/bench
+ExecStartPre=-/bin/mv /tmp/benchmarker /home/isucon/benchmarker/bin/benchmarker
 TimeoutStopSec=200s
 KillMode=mixed
 

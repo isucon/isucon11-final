@@ -1,5 +1,5 @@
 ---
-- name: "roles/bench/tasks/bench: Deploy isucon11-final bench"
+- name: "roles/bench/tasks/bench: Deploy isucon11-final benchmarker"
   become_user: isucon
   copy:
     remote_src: yes
@@ -8,7 +8,7 @@
     owner: isucon
     group: isucon
 
-- name: "roles/bench/tasks/bench: Build bench"
+- name: "roles/bench/tasks/bench: Build benchmarker"
   make:
-    chdir: /home/isucon/
+    chdir: /home/isucon/benchmarker
     target: all
