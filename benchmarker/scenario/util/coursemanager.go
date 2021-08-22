@@ -36,7 +36,7 @@ func (m *CourseManager) AddStudentForRegistrableCourse(student *model.Student, d
 	if wishTakeCourse == nil { // queueに登録可能コースがない
 		return nil
 	}
-	isSuccess := wishTakeCourse.TempRegistrationIfRegistrable()
+	isSuccess := wishTakeCourse.TempRegisterIfRegistrable()
 	if !isSuccess { // 満員になった or もう登録できなくなってた
 		queue.Pop()
 		// popしたので同じqueueで再度挑戦

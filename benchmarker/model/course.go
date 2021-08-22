@@ -143,8 +143,8 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 	}
 }
 
-// TempRegistrationIfRegistrable は履修受付中なら仮登録者を1人増やす
-func (c *Course) TempRegistrationIfRegistrable() bool {
+// TempRegisterIfRegistrable は履修受付中なら仮登録者を1人増やす
+func (c *Course) TempRegisterIfRegistrable() bool {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
