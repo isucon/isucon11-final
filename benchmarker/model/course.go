@@ -28,10 +28,10 @@ type Course struct {
 	rmu                sync.RWMutex
 
 	// コース登録を締切る際に参照
-	registrationCloser chan struct{} // 登録が締め切られるとcloseする
-	tempRegCount       int
-	tempRegCountCond   *sync.Cond
-	timerOnce          sync.Once
+	registrationCloser   chan struct{} // 登録が締め切られるとcloseする
+	tempRegCount         int
+	tempRegZeroCountCond *sync.Cond
+	timerOnce            sync.Once
 }
 
 type SearchCourseParam struct {
@@ -56,7 +56,7 @@ func NewCourse(param *CourseParam, id string, teacher *Teacher) *Course {
 		tempRegCount:       0,
 		timerOnce:          sync.Once{},
 	}
-	c.tempRegCountCond = sync.NewCond(&c.rmu)
+	c.tempRegZeroCountCond = sync.NewCond(&c.rmu)
 	return c
 }
 
@@ -97,11 +97,11 @@ func (c *Course) waitTempRegCountIsZero() <-chan struct{} {
 	ch := make(chan struct{}, 0)
 	// MEMO: このgoroutineはWaitPreparedCourseがctx.Done()で抜けた場合放置される
 	go func() {
-		c.tempRegCountCond.L.Lock()
+		c.tempRegZeroCountCond.L.Lock()
 		for c.tempRegCount > 0 {
-			c.tempRegCountCond.Wait()
+			c.tempRegZeroCountCond.Wait()
 		}
-		c.tempRegCountCond.L.Unlock()
+		c.tempRegZeroCountCond.L.Unlock()
 		close(ch)
 	}()
 	return ch
@@ -172,7 +172,7 @@ func (c *Course) SuccessRegistration(student *Student) {
 	c.registeredStudents = append(c.registeredStudents, student)
 	c.tempRegCount--
 	if c.tempRegCount <= 0 {
-		c.tempRegCountCond.Broadcast()
+		c.tempRegZeroCountCond.Broadcast()
 	}
 }
 
@@ -182,7 +182,7 @@ func (c *Course) FailRegistration() {
 
 	c.tempRegCount--
 	if c.tempRegCount <= 0 {
-		c.tempRegCountCond.Broadcast()
+		c.tempRegZeroCountCond.Broadcast()
 	}
 }
 
