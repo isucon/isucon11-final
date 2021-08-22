@@ -93,7 +93,8 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	return nil
 }
 
-func (s *Scenario) isLoadRequestTimeEnd(ctx context.Context) bool {
+// isLoadRequestTimeEnd はActionの前にリクエスト送信が可能か判定する
+func (s *Scenario) isLoadRequestTimeEnd() bool {
 	now := time.Now()
 	return now.After(s.loadRequestEndTime) || now.Equal(s.loadRequestEndTime)
 }
@@ -128,6 +129,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 	return func(ctx context.Context) {
 		for ctx.Err() == nil {
 
+			if s.isLoadRequestTimeEnd() {
+				<-ctx.Done()
+				return
+			}
+
 			// 学生は成績を確認し続ける
 			expected := collectVerifyGradesData(student)
 			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
@@ -145,11 +151,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			AdminLogger.Printf("%vは成績を確認した", student.Name)
 
-			if s.isLoadRequestTimeEnd(ctx) {
-				<-ctx.Done()
-				return
-			}
-
 			// ----------------------------------------
 
 			// Gradeが早くなった時、常にCapacityが0だとGradeを効率的に回せるようになって点数が高くなるという不正ができるかもしれない
@@ -164,6 +165,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				var checkTargetID string
 				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
+					if s.isLoadRequestTimeEnd() {
+						<-ctx.Done()
+						return
+					}
+
 					param := generate.SearchCourseParam()
 					_, res, err := SearchCourseAction(ctx, student.Agent, param)
 					if err != nil {
@@ -179,16 +185,16 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					if len(res) > 0 {
 						checkTargetID = res[0].ID.String()
 					}
-
-					if s.isLoadRequestTimeEnd(ctx) {
-						<-ctx.Done()
-						return
-					}
 				}
 
 				// 検索で得たコースのシラバスを確認する
 				if checkTargetID == "" {
 					continue
+				}
+
+				if s.isLoadRequestTimeEnd() {
+					<-ctx.Done()
+					return
 				}
 
 				_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
@@ -203,16 +209,16 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 					}
 				}
-
-				if s.isLoadRequestTimeEnd(ctx) {
-					<-ctx.Done()
-					return
-				}
 			}
 
 			AdminLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
 
 			// ----------------------------------------
+
+			if s.isLoadRequestTimeEnd() {
+				<-ctx.Done()
+				return
+			}
 
 			registeredSchedule := student.RegisteredSchedule()
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
@@ -223,11 +229,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
 				step.AddError(err)
-			}
-
-			if s.isLoadRequestTimeEnd(ctx) {
-				<-ctx.Done()
-				return
 			}
 
 			// ----------------------------------------
@@ -265,7 +266,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			}
 			studentScheduleMutex.Unlock()
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -274,6 +275,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ベンチ内で仮登録できたコースがあればAPIに登録処理を投げる
 			if len(semiRegistered) > 0 {
+				if s.isLoadRequestTimeEnd() {
+					<-ctx.Done()
+					return
+				}
+
 				_, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
 				if err != nil {
 					step.AddError(err)
@@ -293,11 +299,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 			}
 			// TODO: できれば登録に失敗したコースを抜いて再度登録する
-
-			if s.isLoadRequestTimeEnd(ctx) {
-				<-ctx.Done()
-				return
-			}
 		}
 	}
 }
@@ -307,7 +308,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 		var next string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -329,17 +330,17 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			for _, ans := range res.Announcements {
 
-				if s.isLoadRequestTimeEnd(ctx) {
-					<-ctx.Done()
-					return
-				}
-
 				if ans.Unread {
 					announcementStatus := student.GetAnnouncement(ans.ID)
 					if announcementStatus == nil {
 						// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
 						// load中には検証できないのでskip
 						continue
+					}
+
+					if s.isLoadRequestTimeEnd() {
+						<-ctx.Done()
+						return
 					}
 
 					// お知らせの詳細を取得する
@@ -405,7 +406,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		// コースgoroutineは満員 or 履修締め切りまではなにもしない or ctx.Done()
 		<-course.WaitPreparedCourse(ctx)
 
-		if s.isLoadRequestTimeEnd(ctx) {
+		if s.isLoadRequestTimeEnd() {
 			<-ctx.Done()
 			return
 		}
@@ -420,15 +421,10 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 		AdminLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
 
-		if s.isLoadRequestTimeEnd(ctx) {
-			<-ctx.Done()
-			return
-		}
-
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -448,7 +444,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			course.BroadCastAnnouncement(announcement)
 			AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -456,7 +452,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			s.submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
 			AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -471,7 +467,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 			AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -485,6 +481,11 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				step.AddScore(score.CountRegisterScore)
 			}
 			AdminLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
+		}
+
+		if s.isLoadRequestTimeEnd() {
+			<-ctx.Done()
+			return
 		}
 
 		// コースステータスをclosedにする
@@ -520,16 +521,16 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 		go func() {
 			defer wg.Done()
 
-			if s.isLoadRequestTimeEnd(ctx) {
-				<-ctx.Done()
-				return
-			}
-
 			userData, err := s.studentPool.newUserData()
 			if err != nil {
 				return
 			}
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
+
+			if s.isLoadRequestTimeEnd() {
+				<-ctx.Done()
+				return
+			}
 
 			hres, resources, err := AccessTopPageAction(ctx, student.Agent)
 			if err != nil {
@@ -546,7 +547,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -558,7 +559,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -585,6 +586,11 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	teacher := s.GetRandomTeacher()
 	courseParam := generate.CourseParam(teacher)
 
+	if s.isLoadRequestTimeEnd() {
+		<-ctx.Done()
+		return
+	}
+
 	_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 	if err != nil {
 		ContestantLogger.Printf("teacherのログインに失敗しました")
@@ -592,7 +598,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	if s.isLoadRequestTimeEnd(ctx) {
+	if s.isLoadRequestTimeEnd() {
 		<-ctx.Done()
 		return
 	}
@@ -608,7 +614,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	if s.isLoadRequestTimeEnd(ctx) {
+	if s.isLoadRequestTimeEnd() {
 		<-ctx.Done()
 		return
 	}
@@ -646,7 +652,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
-			if s.isLoadRequestTimeEnd(ctx) {
+			if s.isLoadRequestTimeEnd() {
 				<-ctx.Done()
 				return
 			}
@@ -661,11 +667,6 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 				step.AddError(err)
 			}
 
-			if s.isLoadRequestTimeEnd(ctx) {
-				<-ctx.Done()
-				return
-			}
-
 			// 課題を提出する
 			isCorrectSubmit := rand.Float32() > invalidSubmitFrequency // 一定確率でdocxのファイルを投げる
 			for {
@@ -677,6 +678,11 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 					submissionData, fileName = generate.SubmissionData(course, class, student.UserAccount)
 				} else {
 					submissionData, fileName = generate.InvalidSubmissionData(course, class, student.UserAccount)
+				}
+
+				if s.isLoadRequestTimeEnd() {
+					<-ctx.Done()
+					return
 				}
 
 				hres, err := SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
@@ -698,11 +704,6 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 					submissionSummary := model.NewSubmissionSummary(fileName, submissionData, isCorrectSubmit)
 					class.AddSubmissionSummary(student.Code, submissionSummary)
 					break
-				}
-
-				if s.isLoadRequestTimeEnd(ctx) {
-					<-ctx.Done()
-					return
 				}
 			}
 		}()
@@ -733,6 +734,11 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 			score: scoreData,
 			code:  s.Code,
 		})
+	}
+
+	if s.isLoadRequestTimeEnd() {
+		<-ctx.Done()
+		return nil, nil
 	}
 
 	res, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)

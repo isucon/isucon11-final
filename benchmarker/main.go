@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	defaultRequestTimeout = 5 * time.Second
-	loadTimeout           = 70 * time.Second
+	defaultRequestTimeout       = 5 * time.Second
+	loadTimeout                 = 70 * time.Second
 	errorFailThreshold    int64 = 100
 )
 
