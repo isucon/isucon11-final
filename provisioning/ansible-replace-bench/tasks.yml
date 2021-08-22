@@ -1,0 +1,26 @@
+---
+- hosts: all
+  tasks:
+    - name: "Deploy benchmarker binary"
+      become: true
+      copy:
+        src: benchmarker
+        dest: /tmp/benchmarker
+        owner: isucon
+        group: isucon
+        mode: 0755
+      ignore_errors: yes
+    - name: "Deploy supervisor binary"
+      become: true
+      copy:
+        src: isuxportal-supervisor
+        dest: /tmp/isuxportal-supervisor
+        owner: isucon
+        group: isucon
+        mode: 0755
+      ignore_errors: yes
+    - name: "Restart isuxportal-supervisor.service"
+      become: true
+      systemd:
+        name: "isuxportal-supervisor.service"
+        state: restarted
