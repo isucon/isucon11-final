@@ -1,12 +1,10 @@
 package scenario
 
 import (
-	"context"
 	"math/rand"
 	"net/url"
 	"sync"
 
-	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/pubsub"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
@@ -68,15 +66,6 @@ func NewScenario(config *Config) (*Scenario, error) {
 		studentPool:        NewUserPool(studentsData),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 	}, nil
-}
-
-func (s *Scenario) Validation(context.Context, *isucandar.BenchmarkStep) error {
-	if s.NoLoad {
-		return nil
-	}
-	ContestantLogger.Printf("===> VALIDATION")
-
-	return nil
 }
 
 func (s *Scenario) Language() string {
