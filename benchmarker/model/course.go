@@ -171,7 +171,9 @@ func (c *Course) SuccessRegistration(student *Student) {
 
 	c.registeredStudents = append(c.registeredStudents, student)
 	c.tempRegCount--
-	c.tempRegCountCond.Broadcast()
+	if c.tempRegCount <= 0 {
+		c.tempRegCountCond.Broadcast()
+	}
 }
 
 func (c *Course) FailRegistration() {
@@ -179,7 +181,9 @@ func (c *Course) FailRegistration() {
 	defer c.rmu.Unlock()
 
 	c.tempRegCount--
-	c.tempRegCountCond.Broadcast()
+	if c.tempRegCount <= 0 {
+		c.tempRegCountCond.Broadcast()
+	}
 }
 
 func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
