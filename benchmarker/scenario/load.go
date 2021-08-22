@@ -29,6 +29,8 @@ const (
 	invalidSubmitFrequency = 0.1
 	// waitReadClassAnnouncementTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
 	waitReadClassAnnouncementTimeout = 5 * time.Second
+	// loadRequestTime はLoadシナリオ内でリクエストを送り続ける時間(Load自体のTimeoutより早めに終わらせる)
+	loadRequestTime = 60 * time.Second
 )
 
 func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) error {
@@ -40,6 +42,8 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	ContestantLogger.Printf("===> LOAD")
 	AdminLogger.Printf("LOAD INFO")
+
+	s.loadRequestEndTime = time.Now().Add(loadRequestTime)
 
 	// 負荷走行では
 	// アクティブ学生による負荷と
@@ -89,6 +93,11 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	return nil
 }
 
+func (s *Scenario) isLoadRequestTimeEnd(ctx context.Context) bool {
+	now := time.Now()
+	return now.After(s.loadRequestEndTime) || now.Equal(s.loadRequestEndTime)
+}
+
 // アクティブ学生の負荷をかけ続けるLoadWorker(parallel.Parallel)を作成
 func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.BenchmarkStep) *parallel.Parallel {
 	// アクティブ学生は以下の2つのタスクを行い続ける
@@ -107,15 +116,15 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		// 同時実行可能数を制限する際には注意
 		// 成績確認 + (空きがあれば履修登録)
 		AdminLogger.Println(student.Name, "の成績確認タスクが追加された") // FIXME: for debug
-		studentLoadWorker.Do(registrationScenario(student, step, s))
+		studentLoadWorker.Do(s.registrationScenario(student, step))
 		// おしらせ確認 + 既読追加
 		AdminLogger.Println(student.Name, "のおしらせタスクが追加された") // FIXME: for debug
-		studentLoadWorker.Do(readAnnouncementScenario(student, step))
+		studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
 	})
 	return studentLoadWorker
 }
 
-func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep, s *Scenario) func(ctx context.Context) {
+func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		for ctx.Err() == nil {
 
@@ -136,10 +145,9 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 
 			AdminLogger.Printf("%vは成績を確認した", student.Name)
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
 			// ----------------------------------------
@@ -172,10 +180,9 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 						checkTargetID = res[0].ID.String()
 					}
 
-					select {
-					case <-ctx.Done():
+					if s.isLoadRequestTimeEnd(ctx) {
+						<-ctx.Done()
 						return
-					default:
 					}
 				}
 
@@ -197,10 +204,9 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					}
 				}
 
-				select {
-				case <-ctx.Done():
+				if s.isLoadRequestTimeEnd(ctx) {
+					<-ctx.Done()
 					return
-				default:
 				}
 			}
 
@@ -219,10 +225,9 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 				step.AddError(err)
 			}
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
 			// ----------------------------------------
@@ -260,10 +265,9 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			}
 			studentScheduleMutex.Unlock()
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
 			// ----------------------------------------
@@ -290,22 +294,23 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			}
 			// TODO: できれば登録に失敗したコースを抜いて再度登録する
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 		}
 	}
 }
 
-func readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
+func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		var next string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
 
-			// BrowserAccess(announce)
-			// resource Verify
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
+				return
+			}
 
 			// 学生はお知らせを確認し続ける
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
@@ -323,10 +328,10 @@ func readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkS
 			AdminLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
 
 			for _, ans := range res.Announcements {
-				select {
-				case <-ctx.Done():
+
+				if s.isLoadRequestTimeEnd(ctx) {
+					<-ctx.Done()
 					return
-				default:
 				}
 
 				if ans.Unread {
@@ -400,10 +405,9 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		// コースgoroutineは満員 or 履修締め切りまではなにもしない or ctx.Done()
 		<-course.WaitPreparedCourse(ctx)
 
-		select {
-		case <-ctx.Done():
+		if s.isLoadRequestTimeEnd(ctx) {
+			<-ctx.Done()
 			return
-		default:
 		}
 
 		teacher := course.Teacher()
@@ -416,14 +420,19 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 		AdminLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
 
-		select {
-		case <-ctx.Done():
+		if s.isLoadRequestTimeEnd(ctx) {
+			<-ctx.Done()
 			return
-		default:
 		}
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
+
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
+				return
+			}
+
 			timer := time.After(100 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
@@ -439,19 +448,17 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			course.BroadCastAnnouncement(announcement)
 			AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
-			submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
+			s.submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
 			AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
 			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
@@ -464,13 +471,12 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 			AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
-			_, err = scoringAssignments(ctx, course, class, teacher)
+			_, err = s.scoringAssignments(ctx, course, class, teacher)
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -479,12 +485,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				step.AddScore(score.CountRegisterScore)
 			}
 			AdminLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer:
-			}
 		}
 
 		// コースステータスをclosedにする
@@ -519,6 +519,12 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 	for i := 0; i < count; i++ {
 		go func() {
 			defer wg.Done()
+
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
+				return
+			}
+
 			userData, err := s.studentPool.newUserData()
 			if err != nil {
 				return
@@ -540,6 +546,11 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
+				return
+			}
+
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
 				ContestantLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
@@ -547,10 +558,9 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
 			_, res, err := GetMeAction(ctx, student.Agent)
@@ -582,10 +592,9 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	select {
-	case <-ctx.Done():
+	if s.isLoadRequestTimeEnd(ctx) {
+		<-ctx.Done()
 		return
-	default:
 	}
 
 	_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
@@ -599,10 +608,9 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	select {
-	case <-ctx.Done():
+	if s.isLoadRequestTimeEnd(ctx) {
+		<-ctx.Done()
 		return
-	default:
 	}
 
 	_, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
@@ -619,12 +627,12 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	s.cPubSub.Publish(course)
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) {
+func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
-	for _, s := range students {
-		s := s
+	for _, student := range students {
+		student := student
 		go func() {
 			defer wg.Done()
 
@@ -634,12 +642,17 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 			case <-time.After(waitReadClassAnnouncementTimeout):
 				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
 				return
-			case <-s.WaitReadAnnouncement(announcementID):
+			case <-student.WaitReadAnnouncement(announcementID):
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
+				return
+			}
+
 			// 講義一覧を取得する
-			_, res, err := GetClassesAction(ctx, s.Agent, course.ID)
+			_, res, err := GetClassesAction(ctx, student.Agent, course.ID)
 			if err != nil {
 				step.AddError(err)
 				return
@@ -648,10 +661,9 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 				step.AddError(err)
 			}
 
-			select {
-			case <-ctx.Done():
+			if s.isLoadRequestTimeEnd(ctx) {
+				<-ctx.Done()
 				return
-			default:
 			}
 
 			// 課題を提出する
@@ -662,14 +674,14 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 					fileName       string
 				)
 				if isCorrectSubmit {
-					submissionData, fileName = generate.SubmissionData(course, class, s.UserAccount)
+					submissionData, fileName = generate.SubmissionData(course, class, student.UserAccount)
 				} else {
-					submissionData, fileName = generate.InvalidSubmissionData(course, class, s.UserAccount)
+					submissionData, fileName = generate.InvalidSubmissionData(course, class, student.UserAccount)
 				}
 
-				hres, err := SubmitAssignmentAction(ctx, s.Agent, course.ID, class.ID, fileName, submissionData)
+				hres, err := SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
 				if err != nil {
-					if !isCorrectSubmit && hres.StatusCode == http.StatusBadRequest {
+					if !isCorrectSubmit && hres != nil && hres.StatusCode == http.StatusBadRequest {
 						isCorrectSubmit = true // 次は正しいSubmissionを提出
 						// 400エラーのときのみ再送をする
 					} else {
@@ -684,14 +696,13 @@ func submitAssignments(ctx context.Context, students []*model.Student, course *m
 						step.AddScore(score.CountSubmitDocx)
 					}
 					submissionSummary := model.NewSubmissionSummary(fileName, submissionData, isCorrectSubmit)
-					class.AddSubmissionSummary(s.Code, submissionSummary)
+					class.AddSubmissionSummary(student.Code, submissionSummary)
 					break
 				}
 
-				select {
-				case <-ctx.Done():
+				if s.isLoadRequestTimeEnd(ctx) {
+					<-ctx.Done()
 					return
-				default:
 				}
 			}
 		}()
@@ -705,7 +716,7 @@ type StudentScore struct {
 	code  string
 }
 
-func scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, teacher *model.Teacher) (*http.Response, error) {
+func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, teacher *model.Teacher) (*http.Response, error) {
 	students := course.Students()
 	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
@@ -32,6 +33,7 @@ type Scenario struct {
 	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
 	finishedCourseCount int              // FIXME Debug
 	language            string
+	loadRequestEndTime  time.Time
 
 	mu sync.RWMutex
 }

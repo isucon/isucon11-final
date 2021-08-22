@@ -27,8 +27,9 @@ import (
 )
 
 const (
-	loadTimeout        string = "60s"
-	errorFailThreshold int64  = 100
+	defaultRequestTimeout = 5 * time.Second
+	loadTimeout           = 70 * time.Second
+	errorFailThreshold    int64 = 100
 )
 
 var (
@@ -57,7 +58,6 @@ func init() {
 
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
-	flag.StringVar(&timeoutDuration, "timeout", "10s", "request timeout duration")
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
@@ -65,11 +65,7 @@ func init() {
 
 	flag.Parse()
 
-	timeout, err := time.ParseDuration(timeoutDuration)
-	if err != nil {
-		panic(err)
-	}
-	agent.DefaultRequestTimeout = timeout
+	agent.DefaultRequestTimeout = defaultRequestTimeout
 }
 
 func checkError(err error) (critical bool, timeout bool, deduction bool) {
@@ -202,10 +198,6 @@ func main() {
 		panic(err)
 	}
 
-	loadTimeout, err := time.ParseDuration(loadTimeout)
-	if err != nil {
-		panic(err)
-	}
 	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout))
 	if err != nil {
 		panic(err)
