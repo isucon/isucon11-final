@@ -112,14 +112,9 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 		return errInvalidResponse("成績確認の生徒のCodeが一致しません")
 	}
 
-	// res.ClassScoresはexpected.ClassScoresと同じ長さか、それより一つ短い
-	// load.goでgetGrade前にcourseのコピーをしているが、shallow copyなのでclassは
-	// ポインタしかコピーされず、内容が変更されうる。
-	// よってgetGradeしてレスポンスが帰ってきている間に、課題提出が終わると、
-	// レスポンスよりベンチのデータのほうが一つ多くなりうる。
-	// のでベンチのデータより一つ少ない場合でも許容する
-	// それ以外だったらおかしいのでエラー
-	if len(expected.ClassScores)-1 > len(res.ClassScores) {
+	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
+	// そのため、追加済みクラスの数よりレスポンス内クラスの数が少ない場合はエラーとなる
+	if len(expected.ClassScores) > len(res.ClassScores) {
 		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.ClassScores), len(res.ClassScores)))
 		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
 	}
