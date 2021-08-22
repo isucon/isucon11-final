@@ -70,26 +70,29 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 	return nil
 }
 
-func verifyGrades(res *api.GetGradeResponse, courses []*model.Course, userCode string) error {
-	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
-
-	// ここで集めなくてレスポンスごとにやるようにしたほうが効率が良い
+func collectVerifyGradesData(student *model.Student) map[string]*model.SimpleCourseResult {
+	courses := student.Course()
 	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
 	for _, course := range courses {
-		classScore := course.CollectUserScores(userCode)
+		classScore := course.CollectUserScores(student.Code)
 		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
 	}
 
-	if len(simpleCourseResults) != len(res.CourseResults) {
+	return simpleCourseResults
+}
+
+func verifyGrades(expected map[string]*model.SimpleCourseResult, res *api.GetGradeResponse) error {
+	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
+	if len(expected) != len(res.CourseResults) {
 		return errInvalidResponse("成績確認でのコース結果の数が一致しません")
 	}
 
 	for _, resCourseResult := range res.CourseResults {
-		if _, ok := simpleCourseResults[resCourseResult.Code]; !ok {
+		if _, ok := expected[resCourseResult.Code]; !ok {
 			return errInvalidResponse("成績確認で期待しないコースが含まれています")
 		}
 
-		err := verifySimpleCourseResult(simpleCourseResults[resCourseResult.Code], &resCourseResult)
+		err := verifySimpleCourseResult(expected[resCourseResult.Code], &resCourseResult)
 		if err != nil {
 			return err
 		}

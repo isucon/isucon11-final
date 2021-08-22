@@ -120,18 +120,17 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 		for ctx.Err() == nil {
 
 			// 学生は成績を確認し続ける
-			courses := student.Course()
+			expected := collectVerifyGradesData(student)
 			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
 				<-time.After(3000 * time.Millisecond)
 				continue
 			}
-			err = verifyGrades(&getGradeRes, courses, student.Code)
+			err = verifyGrades(expected, &getGradeRes)
 			if err != nil {
 				step.AddError(err)
 			} else {
-
 				step.AddScore(score.CountGetGrades)
 			}
 
