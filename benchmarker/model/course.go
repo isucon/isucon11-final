@@ -203,3 +203,18 @@ func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
 		}()
 	})
 }
+
+func (c *Course) CollectUserScores(userCode string) []*ClassScore {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	res := make([]*ClassScore, 0, len(c.classes))
+	for _, class := range c.classes {
+		class := class
+		if v, ok := class.submissionSummary[userCode]; ok {
+			res = append(res, NewClassScore(class, v.Score()))
+		}
+	}
+
+	return res
+}

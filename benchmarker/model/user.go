@@ -145,6 +145,16 @@ func (s *Student) FillTimeslot(course *Course) {
 	s.registeringCount++
 }
 
+func (s *Student) Course() []*Course {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	res := make([]*Course, len(s.registeredCourses))
+	copy(res, s.registeredCourses[:])
+
+	return res
+}
+
 func (s *Student) RegisteredSchedule() [7][6]*Course {
 	s.scheduleMutex.RLock()
 	defer s.scheduleMutex.RUnlock()
