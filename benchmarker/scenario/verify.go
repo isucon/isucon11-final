@@ -113,7 +113,7 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	}
 
 	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
-	// そのため、追加済みクラスの数よりレスポンス内クラスの数が少ない場合はエラーとなる
+	// そのため、追加済みクラスのスコアの数よりレスポンス内クラスのスコアの数が少ない場合はエラーとなる
 	if len(expected.ClassScores) > len(res.ClassScores) {
 		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.ClassScores), len(res.ClassScores)))
 		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
