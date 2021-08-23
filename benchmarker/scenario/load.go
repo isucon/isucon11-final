@@ -101,7 +101,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 // isNoRequestTime はリクエスト送信できない期間かどうか（各Actionの前に必ず調べる）
 func (s *Scenario) isNoRequestTime(ctx context.Context) bool {
-	return time.Now().After(s.loadRequestEndTime) || ctx.Err != nil
+	return time.Now().After(s.loadRequestEndTime) || ctx.Err() != nil
 }
 
 // アクティブ学生の負荷をかけ続けるLoadWorker(parallel.Parallel)を作成
