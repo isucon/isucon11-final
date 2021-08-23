@@ -162,6 +162,33 @@ func (s *Student) RegisteredSchedule() [7][6]*Course {
 	return s.registeredSchedule
 }
 
+func (s *Student) GPT() float64 {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	// gpt * 100 したもの
+	tmp := 0
+	for _, course := range s.registeredCourses {
+		tmp += course.TotalScore(s.Code) * course.Credit
+	}
+
+	gpt := float64(tmp) / 100
+
+	return gpt
+}
+
+func (s *Student) TotalCredit() int {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	res := 0
+	for _, course := range s.registeredCourses {
+		res += course.Credit
+	}
+
+	return res
+}
+
 type Teacher struct {
 	*UserAccount
 	Agent *agent.Agent

@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"math"
 	"sync"
 	"time"
 )
@@ -221,3 +222,93 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 	return res
 }
 
+func (c *Course) IntoCourseResult(userCode string) *CourseResult {
+	if _, ok := c.registeredStudents[userCode]; !ok {
+		return nil
+	}
+
+	totalScores := c.TotalScores()
+
+	n := len(totalScores)
+	if n == 0 {
+		// TODO
+		return nil
+	}
+
+	totalSum := 0
+	totalSquareSum := 0
+	totalMax := 500
+	totalMin := 0
+	for _, totalScore := range totalScores {
+		totalSum += totalScore
+		totalSquareSum += totalScore * totalScore
+
+		if totalMax < totalScore {
+			totalMax = totalScore
+		}
+
+		if totalMin > totalScore {
+			totalMin = totalScore
+		}
+	}
+	totalAvg := float64(totalSum) / float64(n)
+
+	totalStdDev := 0.0
+	for _, total := range totalScores {
+		totalStdDev += math.Pow(float64(total)-totalAvg, 2) / float64(n)
+	}
+
+	totalScore := totalScores[userCode]
+	totalTScore := 0.0
+	if totalStdDev == 0 {
+		totalTScore = 50
+	} else {
+		totalTScore = 10*(float64(totalScore)-totalAvg)/totalStdDev + 50
+	}
+
+	classScores := make([]*ClassScore, 0, len(c.classes))
+
+	for _, class := range c.classes {
+		classScores = append(classScores, class.IntoClassScore(userCode))
+	}
+
+	return &CourseResult{
+		Name:             c.Name,
+		Code:             c.Code,
+		TotalScore:       totalScore,
+		TotalScoreTScore: totalTScore,
+		TotalScoreAvg:    totalAvg,
+		TotalScoreMax:    totalMax,
+		TotalScoreMin:    totalMin,
+		ClassScores:      classScores,
+	}
+}
+
+//func (c *Course) Gp(userCode string) float64 {
+//	return float64(c.TotalScore(userCode)) / 100
+//}
+
+func (c *Course) TotalScore(userCode string) int {
+	score := 0
+	for _, class := range c.classes {
+		if v, ok := class.submissionSummary[userCode]; ok {
+			score += v.score
+		}
+	}
+
+	return score
+}
+
+func (c *Course) TotalScores() map[string]int {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	res := make(map[string]int, len(c.classes))
+	for _, class := range c.classes {
+		for userCode, summary := range class.submissionSummary {
+			res[userCode] = res[userCode] + summary.score
+		}
+	}
+
+	return res
+}
