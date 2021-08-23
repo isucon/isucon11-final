@@ -83,6 +83,13 @@ func (s *Student) GetAnnouncement(id string) *AnnouncementStatus {
 	return s.announcements[index]
 }
 
+func (s *Student) AnnouncementCount() int {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return len(s.announcements)
+}
+
 func (s *Student) ReadAnnouncement(id string) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
