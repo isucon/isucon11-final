@@ -707,12 +707,10 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		gptTScore = (res.Summary.GPT-gptAvg)/gptStdDev*10 + 50
 	}
 
-	res.Summary = Summary{
-		GptTScore: gptTScore,
-		GptAvg:    gptAvg,
-		GptMax:    gptMax,
-		GptMin:    gptMin,
-	}
+	res.Summary.GptTScore = gptTScore
+	res.Summary.GptAvg = gptAvg
+	res.Summary.GptMax = gptMax
+	res.Summary.GptMin = gptMin
 
 	return c.JSON(http.StatusOK, res)
 }
