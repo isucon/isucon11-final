@@ -10,7 +10,6 @@ import (
 	"os"
 	"runtime/pprof"
 	"sort"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -227,15 +226,11 @@ func main() {
 
 	b.AddScenario(s)
 
-	wg := sync.WaitGroup{}
 	// 経過時間の記録用
 	b.Load(func(ctx context.Context, step *isucandar.BenchmarkStep) error {
 		if noLoad {
 			return nil
 		}
-
-		wg.Add(1)
-		defer wg.Done()
 
 		startAt := time.Now()
 		// 途中経過を3秒毎に送信
@@ -255,8 +250,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := b.Start(ctx)
-
-	wg.Wait()
 
 	if !sendResult(s, result, true) && exitStatusOnFail {
 		os.Exit(1)
