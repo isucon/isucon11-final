@@ -125,25 +125,35 @@ func GetRegisteredCoursesAction(ctx context.Context, agent *agent.Agent) (*http.
 	return hres, res, nil
 }
 
-func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.SearchCourseParam) (*http.Response, []*api.GetCourseDetailResponse, error) {
-	req := api.SearchCourseRequest{
-		Type:     api.CourseType(param.Type),
-		Credit:   uint8(param.Credit),
-		Teacher:  param.Teacher,
-		Period:   uint8(param.Period + 1),
-		Keywords: strings.Join(param.Keywords, " "),
-	}
-	if param.DayOfWeek != -1 {
-		req.DayOfWeek = api.DayOfWeekTable[param.DayOfWeek]
+func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.SearchCourseParam, nextPathParam string) (*http.Response, []*api.GetCourseDetailResponse, error) {
+	var hres *http.Response
+	if nextPathParam != "" {
+		var err error
+		hres, err = api.SearchCourseWithNext(ctx, agent, nextPathParam)
+		if err != nil {
+			return hres, nil, failure.NewError(fails.ErrHTTP, err)
+		}
+		defer hres.Body.Close()
+	} else {
+		req := api.SearchCourseRequest{
+			Type:     api.CourseType(param.Type),
+			Credit:   uint8(param.Credit),
+			Teacher:  param.Teacher,
+			Period:   uint8(param.Period + 1),
+			Keywords: strings.Join(param.Keywords, " "),
+		}
+		if param.DayOfWeek != -1 {
+			req.DayOfWeek = api.DayOfWeekTable[param.DayOfWeek]
+		}
+		var err error
+		hres, err = api.SearchCourse(ctx, agent, &req)
+		if err != nil {
+			return hres, nil, failure.NewError(fails.ErrHTTP, err)
+		}
+		defer hres.Body.Close()
 	}
 
-	hres, err := api.SearchCourse(ctx, agent, &req)
-	if err != nil {
-		return hres, nil, failure.NewError(fails.ErrHTTP, err)
-	}
-	defer hres.Body.Close()
-
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err := verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
 		return hres, nil, err
 	}

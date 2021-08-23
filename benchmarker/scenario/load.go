@@ -154,10 +154,11 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 			// remainingRegistrationCapacity 分のシラバス確認を行う
 			for i := 0; i < remainingRegistrationCapacity; i++ {
 				var checkTargetID string
+				var nextPathParam string // 次にアクセスする検索一覧のページ
 				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
 					param := generate.SearchCourseParam()
-					_, res, err := SearchCourseAction(ctx, student.Agent, param)
+					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
 						continue
@@ -171,6 +172,9 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 					if len(res) > 0 {
 						checkTargetID = res[0].ID.String()
 					}
+
+					// Linkヘッダから次ページのPath + QueryParamを取得
+					_, nextPathParam = parseLinkHeader(hres)
 
 					select {
 					case <-ctx.Done():
