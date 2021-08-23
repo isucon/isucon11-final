@@ -74,7 +74,7 @@ func collectVerifyGradesData(student *model.Student) map[string]*model.SimpleCou
 	courses := student.Course()
 	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
 	for _, course := range courses {
-		classScore := course.CollectUserScores(student.Code)
+		classScore := course.CollectSimpleClassScores(student.Code)
 		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
 	}
 
@@ -134,7 +134,7 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	return nil
 }
 
-func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) error {
+func verifyClassScores(expected *model.SimpleClassScore, res *api.ClassScore) error {
 	if expected.ClassID != res.ClassID {
 		AdminLogger.Println("expected: ", expected.ClassID, "actual: ", res.ClassID)
 		return errInvalidResponse("成績確認でのクラスのIDが一致しません")
