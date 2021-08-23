@@ -167,6 +167,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// remainingRegistrationCapacity 分のシラバス確認を行う
 			for i := 0; i < remainingRegistrationCapacity; i++ {
 				var checkTargetID string
+				var nextPathParam string // 次にアクセスする検索一覧のページ
 				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
 					if s.isNoRequestTime(ctx) {
@@ -174,7 +175,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					}
 
 					param := generate.SearchCourseParam()
-					_, res, err := SearchCourseAction(ctx, student.Agent, param)
+					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
 						continue
@@ -188,6 +189,9 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					if len(res) > 0 {
 						checkTargetID = res[0].ID.String()
 					}
+
+					// Linkヘッダから次ページのPath + QueryParamを取得
+					_, nextPathParam = parseLinkHeader(hres)
 				}
 
 				// 検索で得たコースのシラバスを確認する
@@ -304,7 +308,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
-		var next string // 次にアクセスするお知らせ一覧のページ
+		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
 
 			if s.isNoRequestTime(ctx) {
@@ -312,7 +316,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 
 			// 学生はお知らせを確認し続ける
-			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
+			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
 				step.AddError(err)
 				<-time.After(3000 * time.Millisecond)
@@ -358,7 +362,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				}
 			}
 
-			_, next = parseLinkHeader(hres)
+			_, nextPathParam = parseLinkHeader(hres)
 			// TODO: 現状: ページングで最後のページまで確認したら最初のページに戻る
 			// TODO: 理想1: 未読お知らせを早く確認するため以降のページに未読が存在しないなら最初に戻る
 			// TODO: 理想2: 10ページぐらい最低ページングする。10ページ目末尾のお知らせ以降に未読があればさらにページングする。無いならしない。
