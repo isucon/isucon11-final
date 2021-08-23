@@ -99,10 +99,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	return nil
 }
 
-// isLoadRequestTimeEnd はリクエスト送信期間が終了しているかどうか（各Actionの前に必ず調べる）
-func (s *Scenario) isLoadRequestTimeEnd() bool {
-	now := time.Now()
-	return now.After(s.loadRequestEndTime) || now.Equal(s.loadRequestEndTime)
+// isNoRequestTime はリクエスト送信できない期間かどうか（各Actionの前に必ず調べる）
+func (s *Scenario) isNoRequestTime(ctx context.Context) bool {
+	return time.Now().After(s.loadRequestEndTime) || ctx.Err != nil
 }
 
 // アクティブ学生の負荷をかけ続けるLoadWorker(parallel.Parallel)を作成
@@ -135,7 +134,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 	return func(ctx context.Context) {
 		for ctx.Err() == nil {
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -170,7 +169,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				var checkTargetID string
 				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
-					if s.isLoadRequestTimeEnd() {
+					if s.isNoRequestTime(ctx) {
 						return
 					}
 
@@ -196,7 +195,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					continue
 				}
 
-				if s.isLoadRequestTimeEnd() {
+				if s.isNoRequestTime(ctx) {
 					return
 				}
 
@@ -218,7 +217,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ----------------------------------------
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -268,7 +267,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			}
 			studentScheduleMutex.Unlock()
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -276,7 +275,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ベンチ内で仮登録できたコースがあればAPIに登録処理を投げる
 			if len(semiRegistered) > 0 {
-				if s.isLoadRequestTimeEnd() {
+				if s.isNoRequestTime(ctx) {
 					return
 				}
 
@@ -308,7 +307,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 		var next string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -337,7 +336,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 						continue
 					}
 
-					if s.isLoadRequestTimeEnd() {
+					if s.isNoRequestTime(ctx) {
 						return
 					}
 
@@ -413,7 +412,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 
 		// selectでのwaitは複数該当だとランダムなのでここでも判定
-		if s.isLoadRequestTimeEnd() {
+		if s.isNoRequestTime(ctx) {
 			return
 		}
 
@@ -430,7 +429,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -449,14 +448,14 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			course.BroadCastAnnouncement(announcement)
 			AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
 			s.submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
 			AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -470,7 +469,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 			AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -485,7 +484,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
 		}
 
-		if s.isLoadRequestTimeEnd() {
+		if s.isNoRequestTime(ctx) {
 			return
 		}
 
@@ -528,7 +527,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			}
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -547,7 +546,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -558,7 +557,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -584,7 +583,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	teacher := s.GetRandomTeacher()
 	courseParam := generate.CourseParam(teacher)
 
-	if s.isLoadRequestTimeEnd() {
+	if s.isNoRequestTime(ctx) {
 		return
 	}
 
@@ -595,7 +594,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	if s.isLoadRequestTimeEnd() {
+	if s.isNoRequestTime(ctx) {
 		return
 	}
 
@@ -610,7 +609,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	if s.isLoadRequestTimeEnd() {
+	if s.isNoRequestTime(ctx) {
 		return
 	}
 
@@ -649,7 +648,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 			}
 
 			// selectでのwaitは複数該当だとランダムなのでここでも判定
-			if s.isLoadRequestTimeEnd() {
+			if s.isNoRequestTime(ctx) {
 				return
 			}
 
@@ -676,7 +675,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 					submissionData, fileName = generate.InvalidSubmissionData(course, class, student.UserAccount)
 				}
 
-				if s.isLoadRequestTimeEnd() {
+				if s.isNoRequestTime(ctx) {
 					return
 				}
 
@@ -731,7 +730,7 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 		})
 	}
 
-	if s.isLoadRequestTimeEnd() {
+	if s.isNoRequestTime(ctx) {
 		return nil, nil
 	}
 
