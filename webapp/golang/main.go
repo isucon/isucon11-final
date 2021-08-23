@@ -172,20 +172,24 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func getUserID(c echo.Context) (userID uuid.UUID, isAdmin bool, err error) {
+func getUserInfo(c echo.Context) (userID uuid.UUID, userName string, isAdmin bool, err error) {
 	sess, err := session.Get(SessionName, c)
 	if err != nil {
-		return nil, false, err
+		return nil, "", false, err
 	}
 	_userID, ok := sess.Values["userID"]
 	if !ok {
-		return nil, false, errors.New("failed to get userID from session")
+		return nil, "", false, errors.New("failed to get userID from session")
+	}
+	_userName, ok := sess.Values["userName"]
+	if !ok {
+		return nil, "", false, errors.New("failed to get userName from session")
 	}
 	_isAdmin, ok := sess.Values["isAdmin"]
 	if !ok {
-		return nil, false, errors.New("failed to get isAdmin from session")
+		return nil, "", false, errors.New("failed to get isAdmin from session")
 	}
-	return uuid.Parse(_userID.(string)), _isAdmin.(bool), nil
+	return uuid.Parse(_userID.(string)), _userName.(string), _isAdmin.(bool), nil
 }
 
 type UserType string
@@ -303,11 +307,12 @@ func (h *handlers) Login(c echo.Context) error {
 
 type GetMeResponse struct {
 	Code    string `json:"code"`
+	Name    string `json:"name"`
 	IsAdmin bool   `json:"is_admin"`
 }
 
 func (h *handlers) GetMe(c echo.Context) error {
-	userID, isAdmin, err := getUserID(c)
+	userID, userName, isAdmin, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -321,6 +326,7 @@ func (h *handlers) GetMe(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, GetMeResponse{
 		Code:    userCode,
+		Name:    userName,
 		IsAdmin: isAdmin,
 	})
 }
@@ -335,7 +341,7 @@ type GetRegisteredCourseResponseContent struct {
 
 // GetRegisteredCourses 履修中の科目一覧取得
 func (h *handlers) GetRegisteredCourses(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -383,7 +389,7 @@ type RegisterCoursesErrorResponse struct {
 }
 
 func (h *handlers) RegisterCourses(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -533,7 +539,7 @@ type SubmissionWithClassName struct {
 }
 
 func (h *handlers) GetGrades(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -872,7 +878,7 @@ type AddCourseResponse struct {
 
 // AddCourse 新規科目登録
 func (h *handlers) AddCourse(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -965,7 +971,7 @@ type GetClassResponse struct {
 
 // GetClasses 科目に紐づくクラス一覧の取得
 func (h *handlers) GetClasses(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1015,7 +1021,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 
 // SubmitAssignment 課題ファイルのアップロード
 func (h *handlers) SubmitAssignment(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1343,7 +1349,7 @@ type AnnouncementResponse struct {
 
 // GetAnnouncementList お知らせ一覧取得
 func (h *handlers) GetAnnouncementList(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1463,7 +1469,7 @@ type GetAnnouncementDetailResponse struct {
 }
 
 func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
-	userID, _, err := getUserID(c)
+	userID, _, _, err := getUserInfo(c)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
