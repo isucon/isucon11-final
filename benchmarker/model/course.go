@@ -22,7 +22,7 @@ type Course struct {
 	*CourseParam
 	ID                 string
 	teacher            *Teacher
-	registeredStudents []*Student
+	registeredStudents map[string]*Student
 	classes            []*Class
 	registeredLimit    int // 登録学生上限
 	rmu                sync.RWMutex
@@ -48,7 +48,7 @@ func NewCourse(param *CourseParam, id string, teacher *Teacher) *Course {
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
-		registeredStudents: make([]*Student, 0),
+		registeredStudents: make(map[string]*Student, 0),
 		registeredLimit:    50, // 引数で渡す？
 		rmu:                sync.RWMutex{},
 
@@ -114,12 +114,14 @@ func (c *Course) Teacher() *Teacher {
 	return c.teacher
 }
 
-func (c *Course) Students() []*Student {
+func (c *Course) Students() map[string]*Student {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	s := make([]*Student, len(c.registeredStudents))
-	copy(s, c.registeredStudents[:])
+	s := make(map[string]*Student, len(c.registeredStudents))
+	for userCode, user := range c.registeredStudents {
+		s[userCode] = user
+	}
 
 	return s
 }
@@ -169,7 +171,7 @@ func (c *Course) SuccessRegistration(student *Student) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	c.registeredStudents = append(c.registeredStudents, student)
+	c.registeredStudents[student.Code] = student
 	c.tempRegCount--
 	if c.tempRegCount <= 0 {
 		c.tempRegZeroCountCond.Broadcast()

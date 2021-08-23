@@ -619,7 +619,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	s.cPubSub.Publish(course)
 }
 
-func submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) {
+func submitAssignments(ctx context.Context, students map[string]*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
