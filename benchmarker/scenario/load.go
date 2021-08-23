@@ -305,14 +305,14 @@ func registrationScenario(student *model.Student, step *isucandar.BenchmarkStep,
 
 func readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
-		var next string // 次にアクセスするお知らせ一覧のページ
+		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
 
 			// BrowserAccess(announce)
 			// resource Verify
 
 			// 学生はお知らせを確認し続ける
-			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
+			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
 				step.AddError(err)
 				<-time.After(3000 * time.Millisecond)
@@ -359,7 +359,7 @@ func readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkS
 				}
 			}
 
-			_, next = parseLinkHeader(hres)
+			_, nextPathParam = parseLinkHeader(hres)
 			// TODO: 現状: ページングで最後のページまで確認したら最初のページに戻る
 			// TODO: 理想1: 未読お知らせを早く確認するため以降のページに未読が存在しないなら最初に戻る
 			// TODO: 理想2: 10ページぐらい最低ページングする。10ページ目末尾のお知らせ以降に未読があればさらにページングする。無いならしない。
