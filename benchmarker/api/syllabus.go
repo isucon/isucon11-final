@@ -64,6 +64,16 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 	return a.Do(ctx, req)
 }
 
+func SearchCourseWithNext(ctx context.Context, a *agent.Agent, pathParam string) (*http.Response, error) {
+	req, err := a.GET(pathParam)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	return a.Do(ctx, req)
+}
+
 func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID string) (*http.Response, error) {
 	path := fmt.Sprintf("/api/syllabus/%s", courseID)
 
