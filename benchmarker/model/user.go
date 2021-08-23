@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"net/url"
 	"sync"
 
@@ -94,7 +95,21 @@ func (s *Student) isUnreadAnnouncement(id string) bool {
 	return s.announcements[s.announcementIndexByID[id]].Unread
 }
 
-func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
+func (s *Student) WaitReadAnnouncement(ctx context.Context, id string) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			close(ch)
+			return
+		case <-s.waitReadAnnouncement(id):
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (s *Student) waitReadAnnouncement(id string) <-chan struct{} {
 	ch := make(chan struct{})
 
 	s.rmu.RLock()

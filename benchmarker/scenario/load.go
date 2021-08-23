@@ -630,12 +630,12 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 			select {
-			case <- time.After(endTimeDuration):
+			case <-time.After(endTimeDuration):
 				return
 			case <-time.After(waitReadClassAnnouncementTimeout):
 				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
 				return
-			case <-student.WaitReadAnnouncement(announcementID):
+			case <-student.WaitReadAnnouncement(ctx, announcementID):
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
