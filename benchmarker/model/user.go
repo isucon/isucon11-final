@@ -112,6 +112,7 @@ func (s *Student) WaitReadAnnouncement(ctx context.Context, id string) <-chan st
 func (s *Student) waitReadAnnouncement(id string) <-chan struct{} {
 	ch := make(chan struct{})
 
+	// MEMO: このgoroutineはWaitReadAnnouncementがctx.Done()で抜けた場合放置される
 	s.rmu.RLock()
 	if s.isUnreadAnnouncement(id) {
 		go func() {
