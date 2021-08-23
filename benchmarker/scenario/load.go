@@ -75,7 +75,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 		s.addActiveStudentLoads(ctx, step, initialStudentsCount)
 	}()
 	go func() {
-		defer AdminLogger.Printf("[debug] courseLoadWorker finished")
+		defer AdminLogger.Printf("[debug] studentLoadWorker finished")
 		defer wg.Done()
 		studentLoadWorker.Wait()
 	}()
@@ -395,9 +395,15 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 		}()
 
-		// コースgoroutineは満員 or 履修締め切りまではなにもしない or ctx.Done()
-		<-course.WaitPreparedCourse(ctx)
+		// コースgoroutineは満員 or 履修締め切りまではなにもしない or LoadEndTime
+		endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
+		select {
+		case <-time.After(endTimeDuration):
+			return
+		case <-course.WaitPreparedCourse(ctx):
+		}
 
+		// selectでのwaitは複数該当だとランダムなのでここでも判定
 		if s.isLoadRequestTimeEnd() {
 			return
 		}
@@ -622,8 +628,9 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 		go func() {
 			defer wg.Done()
 
+			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 			select {
-			case <-ctx.Done():
+			case <- time.After(endTimeDuration):
 				return
 			case <-time.After(waitReadClassAnnouncementTimeout):
 				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
@@ -632,6 +639,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 				// 学生sが課題お知らせを読むまで待つ
 			}
 
+			// selectでのwaitは複数該当だとランダムなのでここでも判定
 			if s.isLoadRequestTimeEnd() {
 				return
 			}
