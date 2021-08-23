@@ -50,9 +50,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// 登録されたコースによる負荷が存在する
 	studentLoadWorker := s.createStudentLoadWorker(ctx, step) // Gradeの確認から始まるシナリオとAnnouncementsの確認から始まるシナリオの二種類を担うgoroutineがアクティブ学生ごとに起動している
 	courseLoadWorker := s.createLoadCourseWorker(ctx, step)   // 登録されたコースにつき一つのgoroutineが起動している
+
 	// LoadWorkerに初期負荷を追加
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
-
 	wg := sync.WaitGroup{}
 	wg.Add(initialCourseCount)
 	for i := 0; i < initialCourseCount; i++ {
@@ -70,25 +70,25 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg = sync.WaitGroup{}
 	wg.Add(3)
 	go func() {
+		defer AdminLogger.Printf("[debug] initial ActiveStudents added")
 		defer wg.Done()
 		s.addActiveStudentLoads(ctx, step, initialStudentsCount)
 	}()
 	go func() {
+		defer AdminLogger.Printf("[debug] courseLoadWorker finished")
 		defer wg.Done()
-		// LoadWorkerはisucandarのParallel
-		studentLoadWorker.Do(func(ctx context.Context) {
-			<-ctx.Done()
-		})
 		studentLoadWorker.Wait()
 	}()
 	go func() {
+		defer AdminLogger.Printf("[debug] courseLoadWorker finished")
 		defer wg.Done()
-		courseLoadWorker.Do(func(ctx context.Context) {
-			<-ctx.Done()
-		})
 		courseLoadWorker.Wait()
 	}()
 	wg.Wait()
+
+	// loadRequestTimeが終了しても最後に送ったリクエストの処理が終わるまで（loadTimeoutまで）待つ
+	<-ctx.Done()
+	AdminLogger.Printf("[debug] load finished")
 
 	return nil
 }
@@ -130,7 +130,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 		for ctx.Err() == nil {
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -166,7 +165,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				// 履修希望コース1つあたり searchCountPerRegistration 回のコース検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
 					if s.isLoadRequestTimeEnd() {
-						<-ctx.Done()
 						return
 					}
 
@@ -193,7 +191,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 
 				if s.isLoadRequestTimeEnd() {
-					<-ctx.Done()
 					return
 				}
 
@@ -216,7 +213,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// ----------------------------------------
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -267,7 +263,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			studentScheduleMutex.Unlock()
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -276,7 +271,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// ベンチ内で仮登録できたコースがあればAPIに登録処理を投げる
 			if len(semiRegistered) > 0 {
 				if s.isLoadRequestTimeEnd() {
-					<-ctx.Done()
 					return
 				}
 
@@ -309,7 +303,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 		for ctx.Err() == nil {
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -339,7 +332,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					}
 
 					if s.isLoadRequestTimeEnd() {
-						<-ctx.Done()
 						return
 					}
 
@@ -407,7 +399,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		<-course.WaitPreparedCourse(ctx)
 
 		if s.isLoadRequestTimeEnd() {
-			<-ctx.Done()
 			return
 		}
 
@@ -425,7 +416,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		for i := 0; i < classCountPerCourse; i++ {
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -445,7 +435,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -453,7 +442,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -468,7 +456,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -484,7 +471,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 
 		if s.isLoadRequestTimeEnd() {
-			<-ctx.Done()
 			return
 		}
 
@@ -528,7 +514,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			student := model.NewStudent(userData, s.BaseURL, registerCourseLimit)
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -548,7 +533,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			}
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -560,7 +544,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 			}
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -587,7 +570,6 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	courseParam := generate.CourseParam(teacher)
 
 	if s.isLoadRequestTimeEnd() {
-		<-ctx.Done()
 		return
 	}
 
@@ -599,7 +581,6 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	}
 
 	if s.isLoadRequestTimeEnd() {
-		<-ctx.Done()
 		return
 	}
 
@@ -615,7 +596,6 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	}
 
 	if s.isLoadRequestTimeEnd() {
-		<-ctx.Done()
 		return
 	}
 
@@ -653,7 +633,6 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 			}
 
 			if s.isLoadRequestTimeEnd() {
-				<-ctx.Done()
 				return
 			}
 
@@ -681,7 +660,6 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 				}
 
 				if s.isLoadRequestTimeEnd() {
-					<-ctx.Done()
 					return
 				}
 
@@ -737,7 +715,6 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 	}
 
 	if s.isLoadRequestTimeEnd() {
-		<-ctx.Done()
 		return nil, nil
 	}
 
