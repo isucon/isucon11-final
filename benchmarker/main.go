@@ -27,9 +27,11 @@ import (
 )
 
 const (
-	defaultRequestTimeout       = 5 * time.Second
-	loadTimeout                 = 70 * time.Second
-	errorFailThreshold    int64 = 100
+	defaultRequestTimeout = 5 * time.Second
+	// loadTimeout はLoadフェーズの終了時間
+	// load.goには別途「Loadのリクエストを送り続ける時間」を定義しているので注意
+	loadTimeout              = 70 * time.Second
+	errorFailThreshold int64 = 100
 )
 
 var (

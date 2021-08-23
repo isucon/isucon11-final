@@ -54,26 +54,32 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// LoadWorkerに初期負荷を追加
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 	wg := sync.WaitGroup{}
-	wg.Add(initialCourseCount)
+	wg.Add(initialCourseCount + 1)
 	for i := 0; i < initialCourseCount; i++ {
 		go func() {
+			defer AdminLogger.Printf("[debug] initial Course added")
 			defer wg.Done()
 			s.addCourseLoad(ctx, step)
 		}()
 	}
-	wg.Wait()
-	if len(s.courses) == 0 {
-		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("コース登録が一つも成功しませんでした")))
-		return nil
-	}
-
-	wg = sync.WaitGroup{}
-	wg.Add(3)
 	go func() {
 		defer AdminLogger.Printf("[debug] initial ActiveStudents added")
 		defer wg.Done()
 		s.addActiveStudentLoads(ctx, step, initialStudentsCount)
 	}()
+	wg.Wait()
+
+	if len(s.courses) == 0 {
+		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("コース登録が1つも成功しませんでした")))
+		return nil
+	}
+	if s.ActiveStudentCount() == 0 {
+		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("ログインに成功した学生が1人もいませんでした")))
+		return nil
+	}
+
+	wg = sync.WaitGroup{}
+	wg.Add(2)
 	go func() {
 		defer AdminLogger.Printf("[debug] studentLoadWorker finished")
 		defer wg.Done()
