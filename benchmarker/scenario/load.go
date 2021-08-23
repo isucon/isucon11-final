@@ -93,7 +93,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	return nil
 }
 
-// isLoadRequestTimeEnd はActionの前にリクエスト送信が可能か判定する
+// isLoadRequestTimeEnd はリクエスト送信期間が終了しているかどうか（各Actionの前に必ず調べる）
 func (s *Scenario) isLoadRequestTimeEnd() bool {
 	now := time.Now()
 	return now.After(s.loadRequestEndTime) || now.Equal(s.loadRequestEndTime)
