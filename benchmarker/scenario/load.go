@@ -418,6 +418,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 			return
 		}
+		s.RemoveRegistrableCourses(course)
 		AdminLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
 
 		select {
@@ -619,6 +620,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher)
 	s.AddCourse(course)
+	s.AddRegistrableCourses(course)
 	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
 }

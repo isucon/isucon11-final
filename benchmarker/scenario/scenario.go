@@ -24,6 +24,7 @@ type Scenario struct {
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
 	courses             map[string]*model.Course
+	registrableCourses  map[string]*model.Course
 	emptyCourseManager  *util.CourseManager
 	faculties           []*model.Teacher
 	studentPool         *userPool
@@ -61,6 +62,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
 		courses:            map[string]*model.Course{},
+		registrableCourses: map[string]*model.Course{},
 		emptyCourseManager: util.NewCourseManager(),
 		faculties:          faculties,
 		studentPool:        NewUserPool(studentsData),
@@ -72,6 +74,12 @@ func (s *Scenario) Language() string {
 	return s.language
 }
 
+func (s *Scenario) ActiveStudent() []*model.Student {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.activeStudents
+}
 func (s *Scenario) AddActiveStudent(student *model.Student) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -103,6 +111,27 @@ func (s *Scenario) AddCourse(course *model.Course) {
 	defer s.mu.Unlock()
 
 	s.courses[course.ID] = course
+}
+
+func (s *Scenario) AddRegistrableCourses(course *model.Course) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.registrableCourses[course.ID] = course
+}
+
+func (s *Scenario) RemoveRegistrableCourses(course *model.Course) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.registrableCourses, course.ID)
+}
+
+func (s *Scenario) RegistrableCourses() map[string]*model.Course {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.registrableCourses
 }
 
 func (s *Scenario) GetCourse(id string) (*model.Course, bool) {
