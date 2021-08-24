@@ -1,10 +1,15 @@
+type LinkData = {
+  path: string
+  query: URLSearchParams
+}
+
 export type Link = {
-  prev: string
-  next: string
+  prev: LinkData | undefined
+  next: LinkData | undefined
 }
 
 export function parseLinkHeader(linkHeader: string | undefined): Link {
-  const parsedLink = { prev: '', next: '' }
+  const parsedLink: Link = { prev: undefined, next: undefined }
   if (!linkHeader) {
     return parsedLink
   }
@@ -13,8 +18,8 @@ export function parseLinkHeader(linkHeader: string | undefined): Link {
   for (const link of linkData) {
     const linkInfo = /<([^>]+)>;\s+rel="([^"]+)"/gi.exec(link)
     if (linkInfo && (linkInfo[2] === 'prev' || linkInfo[2] === 'next')) {
-      const url = new URL(linkInfo[1])
-      parsedLink[linkInfo[2]] = `${url.pathname}${url.search}`
+      const u = new URL(linkInfo[1], 'http://localhost:3000')
+      parsedLink[linkInfo[2]] = { path: u.pathname, query: u.searchParams }
     }
   }
   return parsedLink

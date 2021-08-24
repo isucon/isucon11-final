@@ -13,8 +13,8 @@
       <Pagination
         :prev-disabled="!Boolean(parsedLink.prev)"
         :next-disabled="!Boolean(parsedLink.next)"
-        @goPrev="$emit('movePage', parsedLink.prev)"
-        @goNext="$emit('movePage', parsedLink.next)"
+        @goPrev="$emit('movePage', parsedLink.prev.query)"
+        @goNext="$emit('movePage', parsedLink.next.query)"
       />
     </div>
   </div>
@@ -49,7 +49,7 @@ export default Vue.extend({
   },
   data(): AnnouncementListData {
     return {
-      parsedLink: { prev: '', next: '' },
+      parsedLink: { prev: undefined, next: undefined },
     }
   },
   created() {
