@@ -1218,6 +1218,9 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 
 func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []Submission) error {
 	tmpDir := AssignmentsDirectory + classID.String() + "/"
+	if err := exec.Command("rm", "-rf", tmpDir).Run(); err != nil {
+		return err
+	}
 	if err := exec.Command("mkdir", tmpDir).Run(); err != nil {
 		return err
 	}
