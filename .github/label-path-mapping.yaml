@@ -3,7 +3,7 @@ backend:
 frontend:
   - webapp/frontend/**/*
 benchmarker:
-  - bench/**/*
+  - benchmarker/**/*
 infrastructure:
   - provisioning/**/*
 # documentation:
