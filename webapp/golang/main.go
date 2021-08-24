@@ -669,8 +669,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id`" +
 		" LEFT JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
 		" LEFT JOIN `courses` ON `classes`.`course_id` = `courses`.`id`" +
-		" WHERE `users`.`type` = ?" +
-		" GROUP BY `user_id`"
+		" WHERE `users`.`type` = ? AND `submissions`.`user_id` IS NOT NULL" +
+		" GROUP BY `submissions`.`user_id`"
 	if err := h.DB.Select(&gpts, query, Student); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
