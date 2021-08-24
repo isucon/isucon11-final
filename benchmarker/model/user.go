@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"net/url"
 	"sync"
 
@@ -94,9 +95,24 @@ func (s *Student) isUnreadAnnouncement(id string) bool {
 	return s.announcements[s.announcementIndexByID[id]].Unread
 }
 
-func (s *Student) WaitReadAnnouncement(id string) <-chan struct{} {
+func (s *Student) WaitReadAnnouncement(ctx context.Context, id string) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			close(ch)
+			return
+		case <-s.waitReadAnnouncement(id):
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (s *Student) waitReadAnnouncement(id string) <-chan struct{} {
 	ch := make(chan struct{})
 
+	// MEMO: このgoroutineはWaitReadAnnouncementがctx.Done()で抜けた場合放置される
 	s.rmu.RLock()
 	if s.isUnreadAnnouncement(id) {
 		go func() {
@@ -143,6 +159,16 @@ func (s *Student) IsEmptyTimeSlots(dayOfWeek, period int) bool {
 func (s *Student) FillTimeslot(course *Course) {
 	s.registeredSchedule[course.DayOfWeek][course.Period] = course
 	s.registeringCount++
+}
+
+func (s *Student) Course() []*Course {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	res := make([]*Course, len(s.registeredCourses))
+	copy(res, s.registeredCourses[:])
+
+	return res
 }
 
 func (s *Student) RegisteredSchedule() [7][6]*Course {

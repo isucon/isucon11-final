@@ -123,7 +123,6 @@ func GetClasses(ctx context.Context, a *agent.Agent, courseID string) (*http.Res
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -191,6 +190,5 @@ func DownloadSubmittedAssignments(ctx context.Context, a *agent.Agent, courseID,
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }

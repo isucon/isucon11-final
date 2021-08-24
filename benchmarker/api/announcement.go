@@ -71,7 +71,6 @@ func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, cou
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -83,6 +82,5 @@ func GetAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*htt
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }

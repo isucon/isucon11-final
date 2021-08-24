@@ -70,9 +70,90 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 	return nil
 }
 
-func verifyGrades(res *api.GetGradeResponse) error {
-	// TODO: modelとして何を渡すか
-	// TODO: 成績のverify
+func collectVerifyGradesData(student *model.Student) map[string]*model.SimpleCourseResult {
+	courses := student.Course()
+	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
+	for _, course := range courses {
+		classScore := course.CollectUserScores(student.Code)
+		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
+	}
+
+	return simpleCourseResults
+}
+
+func verifyGrades(expected map[string]*model.SimpleCourseResult, res *api.GetGradeResponse) error {
+	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
+	if len(expected) != len(res.CourseResults) {
+		return errInvalidResponse("成績確認でのコース結果の数が一致しません")
+	}
+
+	for _, resCourseResult := range res.CourseResults {
+		if _, ok := expected[resCourseResult.Code]; !ok {
+			return errInvalidResponse("成績確認で期待しないコースが含まれています")
+		}
+
+		err := verifySimpleCourseResult(expected[resCourseResult.Code], &resCourseResult)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult) error {
+	if expected.Name != res.Name {
+		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Name, res.Name))
+		return errInvalidResponse("成績確認結果のコース名が違います")
+	}
+
+	if expected.Code != res.Code {
+		AdminLogger.Println(fmt.Printf("expected: %s, actual: %s", expected.Code, res.Code))
+		return errInvalidResponse("成績確認の生徒のCodeが一致しません")
+	}
+
+	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
+	// そのため、追加済みクラスのスコアの数よりレスポンス内クラスのスコアの数が少ない場合はエラーとなる
+	if len(expected.ClassScores) > len(res.ClassScores) {
+		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.ClassScores), len(res.ClassScores)))
+		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
+	}
+
+	// 最新のクラスの成績はまだ更新されているか判断できない
+	// 一つ前のクラスの処理が終わらないと次のクラスの処理は始まらないので、
+	// 一つ前のクラスまでの成績は正しくなっているはず
+	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
+	for i := 0; i < len(expected.ClassScores)-1; i++ {
+		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
+		err := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) error {
+	if expected.ClassID != res.ClassID {
+		AdminLogger.Println("expected: ", expected.ClassID, "actual: ", res.ClassID)
+		return errInvalidResponse("成績確認でのクラスのIDが一致しません")
+	}
+	if expected.Part != res.Part {
+		AdminLogger.Println("expected: ", expected.Part, "actual: ", res.Part)
+		return errInvalidResponse("成績確認でのクラスのpartが一致しません")
+	}
+
+	if expected.Title != res.Title {
+		AdminLogger.Println("expected: ", expected.Title, "actual: ", res.Title)
+		return errInvalidResponse("成績確認でのクラスのタイトルが一致しません")
+	}
+
+	if expected.Score != res.Score {
+		AdminLogger.Println("expected: ", expected.Score, "actual: ", res.Score)
+		return errInvalidResponse("成績確認でのクラスのスコアが一致しません")
+	}
+
 	return nil
 }
 
@@ -186,12 +267,11 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 	return nil
 }
 
-func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.SearchCourseParam) []error {
-	errs := make([]error, 0)
+func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
 	for _, course := range res {
 		if rand.Float64() < searchCourseVerifyRate {
 			if err := verifySearchCourseResult(course, param); err != nil {
-				errs = append(errs, err)
+				return err
 			}
 		}
 	}
@@ -199,12 +279,11 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 	// CreatedAtの降順でソートされているか
 	for i := 0; i < len(res)-1; i++ {
 		if res[i].Code > res[i+1].Code {
-			errs = append(errs, errInvalidResponse("科目検索結果の順序が不正です"))
-			break
+			return errInvalidResponse("科目検索結果の順序が不正です")
 		}
 	}
 
-	return errs
+	return nil
 }
 
 func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Course) error {
@@ -301,9 +380,7 @@ func verifyAnnouncementsContent(res *api.AnnouncementResponse, announcementStatu
 	return nil
 }
 
-func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) []error {
-	errs := make([]error, 0)
-
+func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) error {
 	// リストの中身の検証
 	// MEMO: ランダムで数件チェックにしてもいいかも
 	// MEMO: unreadだけ返すとハックできそう
@@ -316,21 +393,20 @@ func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Stude
 		}
 
 		if err := verifyAnnouncementsContent(&announcement, announcementStatus); err != nil {
-			errs = append(errs, err)
+			return err
 		}
 	}
 
 	// CreatedAtの降順でソートされているか
 	for i := 0; i < len(res.Announcements)-1; i++ {
 		if res.Announcements[i].CreatedAt < res.Announcements[i+1].CreatedAt {
-			errs = append(errs, errInvalidResponse("お知らせの順序が不正です"))
-			break
+			return errInvalidResponse("お知らせの順序が不正です")
 		}
 	}
 
 	// MEMO: res.UnreadCountはload中には検証できなさそう
 
-	return errs
+	return nil
 }
 
 func verifyClass(res *api.GetClassResponse, class *model.Class) error {
@@ -423,11 +499,9 @@ func verifyPageResource(res *http.Response, resources agent.Resources) []error {
 	}
 
 	checks := []error{
-		// TODO: sync FE assets
-		// hattoriがあとでassetsの生成方法も含めて修正する
-		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/3ee63ae.js")], "/_nuxt/3ee63ae.js"),
-		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/efb1367.js")], "/_nuxt/efb1367.js"),
-		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/8d2be6e.js")], "/_nuxt/8d2be6e.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/app.js")], "/_nuxt/app.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/runtime.js")], "/_nuxt/runtime.js"),
+		verifyResource(resources[joinURL(res.Request.URL, "/_nuxt/css/app.css")], "/_nuxt/css/app.css"),
 	}
 
 	var errs []error

@@ -1,12 +1,11 @@
 package scenario
 
 import (
-	"context"
 	"math/rand"
 	"net/url"
 	"sync"
+	"time"
 
-	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/pubsub"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
@@ -32,6 +31,7 @@ type Scenario struct {
 	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
 	finishedCourseCount int              // FIXME Debug
 	language            string
+	loadRequestEndTime  time.Time
 
 	mu sync.RWMutex
 }
@@ -68,15 +68,6 @@ func NewScenario(config *Config) (*Scenario, error) {
 		studentPool:        NewUserPool(studentsData),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 	}, nil
-}
-
-func (s *Scenario) Validation(context.Context, *isucandar.BenchmarkStep) error {
-	if s.NoLoad {
-		return nil
-	}
-	ContestantLogger.Printf("===> VALIDATION")
-
-	return nil
 }
 
 func (s *Scenario) Language() string {

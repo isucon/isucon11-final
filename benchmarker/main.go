@@ -10,7 +10,6 @@ import (
 	"os"
 	"runtime/pprof"
 	"sort"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -27,8 +26,11 @@ import (
 )
 
 const (
-	loadTimeout        string = "60s"
-	errorFailThreshold int64  = 100
+	defaultRequestTimeout = 5 * time.Second
+	// loadTimeout はLoadフェーズの終了時間
+	// load.goには別途「Loadのリクエストを送り続ける時間」を定義しているので注意
+	loadTimeout              = 70 * time.Second
+	errorFailThreshold int64 = 100
 )
 
 var (
@@ -57,7 +59,6 @@ func init() {
 
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
-	flag.StringVar(&timeoutDuration, "timeout", "10s", "request timeout duration")
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
@@ -65,11 +66,7 @@ func init() {
 
 	flag.Parse()
 
-	timeout, err := time.ParseDuration(timeoutDuration)
-	if err != nil {
-		panic(err)
-	}
-	agent.DefaultRequestTimeout = timeout
+	agent.DefaultRequestTimeout = defaultRequestTimeout
 }
 
 func checkError(err error) (critical bool, timeout bool, deduction bool) {
@@ -202,10 +199,6 @@ func main() {
 		panic(err)
 	}
 
-	loadTimeout, err := time.ParseDuration(loadTimeout)
-	if err != nil {
-		panic(err)
-	}
 	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout))
 	if err != nil {
 		panic(err)
@@ -233,15 +226,11 @@ func main() {
 
 	b.AddScenario(s)
 
-	wg := sync.WaitGroup{}
 	// 経過時間の記録用
 	b.Load(func(ctx context.Context, step *isucandar.BenchmarkStep) error {
 		if noLoad {
 			return nil
 		}
-
-		wg.Add(1)
-		defer wg.Done()
 
 		startAt := time.Now()
 		// 途中経過を3秒毎に送信
@@ -261,8 +250,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := b.Start(ctx)
-
-	wg.Wait()
 
 	if !sendResult(s, result, true) && exitStatusOnFail {
 		os.Exit(1)
