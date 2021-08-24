@@ -18,6 +18,10 @@ import (
 	"github.com/isucon/isucandar"
 )
 
+const (
+	acceptableFloatError = 0.9
+)
+
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	if s.NoLoad {
 		return nil
@@ -116,27 +120,27 @@ func validateSummary(expected *model.Summary, actual *api.Summary) error {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
 	}
 
-	if expected.GPT != actual.GPT {
+	if math.Abs(expected.GPT-actual.GPT) > acceptableFloatError {
 		AdminLogger.Println("gpt. expected: ", expected.GPT, "actual: ", actual.GPT)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptが一致しません"))
 	}
 
-	if expected.GptAvg != actual.GptAvg {
+	if math.Abs(expected.GptAvg-actual.GptAvg) > acceptableFloatError {
 		AdminLogger.Println("gptavg. expected: ", expected.GptAvg, "actual: ", actual.GptAvg)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのGptAvgが一致しません"))
 	}
 
-	if expected.GptMax != actual.GptMax {
+	if math.Abs(expected.GptMax-actual.GptMax) > acceptableFloatError {
 		AdminLogger.Println("gptmax. expected: ", expected.GptMax, "actual: ", actual.GptMax)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptMaxが一致しません"))
 	}
 
-	if expected.GptMin != actual.GptMin {
+	if math.Abs(expected.GptMin-actual.GptMin) > acceptableFloatError {
 		AdminLogger.Println("gptmin. expected: ", expected.GptMin, "actual: ", actual.GptMin)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptMinが一致しません"))
 	}
 
-	if expected.GptTScore != actual.GptTScore {
+	if math.Abs(expected.GptTScore-actual.GptTScore) > acceptableFloatError {
 		AdminLogger.Println("gpttscore. expected: ", expected.GptTScore, "actual: ", actual.GptTScore)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptTScoreが一致しません"))
 	}
@@ -158,10 +162,6 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreが一致しません"))
 	}
 
-	if expected.TotalScoreAvg != actual.TotalScoreAvg {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
-	}
-
 	if expected.TotalScoreMax != actual.TotalScoreMax {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません"))
 	}
@@ -170,7 +170,11 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
 	}
 
-	if expected.TotalScoreTScore != actual.TotalScoreTScore {
+	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > acceptableFloatError {
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
+	}
+
+	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > acceptableFloatError {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
 	}
 
