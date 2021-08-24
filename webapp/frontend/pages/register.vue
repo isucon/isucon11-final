@@ -17,7 +17,18 @@
                       :key="`link-${p}-${w}-${i}`"
                       :href="`/syllabus/${course.id}`"
                       target="_blank"
-                      class="flex-grow h-30 py-1 w-full cursor-pointer"
+                      class="
+                        flex-grow
+                        h-30
+                        px-2
+                        py-2
+                        w-full
+                        cursor-pointer
+                        transition
+                        duration-500
+                        ease
+                        hover:bg-primary-100
+                      "
                     >
                       <div class="flex flex-col">
                         <span class="text-primary-500">
@@ -43,7 +54,15 @@
                   <template v-else>
                     <button
                       :key="`button-${p}-${w}-${i}`"
-                      class="h-full w-full cursor-pointer"
+                      class="
+                        h-full
+                        w-full
+                        cursor-pointer
+                        transition
+                        duration-500
+                        ease
+                        hover:bg-primary-100
+                      "
                       @click="onClickSearchCourse(course)"
                     >
                       <fa-icon icon="pen" size="lg" class="text-primary-500" />

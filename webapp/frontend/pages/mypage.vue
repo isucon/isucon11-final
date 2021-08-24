@@ -70,7 +70,17 @@
                   <template v-if="course !== undefined">
                     <NuxtLink
                       :to="`/courses/${course.id}`"
-                      class="flex-grow h-30 py-1 w-full"
+                      class="
+                        flex-grow
+                        h-30
+                        px-2
+                        py-2
+                        w-full
+                        transition
+                        duration-500
+                        ease
+                        hover:bg-primary-100
+                      "
                     >
                       <div class="flex flex-col">
                         <span class="text-primary-500 font-bold">{{
