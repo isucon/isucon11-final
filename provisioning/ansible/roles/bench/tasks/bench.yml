@@ -6,4 +6,4 @@
     dest: /tmp/benchmarker
     owner: isucon
     group: isucon
-  notify: "Restart isuxportal-supervisor.service"
+  #notify: "Restart isuxportal-supervisor.service"
