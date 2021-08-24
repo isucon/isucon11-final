@@ -20,7 +20,7 @@
               type="number"
               placeholder="講義回を入力"
               :value="String(params.part)"
-              @input="updateNumberParam('part', $event)"
+              @input="$set(params, 'part', Number($event))"
             />
           </div>
           <div class="flex-1">
@@ -143,9 +143,6 @@ export default Vue.extend({
         `/api/syllabus?teacher=${user.name}`
       )
       this.courses = courses
-    },
-    updateNumberParam(fieldname: string, value: string) {
-      this.$set(this.params, fieldname, Number(value))
     },
     async submit() {
       this.params.createdAt = Math.floor(new Date().getTime() / 1000)

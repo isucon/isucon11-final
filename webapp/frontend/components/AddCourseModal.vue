@@ -53,7 +53,7 @@
               type="number"
               placeholder="単位数を入力"
               :value="String(params.credit)"
-              @input="updateNumberParam('credit', $event)"
+              @input="$set(params, 'credit', Number($event))"
             />
           </div>
           <div class="flex-1">
@@ -76,7 +76,7 @@
               label="時限"
               :options="periods"
               :selected="String(params.period)"
-              @change="updateNumberParam('period', $event)"
+              @change="$set(params, 'period', Number($event))"
             />
           </div>
         </div>
@@ -172,9 +172,6 @@ export default Vue.extend({
     },
   },
   methods: {
-    updateNumberParam(fieldname: string, value: string) {
-      this.$set(this.params, fieldname, Number(value))
-    },
     async submit() {
       try {
         await this.$axios.post(`/api/courses`, this.params)

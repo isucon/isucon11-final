@@ -39,7 +39,7 @@
                 type="number"
                 placeholder="成績を入力"
                 :value="String(param.score)"
-                @input="updateNumberParam('score', $event)"
+                @input="$set(param, 'score', Number($event))"
               />
             </div>
           </div>
@@ -166,9 +166,6 @@ export default Vue.extend({
         `/api/courses/${this.courseId}/classes`
       )
       this.classes = classes
-    },
-    updateNumberParam(fieldname: string, value: string) {
-      this.$set(this.params, fieldname, Number(value))
     },
     async submit() {
       try {
