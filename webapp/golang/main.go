@@ -545,8 +545,6 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var res GetGradeResponse
-
 	// 登録済の科目一覧取得
 	var registeredCourses []Course
 	query := "SELECT `courses`.*" +
@@ -559,7 +557,9 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	// 科目毎の成績計算処理
-	res.CourseResults = make([]CourseResult, 0, len(registeredCourses))
+	courseResults := make([]CourseResult, 0, len(registeredCourses))
+	summaryGpt := 0.0
+	summaryCredits := 0
 	for _, course := range registeredCourses {
 		// この科目を受講している学生のTotalScore一覧を取得
 		var totals []int
@@ -645,7 +645,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			totalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
 		}
 
-		res.CourseResults = append(res.CourseResults, CourseResult{
+		courseResults = append(courseResults, CourseResult{
 			Name:             course.Name,
 			Code:             course.Code,
 			TotalScore:       myTotalScore,
@@ -657,8 +657,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		})
 
 		// 自分のGPT計算
-		res.Summary.GPT += float64(myTotalScore*int(course.Credit)) / 100
-		res.Summary.Credits += int(course.Credit)
+		summaryGpt += float64(myTotalScore*int(course.Credit)) / 100
+		summaryCredits += int(course.Credit)
 	}
 
 	// GPTの統計値
@@ -704,13 +704,20 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	if gptStdDev == 0 {
 		gptTScore = 50
 	} else {
-		gptTScore = (res.Summary.GPT-gptAvg)/gptStdDev*10 + 50
+		gptTScore = (summaryGpt-gptAvg)/gptStdDev*10 + 50
 	}
 
-	res.Summary.GptTScore = gptTScore
-	res.Summary.GptAvg = gptAvg
-	res.Summary.GptMax = gptMax
-	res.Summary.GptMin = gptMin
+	res := GetGradeResponse{
+		Summary: Summary{
+			Credits:   summaryCredits,
+			GPT:       summaryGpt,
+			GptTScore: gptTScore,
+			GptAvg:    gptAvg,
+			GptMax:    gptMax,
+			GptMin:    gptMin,
+		},
+		CourseResults: courseResults,
+	}
 
 	return c.JSON(http.StatusOK, res)
 }
