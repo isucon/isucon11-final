@@ -72,6 +72,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		expect, ok := expectCourses[actual.ID.String()]
 		if !ok {
 			step.AddError(errNotMatch)
+			return
 		}
 
 		if !AssertEqual("course ID", expect.ID, actual.ID.String()) ||
@@ -87,6 +88,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			!AssertEqual("course Keywords", expect.Keywords, actual.Keywords) ||
 			!AssertEqual("course Description", expect.Description, actual.Description) {
 			step.AddError(errNotMatch)
+			return
 		}
 	}
 	return
