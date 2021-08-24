@@ -17,12 +17,12 @@
   roles:
     - langs.nodejs
     - langs.rust
-    #- contestant
+    - contestant
 
-#- name: "bench roles"
-#  hosts: [bench, standalone]
-#  tags: [bench, standalone]
-#  become: true
-#  roles:
-#    - bench
-#    - bench.supervisor
+- name: "bench roles"
+  hosts: [bench, standalone]
+  tags: [bench, standalone]
+  become: true
+  roles:
+    - bench
+    - bench.supervisor
