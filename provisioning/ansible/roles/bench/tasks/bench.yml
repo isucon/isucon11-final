@@ -2,13 +2,8 @@
 - name: "roles/bench/tasks/bench: Deploy isucon11-final benchmarker"
   become_user: isucon
   copy:
-    remote_src: yes
-    src: /tmp/isucon11-final/benchmarker
-    dest: /home/isucon/
+    src: /dev/shm/files-generated/benchmarker
+    dest: /tmp/benchmarker
     owner: isucon
     group: isucon
-
-- name: "roles/bench/tasks/bench: Build benchmarker"
-  make:
-    chdir: /home/isucon/benchmarker
-    target: all
+  notify: "Restart isuxportal-supervisor.service"

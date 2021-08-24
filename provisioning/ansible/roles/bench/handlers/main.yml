@@ -1,0 +1,6 @@
+---
+- name: "Restart isuxportal-supervisor.service"
+  become_user: root
+  systemd:
+    name: "isuxportal-supervisor.service"
+    state: restarted
