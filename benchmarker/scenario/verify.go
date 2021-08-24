@@ -114,8 +114,8 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 
 	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
 	// そのため、追加済みクラスのスコアの数よりレスポンス内クラスのスコアの数が少ない場合はエラーとなる
-	if len(expected.ClassScores) > len(res.ClassScores) {
-		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.ClassScores), len(res.ClassScores)))
+	if len(expected.SimpleClassScores) > len(res.ClassScores) {
+		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.SimpleClassScores), len(res.ClassScores)))
 		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
 	}
 
@@ -123,9 +123,9 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	// 一つ前のクラスの処理が終わらないと次のクラスの処理は始まらないので、
 	// 一つ前のクラスまでの成績は正しくなっているはず
 	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
-	for i := 0; i < len(expected.ClassScores)-1; i++ {
+	for i := 0; i < len(expected.SimpleClassScores)-1; i++ {
 		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
-		err := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
+		err := verifyClassScores(expected.SimpleClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
 		if err != nil {
 			return err
 		}

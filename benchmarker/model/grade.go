@@ -2,16 +2,16 @@ package model
 
 // CourseResultのうち計算しなくていいやつ
 type SimpleCourseResult struct {
-	Name        string // course name
-	Code        string // course code
-	ClassScores []*SimpleClassScore
+	Name              string // course name
+	Code              string // course code
+	SimpleClassScores []*SimpleClassScore
 }
 
 func NewSimpleCourseResult(name, code string, classScores []*SimpleClassScore) *SimpleCourseResult {
 	return &SimpleCourseResult{
-		Name:        name,
-		Code:        code,
-		ClassScores: classScores,
+		Name:              name,
+		Code:              code,
+		SimpleClassScores: classScores,
 	}
 
 }

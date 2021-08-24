@@ -238,6 +238,9 @@ func (c *Course) CollectClassScores(userCode string) []*ClassScore {
 }
 
 func (c *Course) IntoCourseResult(userCode string) *CourseResult {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
 	if _, ok := c.registeredStudents[userCode]; !ok {
 		return nil
 	}
@@ -294,10 +297,6 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 		ClassScores:      classScores,
 	}
 }
-
-//func (c *Course) Gp(userCode string) float64 {
-//	return float64(c.TotalScore(userCode)) / 100
-//}
 
 func (c *Course) TotalScore(userCode string) int {
 	c.rmu.RLock()
