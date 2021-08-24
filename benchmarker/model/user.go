@@ -188,7 +188,7 @@ func (s *Student) GPT() float64 {
 		tmp += course.TotalScore(s.Code) * course.Credit
 	}
 
-	gpt := float64(tmp) / 100
+	gpt := float64(tmp) / 100.0
 
 	return gpt
 }

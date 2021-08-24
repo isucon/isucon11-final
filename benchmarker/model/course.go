@@ -222,6 +222,21 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 	return res
 }
 
+func (c *Course) CollectClassScores(userCode string) []*ClassScore {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	res := make([]*ClassScore, 0, len(c.classes))
+	for _, class := range c.classes {
+		class := class
+		if _, ok := class.submissionSummary[userCode]; ok {
+			res = append(res, class.IntoClassScore(userCode))
+		}
+	}
+
+	return res
+}
+
 func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 	if _, ok := c.registeredStudents[userCode]; !ok {
 		return nil
@@ -237,8 +252,8 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 
 	totalSum := 0
 	totalSquareSum := 0
-	totalMax := 500
-	totalMin := 0
+	totalMax := 0
+	totalMin := 500
 	for _, totalScore := range totalScores {
 		totalSum += totalScore
 		totalSquareSum += totalScore * totalScore
@@ -266,11 +281,7 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 		totalTScore = 10*(float64(totalScore)-totalAvg)/totalStdDev + 50
 	}
 
-	classScores := make([]*ClassScore, 0, len(c.classes))
-
-	for _, class := range c.classes {
-		classScores = append(classScores, class.IntoClassScore(userCode))
-	}
+	classScores := c.CollectClassScores(userCode)
 
 	return &CourseResult{
 		Name:             c.Name,
@@ -289,6 +300,9 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 //}
 
 func (c *Course) TotalScore(userCode string) int {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
 	score := 0
 	for _, class := range c.classes {
 		if v, ok := class.submissionSummary[userCode]; ok {

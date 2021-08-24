@@ -240,12 +240,10 @@ func calculateSummary(activeStudents []*model.Student, userCode string) model.Su
 	//}
 
 	gptSum := 0.0
-	gptSquareSum := 0.0
-	gptMax := math.MaxFloat64
-	gptMin := 0.0
+	gptMax := 0.0
+	gptMin := math.MaxFloat64
 	for _, gpt := range gpts {
 		gptSum += gpt
-		gptSquareSum += gpt * gpt
 
 		if gptMax < gpt {
 			gptMax = gpt
