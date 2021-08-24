@@ -1,16 +1,20 @@
 default: generate
 
-files-generated:  files-generated/REVISION files-generated/isucon11-final.tar
+files-generated:  files-generated/REVISION files-generated/isucon11-final.tar files-generated/benchmarker
 
-files-generated/REVISION:
+files-generated/REVISION: $(wildcard ../../**/*)
 	mkdir -p files-generated/
-	if [ -n "$(GITHUB_SHA)" ]; then echo "$(GITHUB_SHA)" > files-generated/REVISION; fi
-	if [ ! -e files-generated/REVISION ]; then git rev-parse HEAD > files-generated/REVISION; fi
+	if [ -n "$(GITHUB_SHA)" ]; then echo "$(GITHUB_SHA)" > files-generated/REVISION; else git rev-parse HEAD > files-generated/REVISION; fi
 	test -e files-generated/REVISION
 
 files-generated/isucon11-final.tar: files-generated/REVISION
 	mkdir -p files-generated/
 	git -C "$(shell git rev-parse --show-toplevel)" archive "$(shell cat files-generated/REVISION)" > files-generated/isucon11-final.tar
+
+files-generated/benchmarker: $(wildcard ../../benchmarker/**/*) $(wildcard ../../webapp/frontend/dist/**/*)
+	mkdir -p files-generated/
+	cd ../../benchmarker && make ./bin/benchmarker_linux_amd64
+	cp ../../benchmarker/bin/benchmarker_linux_amd64 files-generated/benchmarker
 
 generate: output target/contestant.json target/bench.json target/standalone.json
 

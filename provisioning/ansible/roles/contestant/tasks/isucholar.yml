@@ -16,6 +16,17 @@
     owner: isucon
     group: isucon
 
+- name: "roles/contestant/tasks/isucholar-go: Build Web Frontend"
+  become_user: isucon
+  args:
+    chdir: /home/isucon/webapp/frontend/
+  environment:
+    PATH: "/home/isucon/local/node/bin:{{ ansible_env.PATH }}"
+  shell: |
+    npm install
+    npm run build
+    npm run generate
+
 - name: "roles/contestant/tasks/isucholar: Include isucholar-go.yml"
   include: isucholar-go.yml
 
@@ -30,7 +41,9 @@
 
 - name: "roles/contestant/tasks/isucholar: Initialize isucholar database"
   become_user: isucon
+  args:
+    chdir: /home/isucon/webapp/sql
   shell: |
     mysql -uisucon -pisucon -e 'CREATE DATABASE isucholar'
-    curl -X POST http://127.0.0.1/initialize
-
+    mysql -uisucon -pisucon isucholar < 1_schema.sql
+    mysql -uisucon -pisucon isucholar < 2_init.sql

@@ -6,7 +6,7 @@
 
 - name: "roles/bench.supervisor/tasks/main: Deploy isucon/isucon11-portal"
   unarchive:
-    src: isucon11-portal.tar
+    src: /dev/shm/files-generated/isucon11-portal.tar
     dest: /tmp/isucon11-portal/
     owner: isucon
     group: isucon
