@@ -68,11 +68,15 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		return
 	}
 
-	// 中身の検証はLoadでしているので省略
 	for _, actual := range actuals {
-		expect := expectCourses[actual.ID.String()]
+		expect, ok := expectCourses[actual.ID.String()]
+		if !ok {
+			step.AddError(errNotMatch)
+		}
 
 		if !AssertEqual("course ID", expect.ID, actual.ID.String()) ||
+			!AssertEqual("course Code", expect.Code, actual.Code) ||
+			!AssertEqual("course Name", expect.Name, actual.Name) ||
 			!AssertEqual("course Type", api.CourseType(expect.Type), actual.Type) ||
 			!AssertEqual("course Credit", uint8(expect.Credit), actual.Credit) ||
 			!AssertEqual("course Teacher", expect.Teacher().Name, actual.Teacher) ||
