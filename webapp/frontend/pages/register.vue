@@ -13,9 +13,10 @@
               <CalendarCell :key="`course-${p}-${w}`">
                 <template v-for="(course, i) in weekdayCourses">
                   <template v-if="course.id">
-                    <NuxtLink
+                    <a
                       :key="`link-${p}-${w}-${i}`"
-                      :to="`/courses/${course.id}`"
+                      :href="`/syllabus/${course.id}`"
+                      target="_blank"
                       class="flex-grow h-30 py-1 w-full cursor-pointer"
                     >
                       <div class="flex flex-col">
@@ -37,7 +38,7 @@
                         </span>
                         <span class="text-sm">{{ course.teacher }}</span>
                       </div>
-                    </NuxtLink>
+                    </a>
                   </template>
                   <template v-else>
                     <button
