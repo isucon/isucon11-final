@@ -7,11 +7,14 @@ import (
 )
 
 var (
-	// 競技者に見せてもいい内容を書くロガー
+	// ContestantLogger は競技者に見せてもいい内容を書くロガー
+	// ex: エラー内容や最終スコア
 	ContestantLogger *log.Logger
-	// 運営だけが見れる内容を書くロガー
+	// AdminLogger は運営だけが見れる内容を書くロガー
+	// ex: 本番で改善傾向追うための途中スコアやAddErrorしたログ
 	AdminLogger *log.Logger
-	// デバッグ用で仕込んでいるロガー
+	// DebugLogger デバッグ用で仕込んでいるロガー
+	// ex: リクエスト単位で仕込んでいてリクエスト数とか見たければgrepなどで調べる
 	DebugLogger *log.Logger
 )
 
