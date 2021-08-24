@@ -20,12 +20,12 @@
             <Button @click="visibleModal = 'AddClass'">新規登録</Button>
           </div>
           <div class="py-4">
-            <Button @click="visibleModal = 'RegisterScores'">成績登録</Button>
-          </div>
-          <div class="py-4">
             <Button @click="visibleModal = 'DownloadAssignments'"
               >提出課題のダウンロード</Button
             >
+          </div>
+          <div class="py-4">
+            <Button @click="visibleModal = 'RegisterScores'">成績登録</Button>
           </div>
         </section>
       </div>

@@ -80,17 +80,14 @@ import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import Select, { Option } from '~/components/common/Select.vue'
-import { Course, AddClassRequest } from '~/types/courses'
-
-type MyCourseData = {
-  courses: Course[]
-}
+import { Course, AddClassRequest, User } from '~/types/courses'
 
 type SubmitFormData = {
   failed: boolean
   courseId: string
   params: AddClassRequest
-} & MyCourseData
+  courses: Course[]
+}
 
 const initParams: AddClassRequest = {
   part: 1,
@@ -114,40 +111,11 @@ export default Vue.extend({
       required: true,
     },
   },
-  // async asyncData(): Promise<MyCourseData> {
-  //   const courses: Course[] = await $axios.$get('/api/syllabus', { teacher:  })
-  //   return courses
-  // },
   data(): SubmitFormData {
     return {
       failed: false,
       courseId: '',
-      courses: [
-        {
-          id: 'ididididididid',
-          code: 'X9991',
-          type: 'liberal-arts',
-          name: 'testtest',
-          description: 'deeeeeeeeeeeescription',
-          credit: 2,
-          period: 4,
-          dayOfWeek: 'tuesday',
-          teacher: '伊藤 翔',
-          keywords: 'hoge',
-        },
-        {
-          id: 'IDIDIDIDIDIDIDIDID',
-          code: 'X9992',
-          type: 'liberal-arts',
-          name: 'hogehogefugafuga',
-          description: 'deeeeeeeeeeeescriiiiiiiiiiiiiiiiiiption',
-          credit: 2,
-          period: 4,
-          dayOfWeek: 'tuesday',
-          teacher: '伊藤 翔',
-          keywords: 'fuga',
-        },
-      ],
+      courses: [],
       params: Object.assign({}, initParams),
     }
   },
@@ -161,12 +129,26 @@ export default Vue.extend({
       })
     },
   },
+  watch: {
+    async isShown(newval: boolean) {
+      if (newval) {
+        await this.loadCourses()
+      }
+    },
+  },
   methods: {
+    async loadCourses() {
+      const user: User = await this.$axios.$get(`/api/users/me`)
+      const courses: Course[] = await this.$axios.$get(
+        `/api/syllabus?teacher=${user.name}`
+      )
+      this.courses = courses
+    },
     updateNumberParam(fieldname: string, value: string) {
       this.$set(this.params, fieldname, Number(value))
     },
     async submit() {
-      this.params.createdAt = new Date().getTime()
+      this.params.createdAt = Math.floor(new Date().getTime() / 1000)
       try {
         await this.$axios.post(
           `/api/courses/${this.courseId}/classes`,

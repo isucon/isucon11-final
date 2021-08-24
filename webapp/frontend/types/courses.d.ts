@@ -9,6 +9,12 @@ export type CourseType = 'liberal-arts' | 'major-subjects'
 
 export type CourseStatus = 'registration' | 'in-progress' | 'closed'
 
+export type User = {
+  code: string
+  name: string
+  isAdmin: boolean
+}
+
 export type SearchCourseRequest = {
   keywords?: string
   type?: string
@@ -78,10 +84,12 @@ export type AddClassRequest = {
   createdAt: number
 }
 
-export type RegisterScoreRequest = {
+type RegisterScoreRequestObject = {
   userCode: string
   score: number
 }
+
+export type RegisterScoreRequest = RegisterScoreRequestObject[]
 
 type SummaryGrade = {
   gpt: number

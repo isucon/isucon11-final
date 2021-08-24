@@ -19,29 +19,31 @@
             :options="classOptions"
           />
         </div>
-        <div class="flex flex-row space-x-2">
-          <div class="flex-1">
-            <TextField
-              id="params-usercode"
-              v-model="params.userCode"
-              label="生徒の学籍番号"
-              label-direction="vertical"
-              type="text"
-              placeholder="生徒の学籍番号を入力"
-            />
+        <template v-for="(param, index) in params">
+          <div :key="`score-${index}`" class="flex flex-row space-x-2">
+            <div class="flex-1">
+              <TextField
+                id="params-usercode"
+                v-model="param.userCode"
+                label="生徒の学籍番号"
+                label-direction="vertical"
+                type="text"
+                placeholder="生徒の学籍番号を入力"
+              />
+            </div>
+            <div class="flex-1">
+              <TextField
+                id="params-score"
+                label="成績"
+                label-direction="vertical"
+                type="number"
+                placeholder="成績を入力"
+                :value="String(param.score)"
+                @input="updateNumberParam('score', $event)"
+              />
+            </div>
           </div>
-          <div class="flex-1">
-            <TextField
-              id="params-score"
-              label="成績"
-              label-direction="vertical"
-              type="number"
-              placeholder="成績を入力"
-              :value="String(params.score)"
-              @input="updateNumberParam('score', $event)"
-            />
-          </div>
-        </div>
+        </template>
       </div>
       <div
         v-if="failed"
@@ -78,24 +80,23 @@ import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import Select, { Option } from '~/components/common/Select.vue'
-import { Course, RegisterScoreRequest, ClassInfo } from '~/types/courses'
-
-type AsyncLoadData = {
-  courses: Course[]
-  classes: ClassInfo[]
-}
+import { Course, RegisterScoreRequest, ClassInfo, User } from '~/types/courses'
 
 type SubmitFormData = {
   failed: boolean
   courseId: string
   classId: string
+  courses: Course[]
+  classes: ClassInfo[]
   params: RegisterScoreRequest
-} & AsyncLoadData
-
-const initParams: RegisterScoreRequest = {
-  userCode: '',
-  score: 0,
 }
+
+const initParams: RegisterScoreRequest = [
+  {
+    userCode: '',
+    score: 0,
+  },
+]
 
 export default Vue.extend({
   components: {
@@ -112,43 +113,14 @@ export default Vue.extend({
       required: true,
     },
   },
-  // async asyncData(): Promise<MyCourseData> {
-  //   const courses: Course[] = await $axios.$get('/api/syllabus', { teacher:  })
-  //   return courses
-  // },
   data(): SubmitFormData {
     return {
       failed: false,
       courseId: '',
       classId: '',
-      courses: [
-        {
-          id: 'ididididididid',
-          code: 'X9991',
-          type: 'liberal-arts',
-          name: 'testtest',
-          description: 'deeeeeeeeeeeescription',
-          credit: 2,
-          period: 4,
-          dayOfWeek: 'tuesday',
-          teacher: '伊藤 翔',
-          keywords: 'hoge',
-        },
-        {
-          id: 'IDIDIDIDIDIDIDIDID',
-          code: 'X9992',
-          type: 'liberal-arts',
-          name: 'hogehogefugafuga',
-          description: 'deeeeeeeeeeeescriiiiiiiiiiiiiiiiiiption',
-          credit: 2,
-          period: 4,
-          dayOfWeek: 'tuesday',
-          teacher: '伊藤 翔',
-          keywords: 'fuga',
-        },
-      ],
+      courses: [],
       classes: [],
-      params: Object.assign({}, initParams),
+      params: initParams.map((o) => Object.assign({}, o)),
     }
   },
   computed: {
@@ -169,7 +141,32 @@ export default Vue.extend({
       })
     },
   },
+  watch: {
+    async isShown(newval: boolean) {
+      if (newval) {
+        await this.loadCourses()
+      }
+    },
+    async courseId(newval: string) {
+      if (newval) {
+        await this.loadClasses()
+      }
+    },
+  },
   methods: {
+    async loadCourses() {
+      const user: User = await this.$axios.$get(`/api/users/me`)
+      const courses: Course[] = await this.$axios.$get(
+        `/api/syllabus?teacher=${user.name}`
+      )
+      this.courses = courses
+    },
+    async loadClasses() {
+      const classes: ClassInfo[] = await this.$axios.$get(
+        `/api/courses/${this.courseId}/classes`
+      )
+      this.classes = classes
+    },
     updateNumberParam(fieldname: string, value: string) {
       this.$set(this.params, fieldname, Number(value))
     },

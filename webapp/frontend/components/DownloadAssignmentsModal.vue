@@ -59,18 +59,15 @@ import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import Select, { Option } from '~/components/common/Select.vue'
-import { Course, ClassInfo } from '~/types/courses'
-
-type AsyncLoadData = {
-  courses: Course[]
-  classes: ClassInfo[]
-}
+import { Course, ClassInfo, User } from '~/types/courses'
 
 type SubmitFormData = {
   failed: boolean
   courseId: string
   classId: string
-} & AsyncLoadData
+  courses: Course[]
+  classes: ClassInfo[]
+}
 
 export default Vue.extend({
   components: {
@@ -87,41 +84,12 @@ export default Vue.extend({
       required: true,
     },
   },
-  // async asyncData(): Promise<MyCourseData> {
-  //   const courses: Course[] = await $axios.$get('/api/syllabus', { teacher:  })
-  //   return courses
-  // },
   data(): SubmitFormData {
     return {
       failed: false,
       courseId: '',
       classId: '',
-      courses: [
-        {
-          id: 'ididididididid',
-          code: 'X9991',
-          type: 'liberal-arts',
-          name: 'testtest',
-          description: 'deeeeeeeeeeeescription',
-          credit: 2,
-          period: 4,
-          dayOfWeek: 'tuesday',
-          teacher: '伊藤 翔',
-          keywords: 'hoge',
-        },
-        {
-          id: 'IDIDIDIDIDIDIDIDID',
-          code: 'X9992',
-          type: 'liberal-arts',
-          name: 'hogehogefugafuga',
-          description: 'deeeeeeeeeeeescriiiiiiiiiiiiiiiiiiption',
-          credit: 2,
-          period: 4,
-          dayOfWeek: 'tuesday',
-          teacher: '伊藤 翔',
-          keywords: 'fuga',
-        },
-      ],
+      courses: [],
       classes: [],
     }
   },
@@ -143,14 +111,50 @@ export default Vue.extend({
       })
     },
   },
+  watch: {
+    async isShown(newval: boolean) {
+      if (newval) {
+        await this.loadCourses()
+      }
+    },
+    async courseId(newval: string) {
+      if (newval) {
+        await this.loadClasses()
+      }
+    },
+  },
   methods: {
+    async loadCourses() {
+      const user: User = await this.$axios.$get(`/api/users/me`)
+      const courses: Course[] = await this.$axios.$get(
+        `/api/syllabus?teacher=${user.name}`
+      )
+      this.courses = courses
+    },
+    async loadClasses() {
+      const classes: ClassInfo[] = await this.$axios.$get(
+        `/api/courses/${this.courseId}/classes`
+      )
+      this.classes = classes
+    },
     async submit() {
       try {
-        await this.$axios.get(
-          `/api/courses/${this.courseId}/classes/${this.classId}/assignments/export`
-        )
-        notify('ダウンロードに成功しました')
-        this.close()
+        await this.$axios
+          .$get(
+            `/api/courses/${this.courseId}/classes/${this.classId}/assignments/export`,
+            {
+              responseType: 'blob',
+            }
+          )
+          .then((response) => {
+            const link = document.createElement('a')
+            link.href = window.URL.createObjectURL(response)
+            link.download = this.classId
+            link.click()
+
+            notify('ダウンロードに成功しました')
+            this.close()
+          })
       } catch (e) {
         notify('ダウンロードに失敗しました')
         this.showAlert()
