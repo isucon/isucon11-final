@@ -46,7 +46,6 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.BenchmarkStep) {
 	users := s.activeStudents
-	AdminLogger.Println("active students", len(users))
 
 	p := parallel.NewParallel(ctx, int32(len(users)))
 
@@ -56,7 +55,6 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			courses := user.Course()
-			AdminLogger.Println("courses", len(courses))
 			courseResults := make(map[string]*model.CourseResult, len(courses))
 			for _, course := range courses {
 				result := course.IntoCourseResult(user.Code)
@@ -155,30 +153,37 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 	}
 
 	if expected.Code != actual.Code {
+		AdminLogger.Println("code. expected: ", expected.Code, "actual: ", actual.Code)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのコードが一致しません"))
 	}
 
 	if expected.TotalScore != actual.TotalScore {
+		AdminLogger.Println("TotalScore. expected: ", expected.TotalScore, "actual: ", actual.TotalScore)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreが一致しません"))
 	}
 
 	if expected.TotalScoreMax != actual.TotalScoreMax {
+		AdminLogger.Println("TotalScoreMax. expected: ", expected.TotalScoreMax, "actual: ", actual.TotalScoreMax)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません"))
 	}
 
 	if expected.TotalScoreMin != actual.TotalScoreMin {
+		AdminLogger.Println("TotalScoreMin. expected: ", expected.TotalScoreMin, "actual: ", actual.TotalScoreMin)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
 	}
 
 	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > acceptableFloatError {
+		AdminLogger.Println("TotalScoreAvg. expected: ", expected.TotalScoreAvg, "actual: ", actual.TotalScoreAvg)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
 	}
 
 	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > acceptableFloatError {
+		AdminLogger.Println("TotalScoreTScore. expected: ", expected.TotalScoreTScore, "actual: ", actual.TotalScoreTScore)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
 	}
 
 	if len(expected.ClassScores) != len(actual.ClassScores) {
+		AdminLogger.Println("len ClassScores. expected: ", len(expected.ClassScores), "actual: ", len(actual.ClassScores))
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のClassScoresの数が一致しません"))
 	}
 
@@ -195,23 +200,27 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 
 func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) error {
 	if expected.ClassID != actual.ClassID {
-		AdminLogger.Println("classid. expected: ", expected.ClassID, "actual: ", actual.ClassID)
+		AdminLogger.Println("classID. expected: ", expected.ClassID, "actual: ", actual.ClassID)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのIDが一致しません"))
 	}
 
 	if expected.Part != actual.Part {
+		AdminLogger.Println("part. expected: ", expected.Part, "actual: ", actual.Part)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのpartが一致しません"))
 	}
 
 	if expected.Title != actual.Title {
+		AdminLogger.Println("title. expected: ", expected.Title, "actual: ", actual.Title)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
 	}
 
 	if expected.Score != actual.Score {
+		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
 	}
 
 	if expected.SubmitterCount != actual.Submitters {
+		AdminLogger.Println("submitters. expected: ", expected.SubmitterCount, "actual: ", actual.Submitters)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題の提出者の数が一致しません"))
 	}
 
@@ -232,6 +241,7 @@ func calculateSummary(activeStudents []*model.Student, userCode string) model.Su
 	for i, student := range activeStudents {
 		if student.Code == userCode {
 			targetUserGpt = student.GPT()
+			AdminLogger.Println(targetUserGpt)
 			gpts[i] = targetUserGpt
 			credits = student.TotalCredit()
 		} else {

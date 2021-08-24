@@ -66,19 +66,6 @@ type CourseResult struct {
 	ClassScores      []*ClassScore
 }
 
-func NewCourseResult(Name, Code string, TotalScore, TotalScoreMax, TotalScoreMin int, TotalScoreTScore, TotalScoreAvg float64, ClassScores []*ClassScore) *CourseResult {
-	return &CourseResult{
-		Name,
-		Code,
-		TotalScore,
-		TotalScoreTScore,
-		TotalScoreAvg,
-		TotalScoreMax,
-		TotalScoreMin,
-		ClassScores,
-	}
-}
-
 type ClassScore struct {
 	// 上3つの情報はclassから取得できるので無くてもいいかもしれない
 	ClassID string
@@ -87,14 +74,4 @@ type ClassScore struct {
 
 	Score          int // 0 - 100点
 	SubmitterCount int
-}
-
-func NewClassScore(class *Class, score, submitterCount int) *ClassScore {
-	return &ClassScore{
-		ClassID:        class.ID,
-		Title:          class.Title,
-		Part:           class.Part,
-		Score:          score,
-		SubmitterCount: submitterCount,
-	}
 }
