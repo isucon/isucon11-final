@@ -14,7 +14,7 @@ EXE=./bin/benchmarker
 .PHONY: all
 all: build ## Execute all tasks
 
-.PHONY: build
+.PHONY: assets build
 build: $(EXE) ## Build benchmarker
 
 .PHONY: clean

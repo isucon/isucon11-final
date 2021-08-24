@@ -1,6 +1,6 @@
 default: generate
 
-files-generated:  files-generated/REVISION files-generated/isucon11-final.tar
+files-generated:  files-generated/REVISION files-generated/isucon11-final.tar files-generated/benchmarker
 
 files-generated/REVISION:
 	mkdir -p files-generated/
@@ -11,6 +11,11 @@ files-generated/REVISION:
 files-generated/isucon11-final.tar: files-generated/REVISION
 	mkdir -p files-generated/
 	git -C "$(shell git rev-parse --show-toplevel)" archive "$(shell cat files-generated/REVISION)" > files-generated/isucon11-final.tar
+
+files-generated/benchmarker:
+	mkdir -p files-generated/
+	cd ../../benchmarker && make
+	mv ../../benchmarker/bin/benchmarker files-generated/benchmarker
 
 generate: output target/contestant.json target/bench.json target/standalone.json
 
