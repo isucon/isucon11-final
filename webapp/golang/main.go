@@ -528,15 +528,6 @@ type ClassScore struct {
 	Submitters int       `json:"submitters"` // 提出した生徒数
 }
 
-type SubmissionWithClassName struct {
-	UserID  uuid.UUID     `db:"user_id"`
-	ClassID uuid.UUID     `db:"class_id"`
-	Name    string        `db:"file_name"`
-	Score   sql.NullInt64 `db:"score"`
-	Part    uint8         `db:"part"`
-	Title   string        `db:"title"`
-}
-
 func (h *handlers) GetGrades(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -596,32 +587,34 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		classScores := make([]ClassScore, 0, len(classes))
 		var myTotalScore int
 		for _, class := range classes {
-			var submissions []SubmissionWithClassName
-			query := "SELECT `submissions`.*, `classes`.`part` AS `part`, `classes`.`title` AS `title`" +
-				" FROM `submissions`" +
-				" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
-				" WHERE `submissions`.`class_id` = ?"
-			if err := h.DB.Select(&submissions, query, class.ID); err != nil {
+			var submissionsCount int
+			if err := h.DB.Get(&submissionsCount, "SELECT COUNT(*) FROM `submissions` WHERE `class_id` = ?", class.ID); err != nil {
 				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
 
-			for _, submission := range submissions {
-				if uuid.Equal(userID, submission.UserID) {
-					var myScore *int
-					if submission.Score.Valid {
-						score := int(submission.Score.Int64)
-						myScore = &score
-						myTotalScore += score
-					}
-					classScores = append(classScores, ClassScore{
-						ClassID:    class.ID,
-						Part:       submission.Part,
-						Title:      submission.Title,
-						Score:      myScore,
-						Submitters: len(submissions),
-					})
-				}
+			var myScore sql.NullInt64
+			if err := h.DB.Get(&myScore, "SELECT `submissions`.`score` FROM `submissions` WHERE `user_id` = ? AND `class_id` = ?", userID, class.ID); err != nil && err != sql.ErrNoRows {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			} else if err == sql.ErrNoRows || !myScore.Valid {
+				classScores = append(classScores, ClassScore{
+					ClassID:    class.ID,
+					Part:       class.Part,
+					Title:      class.Title,
+					Score:      nil,
+					Submitters: submissionsCount,
+				})
+			} else {
+				score := int(myScore.Int64)
+				myTotalScore += score
+				classScores = append(classScores, ClassScore{
+					ClassID:    class.ID,
+					Part:       class.Part,
+					Title:      class.Title,
+					Score:      &score,
+					Submitters: submissionsCount,
+				})
 			}
 		}
 
