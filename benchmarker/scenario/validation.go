@@ -96,6 +96,16 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 		for _, expectStatus := range expectAnnouncements {
 			expect := expectStatus.Announcement
 			actual := actualAnnouncements[expect.ID]
+
+			// ベンチ内データが既読の場合のみUnreadの検証を行う
+			// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+			if !expectStatus.Unread {
+				if !AssertEqual("announcement Unread", true, actual.Unread) {
+					step.AddError(errNotMatch)
+					return
+				}
+			}
+
 			if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
 				!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
 				!AssertEqual("announcement Title", expect.Title, actual.Title) ||

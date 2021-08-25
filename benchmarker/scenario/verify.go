@@ -326,7 +326,7 @@ func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Cou
 	return nil
 }
 
-func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
+func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
 	if res.CourseID != announcementStatus.Announcement.CourseID {
 		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
 	}
@@ -343,12 +343,16 @@ func verifyAnnouncement(res *api.AnnouncementResponse, announcementStatus *model
 		return errInvalidResponse("お知らせのメッセージが期待する値と一致しません")
 	}
 
-	if res.Unread != announcementStatus.Unread {
-		return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
-	}
-
 	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
 		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
+	}
+
+	// ベンチ内データが既読の場合のみUnreadの検証を行う
+	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+	if !announcementStatus.Unread {
+		if !AssertEqual("announce unread", announcementStatus.Unread, res.Unread) {
+			return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
+		}
 	}
 
 	return nil
@@ -369,12 +373,16 @@ func verifyAnnouncementsContent(res *api.AnnouncementResponse, announcementStatu
 		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
 	}
 
-	if res.Unread != announcementStatus.Unread {
-		return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
-	}
-
 	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
 		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
+	}
+
+	// ベンチ内データが既読の場合のみUnreadの検証を行う
+	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+	if !announcementStatus.Unread {
+		if !AssertEqual("announce unread", announcementStatus.Unread, res.Unread) {
+			return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
+		}
 	}
 
 	return nil
