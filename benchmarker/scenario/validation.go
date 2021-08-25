@@ -18,10 +18,6 @@ import (
 	"github.com/isucon/isucandar"
 )
 
-const (
-	acceptableFloatError = 0.9
-)
-
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	if s.NoLoad {
 		return nil
@@ -78,7 +74,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 				return
 			}
 
-			err = validateUserGrade(&expected, &res)
+			err = validateUserGrade(&expected, &res, len(users))
 			if err != nil {
 				step.AddError(err)
 				return
@@ -91,13 +87,13 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	return
 }
 
-func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
+func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, studentCount int) error {
 	if len(expected.CourseResults) != len(actual.CourseResults) {
 		AdminLogger.Println("courseResult len. expected: ", len(expected.CourseResults), "actual: ", len(actual.CourseResults))
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のcourseResultsの数が一致しません"))
 	}
 
-	err := validateSummary(&expected.Summary, &actual.Summary)
+	err := validateSummary(&expected.Summary, &actual.Summary, studentCount)
 	if err != nil {
 		return err
 	}
@@ -118,33 +114,35 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) e
 	return nil
 }
 
-func validateSummary(expected *model.Summary, actual *api.Summary) error {
+func validateSummary(expected *model.Summary, actual *api.Summary, studentCount int) error {
 	if expected.Credits != actual.Credits {
 		AdminLogger.Println("credits. expected: ", expected.Credits, "actual: ", actual.Credits)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
 	}
 
-	if math.Abs(expected.GPA-actual.GPA) > acceptableFloatError {
+	// これは適当
+	acceptableGpaError := 0.5
+	if math.Abs(expected.GPA-actual.GPA) > acceptableGpaError {
 		AdminLogger.Println("gpa. expected: ", expected.GPA, "actual: ", actual.GPA)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません"))
 	}
 
-	if math.Abs(expected.GpaAvg-actual.GpaAvg) > acceptableFloatError {
+	if math.Abs(expected.GpaAvg-actual.GpaAvg) > acceptableGpaError/float64(studentCount) {
 		AdminLogger.Println("gpaavg. expected: ", expected.GpaAvg, "actual: ", actual.GpaAvg)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaAvgが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMax-actual.GpaMax) > acceptableFloatError {
+	if math.Abs(expected.GpaMax-actual.GpaMax) > acceptableGpaError {
 		AdminLogger.Println("gpamax. expected: ", expected.GpaMax, "actual: ", actual.GpaMax)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMaxが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMin-actual.GpaMin) > acceptableFloatError {
+	if math.Abs(expected.GpaMin-actual.GpaMin) > acceptableGpaError {
 		AdminLogger.Println("gpamin. expected: ", expected.GpaMin, "actual: ", actual.GpaMin)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMinが一致しません"))
 	}
 
-	if math.Abs(expected.GpaTScore-actual.GpaTScore) > acceptableFloatError {
+	if math.Abs(expected.GpaTScore-actual.GpaTScore) > acceptableGpaError {
 		AdminLogger.Println("gpatscore. expected: ", expected.GpaTScore, "actual: ", actual.GpaTScore)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaTScoreが一致しません"))
 	}
@@ -178,12 +176,16 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
 	}
 
-	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > acceptableFloatError {
+	// これは適当
+	acceptableGpaError := 0.5
+
+	// 決め打ちで5にした
+	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > acceptableGpaError/5 {
 		AdminLogger.Println("TotalScoreAvg. expected: ", expected.TotalScoreAvg, "actual: ", actual.TotalScoreAvg)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
 	}
 
-	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > acceptableFloatError {
+	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > acceptableGpaError {
 		AdminLogger.Println("TotalScoreTScore. expected: ", expected.TotalScoreTScore, "actual: ", actual.TotalScoreTScore)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
 	}
