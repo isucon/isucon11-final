@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"time"
 
+	util2 "github.com/isucon/isucon11-final/benchmarker/util"
+
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
@@ -306,7 +308,6 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 
 	targetUserGpa := 0.0
 	credits := 0
-	// activeStudentsをmapにするときは順番が保証されないことに注意
 
 	flg := false
 	for key, student := range students {
@@ -323,39 +324,10 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 		panic("TODO: userCode: " + userCode + " is not found")
 	}
 
-	gpaSum := 0.0
-	gpaMax := 0.0
-	gpaMin := math.MaxFloat64
-
-	if len(gpas) == 0 {
-		return model.Summary{
-			Credits:   credits,
-			GPA:       0,
-			GpaTScore: 0,
-			GpaAvg:    0,
-			GpaMax:    0,
-			GpaMin:    0,
-		}
-	}
-
-	for _, gpa := range gpas {
-		gpaSum += gpa
-
-		if gpaMax < gpa {
-			gpaMax = gpa
-		}
-
-		if gpaMin > gpa {
-			gpaMin = gpa
-		}
-	}
-
-	gpaAvg := gpaSum / float64(n)
-
-	gpaStdDev := 0.0
-	for _, gpa := range gpas {
-		gpaStdDev += math.Pow(gpa-gpaAvg, 2) / float64(n)
-	}
+	gpaAvg := util2.AverageFloat64(gpas, 0)
+	gpaMax := util2.MaxFloat64(gpas, 0)
+	gpaMin := util2.MinFloat64(gpas, 0)
+	gpaStdDev := util2.StdDevFloat64(gpas, gpaAvg)
 
 	gpaTScore := 0.0
 	if gpaStdDev == 0 {

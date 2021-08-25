@@ -2,9 +2,10 @@ package model
 
 import (
 	"context"
-	"math"
 	"sync"
 	"time"
+
+	util2 "github.com/isucon/isucon11-final/benchmarker/util"
 )
 
 type CourseParam struct {
@@ -247,45 +248,20 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 
 	totalScores := c.TotalScores()
 
-	n := len(totalScores)
-	if n == 0 {
-		// TODO
-		return &CourseResult{
-			Name:             c.Name,
-			Code:             c.Code,
-			TotalScore:       0,
-			TotalScoreTScore: 0,
-			TotalScoreAvg:    0,
-			TotalScoreMax:    0,
-			TotalScoreMin:    0,
-			ClassScores:      make([]*ClassScore, 0),
-		}
-	}
-
-	totalSum := 0
-	totalSquareSum := 0
-	totalMax := 0
-	totalMin := math.MaxInt32
+	totalScoresArr := make([]int, 0, len(totalScores))
 	for _, totalScore := range totalScores {
-		totalSum += totalScore
-		totalSquareSum += totalScore * totalScore
-
-		if totalMax < totalScore {
-			totalMax = totalScore
-		}
-
-		if totalMin > totalScore {
-			totalMin = totalScore
-		}
+		totalScoresArr = append(totalScoresArr, totalScore)
 	}
-	totalAvg := float64(totalSum) / float64(n)
+	totalAvg := util2.AverageInt(totalScoresArr, 0)
+	totalMax := util2.MaxInt(totalScoresArr, 0)
+	totalMin := util2.MinInt(totalScoresArr, 0)
+	totalStdDev := util2.StdDevInt(totalScoresArr, totalAvg)
 
-	totalStdDev := 0.0
-	for _, total := range totalScores {
-		totalStdDev += math.Pow(float64(total)-totalAvg, 2) / float64(n)
+	totalScore, ok := totalScores[userCode]
+	if !ok {
+		totalScore = 0
 	}
 
-	totalScore := totalScores[userCode]
 	totalTScore := 0.0
 	if totalStdDev == 0 {
 		totalTScore = 50
