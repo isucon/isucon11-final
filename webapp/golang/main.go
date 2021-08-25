@@ -503,11 +503,11 @@ type GetGradeResponse struct {
 
 type Summary struct {
 	Credits   int     `json:"credits"`
-	GPT       float64 `json:"gpt"`
-	GptTScore float64 `json:"gpt_t_score"` // 偏差値
-	GptAvg    float64 `json:"gpt_avg"`     // 平均値
-	GptMax    float64 `json:"gpt_max"`     // 最大値
-	GptMin    float64 `json:"gpt_min"`     // 最小値
+	GPA       float64 `json:"gpa"`
+	GpaTScore float64 `json:"gpa_t_score"` // 偏差値
+	GpaAvg    float64 `json:"gpa_avg"`     // 平均値
+	GpaMax    float64 `json:"gpa_max"`     // 最大値
+	GpaMin    float64 `json:"gpa_min"`     // 最小値
 }
 
 type CourseResult struct {
@@ -558,8 +558,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 	// 科目毎の成績計算処理
 	courseResults := make([]CourseResult, 0, len(registeredCourses))
-	summaryGpt := 0.0
-	summaryCredits := 0
+	myGPA := 0.0
+	myCredits := 0
 	for _, course := range registeredCourses {
 		// この科目を受講している学生のTotalScore一覧を取得
 		var totals []int
@@ -639,33 +639,36 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		}
 
 		// 対象科目の自分の偏差値の計算
-		var totalScoreTScore float64
+		var myTotalScoreTScore float64
 		if totalScoreStdDev == 0 {
-			totalScoreTScore = 50
+			myTotalScoreTScore = 50
 		} else {
-			totalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
+			myTotalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
 		}
 
 		courseResults = append(courseResults, CourseResult{
 			Name:             course.Name,
 			Code:             course.Code,
 			TotalScore:       myTotalScore,
-			TotalScoreTScore: totalScoreTScore,
+			TotalScoreTScore: myTotalScoreTScore,
 			TotalScoreAvg:    totalScoreAvg,
 			TotalScoreMax:    totalScoreMax,
 			TotalScoreMin:    totalScoreMin,
 			ClassScores:      classScores,
 		})
 
-		// 自分のGPT計算
-		summaryGpt += float64(myTotalScore*int(course.Credit)) / 100
-		summaryCredits += int(course.Credit)
+		// 自分のGPA計算
+		myGPA += float64(myTotalScore * int(course.Credit))
+		myCredits += int(course.Credit)
+	}
+	if myCredits > 0 {
+		myGPA = myGPA / 100 / float64(myCredits)
 	}
 
-	// GPTの統計値
-	// 一つでも科目を履修している学生のGPT一覧
-	var gpts []float64
-	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit` / 100), 0) AS `gpt`" +
+	// GPAの統計値
+	// 一つでも科目を履修している学生のGPA一覧
+	var gpas []float64
+	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / SUM(`courses`.`credit`) AS `gpa`" +
 		" FROM `users`" +
 		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
 		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
@@ -673,53 +676,54 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
 		" WHERE `users`.`type` = ?" +
 		" GROUP BY `users`.`id`"
-	if err := h.DB.Select(&gpts, query, Student); err != nil {
+	if err := h.DB.Select(&gpas, query, Student); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	// avg max min stdの計算
-	var gptCount = len(gpts)
-	var gptAvg float64
-	var gptMax float64
+	var gpaAvg float64
+	var gpaMax float64
 	// MEMO: 1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
-	var gptMin = math.MaxFloat64
-	var gptStdDev float64
-	for _, gpt := range gpts {
-		gptAvg += gpt / float64(gptCount)
+	var gpaMin = math.MaxFloat64
+	var gpaStdDev float64
+	for _, gpa := range gpas {
+		gpaAvg += gpa
 
-		if gptMax < gpt {
-			gptMax = gpt
+		if gpaMax < gpa {
+			gpaMax = gpa
 		}
-		if gptMin > gpt {
-			gptMin = gpt
+		if gpaMin > gpa {
+			gpaMin = gpa
 		}
 	}
+	gpaAvg /= float64(len(gpas))
 
-	for _, gpt := range gpts {
-		gptStdDev += math.Pow(gpt-gptAvg, 2) / float64(gptCount)
+	for _, gpt := range gpas {
+		gpaStdDev += math.Pow(gpt-gpaAvg, 2)
 	}
-	gptStdDev = math.Sqrt(gptStdDev)
+	gpaStdDev = math.Sqrt(gpaStdDev / float64(len(gpas)))
 
 	// 自分の偏差値の計算
-	var gptTScore float64
-	if gptStdDev == 0 {
-		gptTScore = 50
+	var myGpaTScore float64
+	if gpaStdDev == 0 {
+		myGpaTScore = 50
 	} else {
-		gptTScore = (summaryGpt-gptAvg)/gptStdDev*10 + 50
+		myGpaTScore = (myGPA-gpaAvg)/gpaStdDev*10 + 50
 	}
 
 	res := GetGradeResponse{
 		Summary: Summary{
-			Credits:   summaryCredits,
-			GPT:       summaryGpt,
-			GptTScore: gptTScore,
-			GptAvg:    gptAvg,
-			GptMax:    gptMax,
-			GptMin:    gptMin,
+			Credits:   myCredits,
+			GPA:       myGPA,
+			GpaTScore: myGpaTScore,
+			GpaAvg:    gpaAvg,
+			GpaMax:    gpaMax,
+			GpaMin:    gpaMin,
 		},
 		CourseResults: courseResults,
 	}
+	fmt.Printf("%#v\n", res)
 
 	return c.JSON(http.StatusOK, res)
 }
