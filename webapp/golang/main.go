@@ -29,7 +29,7 @@ import (
 const (
 	SQLDirectory              = "../sql/"
 	AssignmentsDirectory      = "../assignments/"
-	SessionName               = "session"
+	SessionName               = "isucholar_go"
 	mysqlErrNumDuplicateEntry = 1062
 )
 
@@ -57,6 +57,7 @@ func main() {
 	e.POST("/initialize", h.Initialize)
 
 	e.POST("/login", h.Login)
+	e.POST("/logout", h.Logout)
 	API := e.Group("/api", h.IsLoggedIn)
 	{
 		usersAPI := API.Group("/users")
@@ -295,6 +296,26 @@ func (h *handlers) Login(c echo.Context) error {
 	sess.Options = &sessions.Options{
 		Path:   "/",
 		MaxAge: 3600,
+	}
+
+	if err := sess.Save(c.Request(), c.Response()); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+func (h *handlers) Logout(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	sess.Options = &sessions.Options{
+		Path:   "/",
+		MaxAge: -1,
 	}
 
 	if err := sess.Save(c.Request(), c.Response()); err != nil {
