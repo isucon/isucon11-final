@@ -45,7 +45,13 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 }
 
 func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.BenchmarkStep) {
-	users := s.activeStudents
+	activeStudents := s.activeStudents
+	users := make([]*model.Student, 0, len(activeStudents))
+	for _, activeStudent := range activeStudents {
+		if len(activeStudent.Course()) > 0 {
+			users = append(users, activeStudent)
+		}
+	}
 
 	p := parallel.NewParallel(ctx, int32(len(users)))
 
@@ -63,7 +69,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 				}
 			}
 
-			summary := calculateSummary(s.activeStudents, user.Code)
+			summary := calculateSummary(users, user.Code)
 			expected := model.NewGradeRes(summary, courseResults)
 
 			_, res, err := GetGradeAction(ctx, user.Agent)
@@ -118,29 +124,29 @@ func validateSummary(expected *model.Summary, actual *api.Summary) error {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
 	}
 
-	if math.Abs(expected.GPT-actual.GPT) > acceptableFloatError {
-		AdminLogger.Println("gpt. expected: ", expected.GPT, "actual: ", actual.GPT)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptが一致しません"))
+	if math.Abs(expected.GPA-actual.GPA) > acceptableFloatError {
+		AdminLogger.Println("gpa. expected: ", expected.GPA, "actual: ", actual.GPA)
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません"))
 	}
 
-	if math.Abs(expected.GptAvg-actual.GptAvg) > acceptableFloatError {
-		AdminLogger.Println("gptavg. expected: ", expected.GptAvg, "actual: ", actual.GptAvg)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのGptAvgが一致しません"))
+	if math.Abs(expected.GpaAvg-actual.GpaAvg) > acceptableFloatError {
+		AdminLogger.Println("gpaavg. expected: ", expected.GpaAvg, "actual: ", actual.GpaAvg)
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaAvgが一致しません"))
 	}
 
-	if math.Abs(expected.GptMax-actual.GptMax) > acceptableFloatError {
-		AdminLogger.Println("gptmax. expected: ", expected.GptMax, "actual: ", actual.GptMax)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptMaxが一致しません"))
+	if math.Abs(expected.GpaMax-actual.GpaMax) > acceptableFloatError {
+		AdminLogger.Println("gpamax. expected: ", expected.GpaMax, "actual: ", actual.GpaMax)
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMaxが一致しません"))
 	}
 
-	if math.Abs(expected.GptMin-actual.GptMin) > acceptableFloatError {
-		AdminLogger.Println("gptmin. expected: ", expected.GptMin, "actual: ", actual.GptMin)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptMinが一致しません"))
+	if math.Abs(expected.GpaMin-actual.GpaMin) > acceptableFloatError {
+		AdminLogger.Println("gpamin. expected: ", expected.GpaMin, "actual: ", actual.GpaMin)
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMinが一致しません"))
 	}
 
-	if math.Abs(expected.GptTScore-actual.GptTScore) > acceptableFloatError {
-		AdminLogger.Println("gpttscore. expected: ", expected.GptTScore, "actual: ", actual.GptTScore)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgptTScoreが一致しません"))
+	if math.Abs(expected.GpaTScore-actual.GpaTScore) > acceptableFloatError {
+		AdminLogger.Println("gpatscore. expected: ", expected.GpaTScore, "actual: ", actual.GpaTScore)
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaTScoreが一致しません"))
 	}
 
 	return nil
@@ -227,67 +233,66 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 	return nil
 }
 
-func calculateSummary(activeStudents []*model.Student, userCode string) model.Summary {
-	n := len(activeStudents)
+func calculateSummary(students []*model.Student, userCode string) model.Summary {
+	n := len(students)
 	if n == 0 {
-		panic("TODO: len (active student) is 0")
+		panic("TODO: len (students) is 0")
 	}
 
-	gpts := make([]float64, n)
+	gpas := make([]float64, n)
 
-	targetUserGpt := 0.0
+	targetUserGpa := 0.0
 	credits := 0
 	// activeStudentsをmapにするときは順番が保証されないことに注意
-	for i, student := range activeStudents {
+	for i, student := range students {
 		if student.Code == userCode {
-			targetUserGpt = student.GPT()
-			AdminLogger.Println(targetUserGpt)
-			gpts[i] = targetUserGpt
+			targetUserGpa = student.GPA()
+			gpas[i] = targetUserGpa
 			credits = student.TotalCredit()
 		} else {
-			gpts[i] = student.GPT()
+			gpas[i] = student.GPA()
 		}
 	}
 
-	//if targetUserGpt == 0.0 {
-	//	panic("TODO: gpt is 0")
+	//if targetUserGpa == 0.0 {
+	//	panic("TODO: gpa is 0")
 	//}
 
-	gptSum := 0.0
-	gptMax := 0.0
-	gptMin := math.MaxFloat64
-	for _, gpt := range gpts {
-		gptSum += gpt
+	gpaSum := 0.0
+	gpaMax := 0.0
+	gpaMin := math.MaxFloat64
+	for _, gpa := range gpas {
+		gpaSum += gpa
 
-		if gptMax < gpt {
-			gptMax = gpt
+		if gpaMax < gpa {
+			gpaMax = gpa
 		}
 
-		if gptMin > gpt {
-			gptMin = gpt
+		if gpaMin > gpa {
+			gpaMin = gpa
 		}
 	}
 
-	gptAvg := gptSum / float64(n)
+	gpaAvg := gpaSum / float64(n)
 
-	gptStdDev := 0.0
-	for _, gpt := range gpts {
-		gptStdDev += math.Pow(gpt-gptAvg, 2) / float64(n)
+	gpaStdDev := 0.0
+	for _, gpa := range gpas {
+		gpaStdDev += math.Pow(gpa-gpaAvg, 2) / float64(n)
 	}
 
-	gptTScore := 0.0
-	if gptStdDev == 0 {
-		gptTScore = 50
+	gpaTScore := 0.0
+	if gpaStdDev == 0 {
+		gpaTScore = 50
 	} else {
-		gptTScore = 10*(targetUserGpt-gptAvg)/gptStdDev + 50
+		gpaTScore = 10*(targetUserGpa-gpaAvg)/gpaStdDev + 50
 	}
 
 	return model.Summary{
 		Credits:   credits,
-		GPT:       targetUserGpt,
-		GptTScore: gptTScore,
-		GptAvg:    gptAvg,
-		GptMax:    gptMax,
-		GptMin:    gptMin,
+		GPA:       targetUserGpa,
+		GpaTScore: gpaTScore,
+		GpaAvg:    gpaAvg,
+		GpaMax:    gpaMax,
+		GpaMin:    gpaMin,
 	}
 }

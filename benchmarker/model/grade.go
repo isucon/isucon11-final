@@ -48,11 +48,11 @@ func NewGradeRes(summary Summary, courseResults map[string]*CourseResult) GradeR
 
 type Summary struct {
 	Credits   int
-	GPT       float64
-	GptTScore float64 // 偏差値
-	GptAvg    float64 // 平均値
-	GptMax    float64 // 最大値
-	GptMin    float64 // 最小値
+	GPA       float64
+	GpaTScore float64 // 偏差値
+	GpaAvg    float64 // 平均値
+	GpaMax    float64 // 最大値
+	GpaMin    float64 // 最小値
 }
 
 type CourseResult struct {
