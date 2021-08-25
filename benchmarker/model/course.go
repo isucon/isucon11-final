@@ -250,13 +250,22 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 	n := len(totalScores)
 	if n == 0 {
 		// TODO
-		return nil
+		return &CourseResult{
+			Name:             c.Name,
+			Code:             c.Code,
+			TotalScore:       0,
+			TotalScoreTScore: 0,
+			TotalScoreAvg:    0,
+			TotalScoreMax:    0,
+			TotalScoreMin:    0,
+			ClassScores:      nil,
+		}
 	}
 
 	totalSum := 0
 	totalSquareSum := 0
 	totalMax := 0
-	totalMin := 500
+	totalMin := math.MinInt32
 	for _, totalScore := range totalScores {
 		totalSum += totalScore
 		totalSquareSum += totalScore * totalScore

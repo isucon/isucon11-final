@@ -42,10 +42,10 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.BenchmarkStep) {
 	activeStudents := s.activeStudents
-	users := make([]*model.Student, 0, len(activeStudents))
+	users := make(map[string]*model.Student, len(activeStudents))
 	for _, activeStudent := range activeStudents {
 		if len(activeStudent.Course()) > 0 {
-			users = append(users, activeStudent)
+			users[activeStudent.Code] = activeStudent
 		}
 	}
 
@@ -235,34 +235,48 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 	return nil
 }
 
-func calculateSummary(students []*model.Student, userCode string) model.Summary {
+func calculateSummary(students map[string]*model.Student, userCode string) model.Summary {
 	n := len(students)
 	if n == 0 {
 		panic("TODO: len (students) is 0")
 	}
 
-	gpas := make([]float64, n)
+	gpas := make([]float64, 0, n)
 
 	targetUserGpa := 0.0
 	credits := 0
 	// activeStudentsをmapにするときは順番が保証されないことに注意
-	for i, student := range students {
-		if student.Code == userCode {
+
+	flg := false
+	for key, student := range students {
+		if key == userCode {
 			targetUserGpa = student.GPA()
-			gpas[i] = targetUserGpa
+			gpas = append(gpas, targetUserGpa)
 			credits = student.TotalCredit()
+			flg = true
 		} else {
-			gpas[i] = student.GPA()
+			gpas = append(gpas, student.GPA())
 		}
 	}
-
-	//if targetUserGpa == 0.0 {
-	//	panic("TODO: gpa is 0")
-	//}
+	if !flg {
+		panic("TODO: userCode: " + userCode + " is not found")
+	}
 
 	gpaSum := 0.0
 	gpaMax := 0.0
 	gpaMin := math.MaxFloat64
+
+	if len(gpas) == 0 {
+		return model.Summary{
+			Credits:   credits,
+			GPA:       0,
+			GpaTScore: 0,
+			GpaAvg:    0,
+			GpaMax:    0,
+			GpaMin:    0,
+		}
+	}
+
 	for _, gpa := range gpas {
 		gpaSum += gpa
 
