@@ -23,9 +23,8 @@
   environment:
     PATH: "/home/isucon/local/node/bin:{{ ansible_env.PATH }}"
   shell: |
-    npm install
+    npm ci
     npm run build
-    npm run generate
 
 - name: "roles/contestant/tasks/isucholar: Include isucholar-go.yml"
   include: isucholar-go.yml
