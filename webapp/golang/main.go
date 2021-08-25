@@ -652,8 +652,15 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	// GPAの統計値
 	// 一つでも科目を履修している学生のGPA一覧
 	var gpas []float64
-	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / SUM(`courses`.`credit`) AS `gpa`" +
+	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
 		" FROM `users`" +
+		" JOIN (" +
+		"     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`" +
+		"     FROM `users`" +
+		"     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+		"     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+		"     GROUP BY `users`.`id`" +
+		" ) AS `credits` ON `credits`.`user_id` = `users`.`id`" +
 		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
 		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
 		" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
