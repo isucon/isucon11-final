@@ -19,31 +19,75 @@
             :options="classOptions"
           />
         </div>
-        <template v-for="(param, index) in params">
-          <div :key="`score-${index}`" class="flex flex-row space-x-2">
-            <div class="flex-1">
-              <TextField
-                id="params-usercode"
-                v-model="param.userCode"
-                label="生徒の学籍番号"
-                label-direction="vertical"
-                type="text"
-                placeholder="生徒の学籍番号を入力"
-              />
+        <div>
+          <div class="flex flex-row space-x-2">
+            <div class="flex-1 w-full">
+              <label class="text-gray-500 font-bold text-right">
+                学籍番号
+              </label>
             </div>
-            <div class="flex-1">
-              <TextField
-                id="params-score"
-                label="成績"
-                label-direction="vertical"
-                type="number"
-                placeholder="成績を入力"
-                :value="String(param.score)"
-                @input="$set(param, 'score', Number($event))"
-              />
+            <div class="flex-1 w-full">
+              <label class="text-gray-500 font-bold text-right"> 成績 </label>
             </div>
           </div>
-        </template>
+          <template v-for="(param, index) in params">
+            <div
+              :key="`param-${index}`"
+              class="flex flex-row space-x-2 items-center"
+            >
+              <div class="flex-1 mb-1">
+                <input
+                  :id="`params-usercode-${index}`"
+                  class="
+                    w-full
+                    bg-white
+                    appearance-none
+                    border-2 border-gray-200
+                    rounded
+                    py-2
+                    px-4
+                    text-gray-700
+                    leading-tight
+                    focus:outline-none focus:bg-white focus:border-purple-500
+                  "
+                  type="text"
+                  placeholder="生徒の学籍番号を入力"
+                  :value="param.userCode"
+                  @input="$set(param, 'userCode', $event.target.value)"
+                />
+              </div>
+              <div class="flex-1 mb-1">
+                <input
+                  :id="`params-score-${index}`"
+                  class="
+                    w-full
+                    bg-white
+                    appearance-none
+                    border-2 border-gray-200
+                    rounded
+                    py-2
+                    px-4
+                    text-gray-700
+                    leading-tight
+                    focus:outline-none focus:bg-white focus:border-purple-500
+                  "
+                  type="number"
+                  placeholder="成績を入力"
+                  :value="String(param.score)"
+                  @input="$set(param, 'score', Number($event.target.value))"
+                />
+              </div>
+              <div class="flex-2 mb-1 cursor-pointer">
+                <fa-icon icon="times" size="lg" @click="removeStudent(index)" />
+              </div>
+            </div>
+          </template>
+          <div class="grid">
+            <div class="mt-1 place-self-center cursor-pointer">
+              <fa-icon icon="plus" size="lg" @click="addStudent" />
+            </div>
+          </div>
+        </div>
       </div>
       <div
         v-if="failed"
@@ -181,7 +225,7 @@ export default Vue.extend({
       }
     },
     close() {
-      this.params = Object.assign({}, initParams)
+      this.params = initParams.map((o) => Object.assign({}, o))
       this.hideAlert()
       this.$emit('close')
     },
@@ -190,6 +234,12 @@ export default Vue.extend({
     },
     hideAlert() {
       this.failed = false
+    },
+    addStudent() {
+      this.params.push(Object.assign({}, initParams[0]))
+    },
+    removeStudent(index: number) {
+      this.params.splice(index, 1)
     },
   },
 })
