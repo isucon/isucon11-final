@@ -545,7 +545,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// 登録済の科目一覧取得
+	// 履修している科目一覧取得
 	var registeredCourses []Course
 	query := "SELECT `courses`.*" +
 		" FROM `registrations`" +
@@ -662,15 +662,16 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	// GPTの統計値
-	// 全学生ごとのGPT
+	// 一つでも科目を履修している学生のGPT一覧
 	var gpts []float64
 	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit` / 100), 0) AS `gpt`" +
 		" FROM `users`" +
-		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id`" +
-		" LEFT JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
-		" LEFT JOIN `courses` ON `classes`.`course_id` = `courses`.`id`" +
-		" WHERE `users`.`type` = ? AND `submissions`.`user_id` IS NOT NULL" +
-		" GROUP BY `submissions`.`user_id`"
+		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+		" JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
+		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes.id`" +
+		" WHERE `users`.`type` = ?" +
+		" GROUP BY `users`.`id`"
 	if err := h.DB.Select(&gpts, query, Student); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
