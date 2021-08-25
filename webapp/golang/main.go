@@ -748,6 +748,11 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 		condition += fmt.Sprintf(" AND ((1=1%s) OR (1=1%s))", nameCondition, keywordsCondition)
 	}
 
+	if status := c.QueryParam("status"); status != "" {
+		condition += " AND `courses`.`status` = ?"
+		args = append(args, status)
+	}
+
 	condition += " ORDER BY `courses`.`code`"
 
 	// MEMO: ページングの初期実装はページ番号形式
