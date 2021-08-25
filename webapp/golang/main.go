@@ -525,7 +525,7 @@ type ClassScore struct {
 	ClassID    uuid.UUID `json:"class_id"`
 	Title      string    `json:"title"`
 	Part       uint8     `json:"part"`
-	Score      int       `json:"score"`      // 0~100点
+	Score      *int      `json:"score"`      // 0~100点
 	Submitters int       `json:"submitters"` // 提出した生徒数
 }
 
@@ -621,9 +621,11 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 			for _, submission := range submissions {
 				if uuid.Equal(userID, submission.UserID) {
-					var myScore int
+					var myScore *int
 					if submission.Score.Valid {
-						myScore = int(submission.Score.Int64)
+						score := int(submission.Score.Int64)
+						myScore = &score
+						myTotalScore += score
 					}
 					classScores = append(classScores, ClassScore{
 						ClassID:    class.ID,
@@ -632,7 +634,6 @@ func (h *handlers) GetGrades(c echo.Context) error {
 						Score:      myScore,
 						Submitters: len(submissions),
 					})
-					myTotalScore += myScore
 				}
 			}
 		}

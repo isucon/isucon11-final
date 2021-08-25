@@ -8,8 +8,9 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
+
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type GetMeResponse struct {
@@ -116,7 +117,7 @@ type ClassScore struct {
 	ClassID    string `json:"class_id"`
 	Title      string `json:"title"`
 	Part       uint8  `json:"part"`
-	Score      int    `json:"score"`      // 0~100点
+	Score      *int   `json:"score"`      // 0~100点
 	Submitters int    `json:"submitters"` // 提出した生徒数
 }
 
