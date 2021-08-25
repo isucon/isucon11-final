@@ -1,4 +1,7 @@
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
+('13105c92-9b38-4490-8fa7-94160b7223b5','isuT','isucon(講師)','$2a$10$WyzGRwzX6auEZL/uesi/0OU39gmk6VD.0TP38zqtDSQ4lQV7a1igy','teacher'),
+('6a295df5-b297-4c46-a9cf-11dd40156175','isucon','isucon(学生)','$2a$10$ct1t26lkjO5lnPQ31YWwbuTcL6isYavZ2kftRsz2ShmJnameEOeEG','student');
+INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('072b64ba-11b4-4cd0-9b68-a0f64ea92361','T00000','伊藤 翔','$2a$10$wLYhqTdwbJS/y3/TJjhkzuJfaGw1J6sh1G0KzZLCzToHdfPJMAKVC','teacher'),
 ('ed54470d-51c2-427e-a9fc-445f6e5095d5','T00001','佐藤 真美','$2a$10$KR5DorA8CaZlvfqU6AI1meuMrnEzvwEkobRcE3Fpdkx9mLW8rGhyO','teacher'),
 ('41c65fa8-04b2-48e6-a978-99126dba3838','T00002','高橋 拓海','$2a$10$oXxxrQNgkydjRnplVIbqQ.vhq8L6DjlMU9jQ0J8WW5Quh2S/V7q3a','teacher'),
