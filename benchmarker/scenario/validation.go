@@ -45,7 +45,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	for sampleIndex := range sampleIndices {
 		student := s.activeStudents[sampleIndex]
 		var responseUnreadCount int // responseに含まれるunread_count
-		actualAnnouncements := map[string]*api.AnnouncementResponse{}
+		actualAnnouncements := map[string]api.AnnouncementResponse{}
 		lastCreatedAt := int64(math.MaxInt64)
 		var next string
 		for {
@@ -64,7 +64,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			}
 
 			for _, announcement := range res.Announcements {
-				actualAnnouncements[announcement.ID] = &announcement
+				actualAnnouncements[announcement.ID] = announcement
 
 				// 順序の検証
 				if lastCreatedAt < announcement.CreatedAt {
@@ -87,7 +87,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				actualUnreadCount++
 			}
 		}
-		if actualUnreadCount != responseUnreadCount {
+		if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCount) {
 			step.AddError(errNotMatchUnreadCount)
 			return
 		}
@@ -100,7 +100,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// ベンチ内データが既読の場合のみUnreadの検証を行う
 			// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
 			if !expectStatus.Unread {
-				if !AssertEqual("announcement Unread", true, actual.Unread) {
+				if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
+					AdminLogger.Printf("name: %v, title:  %v", actual.CourseName, actual.Title)
 					step.AddError(errNotMatch)
 					return
 				}
