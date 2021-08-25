@@ -37,7 +37,7 @@ func maxInt(arr []int, or int) int {
 	if len(arr) == 0 {
 		return or
 	}
-	max := -math.MinInt32
+	max := math.MinInt32
 	for _, v := range arr {
 		if max < v {
 			max = v
