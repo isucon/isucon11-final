@@ -2,24 +2,17 @@ package scenario
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/rand"
 	"time"
 
-	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
-
-	"github.com/isucon/isucon11-final/benchmarker/api"
-
-	"github.com/isucon/isucon11-final/benchmarker/model"
-
-	"github.com/isucon/isucandar/parallel"
-	"fmt"
-
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
+	"github.com/isucon/isucandar/parallel"
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/isucon/isucon11-final/benchmarker/model"
 )
 
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
@@ -288,9 +281,11 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
 	}
 
-	if expected.Score != actual.Score {
-		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
+	if actual.Score != nil {
+		if expected.Score != *actual.Score {
+			AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
+			return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
+		}
 	}
 
 	if expected.SubmitterCount != actual.Submitters {

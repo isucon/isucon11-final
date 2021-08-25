@@ -258,14 +258,14 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 			TotalScoreAvg:    0,
 			TotalScoreMax:    0,
 			TotalScoreMin:    0,
-			ClassScores:      nil,
+			ClassScores:      make([]*ClassScore, 0),
 		}
 	}
 
 	totalSum := 0
 	totalSquareSum := 0
 	totalMax := 0
-	totalMin := math.MinInt32
+	totalMin := math.MaxInt32
 	for _, totalScore := range totalScores {
 		totalSum += totalScore
 		totalSquareSum += totalScore * totalScore
