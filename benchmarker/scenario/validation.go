@@ -37,7 +37,8 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
-	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
+	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
+	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
 
 	// TODO: 並列化
 	sampleCount := s.ActiveStudentCount() * validateAnnouncementsRate
@@ -95,14 +96,19 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 		expectAnnouncements := student.Announcements()
 		for _, expectStatus := range expectAnnouncements {
 			expect := expectStatus.Announcement
-			actual := actualAnnouncements[expect.ID]
+			actual, ok := actualAnnouncements[expect.ID]
+
+			if !ok {
+				AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
+				step.AddError(errNotMatchUnder)
+			}
 
 			// ベンチ内データが既読の場合のみUnreadの検証を行う
 			// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
 			if !expectStatus.Unread {
 				if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
-					AdminLogger.Printf("name: %v, title:  %v", actual.CourseName, actual.Title)
-					step.AddError(errNotMatch)
+					AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
+					step.AddError(errNotMatchOver)
 					return
 				}
 			}
@@ -112,7 +118,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				!AssertEqual("announcement Title", expect.Title, actual.Title) ||
 				!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
 				!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
-				step.AddError(errNotMatch)
+				AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
+				step.AddError(errNotMatchOver)
 				return
 			}
 		}
