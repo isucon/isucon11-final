@@ -41,6 +41,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { Context } from '@nuxt/types'
 import {
   Announcement,
   AnnouncementResponse,
@@ -50,6 +51,7 @@ import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import TextField from '~/components/common/TextField.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
+import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 
 type AsyncAnnounceData = {
   innerAnnouncements: Announcement[]
@@ -64,14 +66,15 @@ type AnnounceListData = AsyncAnnounceData & {
 }
 
 export default Vue.extend({
+  watchQuery: true,
   key(route) {
     return route.fullPath
   },
   components: { Card, TextField, AnnouncementList },
   middleware: 'is_loggedin',
-  async asyncData({ $axios, query }): Promise<AsyncAnnounceData> {
-    const path = query.path ? (query.path as string) : '/api/announcements'
-    const response = await $axios.get(path)
+  async asyncData(ctx: Context): Promise<AsyncAnnounceData> {
+    const { $axios, query } = ctx
+    const response = await $axios.get('/api/announcements', { params: query })
     const responseBody: GetAnnouncementResponse = response.data
     const link = response.headers.link
     const announcements = Object.values(responseBody.announcements).map(
@@ -110,7 +113,6 @@ export default Vue.extend({
         : ['bg-white', 'text-black']
     },
   },
-  watchQuery: ['path'],
   created() {
     this.announcements = this.innerAnnouncements
   },
@@ -155,8 +157,11 @@ export default Vue.extend({
       this.showUnreads = !this.showUnreads
       this.filterAnnouncements()
     },
-    paginate(path: string) {
-      this.$router.push(`/announce?path=${encodeURIComponent(path)}`)
+    paginate(query: URLSearchParams) {
+      this.$router.push({
+        path: '/announce',
+        query: urlSearchParamsToObject(query),
+      })
     },
   },
 })

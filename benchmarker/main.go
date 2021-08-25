@@ -40,6 +40,7 @@ var (
 	useTLS           bool
 	exitStatusOnFail bool
 	noLoad           bool
+	isDebug          bool
 	showVersion      bool
 	timeoutDuration  string
 
@@ -62,6 +63,7 @@ func init() {
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
+	flag.BoolVar(&isDebug, "is-debug", false, "silence debug log")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
 	flag.Parse()
@@ -167,6 +169,10 @@ func main() {
 
 	if showVersion {
 		os.Exit(1)
+	}
+
+	if !isDebug {
+		scenario.SilenceDebugLog()
 	}
 
 	if profileFile != "" {

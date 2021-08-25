@@ -525,7 +525,7 @@ type ClassScore struct {
 	ClassID    uuid.UUID `json:"class_id"`
 	Title      string    `json:"title"`
 	Part       uint8     `json:"part"`
-	Score      int       `json:"score"`      // 0~100点
+	Score      *int      `json:"score"`      // 0~100点
 	Submitters int       `json:"submitters"` // 提出した生徒数
 }
 
@@ -545,9 +545,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var res GetGradeResponse
-
-	// 登録済の科目一覧取得
+	// 履修している科目一覧取得
 	var registeredCourses []Course
 	query := "SELECT `courses`.*" +
 		" FROM `registrations`" +
@@ -559,7 +557,9 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	// 科目毎の成績計算処理
-	res.CourseResults = make([]CourseResult, 0, len(registeredCourses))
+	courseResults := make([]CourseResult, 0, len(registeredCourses))
+	summaryGpt := 0.0
+	summaryCredits := 0
 	for _, course := range registeredCourses {
 		// この科目を受講している学生のTotalScore一覧を取得
 		var totals []int
@@ -621,9 +621,11 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 			for _, submission := range submissions {
 				if uuid.Equal(userID, submission.UserID) {
-					var myScore int
+					var myScore *int
 					if submission.Score.Valid {
-						myScore = int(submission.Score.Int64)
+						score := int(submission.Score.Int64)
+						myScore = &score
+						myTotalScore += score
 					}
 					classScores = append(classScores, ClassScore{
 						ClassID:    class.ID,
@@ -632,7 +634,6 @@ func (h *handlers) GetGrades(c echo.Context) error {
 						Score:      myScore,
 						Submitters: len(submissions),
 					})
-					myTotalScore += myScore
 				}
 			}
 		}
@@ -645,7 +646,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			totalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
 		}
 
-		res.CourseResults = append(res.CourseResults, CourseResult{
+		courseResults = append(courseResults, CourseResult{
 			Name:             course.Name,
 			Code:             course.Code,
 			TotalScore:       myTotalScore,
@@ -657,20 +658,21 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		})
 
 		// 自分のGPT計算
-		res.Summary.GPT += float64(myTotalScore*int(course.Credit)) / 100
-		res.Summary.Credits += int(course.Credit)
+		summaryGpt += float64(myTotalScore*int(course.Credit)) / 100
+		summaryCredits += int(course.Credit)
 	}
 
 	// GPTの統計値
-	// 全学生ごとのGPT
+	// 一つでも科目を履修している学生のGPT一覧
 	var gpts []float64
 	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit` / 100), 0) AS `gpt`" +
 		" FROM `users`" +
-		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id`" +
-		" LEFT JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
-		" LEFT JOIN `courses` ON `classes`.`course_id` = `courses`.`id`" +
+		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+		" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
+		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes.id`" +
 		" WHERE `users`.`type` = ?" +
-		" GROUP BY `user_id`"
+		" GROUP BY `users`.`id`"
 	if err := h.DB.Select(&gpts, query, Student); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -704,14 +706,19 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	if gptStdDev == 0 {
 		gptTScore = 50
 	} else {
-		gptTScore = (res.Summary.GPT-gptAvg)/gptStdDev*10 + 50
+		gptTScore = (summaryGpt-gptAvg)/gptStdDev*10 + 50
 	}
 
-	res.Summary = Summary{
-		GptTScore: gptTScore,
-		GptAvg:    gptAvg,
-		GptMax:    gptMax,
-		GptMin:    gptMin,
+	res := GetGradeResponse{
+		Summary: Summary{
+			Credits:   summaryCredits,
+			GPT:       summaryGpt,
+			GptTScore: gptTScore,
+			GptAvg:    gptAvg,
+			GptMax:    gptMax,
+			GptMin:    gptMin,
+		},
+		CourseResults: courseResults,
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -1218,6 +1225,9 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 
 func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []Submission) error {
 	tmpDir := AssignmentsDirectory + classID.String() + "/"
+	if err := exec.Command("rm", "-rf", tmpDir).Run(); err != nil {
+		return err
+	}
 	if err := exec.Command("mkdir", tmpDir).Run(); err != nil {
 		return err
 	}
