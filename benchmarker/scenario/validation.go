@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
@@ -35,6 +36,7 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 }
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
+	errTimeout := failure.NewError(fails.ErrCritical, fmt.Errorf("時間内に Announcemet の検証が完了しませんでした"))
 	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
@@ -48,6 +50,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 		var responseUnreadCount int // responseに含まれるunread_count
 		actualAnnouncements := map[string]api.AnnouncementResponse{}
 		lastCreatedAt := int64(math.MaxInt64)
+
+		timer := time.After(10 * time.Second)
 		var next string
 		for {
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
@@ -78,6 +82,13 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			_, next = parseLinkHeader(hres)
 			if next == "" {
 				break
+			}
+
+			select {
+			case <-timer:
+				step.AddError(errTimeout)
+				break
+			default:
 			}
 		}
 
