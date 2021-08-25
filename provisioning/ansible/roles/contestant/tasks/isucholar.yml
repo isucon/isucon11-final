@@ -40,10 +40,10 @@
     enabled: "yes"
 
 - name: "roles/contestant/tasks/isucholar: Initialize isucholar database"
-  become_user: isucon
+  become_user: root
   args:
     chdir: /home/isucon/webapp/sql
   shell: |
-    mysql -uisucon -pisucon -e 'CREATE DATABASE isucholar'
+    mysql -uroot < 0_setup.sql
     mysql -uisucon -pisucon isucholar < 1_schema.sql
     mysql -uisucon -pisucon isucholar < 2_init.sql
