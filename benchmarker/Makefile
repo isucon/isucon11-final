@@ -32,3 +32,6 @@ assets: $(PUBLIC_FILES) ## regenerate checksum of assets
 
 $(EXE): Makefile go.mod $(GOFILES) assets
 	@GOPRIVATE=$(GOPRIVATES) go build -ldflags "$(GOLDFLAGS)" -o $(EXE) -v github.com/isucon/isucon11-final/benchmarker
+
+$(EXE)_linux_amd64: Makefile go.mod $(GOFILES) assets
+	@GOOS=linux GOARCH=amd64 GOPRIVATE=$(GOPRIVATES) go build -ldflags "$(GOLDFLAGS)" -o $(EXE)_linux_amd64 -v github.com/isucon/isucon11-final/benchmarker

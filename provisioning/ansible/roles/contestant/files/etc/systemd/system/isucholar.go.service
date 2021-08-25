@@ -4,13 +4,13 @@ After=cloud-config.service
 Wants=cloud-config.service
 
 [Service]
-WorkingDirectory=/home/isucon/webapp/go
+WorkingDirectory=/home/isucon/webapp/golang
 EnvironmentFile=/home/isucon/env.sh
-PIDFile=/home/isucon/webapp/go/server.pid
+PIDFile=/home/isucon/webapp/golang/server.pid
 
 User=isucon
 Group=isucon
-ExecStart=/home/isucon/webapp/go/isucholar
+ExecStart=/home/isucon/webapp/golang/isucholar
 ExecStop=/bin/kill -s QUIT $MAINPID
 
 Restart   = always

@@ -20,6 +20,7 @@ import (
 	"github.com/isucon/isucandar/failure"
 	score2 "github.com/isucon/isucandar/score"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
+	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
 
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 	"github.com/isucon/isucon11-final/benchmarker/score"
@@ -149,26 +150,24 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		}
 	}
 
-	/*
-		err := reporter.Report(&isuxportalResources.BenchmarkResult{
-			SurveyResponse: &isuxportalResources.SurveyResponse{
-				Language: s.Language(),
-			},
-			Finished: finish,
-			Passed:   passed,
-			Score:    0, // TODO: 加点 - 減点
-			ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
-				Raw:       0, // TODO: 加点
-				Deduction: 0, // TODO: 減点
-			},
-			Execution: &isuxportalResources.BenchmarkResult_Execution{
-				Reason: reason,
-			},
-		})
-		if err != nil {
-			panic(err)
-		}
-	*/
+	err := reporter.Report(&isuxportalResources.BenchmarkResult{
+		SurveyResponse: &isuxportalResources.SurveyResponse{
+			Language: s.Language(),
+		},
+		Finished: finish,
+		Passed:   passed,
+		Score:    resultScore, // TODO: 加点 - 減点
+		ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
+			Raw:       raw,      // TODO: 加点
+			Deduction: deducted, // TODO: 減点
+		},
+		Execution: &isuxportalResources.BenchmarkResult_Execution{
+			Reason: reason,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
 
 	return passed
 }
