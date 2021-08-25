@@ -1,6 +1,6 @@
 [Unit]
 Description=isuxportal-supervisor
-After=network.target cloud-config.service
+After=network.target cloud-init.target
 
 [Service]
 # 基本設定
