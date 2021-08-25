@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -573,26 +572,11 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		// avg max min stdの計算
-		var totalScoreCount = len(totals)
-		var totalScoreAvg float64
-		var totalScoreMax int
-		var totalScoreMin = 500      // 1科目5クラスなので最大500点
-		var totalScoreStdDev float64 // 標準偏差
-
-		for _, totalScore := range totals {
-			totalScoreAvg += float64(totalScore) / float64(totalScoreCount)
-			if totalScoreMax < totalScore {
-				totalScoreMax = totalScore
-			}
-			if totalScoreMin > totalScore {
-				totalScoreMin = totalScore
-			}
-		}
-		for _, totalScore := range totals {
-			totalScoreStdDev += math.Pow(float64(totalScore)-totalScoreAvg, 2) / float64(totalScoreCount)
-		}
-		totalScoreStdDev = math.Sqrt(totalScoreStdDev)
+		// avg max min std-dev の計算
+		totalScoreAvg := averageInt(totals, 0)
+		totalScoreMax := maxInt(totals, 0)
+		totalScoreMin := minInt(totals, 0)
+		totalScoreStdDev := stdDevInt(totals, totalScoreAvg)
 
 		// クラス一覧の取得
 		var classes []Class
@@ -681,28 +665,11 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// avg max min stdの計算
-	var gpaAvg float64
-	var gpaMax float64
-	// MEMO: 1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
-	var gpaMin = math.MaxFloat64
-	var gpaStdDev float64
-	for _, gpa := range gpas {
-		gpaAvg += gpa
-
-		if gpaMax < gpa {
-			gpaMax = gpa
-		}
-		if gpaMin > gpa {
-			gpaMin = gpa
-		}
-	}
-	gpaAvg /= float64(len(gpas))
-
-	for _, gpt := range gpas {
-		gpaStdDev += math.Pow(gpt-gpaAvg, 2)
-	}
-	gpaStdDev = math.Sqrt(gpaStdDev / float64(len(gpas)))
+	// avg max min std-dev の計算
+	gpaAvg := averageFloat64(gpas, 0)
+	gpaMax := maxFloat64(gpas, 0)
+	gpaMin := minFloat64(gpas, 0)
+	gpaStdDev := stdDevFloat64(gpas, gpaAvg)
 
 	// 自分の偏差値の計算
 	var myGpaTScore float64
