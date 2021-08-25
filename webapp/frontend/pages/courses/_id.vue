@@ -37,6 +37,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { Context } from '@nuxt/types'
 import {
   Course,
   Announcement,
@@ -48,6 +49,7 @@ import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import ClassInfoCard from '~/components/ClassInfo.vue'
+import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 
 type CourseData = {
   course: Course
@@ -57,6 +59,7 @@ type CourseData = {
 }
 
 export default Vue.extend({
+  watchQuery: true,
   key(route) {
     return route.fullPath
   },
@@ -66,14 +69,15 @@ export default Vue.extend({
     ClassInfoCard,
   },
   middleware: 'is_loggedin',
-  async asyncData({ params, query, $axios }): Promise<CourseData> {
-    const path = query.path
-      ? (query.path as string)
-      : `/api/announcements?course_id=${params.id}`
+  async asyncData(ctx: Context): Promise<CourseData> {
+    const { params, query, $axios } = ctx
+    console.log(params)
     const [course, classes, announcementResult] = await Promise.all([
       $axios.$get(`/api/syllabus/${params.id}`),
       $axios.$get(`/api/courses/${params.id}/classes`),
-      $axios.get(path),
+      $axios.get(`/api/announcements`, {
+        params: { ...query, courseId: params.id },
+      }),
     ])
     const responseBody: GetAnnouncementResponse = announcementResult.data
     const link = announcementResult.headers.link
@@ -100,7 +104,6 @@ export default Vue.extend({
   data(): CourseData | undefined {
     return undefined
   },
-  watchQuery: ['path'],
   methods: {
     async openAnnouncement(
       event: { done: () => undefined },
@@ -127,10 +130,8 @@ export default Vue.extend({
     closeAnnouncement(event: { done: () => undefined }) {
       event.done()
     },
-    paginate(path: string) {
-      this.$router.push(
-        `/courses/${this.course.id}?path=${encodeURIComponent(path)}`
-      )
+    paginate(query: URLSearchParams) {
+      this.$router.push({ query: urlSearchParamsToObject(query) })
     },
     submissionComplete(classIdx: number) {
       this.classes[classIdx].submitted = true

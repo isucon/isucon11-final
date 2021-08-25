@@ -151,8 +151,8 @@
                 <Pagination
                   :prev-disabled="!Boolean(link.prev)"
                   :next-disabled="!Boolean(link.next)"
-                  @goPrev="onClickPagination(link.prev)"
-                  @goNext="onClickPagination(link.next)"
+                  @goPrev="onClickPagination(link.prev.query)"
+                  @goNext="onClickPagination(link.next.query)"
                 />
               </div>
               <span class="opacity-0 w-28"></span>
@@ -180,6 +180,7 @@ import { formatPeriod, formatType } from '~/helpers/course_helper'
 import Pagination from '~/components/common/Pagination.vue'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { PeriodCount } from '~/constants/calendar'
+import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 
 type Selected = {
   dayOfWeek: DayOfWeek | undefined
@@ -252,11 +253,12 @@ export default Vue.extend({
     onClickReset(): void {
       this.reset()
     },
-    async onSubmitSearch(url?: string): Promise<void> {
-      const u = url ?? '/api/syllabus'
+    async onSubmitSearch(query?: Record<string, any>): Promise<void> {
       const params = this.filterParams(this.params)
       try {
-        const res = await this.$axios.get<Course[]>(u, { params })
+        const res = await this.$axios.get<Course[]>('/api/syllabus', {
+          params: { ...params, ...query },
+        })
         if (res.status === 200) {
           if (res.data.length === 0) {
             notify('検索条件に一致する科目がありません')
@@ -290,8 +292,8 @@ export default Vue.extend({
       this.reset()
       this.$emit('close')
     },
-    onClickPagination(link: string): void {
-      this.onSubmitSearch(link)
+    onClickPagination(query: URLSearchParams): void {
+      this.onSubmitSearch(urlSearchParamsToObject(query))
     },
     filterParams(params: SearchCourseRequest): SearchCourseRequest {
       return (Object.keys(params) as (keyof SearchCourseRequest)[])
