@@ -44,8 +44,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
 	for sampleIndex := range sampleIndices {
 		student := s.activeStudents[sampleIndex]
-		var actualAnnouncements map[string]*api.AnnouncementResponse
 		var responseUnreadCount int // responseに含まれるunread_count
+		actualAnnouncements := map[string]*api.AnnouncementResponse{}
 		lastCreatedAt := int64(math.MaxInt64)
 		var next string
 		for {
@@ -106,8 +106,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			}
 		}
 	}
-
-	// TODO: verifyAnnouncementDetail
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
