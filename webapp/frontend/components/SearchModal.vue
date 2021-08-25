@@ -18,7 +18,7 @@
               placeholder="キーワードを入力してください"
             />
           </div>
-          <div class="flex mt-4 space-x-1">
+          <div class="flex mt-4 space-x-2">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >科目</label
@@ -40,6 +40,7 @@
                 label="単位数"
                 label-direction="vertical"
                 type="number"
+                min="1"
                 placeholder="単位数を入力"
               />
             </div>
@@ -53,7 +54,7 @@
               ]"
             />
           </div>
-          <div class="flex mt-4 space-x-1">
+          <div class="flex mt-4 space-x-2">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >開講</label
@@ -92,13 +93,8 @@
         <template v-if="isShowSearchResult">
           <hr class="my-6" />
           <div>
-            <Button
-              :disabled="checkedCourses.length === 0"
-              @click="onSubmitTemporaryRegistration"
-              >仮登録</Button
-            >
-            <h3 class="text-xl font-bold mt-2">検索結果</h3>
-            <table class="table-auto border w-full">
+            <h3 class="text-xl font-bold">検索結果</h3>
+            <table class="table-auto border w-full mt-1">
               <tr class="text-center">
                 <th>選択</th>
                 <th>科目コード</th>
@@ -121,6 +117,7 @@
                         form-input
                         text-primary-500
                         focus:outline-none focus:ring-primary-200
+                        rounded
                       "
                       :checked="isChecked(c.id)"
                       @change="onChangeCheckbox(c)"
@@ -133,20 +130,32 @@
                   <td>{{ c.credit }}</td>
                   <td>椅子 昆</td>
                   <td>
-                    <NuxtLink :to="`/syllabus/${c.id}`" class="text-primary-500"
+                    <a
+                      :href="`/syllabus/${c.id}`"
+                      target="_blank"
+                      class="text-primary-500"
                       >詳細を見る
-                    </NuxtLink>
+                    </a>
                   </td>
                 </tr>
               </template>
             </table>
-            <div class="mt-2 flex justify-center">
-              <Pagination
-                :prev-disabled="!Boolean(link.prev)"
-                :next-disabled="!Boolean(link.next)"
-                @goPrev="onClickPagination(link.prev.query)"
-                @goNext="onClickPagination(link.next.query)"
-              />
+            <div class="flex justify-between mt-2">
+              <Button
+                :disabled="checkedCourses.length === 0"
+                class="w-28"
+                @click="onSubmitTemporaryRegistration"
+                >仮登録</Button
+              >
+              <div class="">
+                <Pagination
+                  :prev-disabled="!Boolean(link.prev)"
+                  :next-disabled="!Boolean(link.next)"
+                  @goPrev="onClickPagination(link.prev.query)"
+                  @goNext="onClickPagination(link.next.query)"
+                />
+              </div>
+              <span class="opacity-0 w-28"></span>
             </div>
           </div>
         </template>
