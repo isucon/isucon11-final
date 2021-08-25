@@ -690,7 +690,6 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		},
 		CourseResults: courseResults,
 	}
-	fmt.Printf("%#v\n", res)
 
 	return c.JSON(http.StatusOK, res)
 }
