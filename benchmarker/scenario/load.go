@@ -143,7 +143,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(3000 * time.Millisecond)
+				<-time.After(1 * time.Millisecond)
 				continue
 			}
 			err = verifyGrades(expected, &getGradeRes)
@@ -229,7 +229,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(3000 * time.Millisecond)
+				<-time.After(1 * time.Millisecond)
 				continue
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
@@ -319,7 +319,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(3000 * time.Millisecond)
+				<-time.After(1 * time.Millisecond)
 				continue
 			}
 			if err := verifyAnnouncements(&res, student); err != nil {
@@ -376,7 +376,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				return
 			case <-time.After(endTimeDuration):
 				return
-			case <-time.After(1000 * time.Millisecond):
+			case <-time.After(1 * time.Millisecond):
 			}
 		}
 	}
@@ -437,7 +437,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				return
 			}
 
-			timer := time.After(100 * time.Millisecond)
+			timer := time.After(1 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
 			_, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
