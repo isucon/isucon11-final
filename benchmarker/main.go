@@ -8,12 +8,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sort"
 	"sync/atomic"
 	"time"
-
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
@@ -21,9 +20,10 @@ import (
 	score2 "github.com/isucon/isucandar/score"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
-
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 	"github.com/isucon/isucon11-final/benchmarker/score"
+	"github.com/pkg/profile"
 )
 
 const (
@@ -38,6 +38,7 @@ var (
 	COMMIT           string
 	targetAddress    string
 	profileFile      string
+	memProfileDir    string
 	useTLS           bool
 	exitStatusOnFail bool
 	noLoad           bool
@@ -61,6 +62,7 @@ func init() {
 
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
+	flag.StringVar(&memProfileDir, "mem-profile", "", "path of output heap profile at max memStats.sys allocated. ex: memprof")
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
@@ -191,6 +193,24 @@ func main() {
 		_ = pprof.StartCPUProfile(fs)
 		defer pprof.StopCPUProfile()
 	}
+	if memProfileDir != "" {
+		var maxMemStats runtime.MemStats
+		go func() {
+			for {
+				time.Sleep(5 * time.Second)
+
+				var ms runtime.MemStats
+				runtime.ReadMemStats(&ms)
+				scenario.AdminLogger.Printf("system: %d Kb, heap: %d Kb", ms.Sys/1024, ms.HeapAlloc/1024)
+
+				if ms.Sys > maxMemStats.Sys {
+					profile.Start(profile.MemProfile, profile.ProfilePath(memProfileDir)).Stop()
+					maxMemStats = ms
+				}
+			}
+		}()
+	}
+
 	if targetAddress == "" {
 		targetAddress = "localhost:8080"
 	}
