@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-row items-center">
     <div
-      class="p-2 mr-6"
+      class="p-2 mr-3"
       :class="prevClasses"
       @click="prevDisabled ? null : $emit('goPrev')"
     >
@@ -9,12 +9,12 @@
       <span class="text-base"> Prev </span>
     </div>
     <div
-      class="p-2"
+      class="p-2 ml-3"
       :class="nextClasses"
       @click="nextDisabled ? null : $emit('goNext')"
     >
-      <span class="text-base mr-2"> Next </span>
-      <fa-icon icon="chevron-right" size="lg" />
+      <span class="text-base"> Next </span>
+      <fa-icon class="ml-2" icon="chevron-right" size="lg" />
     </div>
   </div>
 </template>
