@@ -35,13 +35,17 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 }
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
+	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
+	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
+	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
+
+	// TODO: 並列化
 	sampleCount := s.ActiveStudentCount() * validateAnnouncementsRate
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
 	for sampleIndex := range sampleIndices {
 		student := s.activeStudents[sampleIndex]
-		var actualCount int
-		var autualUnreadCount int
-		var expectedUnreadCount int
+		var actualAnnouncements map[string]*api.AnnouncementResponse
+		var responseUnreadCount int // responseに含まれるunread_count
 		lastCreatedAt := int64(math.MaxInt64)
 		var next string
 		for {
@@ -53,37 +57,21 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくるはず
 			if next == "" {
-				expectedUnreadCount = res.UnreadCount
-			} else if expectedUnreadCount != res.UnreadCount {
-				step.AddError(errValidation(errInvalidResponse("お知らせの未読数が不正です")))
+				responseUnreadCount = res.UnreadCount
+			} else if responseUnreadCount != res.UnreadCount {
+				step.AddError(errNotMatchUnreadCount)
 				return
 			}
 
-			for _, actual := range res.Announcements {
-				expected := student.GetAnnouncement(actual.ID)
-				if expected == nil {
-					step.AddError(errValidation(errInvalidResponse("存在しないはずのお知らせがレスポンスに含まれています")))
-					return
-				}
-
-				// 内容の検証
-				// Message の検証はお知らせ詳細を取得しないとできないので省略
-				if err := verifyAnnouncementsContent(&actual, expected); err != nil {
-					step.AddError(errValidation(err))
-					return
-				}
-
-				actualCount++
-				if actual.Unread {
-					autualUnreadCount++
-				}
+			for _, announcement := range res.Announcements {
+				actualAnnouncements[announcement.ID] = &announcement
 
 				// 順序の検証
-				if lastCreatedAt < actual.CreatedAt {
-					step.AddError(errValidation(errInvalidResponse("お知らせの順序が不正です")))
+				if lastCreatedAt < announcement.CreatedAt {
+					step.AddError(errNotSorted)
 					return
 				}
-				lastCreatedAt = actual.CreatedAt
+				lastCreatedAt = announcement.CreatedAt
 			}
 
 			_, next = parseLinkHeader(hres)
@@ -92,19 +80,34 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			}
 		}
 
-		// お知らせ総数の検証
-		// レスポンスに含まれるお知らせがすべてベンチ側に含まれていることは検証済みのため、総数が一致すれば両者は集合として一致する
-		if actualCount != student.AnnouncementCount() {
-			step.AddError(errValidation(errInvalidResponse("お知らせの総数が期待する値と一致しません")))
+		// レスポンスのunread_countの検証
+		var actualUnreadCount int
+		for _, a := range actualAnnouncements {
+			if a.Unread {
+				actualUnreadCount++
+			}
+		}
+		if actualUnreadCount != responseUnreadCount {
+			step.AddError(errNotMatchUnreadCount)
 			return
 		}
 
-		// 未読数の検証
-		if autualUnreadCount != expectedUnreadCount {
-			step.AddError(errValidation(errInvalidResponse("お知らせの未読数が期待する値と一致しません")))
-			return
+		expectAnnouncements := student.Announcements()
+		for _, expectStatus := range expectAnnouncements {
+			expect := expectStatus.Announcement
+			actual := actualAnnouncements[expect.ID]
+			if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
+				!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
+				!AssertEqual("announcement Title", expect.Title, actual.Title) ||
+				!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
+				!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
+				step.AddError(errNotMatch)
+				return
+			}
 		}
 	}
+
+	// TODO: verifyAnnouncementDetail
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {

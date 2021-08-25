@@ -64,6 +64,13 @@ func (s *Student) AddCourse(course *Course) {
 	s.registeredCourses = append(s.registeredCourses, course)
 }
 
+func (s *Student) Announcements() []*AnnouncementStatus {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	return s.announcements
+}
+
 func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
