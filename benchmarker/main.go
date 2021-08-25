@@ -88,7 +88,7 @@ func checkError(err error) (critical bool, timeout bool, deduction bool) {
 	return
 }
 
-func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish bool) bool {
+func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish bool, writeScoreToAdminLogger bool) bool {
 	logger := scenario.ContestantLogger
 	passed := true
 	reason := "passed"
@@ -127,8 +127,6 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	logger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
 	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
-	// FIXME: for debug
-	logger.Printf("breakdown:")
 	scoreTags := make([]score2.ScoreTag, 0, len(breakdown))
 	for k := range breakdown {
 		scoreTags = append(scoreTags, k)
@@ -136,8 +134,19 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	sort.Slice(scoreTags, func(i, j int) bool {
 		return scoreTags[i] < scoreTags[j]
 	})
-	for _, tag := range scoreTags {
-		logger.Printf("  %v: %v", tag, breakdown[tag])
+
+	// 競技者には最終的なScoreTagの統計のみ見せる
+	// TODO: 見せるタグを絞る
+	if finish {
+		for _, tag := range scoreTags {
+			scenario.ContestantLogger.Printf("tag: %v: %v", tag, breakdown[tag])
+		}
+	}
+
+	if writeScoreToAdminLogger {
+		for _, tag := range scoreTags {
+			scenario.AdminLogger.Printf("tag: %v: %v", tag, breakdown[tag])
+		}
 	}
 
 	/*
@@ -241,15 +250,18 @@ func main() {
 		startAt := time.Now()
 		// 途中経過を3秒毎に送信
 		ticker := time.NewTicker(3 * time.Second)
+		count := 0
 		for {
 			select {
 			case <-ticker.C:
-				scenario.ContestantLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
-				scenario.ContestantLogger.Printf("[debug] active student: %v, course: %v, finished course: %v\n", s.ActiveStudentCount(), s.CourseCount(), s.FinishedCourseCount())
+				scenario.DebugLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
+				scenario.DebugLogger.Printf("[debug] active student: %v, course: %v, finished course: %v\n", s.ActiveStudentCount(), s.CourseCount(), s.FinishedCourseCount())
+				sendResult(s, step.Result(), false, count%5 == 0)
 			case <-ctx.Done():
 				ticker.Stop()
 				return nil
 			}
+			count++
 		}
 	})
 
@@ -257,7 +269,7 @@ func main() {
 	defer cancel()
 	result := b.Start(ctx)
 
-	if !sendResult(s, result, true) && exitStatusOnFail {
+	if !sendResult(s, result, true, true) && exitStatusOnFail {
 		os.Exit(1)
 	}
 }
