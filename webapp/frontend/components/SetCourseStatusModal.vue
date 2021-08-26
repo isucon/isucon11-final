@@ -43,7 +43,7 @@
       </div>
       <div class="px-4 py-3 flex justify-center">
         <Button @click="close"> 閉じる </Button>
-        <Button @click="submit"> 変更 </Button>
+        <Button color="primary" @click="submit"> 変更 </Button>
       </div>
     </Card>
   </Modal>

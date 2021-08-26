@@ -5,10 +5,12 @@
         <section>
           <h1 class="text-2xl">科目</h1>
           <div class="py-4">
-            <Button @click="visibleModal = 'AddCourse'">新規登録</Button>
+            <Button color="primary" @click="visibleModal = 'AddCourse'"
+              >新規登録</Button
+            >
           </div>
           <div class="py-4">
-            <Button @click="visibleModal = 'SetCourseStatus'"
+            <Button color="primary" @click="visibleModal = 'SetCourseStatus'"
               >ステータス変更</Button
             >
           </div>
@@ -17,15 +19,21 @@
         <section class="mt-10">
           <h1 class="text-2xl">講義</h1>
           <div class="py-4">
-            <Button @click="visibleModal = 'AddClass'">新規登録</Button>
+            <Button color="primary" @click="visibleModal = 'AddClass'"
+              >新規登録</Button
+            >
           </div>
           <div class="py-4">
-            <Button @click="visibleModal = 'DownloadAssignments'"
+            <Button
+              color="primary"
+              @click="visibleModal = 'DownloadAssignments'"
               >提出課題のダウンロード</Button
             >
           </div>
           <div class="py-4">
-            <Button @click="visibleModal = 'RegisterScores'">成績登録</Button>
+            <Button color="primary" @click="visibleModal = 'RegisterScores'"
+              >成績登録</Button
+            >
           </div>
         </section>
       </div>

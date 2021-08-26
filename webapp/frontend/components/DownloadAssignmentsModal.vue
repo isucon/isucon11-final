@@ -45,7 +45,7 @@
       </div>
       <div class="px-4 py-3 flex justify-center">
         <Button @click="close"> 閉じる </Button>
-        <Button @click="submit"> ダウンロード </Button>
+        <Button color="primary" @click="submit"> ダウンロード </Button>
       </div>
     </Card>
   </Modal>
