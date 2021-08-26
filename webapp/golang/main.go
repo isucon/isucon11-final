@@ -1288,6 +1288,15 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
+	var classCount int
+	if err := tx.Get(&classCount, "SELECT COUNT(*) FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if classCount > 0 {
+		return echo.NewHTTPError(http.StatusConflict, "This part for the requested course already exists.")
+	}
+
 	classID := uuid.NewRandom()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
