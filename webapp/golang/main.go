@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -549,6 +550,8 @@ type ClassScore struct {
 	Submitters int       `json:"submitters"` // 提出した生徒数
 }
 
+const epsilon = 1e-10
+
 func (h *handlers) GetGrades(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -641,7 +644,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 		// 対象科目の自分の偏差値の計算
 		var myTotalScoreTScore float64
-		if totalScoreStdDev == 0 {
+		if math.Abs(totalScoreStdDev) < epsilon {
 			myTotalScoreTScore = 50
 		} else {
 			myTotalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
@@ -697,7 +700,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 	// 自分の偏差値の計算
 	var myGpaTScore float64
-	if gpaStdDev == 0 {
+	if math.Abs(gpaStdDev) < epsilon {
 		myGpaTScore = 50
 	} else {
 		myGpaTScore = (myGPA-gpaAvg)/gpaStdDev*10 + 50

@@ -26,11 +26,11 @@ func averageInt(arr []int, or float64) float64 {
 	if len(arr) == 0 {
 		return or
 	}
-	var sum float64
+	var sum int
 	for _, v := range arr {
-		sum += float64(v)
+		sum += v
 	}
-	return sum / float64(len(arr))
+	return float64(sum) / float64(len(arr))
 }
 
 func maxInt(arr []int, or int) int {
