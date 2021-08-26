@@ -108,7 +108,7 @@ TODO: 後で見直す
 
 ISUCHOLAR には、サーバーの IP アドレス指定で Web ブラウザから HTTP アクセスできます。
 
-### ISUCONDITION へのログイン
+### ISUCHOLAR へのログイン
 
 ISUCHOLAR には、学籍番号とパスワードを使ってログインしてください。
 
