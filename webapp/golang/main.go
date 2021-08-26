@@ -699,7 +699,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 // SearchCourses 科目検索
 func (h *handlers) SearchCourses(c echo.Context) error {
-	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
+	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
 		" WHERE 1=1"
 	var condition string
@@ -746,6 +746,11 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 			args = append(args, "%"+keyword+"%")
 		}
 		condition += fmt.Sprintf(" AND ((1=1%s) OR (1=1%s))", nameCondition, keywordsCondition)
+	}
+
+	if status := c.QueryParam("status"); status != "" {
+		condition += " AND `courses`.`status` = ?"
+		args = append(args, status)
 	}
 
 	condition += " ORDER BY `courses`.`code`"
@@ -805,16 +810,18 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 }
 
 type GetCourseDetailResponse struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	Code        string    `json:"code" db:"code"`
-	Type        string    `json:"type" db:"type"`
-	Name        string    `json:"name" db:"name"`
-	Description string    `json:"description" db:"description"`
-	Credit      uint8     `json:"credit" db:"credit"`
-	Period      uint8     `json:"period" db:"period"`
-	DayOfWeek   string    `json:"day_of_week" db:"day_of_week"`
-	Teacher     string    `json:"teacher" db:"teacher"`
-	Keywords    string    `json:"keywords" db:"keywords"`
+	ID          uuid.UUID    `json:"id" db:"id"`
+	Code        string       `json:"code" db:"code"`
+	Type        string       `json:"type" db:"type"`
+	Name        string       `json:"name" db:"name"`
+	Description string       `json:"description" db:"description"`
+	Credit      uint8        `json:"credit" db:"credit"`
+	Period      uint8        `json:"period" db:"period"`
+	DayOfWeek   string       `json:"day_of_week" db:"day_of_week"`
+	TeacherID   uuid.UUID    `json:"-" db:"teacher_id"`
+	Keywords    string       `json:"keywords" db:"keywords"`
+	Status      CourseStatus `json:"status" db:"status"`
+	Teacher     string       `json:"teacher" db:"teacher"`
 }
 
 // GetCourseDetail 科目詳細の取得
@@ -825,7 +832,7 @@ func (h *handlers) GetCourseDetail(c echo.Context) error {
 	}
 
 	var res GetCourseDetailResponse
-	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
+	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses`" +
 		" JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
 		" WHERE `courses`.`id` = ?"
