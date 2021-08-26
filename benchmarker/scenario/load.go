@@ -633,7 +633,7 @@ L:
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L
-		} else if hres.StatusCode == http.StatusConflict {
+		} else if hres != nil && hres.StatusCode == http.StatusConflict {
 			// すでにwebappに登録されていたら続ける
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
