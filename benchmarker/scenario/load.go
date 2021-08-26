@@ -284,16 +284,15 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					return
 				}
 
+				// 冪等なので登録済みのコースにもう一回登録して成功すれば200が返ってくる
 			L:
-				hres, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
+				_, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
 				if err != nil {
 					step.AddError(err)
 					if err, ok := err.(*url.Error); ok && err.Timeout() {
 						// timeout したらもう一回リクエストする
 						<-time.After(100 * time.Millisecond)
 						goto L
-					} else if hres.StatusCode == http.StatusConflict {
-						// すでにwebappに登録されていたら続ける
 					} else {
 						// 失敗時の仮登録情報のロールバック
 						for _, c := range semiRegistered {
