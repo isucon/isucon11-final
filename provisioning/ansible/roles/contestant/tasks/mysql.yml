@@ -4,24 +4,9 @@
   become_user: root
   apt:
     name:
-    - mysql-server-5.7
-    - mysql-server-core-5.7
-    - mysql-common
-    - mysql-client-5.7
-    - mysql-client-core-5.7
-    - libmysqld-dev
+    - mysql-server-8.0
     update_cache: yes
 
-- name: "roles/contestant/tasks/mysql: Create isucon user on MySQL"
-  become: yes
-  become_user: root
-  shell: >
-      mysql -uroot -proot -e "
-        CREATE USER IF NOT EXISTS `isucon`@`localhost` IDENTIFIED BY 'isucon';
-        GRANT ALL PRIVILEGES ON *.* TO `isucon`@`localhost` WITH GRANT OPTION;
-        FLUSH PRIVILEGES;
-      "
-      
 - name: "roles/contestant/tasks/mysql: Copy configs"
   copy:
     src: "{{ item }}"
@@ -30,7 +15,6 @@
     group: "root"
     mode: "0644"
   with_items:
-  - etc/mysql/mysql.conf.d/mysqld.cnf
   - etc/mysql/conf.d/my.cnf
 
 - name: "roles/contestant/tasks/mysql: Start mysql-server"

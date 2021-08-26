@@ -57,13 +57,13 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Add(initialCourseCount + 1)
 	for i := 0; i < initialCourseCount; i++ {
 		go func() {
-			defer AdminLogger.Printf("[debug] initial Course added")
+			defer DebugLogger.Printf("[debug] initial Course added")
 			defer wg.Done()
 			s.addCourseLoad(ctx, step)
 		}()
 	}
 	go func() {
-		defer AdminLogger.Printf("[debug] initial ActiveStudents added")
+		defer DebugLogger.Printf("[debug] initial ActiveStudents added")
 		defer wg.Done()
 		s.addActiveStudentLoads(ctx, step, initialStudentsCount)
 	}()
@@ -81,12 +81,12 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg = sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
-		defer AdminLogger.Printf("[debug] studentLoadWorker finished")
+		defer DebugLogger.Printf("[debug] studentLoadWorker finished")
 		defer wg.Done()
 		studentLoadWorker.Wait()
 	}()
 	go func() {
-		defer AdminLogger.Printf("[debug] courseLoadWorker finished")
+		defer DebugLogger.Printf("[debug] courseLoadWorker finished")
 		defer wg.Done()
 		courseLoadWorker.Wait()
 	}()
@@ -121,10 +121,10 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 		// 同時実行可能数を制限する際には注意
 		// 成績確認 + (空きがあれば履修登録)
-		AdminLogger.Println(student.Name, "の成績確認タスクが追加された") // FIXME: for debug
+		DebugLogger.Println(student.Name, "の成績確認タスクが追加された") // FIXME: for debug
 		studentLoadWorker.Do(s.registrationScenario(student, step))
 		// おしらせ確認 + 既読追加
-		AdminLogger.Println(student.Name, "のおしらせタスクが追加された") // FIXME: for debug
+		DebugLogger.Println(student.Name, "のおしらせタスクが追加された") // FIXME: for debug
 		studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
 	})
 	return studentLoadWorker
@@ -143,7 +143,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(3000 * time.Millisecond)
+				<-time.After(1 * time.Millisecond)
 				continue
 			}
 			err = verifyGrades(expected, &getGradeRes)
@@ -153,7 +153,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				step.AddScore(score.CountGetGrades)
 			}
 
-			AdminLogger.Printf("%vは成績を確認した", student.Name)
+			DebugLogger.Printf("%vは成績を確認した", student.Name)
 
 			// ----------------------------------------
 
@@ -217,7 +217,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 			}
 
-			AdminLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
+			DebugLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
 
 			// ----------------------------------------
 
@@ -229,7 +229,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(3000 * time.Millisecond)
+				<-time.After(1 * time.Millisecond)
 				continue
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
@@ -297,7 +297,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						c.SuccessRegistration(student)
 						student.AddCourse(c)
 						c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
-						AdminLogger.Printf("%vは%vを履修した", student.Name, c.Name)
+						DebugLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 					}
 				}
 			}
@@ -319,7 +319,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(3000 * time.Millisecond)
+				<-time.After(1 * time.Millisecond)
 				continue
 			}
 			if err := verifyAnnouncements(&res, student); err != nil {
@@ -328,7 +328,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				step.AddScore(score.CountGetAnnouncements)
 			}
 
-			AdminLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
+			DebugLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
 
 			for _, ans := range res.Announcements {
 
@@ -358,7 +358,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					}
 
 					student.ReadAnnouncement(ans.ID)
-					AdminLogger.Printf("%vはお知らせ詳細を確認した", student.Name)
+					DebugLogger.Printf("%vはお知らせ詳細を確認した", student.Name)
 				}
 			}
 
@@ -376,7 +376,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				return
 			case <-time.After(endTimeDuration):
 				return
-			case <-time.After(1000 * time.Millisecond):
+			case <-time.After(1 * time.Millisecond):
 			}
 		}
 	}
@@ -393,7 +393,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			return
 		}
 
-		AdminLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
+		DebugLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
 		loadCourseWorker.Do(courseScenario(course, step, s))
 	})
 	return loadCourseWorker
@@ -428,7 +428,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 			return
 		}
-		AdminLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
+		DebugLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
@@ -437,7 +437,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				return
 			}
 
-			timer := time.After(100 * time.Millisecond)
+			timer := time.After(1 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
 			_, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
@@ -450,14 +450,14 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 			course.AddClass(class)
 			course.BroadCastAnnouncement(announcement)
-			AdminLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
+			DebugLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
 			if s.isNoRequestTime(ctx) {
 				return
 			}
 
 			s.submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
-			AdminLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
+			DebugLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -471,7 +471,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			if err := verifyAssignments(assignmentsData, class); err != nil {
 				step.AddError(err)
 			}
-			AdminLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
+			DebugLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -485,7 +485,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			} else {
 				step.AddScore(score.CountRegisterScore)
 			}
-			AdminLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
+			DebugLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
 		}
 
 		if s.isNoRequestTime(ctx) {
@@ -500,7 +500,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			return
 		}
 
-		AdminLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
+		DebugLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
 
 		// FIXME: Debug
 		{
@@ -556,7 +556,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
-				ContestantLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
 				step.AddError(err)
 				return
 			}
@@ -567,7 +567,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, res, err := GetMeAction(ctx, student.Agent)
 			if err != nil {
-				ContestantLogger.Printf("学生 %vのユーザ情報取得に失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vのユーザ情報取得に失敗しました", userData.Name)
 				step.AddError(err)
 				return
 			}
@@ -593,7 +593,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 
 	_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 	if err != nil {
-		ContestantLogger.Printf("teacherのログインに失敗しました")
+		AdminLogger.Printf("teacherのログインに失敗しました")
 		step.AddError(failure.NewError(fails.ErrCritical, err))
 		return
 	}
@@ -604,7 +604,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 
 	_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
 	if err != nil {
-		ContestantLogger.Printf("teacherのユーザ情報取得に失敗しました")
+		AdminLogger.Printf("teacherのユーザ情報取得に失敗しました")
 		step.AddError(err)
 		return
 	}
@@ -645,7 +645,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 			case <-time.After(endTimeDuration):
 				return
 			case <-time.After(waitReadClassAnnouncementTimeout):
-				AdminLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
+				DebugLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
 				return
 			case <-student.WaitReadAnnouncement(ctx, announcementID):
 				// 学生sが課題お知らせを読むまで待つ

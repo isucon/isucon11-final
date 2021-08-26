@@ -74,6 +74,13 @@ func (s *Scenario) Language() string {
 	return s.language
 }
 
+func (s *Scenario) ActiveStudents() []*model.Student {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.activeStudents
+}
+
 func (s *Scenario) AddActiveStudent(student *model.Student) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -113,6 +120,13 @@ func (s *Scenario) GetCourse(id string) (*model.Course, bool) {
 
 	course, exists := s.courses[id]
 	return course, exists
+}
+
+func (s *Scenario) Courses() map[string]*model.Course {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.courses
 }
 
 func (s *Scenario) GetRandomTeacher() *model.Teacher {

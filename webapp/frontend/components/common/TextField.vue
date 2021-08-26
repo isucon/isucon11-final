@@ -23,6 +23,8 @@
         :type="type"
         :placeholder="placeholder"
         :value="value"
+        :min="min"
+        :max="max"
         @input="$emit('input', $event.target.value)"
       />
     </div>
@@ -56,6 +58,14 @@ export default Vue.extend({
     value: {
       type: String,
       default: '',
+    },
+    min: {
+      type: [String, Number],
+      default: null,
+    },
+    max: {
+      type: [String, Number],
+      default: null,
     },
   },
   computed: {

@@ -8,21 +8,22 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sort"
 	"sync/atomic"
 	"time"
-
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	score2 "github.com/isucon/isucandar/score"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
-
+	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 	"github.com/isucon/isucon11-final/benchmarker/score"
+	"github.com/pkg/profile"
 )
 
 const (
@@ -37,9 +38,11 @@ var (
 	COMMIT           string
 	targetAddress    string
 	profileFile      string
+	memProfileDir    string
 	useTLS           bool
 	exitStatusOnFail bool
 	noLoad           bool
+	isDebug          bool
 	showVersion      bool
 	timeoutDuration  string
 
@@ -59,9 +62,11 @@ func init() {
 
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
+	flag.StringVar(&memProfileDir, "mem-profile", "", "path of output heap profile at max memStats.sys allocated. ex: memprof")
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
+	flag.BoolVar(&isDebug, "is-debug", false, "silence debug log")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
 	flag.Parse()
@@ -86,7 +91,7 @@ func checkError(err error) (critical bool, timeout bool, deduction bool) {
 	return
 }
 
-func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish bool) bool {
+func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish bool, writeScoreToAdminLogger bool) bool {
 	logger := scenario.ContestantLogger
 	passed := true
 	reason := "passed"
@@ -125,8 +130,6 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	logger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
 	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
-	// FIXME: for debug
-	logger.Printf("breakdown:")
 	scoreTags := make([]score2.ScoreTag, 0, len(breakdown))
 	for k := range breakdown {
 		scoreTags = append(scoreTags, k)
@@ -134,30 +137,39 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	sort.Slice(scoreTags, func(i, j int) bool {
 		return scoreTags[i] < scoreTags[j]
 	})
-	for _, tag := range scoreTags {
-		logger.Printf("  %v: %v", tag, breakdown[tag])
+
+	// 競技者には最終的なScoreTagの統計のみ見せる
+	// TODO: 見せるタグを絞る
+	if finish {
+		for _, tag := range scoreTags {
+			scenario.ContestantLogger.Printf("tag: %v: %v", tag, breakdown[tag])
+		}
 	}
 
-	/*
-		err := reporter.Report(&isuxportalResources.BenchmarkResult{
-			SurveyResponse: &isuxportalResources.SurveyResponse{
-				Language: s.Language(),
-			},
-			Finished: finish,
-			Passed:   passed,
-			Score:    0, // TODO: 加点 - 減点
-			ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
-				Raw:       0, // TODO: 加点
-				Deduction: 0, // TODO: 減点
-			},
-			Execution: &isuxportalResources.BenchmarkResult_Execution{
-				Reason: reason,
-			},
-		})
-		if err != nil {
-			panic(err)
+	if writeScoreToAdminLogger {
+		for _, tag := range scoreTags {
+			scenario.AdminLogger.Printf("tag: %v: %v", tag, breakdown[tag])
 		}
-	*/
+	}
+
+	err := reporter.Report(&isuxportalResources.BenchmarkResult{
+		SurveyResponse: &isuxportalResources.SurveyResponse{
+			Language: s.Language(),
+		},
+		Finished: finish,
+		Passed:   passed,
+		Score:    resultScore, // TODO: 加点 - 減点
+		ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
+			Raw:       raw,      // TODO: 加点
+			Deduction: deducted, // TODO: 減点
+		},
+		Execution: &isuxportalResources.BenchmarkResult_Execution{
+			Reason: reason,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
 
 	return passed
 }
@@ -169,6 +181,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if !isDebug {
+		scenario.SilenceDebugLog()
+	}
+
 	if profileFile != "" {
 		fs, err := os.Create(profileFile)
 		if err != nil {
@@ -177,6 +193,24 @@ func main() {
 		_ = pprof.StartCPUProfile(fs)
 		defer pprof.StopCPUProfile()
 	}
+	if memProfileDir != "" {
+		var maxMemStats runtime.MemStats
+		go func() {
+			for {
+				time.Sleep(5 * time.Second)
+
+				var ms runtime.MemStats
+				runtime.ReadMemStats(&ms)
+				scenario.AdminLogger.Printf("system: %d Kb, heap: %d Kb", ms.Sys/1024, ms.HeapAlloc/1024)
+
+				if ms.Sys > maxMemStats.Sys {
+					profile.Start(profile.MemProfile, profile.ProfilePath(memProfileDir)).Stop()
+					maxMemStats = ms
+				}
+			}
+		}()
+	}
+
 	if targetAddress == "" {
 		targetAddress = "localhost:8080"
 	}
@@ -235,15 +269,18 @@ func main() {
 		startAt := time.Now()
 		// 途中経過を3秒毎に送信
 		ticker := time.NewTicker(3 * time.Second)
+		count := 0
 		for {
 			select {
 			case <-ticker.C:
-				scenario.ContestantLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
-				scenario.ContestantLogger.Printf("[debug] active student: %v, course: %v, finished course: %v\n", s.ActiveStudentCount(), s.CourseCount(), s.FinishedCourseCount())
+				scenario.DebugLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
+				scenario.DebugLogger.Printf("[debug] active student: %v, course: %v, finished course: %v\n", s.ActiveStudentCount(), s.CourseCount(), s.FinishedCourseCount())
+				sendResult(s, step.Result(), false, count%5 == 0)
 			case <-ctx.Done():
 				ticker.Stop()
 				return nil
 			}
+			count++
 		}
 	})
 
@@ -251,7 +288,7 @@ func main() {
 	defer cancel()
 	result := b.Start(ctx)
 
-	if !sendResult(s, result, true) && exitStatusOnFail {
+	if !sendResult(s, result, true, true) && exitStatusOnFail {
 		os.Exit(1)
 	}
 }

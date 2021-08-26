@@ -8,8 +8,9 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
+
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type GetMeResponse struct {
@@ -94,11 +95,11 @@ type GetGradeResponse struct {
 
 type Summary struct {
 	Credits   int     `json:"credits"`
-	GPT       float64 `json:"gpt"`
-	GptTScore float64 `json:"gpt_t_score"` // 偏差値
-	GptAvg    float64 `json:"gpt_avg"`     // 平均値
-	GptMax    float64 `json:"gpt_max"`     // 最大値
-	GptMin    float64 `json:"gpt_min"`     // 最小値
+	GPA       float64 `json:"gpa"`
+	GpaTScore float64 `json:"gpa_t_score"` // 偏差値
+	GpaAvg    float64 `json:"gpa_avg"`     // 平均値
+	GpaMax    float64 `json:"gpa_max"`     // 最大値
+	GpaMin    float64 `json:"gpa_min"`     // 最小値
 }
 
 type CourseResult struct {
@@ -116,7 +117,7 @@ type ClassScore struct {
 	ClassID    string `json:"class_id"`
 	Title      string `json:"title"`
 	Part       uint8  `json:"part"`
-	Score      int    `json:"score"`      // 0~100点
+	Score      *int   `json:"score"`      // 0~100点
 	Submitters int    `json:"submitters"` // 提出した生徒数
 }
 

@@ -1,14 +1,29 @@
 ---
+- name: "roles/bench/tasks/bench: Create benchmarker directories"
+  become_user: isucon
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+  - /home/isucon/benchmarker
+  - /home/isucon/benchmarker/bin
+  - /home/isucon/benchmarker/generate
+
 - name: "roles/bench/tasks/bench: Deploy isucon11-final benchmarker"
   become_user: isucon
   copy:
     remote_src: yes
-    src: /tmp/isucon11-final/benchmarker
-    dest: /home/isucon/
+    src: /dev/shm/files-generated/benchmarker
+    dest: /home/isucon/benchmarker/bin/benchmarker
     owner: isucon
     group: isucon
+    mode: 0755
 
-- name: "roles/bench/tasks/bench: Build benchmarker"
-  make:
-    chdir: /home/isucon/benchmarker
-    target: all
+- name: "roles/bench/tasks/bench: Deploy isucon11-final benchmarker data"
+  become_user: isucon
+  copy:
+    remote_src: yes
+    src: /tmp/isucon11-final/benchmarker/generate/data
+    dest: /home/isucon/benchmarker/generate/
+    owner: isucon
+    group: isucon
