@@ -17,11 +17,6 @@ const (
 	validateAnnouncementsRate = 1.0
 )
 
-// validationフェーズでのエラーはすべてCriticalにする
-func errValidation(err error) error {
-	return failure.NewError(fails.ErrCritical, err)
-}
-
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	if s.NoLoad {
 		return nil
@@ -56,7 +51,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 		for {
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
 			if err != nil {
-				step.AddError(errValidation(err))
+				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
 
