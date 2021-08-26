@@ -329,8 +329,9 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 	gpaMin := util2.MinFloat64(gpas, 0)
 	gpaStdDev := util2.StdDevFloat64(gpas, gpaAvg)
 
+	const epsilon = 1e-10
 	gpaTScore := 0.0
-	if gpaStdDev == 0 {
+	if math.Abs(gpaStdDev) < epsilon {
 		gpaTScore = 50
 	} else {
 		gpaTScore = 10*(targetUserGpa-gpaAvg)/gpaStdDev + 50

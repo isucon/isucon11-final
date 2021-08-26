@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"math"
 	"sync"
 	"time"
 
@@ -262,8 +263,9 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 		totalScore = 0
 	}
 
+	const epsilon = 1e-10
 	totalTScore := 0.0
-	if totalStdDev == 0 {
+	if math.Abs(totalStdDev) < epsilon {
 		totalTScore = 50
 	} else {
 		totalTScore = 10*(float64(totalScore)-totalAvg)/totalStdDev + 50
