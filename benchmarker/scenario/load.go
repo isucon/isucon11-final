@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -629,7 +630,8 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 L:
 	hres, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
 	if err != nil {
-		if err, ok := err.(*url.Error); ok && err.Timeout() {
+		var urlError *url.Error
+		if errors.As(err, &urlError) && urlError.Timeout() {
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L
@@ -759,7 +761,8 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 L:
 	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
 	if err != nil {
-		if err, ok := err.(*url.Error); ok && err.Timeout() {
+		var urlError *url.Error
+		if errors.As(err, &urlError) && urlError.Timeout() {
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L
