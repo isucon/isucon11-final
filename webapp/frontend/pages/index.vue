@@ -36,13 +36,19 @@ import Vue from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Button from '~/components/common/Button.vue'
 import TextField from '~/components/common/TextField.vue'
+import { User } from '~/types/courses'
 
 export default Vue.extend({
   components: { TextInput: TextField, Button },
   layout: 'empty',
-  middleware({ app, redirect }) {
+  async middleware({ app, redirect }) {
     if (app.$cookies.get('session')) {
-      return redirect('/mypage')
+      const user: User = await app.$axios.$get(`/api/users/me`)
+      if (user.isAdmin) {
+        return redirect('/teacherpage')
+      } else {
+        return redirect('/mypage')
+      }
     }
   },
   data() {
@@ -58,7 +64,12 @@ export default Vue.extend({
           code: this.code,
           password: this.password,
         })
-        await this.$router.push('/mypage')
+        const user: User = await this.$axios.$get(`/api/users/me`)
+        if (user.isAdmin) {
+          return this.$router.push('/teacherpage')
+        } else {
+          return this.$router.push('/mypage')
+        }
       } catch (e) {
         notify('学籍番号またはパスワードが誤っています')
       }
