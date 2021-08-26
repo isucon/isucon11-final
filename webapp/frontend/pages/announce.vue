@@ -71,7 +71,7 @@ export default Vue.extend({
     return route.fullPath
   },
   components: { Card, TextField, AnnouncementList },
-  middleware: 'is_loggedin',
+  middleware: 'is_student',
   async asyncData(ctx: Context): Promise<AsyncAnnounceData> {
     const { $axios, query } = ctx
     const response = await $axios.get('/api/announcements', { params: query })

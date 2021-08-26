@@ -68,7 +68,7 @@ export default Vue.extend({
     AnnouncementList,
     ClassInfoCard,
   },
-  middleware: 'is_loggedin',
+  middleware: 'is_student',
   async asyncData(ctx: Context): Promise<CourseData> {
     const { params, query, $axios } = ctx
     console.log(params)

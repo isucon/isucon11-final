@@ -152,6 +152,7 @@ type Data = {
 
 export default Vue.extend({
   components: { Button },
+  middleware: 'is_student',
   async asyncData(ctx: Context) {
     try {
       const res = await ctx.$axios.get('/api/users/me/grades')
