@@ -361,7 +361,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 						continue // 次の未読おしらせの確認へ
 					}
 
-					if err := verifyAnnouncement(&res, announcementStatus); err != nil {
+					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
 						step.AddError(err)
 					} else {
 						step.AddScore(score.CountGetAnnouncementsDetail)
