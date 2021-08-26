@@ -6,16 +6,6 @@
         <div class="flex flex-row space-x-2">
           <div class="flex-1">
             <TextField
-              id="params-name"
-              v-model="params.name"
-              label="科目名"
-              label-direction="vertical"
-              type="text"
-              placeholder="科目名を入力してください"
-            />
-          </div>
-          <div class="flex-1">
-            <TextField
               id="params-code"
               v-model="params.code"
               label="科目コード"
@@ -36,6 +26,14 @@
             />
           </div>
         </div>
+        <TextField
+          id="params-name"
+          v-model="params.name"
+          label="科目名"
+          label-direction="vertical"
+          type="text"
+          placeholder="科目名を入力してください"
+        />
         <TextField
           id="params-description"
           v-model="params.description"
