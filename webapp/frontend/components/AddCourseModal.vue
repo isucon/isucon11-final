@@ -84,7 +84,7 @@
           label="キーワード"
           label-direction="vertical"
           type="text"
-          placeholder="キーワードを入力してください"
+          placeholder="キーワードを半角スペース区切りで入力してください"
         />
       </div>
       <div
