@@ -162,6 +162,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// Gradeが早くなった時、常にCapacityが0だとGradeを効率的に回せるようになって点数が高くなるという不正ができるかもしれない
 			remainingRegistrationCapacity := registerCourseLimit - student.RegisteringCount()
 			if remainingRegistrationCapacity == 0 {
+				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
 				continue
 			}
 
@@ -280,39 +281,38 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// ----------------------------------------
 
 			// ベンチ内で仮登録できたコースがあればAPIに登録処理を投げる
-			if len(semiRegistered) > 0 {
-				if s.isNoRequestTime(ctx) {
-					return
-				}
+			if len(semiRegistered) == 0 {
+				DebugLogger.Printf("[履修スキップ（空き講義不足)] code: %v, name: %v", student.Code, student.Name)
+				continue
+			}
 
-				// 冪等なので登録済みのコースにもう一回登録して成功すれば200が返ってくる
-			L:
-				_, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
-				if err != nil {
-					step.AddError(err)
-					if err, ok := err.(*url.Error); ok && err.Timeout() {
-						// timeout したらもう一回リクエストする
-						<-time.After(100 * time.Millisecond)
-						goto L
-					} else {
-						// 失敗時の仮登録情報のロールバック
-						for _, c := range semiRegistered {
-							c.FailRegistration()
-							student.ReleaseTimeslot(c.DayOfWeek, c.Period)
-						}
-					}
+			// 冪等なので登録済みのコースにもう一回登録して成功すれば200が返ってくる
+		L:
+			_, err = TakeCoursesAction(ctx, student.Agent, semiRegistered)
+			if err != nil {
+				step.AddError(err)
+				if err, ok := err.(*url.Error); ok && err.Timeout() {
+					// timeout したらもう一回リクエストする
+					<-time.After(100 * time.Millisecond)
+					goto L
 				} else {
-					step.AddScore(score.CountRegisterCourses)
+					// 失敗時の仮登録情報のロールバック
 					for _, c := range semiRegistered {
-						c.SuccessRegistration(student)
-						student.AddCourse(c)
-						c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
-						DebugLogger.Printf("%vは%vを履修した", student.Name, c.Name)
+						c.FailRegistration()
+						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
 					}
+				}
+			} else {
+				step.AddScore(score.CountRegisterCourses)
+				for _, c := range semiRegistered {
+					c.SuccessRegistration(student)
+					student.AddCourse(c)
+					c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+					DebugLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 				}
 			}
-			// TODO: できれば登録に失敗したコースを抜いて再度登録する
 		}
+		// TODO: できれば登録に失敗したコースを抜いて再度登録する
 	}
 }
 
@@ -438,7 +438,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 			return
 		}
-		DebugLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
+		DebugLogger.Printf("[コース開始] id: %v, name: %v, registered students: %v", course.ID, course.Name, len(course.Students()))
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
