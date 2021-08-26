@@ -69,3 +69,12 @@ resource "aws_security_group_rule" "final-dev-contestant-ingress-benchmark" {
   to_port                  = 80
   source_security_group_id = aws_security_group.final-dev-bench.id
 }
+
+resource "aws_security_group_rule" "final-dev-contestant-ingress-contestant" {
+  security_group_id        = aws_security_group.final-dev-contestant.id
+  type                     = "ingress"
+  protocol                 = "all"
+  from_port                = 0
+  to_port                  = 0
+  source_security_group_id = aws_security_group.final-dev-contestant.id
+}
