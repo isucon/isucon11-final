@@ -2,11 +2,10 @@ package model
 
 import (
 	"context"
-	"math"
 	"sync"
 	"time"
 
-	util2 "github.com/isucon/isucon11-final/benchmarker/util"
+	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
 type CourseParam struct {
@@ -254,23 +253,15 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 	for _, totalScore := range totalScores {
 		totalScoresArr = append(totalScoresArr, totalScore)
 	}
-	totalAvg := util2.AverageInt(totalScoresArr, 0)
-	totalMax := util2.MaxInt(totalScoresArr, 0)
-	totalMin := util2.MinInt(totalScoresArr, 0)
-	totalStdDev := util2.StdDevInt(totalScoresArr, totalAvg)
+	totalAvg := util.AverageInt(totalScoresArr, 0)
+	totalMax := util.MaxInt(totalScoresArr, 0)
+	totalMin := util.MinInt(totalScoresArr, 0)
 
 	totalScore, ok := totalScores[userCode]
 	if !ok {
 		totalScore = 0
 	}
-
-	const epsilon = 1e-10
-	totalTScore := 0.0
-	if math.Abs(totalStdDev) < epsilon {
-		totalTScore = 50
-	} else {
-		totalTScore = 10*(float64(totalScore)-totalAvg)/totalStdDev + 50
-	}
+	totalTScore := util.TScoreInt(totalScore, totalScoresArr)
 
 	classScores := c.CollectClassScores(userCode)
 
