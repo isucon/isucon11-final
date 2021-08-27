@@ -1522,13 +1522,12 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var announcementCount int
-	if err := tx.Get(&announcementCount, "SELECT COUNT(*) FROM `announcements` WHERE `course_id` = ? AND `title` = ? AND `message` = ? AND `created_at` = ?", req.CourseID, req.Title, req.Message, req.CreatedAt); err != nil {
+	var existingAnnouncementID uuid.UUID
+	if err := tx.Get(&existingAnnouncementID, "SELECT `id` FROM `announcements` WHERE `course_id` = ? AND `title` = ? AND `message` = ? AND `created_at` = ?", req.CourseID, req.Title, req.Message, req.CreatedAt); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
-	}
-	if announcementCount > 0 {
-		return echo.NewHTTPError(http.StatusConflict, "The same announcement already exists.")
+	} else if err == nil {
+		return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: existingAnnouncementID})
 	}
 
 	announcementID := uuid.NewRandom()
