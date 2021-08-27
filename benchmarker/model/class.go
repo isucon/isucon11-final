@@ -50,15 +50,16 @@ func (c *Class) GetSubmittedCount() int {
 }
 
 func (c *Class) IntoClassScore(userCode string) *ClassScore {
-	if _, ok := c.submissionSummary[userCode]; !ok {
-		return nil
+	score := 0
+	if v, ok := c.submissionSummary[userCode]; ok {
+		score = v.score
 	}
 
 	return &ClassScore{
 		ClassID:        c.ID,
 		Title:          c.Title,
 		Part:           c.Part,
-		Score:          c.submissionSummary[userCode].score,
+		Score:          score,
 		SubmitterCount: len(c.submissionSummary),
 	}
 }

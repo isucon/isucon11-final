@@ -228,12 +228,13 @@ func (c *Course) CollectClassScores(userCode string) []*ClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
+	if _, ok := c.registeredStudents[userCode]; !ok {
+		return nil
+	}
+
 	res := make([]*ClassScore, 0, len(c.classes))
 	for _, class := range c.classes {
-		class := class
-		if _, ok := class.submissionSummary[userCode]; ok {
-			res = append(res, class.IntoClassScore(userCode))
-		}
+		res = append(res, class.IntoClassScore(userCode))
 	}
 
 	return res

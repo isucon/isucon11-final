@@ -283,11 +283,11 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
 	}
 
-	if actual.Score != nil {
-		if expected.Score != *actual.Score {
-			AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
-			return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
-		}
+	// スコアが登録されていないときはwebappではnilでベンチでは0にしている
+	if (actual.Score == nil && expected.Score != 0) ||
+		(actual.Score != nil && (expected.Score != *actual.Score)) {
+		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
 	}
 
 	if expected.SubmitterCount != actual.Submitters {
