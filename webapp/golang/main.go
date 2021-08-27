@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -22,7 +24,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/pborman/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -203,7 +204,7 @@ type User struct {
 	ID             uuid.UUID `db:"id"`
 	Code           string    `db:"code"`
 	Name           string    `db:"name"`
-	HashedPassword []byte    `db:"hashed_password"`
+	HashedPassword string    `db:"hashed_password"`
 	Type           UserType  `db:"type"`
 }
 
@@ -272,7 +273,10 @@ func (h *handlers) Login(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	if bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(req.Password)) != nil {
+	hash := md5.New()
+	io.WriteString(hash, req.Password)
+
+	if hex.EncodeToString(hash.Sum(nil)) != user.HashedPassword {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
 	}
 

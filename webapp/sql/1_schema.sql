@@ -13,7 +13,7 @@ CREATE TABLE `users`
     `id`              CHAR(36) PRIMARY KEY,
     `code`            CHAR(6) UNIQUE              NOT NULL,
     `name`            VARCHAR(255)                NOT NULL,
-    `hashed_password` BINARY(60)                  NOT NULL,
+    `hashed_password` VARCHAR(255)                NOT NULL,
     `type`            ENUM ('student', 'teacher') NOT NULL
 );
 
@@ -35,8 +35,8 @@ CREATE TABLE `courses`
 
 CREATE TABLE `registrations`
 (
-    `course_id`  CHAR(36),
-    `user_id`    CHAR(36),
+    `course_id` CHAR(36),
+    `user_id`   CHAR(36),
     PRIMARY KEY (`course_id`, `user_id`),
     CONSTRAINT FK_registrations_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
     CONSTRAINT FK_registrations_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
@@ -55,10 +55,10 @@ CREATE TABLE `classes`
 
 CREATE TABLE `submissions`
 (
-    `user_id`    CHAR(36)     NOT NULL,
-    `class_id`   CHAR(36)     NOT NULL,
-    `file_name`  VARCHAR(255) NOT NULL,
-    `score`      TINYINT UNSIGNED,
+    `user_id`   CHAR(36)     NOT NULL,
+    `class_id`  CHAR(36)     NOT NULL,
+    `file_name` VARCHAR(255) NOT NULL,
+    `score`     TINYINT UNSIGNED,
     PRIMARY KEY (`user_id`, `class_id`),
     CONSTRAINT FK_submissions_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
     CONSTRAINT FK_submissions_class_id FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)

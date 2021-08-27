@@ -1,6 +1,6 @@
 require 'forgery_ja'
 require 'securerandom'
-require 'bcrypt'
+require 'digest/md5'
 
 ForgeryJa.dictionaries.reset!
 ForgeryJa.load_paths << __dir__
@@ -38,7 +38,7 @@ def save_sql(users, file_name, is_teacher)
         user[:uuid],
         user[:code],
         user[:full_name],
-        BCrypt::Password.create(user[:password], :cost => 10),
+        Digest::MD5.hexdigest(user[:password]),
         is_teacher ? "teacher" : "student"
       )
     }.join(",\n")
