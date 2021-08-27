@@ -491,7 +491,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				}
 			} else {
 				announcement.ID = ancRes.ID
-				step.AddScore(score.CountAddClass)
+				step.AddScore(score.CountAddAnnouncement)
 			}
 			course.BroadCastAnnouncement(announcement)
 
