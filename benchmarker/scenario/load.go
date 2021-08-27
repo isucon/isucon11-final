@@ -658,15 +658,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	}
 
 L:
-	hres, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
+	_, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
 	if err != nil {
 		var urlError *url.Error
 		if errors.As(err, &urlError) && urlError.Timeout() {
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L
-		} else if hres != nil && hres.StatusCode == http.StatusConflict {
-			// すでにwebappに登録されていたら続ける
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
 			step.AddError(err)
