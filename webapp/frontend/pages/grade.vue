@@ -20,12 +20,24 @@
             </thead>
             <tbody>
               <tr class="bg-gray-200 odd:bg-white">
-                <td class="px-4 py-2 border">{{ grades.summary.credits }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gpa }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gpaAvg }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gpaTScore }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gpaMin }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gpaMax }}</td>
+                <td class="px-4 py-2 border break-words">
+                  {{ grades.summary.credits }}
+                </td>
+                <td class="px-4 py-2 border break-words">
+                  {{ round(grades.summary.gpa, digits) }}
+                </td>
+                <td class="px-4 py-2 border break-words">
+                  {{ round(grades.summary.gpaAvg, digits) }}
+                </td>
+                <td class="px-4 py-2 border break-words">
+                  {{ round(grades.summary.gpaTScore, digits) }}
+                </td>
+                <td class="px-4 py-2 border break-words">
+                  {{ round(grades.summary.gpaMin, digits) }}
+                </td>
+                <td class="px-4 py-2 border break-words">
+                  {{ round(grades.summary.gpaMax, digits) }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -45,7 +57,10 @@
             <div class="px-4 py-2 border bg-gray-300">各講義成績</div>
 
             <template v-for="(r, i) in grades.courses">
-              <div :key="`course${i}-code${r.code}`" class="px-4 py-2 border">
+              <div
+                :key="`course${i}-code${r.code}`"
+                class="px-4 py-2 border break-words"
+              >
                 {{ r.code }}
               </div>
               <div :key="`course${i}-name${r.name}`" class="px-4 py-2 border">
@@ -53,36 +68,40 @@
               </div>
               <div
                 :key="`course${i}-totalScore${r.totalScore}`"
-                class="px-4 py-2 border"
+                class="px-4 py-2 border break-words"
               >
                 {{ r.totalScore }}
               </div>
               <div
                 :key="`course${i}-totalScoreAvg${r.totalScoreAvg}`"
-                class="px-4 py-2 border"
+                class="px-4 py-2 border break-words"
               >
-                {{ r.totalScoreAvg }}
+                {{ round(r.totalScoreAvg, digits) }}
               </div>
               <div
                 :key="`course${i}-totalScoreTScore${r.totalScoreTScore}`"
-                class="px-4 py-2 border"
+                class="px-4 py-2 border break-words"
               >
-                {{ r.totalScoreTScore }}
+                {{ round(r.totalScoreTScore, digits) }}
               </div>
               <div
                 :key="`course${i}-totalScoreMin${r.totalScoreMin}`"
-                class="px-4 py-2 border"
+                class="px-4 py-2 border break-words"
               >
                 {{ r.totalScoreMin }}
               </div>
               <div
                 :key="`course${i}-totalScoreMax${r.totalScoreMax}`"
-                class="px-4 py-2 border"
+                class="px-4 py-2 border break-words"
               >
                 {{ r.totalScoreMax }}
               </div>
               <div :key="`button${i}`" class="px-2 py-2 border">
-                <Button color="plain" @click="onClickClassDetail(i)">
+                <Button
+                  color="plain"
+                  size="mini"
+                  @click="onClickClassDetail(i)"
+                >
                   <template v-if="includeOpenedIndex(i)">閉じる</template>
                   <template v-else>開く</template>
                 </Button>
@@ -146,9 +165,12 @@ import { Grade } from '~/types/courses'
 import Button from '~/components/common/Button.vue'
 
 type Data = {
+  digits: number
   grades: Grade | undefined
   openedIndex: number[]
 }
+
+const DIGITS = 2
 
 export default Vue.extend({
   components: { Button },
@@ -167,6 +189,7 @@ export default Vue.extend({
   },
   data(): Data {
     return {
+      digits: DIGITS,
       grades: undefined,
       openedIndex: [],
     }
@@ -181,6 +204,10 @@ export default Vue.extend({
     },
     includeOpenedIndex(index: number): boolean {
       return this.openedIndex.includes(index)
+    },
+    round(value: number, digits: number = 0): number {
+      const base = 10 ** digits
+      return Math.round(value * base) / base
     },
   },
 })
