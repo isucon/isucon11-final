@@ -292,6 +292,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			if err != nil {
 				step.AddError(err)
 				if err, ok := err.(*url.Error); ok && err.Timeout() {
+					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
 					// timeout したらもう一回リクエストする
 					<-time.After(100 * time.Millisecond)
 					goto L
@@ -451,14 +452,13 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 			classParam := generate.ClassParam(course, uint8(i+1))
 		L:
-			hres, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
-					<-timer
+					ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトしました。教師はリトライを試みます。")
+					<-time.After(100 * time.Millisecond)
 					goto L
-				} else if hres != nil && hres.StatusCode == http.StatusConflict {
-					// すでにwebappに登録されていたら続ける
 				} else {
 					step.AddError(err)
 					<-timer
@@ -467,9 +467,33 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			} else {
 				step.AddScore(score.CountAddClass)
 			}
+			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
-			course.BroadCastAnnouncement(announcement)
 			DebugLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
+
+			if s.isNoRequestTime(ctx) {
+				return
+			}
+
+			announcement := generate.Announcement(course, class)
+		ancLoop:
+			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			if err != nil {
+				var urlError *url.Error
+				if errors.As(err, &urlError) && urlError.Timeout() {
+					ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトしました。教師はリトライを試みます。")
+					<-time.After(100 * time.Millisecond)
+					goto ancLoop
+				} else {
+					step.AddError(err)
+					<-timer
+					continue
+				}
+			} else {
+				announcement.ID = ancRes.ID
+				step.AddScore(score.CountAddAnnouncement)
+			}
+			course.BroadCastAnnouncement(announcement)
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -637,15 +661,14 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 	}
 
 L:
-	hres, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
+	_, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
 	if err != nil {
 		var urlError *url.Error
 		if errors.As(err, &urlError) && urlError.Timeout() {
 			// timeout したらもう一回リクエストする
+			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教師はリトライを試みます。")
 			<-time.After(100 * time.Millisecond)
 			goto L
-		} else if hres != nil && hres.StatusCode == http.StatusConflict {
-			// すでにwebappに登録されていたら続ける
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
 			step.AddError(err)
@@ -772,6 +795,7 @@ L:
 	if err != nil {
 		var urlError *url.Error
 		if errors.As(err, &urlError) && urlError.Timeout() {
+			ContestantLogger.Printf("成績追加(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L
