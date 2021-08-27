@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg">
+    <div class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
         <section>
           <h1 class="text-2xl">現在開講中の講義</h1>
@@ -151,18 +151,6 @@ export default Vue.extend({
       },
     }
   },
-  created() {
-    setInterval(() => {
-      const now = new Date()
-      const minute = now.getMinutes()
-      const second = now.getSeconds()
-
-      this.current = Object.assign({}, this.current, {
-        dayOfWeek: minute % 5,
-        period: Math.floor(second / 10) + 1,
-      })
-    }, 1000 /* 10秒ごと */)
-  },
   computed: {
     courses(): CalendarCourses {
       const periodCourses: CalendarCourses = []
@@ -182,6 +170,18 @@ export default Vue.extend({
         this.current.dayOfWeek - 1
       ]
     },
+  },
+  created() {
+    setInterval(() => {
+      const now = new Date()
+      const minute = now.getMinutes()
+      const second = now.getSeconds()
+
+      this.current = Object.assign({}, this.current, {
+        dayOfWeek: minute % 5,
+        period: Math.floor(second / 10) + 1,
+      })
+    }, 1000 /* 10秒ごと */)
   },
   methods: {
     getCourse(period: number, weekday: number): MinimalCourse | undefined {

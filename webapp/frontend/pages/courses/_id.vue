@@ -1,36 +1,34 @@
 <template>
   <div>
-    <div class="w-8/12">
-      <Card>
-        <div class="flex-1 flex-col">
-          <h1 class="text-2xl mb-4 font-bold">{{ course.name }}</h1>
-          <tabs
-            :tabs="[
-              { id: 'announcements', label: 'お知らせ' },
-              { id: 'classworks', label: '講義情報' },
-            ]"
-          >
-            <template slot="announcements">
-              <AnnouncementList
-                :announcements="announcements"
-                :link="link"
-                @movePage="paginate"
-                @open="openAnnouncement"
-                @close="closeAnnouncement"
-              />
-            </template>
-            <template slot="classworks">
-              <ClassInfoCard
-                v-for="(cls, index) in classes"
-                :key="cls.id"
-                :course="course"
-                :classinfo="cls"
-                @submitted="submissionComplete(index)"
-              />
-            </template>
-          </tabs>
-        </div>
-      </Card>
+    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
+      <div class="flex-1 flex-col">
+        <h1 class="text-2xl mb-4 font-bold">{{ course.name }}</h1>
+        <tabs
+          :tabs="[
+            { id: 'announcements', label: 'お知らせ' },
+            { id: 'classworks', label: '講義情報' },
+          ]"
+        >
+          <template slot="announcements">
+            <AnnouncementList
+              :announcements="announcements"
+              :link="link"
+              @movePage="paginate"
+              @open="openAnnouncement"
+              @close="closeAnnouncement"
+            />
+          </template>
+          <template slot="classworks">
+            <ClassInfoCard
+              v-for="(cls, index) in classes"
+              :key="cls.id"
+              :course="course"
+              :classinfo="cls"
+              @submitted="submissionComplete(index)"
+            />
+          </template>
+        </tabs>
+      </div>
     </div>
   </div>
 </template>
@@ -46,7 +44,6 @@ import {
   ClassInfo,
 } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
-import Card from '~/components/common/Card.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import ClassInfoCard from '~/components/ClassInfo.vue'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
@@ -59,12 +56,10 @@ type CourseData = {
 }
 
 export default Vue.extend({
-  watchQuery: true,
   key(route) {
     return route.fullPath
   },
   components: {
-    Card,
     AnnouncementList,
     ClassInfoCard,
   },
@@ -104,6 +99,7 @@ export default Vue.extend({
   data(): CourseData | undefined {
     return undefined
   },
+  watchQuery: true,
   methods: {
     async openAnnouncement(
       event: { done: () => undefined },

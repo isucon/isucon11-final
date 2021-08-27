@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg">
+    <div class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
         <h1 class="text-2xl">履修登録</h1>
         <div class="mt-2 mb-6">
