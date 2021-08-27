@@ -1528,7 +1528,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if announcementCount > 0 {
-		return echo.NewHTTPError(http.StatusConflict, "The same announcement already exists.")
+		return echo.NewHTTPError(http.StatusCreated, "The same announcement already exists.")
 	}
 
 	announcementID := uuid.NewRandom()
