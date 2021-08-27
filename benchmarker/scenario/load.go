@@ -457,7 +457,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトしました。教師はリトライを試みます。")
-					<-timer
+					<-time.After(100 * time.Millisecond)
 					goto L
 				} else {
 					step.AddError(err)
@@ -481,8 +481,8 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
-					<-timer
 					ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトしました。教師はリトライを試みます。")
+					<-time.After(100 * time.Millisecond)
 					goto ancLoop
 				} else {
 					step.AddError(err)
