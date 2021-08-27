@@ -451,7 +451,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 			classParam := generate.ClassParam(course, uint8(i+1))
 		L:
-			hres, class, _ , err := AddClassAction(ctx, teacher.Agent, course, classParam)
+			hres, class, _, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
@@ -476,14 +476,12 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 			announcement := generate.Announcement(course, class)
 		ancLoop:
-			hres, res, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, res, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					<-timer
 					goto ancLoop
-				} else if hres != nil && hres.StatusCode == http.StatusCreated {
-					// すでにwebappに登録されていたら続ける
 				} else {
 					step.AddError(err)
 					<-timer

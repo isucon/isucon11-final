@@ -268,7 +268,7 @@ func SendAnnouncementAction(ctx context.Context, agent *agent.Agent, announcemen
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusCreated})
 	if err != nil {
 		return hres, res, err
 	}
