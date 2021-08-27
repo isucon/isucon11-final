@@ -13,6 +13,7 @@ const (
 	CountAddAnnouncement        = "add announcement"
 	CountGetAnnouncements       = "get announcements"
 	CountGetAnnouncementsDetail = "get announcement detail"
+	CountDownloadSubmission     = "download submissions"
 	CountGetGrades              = "get grades"
 	CountSearchCourse           = "search courses"
 	CountRegisterCourses        = "register courses"
