@@ -5,10 +5,6 @@ import (
 	"os"
 )
 
-const (
-	epsilon = 1e-10
-)
-
 func GetEnv(key, val string) string {
 	if v := os.Getenv(key); v == "" {
 		return val
@@ -77,12 +73,9 @@ func stdDevInt(arr []int, avg float64) float64 {
 }
 
 func tScoreInt(v int, arr []int) float64 {
-	if len(arr) == 0 {
-		return 0
-	}
 	avg := averageInt(arr, 0)
 	stdDev := stdDevInt(arr, avg)
-	if stdDev < epsilon {
+	if stdDev == 0 {
 		return 50
 	} else {
 		return (float64(v)-avg)/stdDev*10 + 50
@@ -91,9 +84,15 @@ func tScoreInt(v int, arr []int) float64 {
 
 // ----- float64 -----
 
+var epsilon = math.Nextafter(1, 2) - 1
+
+func isEqualFloat64(v1, v2 float64) bool {
+	return (v1 == 0 && v2 == 0) || math.Abs(v1-v2)/math.Max(math.Abs(v1), math.Abs(v2)) <= epsilon
+}
+
 func isAllEqualFloat64(arr []float64) bool {
 	for _, v := range arr {
-		if arr[0] != v {
+		if !isEqualFloat64(arr[0], v) {
 			return false
 		}
 	}
@@ -160,12 +159,9 @@ func stdDevFloat64(arr []float64, avg float64) float64 {
 }
 
 func tScoreFloat64(v float64, arr []float64) float64 {
-	if len(arr) == 0 {
-		return 0
-	}
 	avg := averageFloat64(arr, 0)
 	stdDev := stdDevFloat64(arr, avg)
-	if stdDev < epsilon {
+	if stdDev == 0 {
 		return 50
 	} else {
 		return (v-avg)/stdDev*10 + 50
