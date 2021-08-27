@@ -215,8 +215,9 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 	res := make([]*SimpleClassScore, 0, len(c.classes))
 	for _, class := range c.classes {
 		class := class
-		if v, ok := class.submissionSummary[userCode]; ok {
-			res = append(res, NewSimpleClassScore(class, v.Score()))
+		summary := class.SubmissionSummary(userCode)
+		if summary != nil {
+			res = append(res, NewSimpleClassScore(class, summary.Score()))
 		}
 	}
 

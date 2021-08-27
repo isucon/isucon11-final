@@ -1,14 +1,12 @@
-DEST=$(PWD)/bin/isucholar
-
+DEST=$(PWD)/isucholar
 COMPILER=go
-
-GOFILES=$(wildcard ./*.go ./**/*.go)
+GO_FILES=$(wildcard ./*.go ./**/*.go)
 
 .PHONY: all
 all: clean build ## Cleanup and Build
 
 .PHONY: build
-build: $(GOFILES) ## Build executable files
+build: $(GO_FILES) ## Build executable files
 	@$(COMPILER) build -o $(DEST) -ldflags "-s -w"
 
 .PHONY: clean

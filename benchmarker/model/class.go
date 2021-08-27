@@ -5,10 +5,9 @@ import (
 )
 
 type ClassParam struct {
-	Title     string
-	Desc      string
-	Part      uint8 // n回目のクラス
-	CreatedAt int64
+	Title string
+	Desc  string
+	Part  uint8 // n回目のクラス
 }
 
 type Class struct {

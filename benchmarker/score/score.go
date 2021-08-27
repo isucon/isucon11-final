@@ -10,6 +10,7 @@ const (
 	CountSubmitPDF              = "submit pdf assignment"
 	CountSubmitDocx             = "submit docx assignment"
 	CountRegisterScore          = "register score"
+	CountAddAnnouncement        = "add announcement"
 	CountGetAnnouncements       = "get announcements"
 	CountGetAnnouncementsDetail = "get announcement detail"
 	CountGetGrades              = "get grades"

@@ -3,7 +3,6 @@ package scenario
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -253,6 +252,33 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	return hres, res, nil
 }
 
+func SendAnnouncementAction(ctx context.Context, agent *agent.Agent, announcement *model.Announcement) (*http.Response, api.AddAnnouncementResponse, error) {
+	req := &api.AddAnnouncementRequest{
+		CourseID:  announcement.CourseID,
+		Title:     announcement.Title,
+		Message:   announcement.Message,
+		CreatedAt: announcement.CreatedAt,
+	}
+
+	res := api.AddAnnouncementResponse{}
+	hres, err := api.AddAnnouncement(ctx, agent, *req)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusCreated})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	return hres, res, nil
+}
+
 func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, []*api.GetClassResponse, error) {
 	res := make([]*api.GetClassResponse, 0)
 	hres, err := api.GetClasses(ctx, agent, courseID)
@@ -274,35 +300,31 @@ func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) 
 	return hres, res, nil
 }
 
-func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course, param *model.ClassParam) (*http.Response, *model.Class, *model.Announcement, error) {
+func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Course, param *model.ClassParam) (*http.Response, api.AddClassResponse, error) {
 	req := api.AddClassRequest{
 		Part:        uint8(param.Part),
 		Title:       param.Title,
 		Description: param.Desc,
-		CreatedAt:   param.CreatedAt,
 	}
+
+	res := api.AddClassResponse{}
 	hres, err := api.AddClass(ctx, agent, course.ID, req)
 	if err != nil {
-		return hres, nil, nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusCreated})
 	if err != nil {
-		return hres, nil, nil, err
+		return hres, res, err
 	}
 
-	res := api.AddClassResponse{}
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, nil, nil, failure.NewError(fails.ErrHTTP, err)
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
 
-	class := model.NewClass(res.ClassID, param)
-	title := fmt.Sprintf("クラス追加: %s", param.Title)
-	message := fmt.Sprintf("クラスが新しく追加されました: %s\n%s", param.Title, param.Desc)
-	announcement := model.NewAnnouncement(res.AnnouncementID, course.ID, course.Name, title, message, param.CreatedAt)
-	return hres, class, announcement, nil
+	return hres, res, nil
 }
 
 func AddCourseAction(ctx context.Context, teacher *model.Teacher, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
