@@ -450,11 +450,20 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			timer := time.After(1 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
-			_, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+		L:
+			hres, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
-				step.AddError(err)
-				<-timer
-				continue
+				var urlError *url.Error
+				if errors.As(err, &urlError) && urlError.Timeout() {
+					<-timer
+					goto L
+				} else if hres != nil && hres.StatusCode == http.StatusConflict {
+					// すでにwebappに登録されていたら続ける
+				} else {
+					step.AddError(err)
+					<-timer
+					continue
+				}
 			} else {
 				step.AddScore(score.CountAddClass)
 			}
@@ -766,7 +775,7 @@ L:
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L
-		} else if hres != nil && hres.StatusCode == http.StatusConflict {
+		} else if hres != nil && hres.StatusCode == http.StatusNoContent {
 			// すでにwebappに登録されていたら続ける
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
