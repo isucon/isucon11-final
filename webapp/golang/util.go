@@ -115,9 +115,6 @@ func averageFloat64(arr []float64, or float64) float64 {
 	if len(arr) == 0 {
 		return or
 	}
-	if isAllEqualFloat64(arr) {
-		return arr[0]
-	}
 	return sumFloat64(arr) / float64(len(arr))
 }
 
@@ -159,9 +156,13 @@ func stdDevFloat64(arr []float64, avg float64) float64 {
 }
 
 func tScoreFloat64(v float64, arr []float64) float64 {
+	if isAllEqualFloat64(arr) {
+		return 50
+	}
 	avg := averageFloat64(arr, 0)
 	stdDev := stdDevFloat64(arr, avg)
 	if stdDev == 0 {
+		// should be unreachable
 		return 50
 	} else {
 		return (v-avg)/stdDev*10 + 50
