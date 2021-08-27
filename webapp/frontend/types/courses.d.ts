@@ -92,12 +92,12 @@ type RegisterScoreRequestObject = {
 export type RegisterScoreRequest = RegisterScoreRequestObject[]
 
 type SummaryGrade = {
-  gpt: number
+  gpa: number
   credits: number
-  gptAvg: number
-  gptTScore: number
-  gptMax: number
-  gptMin: number
+  gpaAvg: number
+  gpaTScore: number
+  gpaMax: number
+  gpaMin: number
 }
 
 type ClassScore = {
