@@ -16,7 +16,7 @@
 
 variable "contestant_names" {
   type    = list(string)
-  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi"]
+  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt"]
 }
 
 variable "contestant_team_ids" {
@@ -31,6 +31,7 @@ variable "contestant_team_ids" {
     kanata     = "7"
     hattori    = "18"
     takahashi  = "20"
+    eagletmt   = "14"
   }
 }
 
