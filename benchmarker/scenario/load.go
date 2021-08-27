@@ -292,6 +292,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			if err != nil {
 				step.AddError(err)
 				if err, ok := err.(*url.Error); ok && err.Timeout() {
+					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
 					// timeout したらもう一回リクエストする
 					<-time.After(100 * time.Millisecond)
 					goto L
@@ -455,6 +456,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
+					ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトしました。教師はリトライを試みます。")
 					<-timer
 					goto L
 				} else {
@@ -480,6 +482,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					<-timer
+					ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトしました。教師はリトライを試みます。")
 					goto ancLoop
 				} else {
 					step.AddError(err)
@@ -663,6 +666,7 @@ L:
 		var urlError *url.Error
 		if errors.As(err, &urlError) && urlError.Timeout() {
 			// timeout したらもう一回リクエストする
+			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教師はリトライを試みます。")
 			<-time.After(100 * time.Millisecond)
 			goto L
 		} else {
@@ -791,6 +795,7 @@ L:
 	if err != nil {
 		var urlError *url.Error
 		if errors.As(err, &urlError) && urlError.Timeout() {
+			ContestantLogger.Printf("成績追加(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L
