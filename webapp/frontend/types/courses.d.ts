@@ -7,6 +7,14 @@ export type DayOfWeek =
 
 export type CourseType = 'liberal-arts' | 'major-subjects'
 
+export type CourseStatus = 'registration' | 'in-progress' | 'closed'
+
+export type User = {
+  code: string
+  name: string
+  isAdmin: boolean
+}
+
 export type SearchCourseRequest = {
   keywords?: string
   type?: string
@@ -28,6 +36,12 @@ export type Course = {
   dayOfWeek: DayOfWeek
   teacher: string
   keywords: string
+}
+
+export type AddCourseRequest = Omit<Course, 'id' | 'teacher'>
+
+export type SetCourseStatusRequest = {
+  status: CourseStatus
 }
 
 export type Announcement = {
@@ -62,6 +76,20 @@ export type ClassInfo = {
   submissionClosed: boolean
   submitted: boolean
 }
+
+export type AddClassRequest = {
+  part: number
+  title: string
+  description: string
+  createdAt: number
+}
+
+type RegisterScoreRequestObject = {
+  userCode: string
+  score: number
+}
+
+export type RegisterScoreRequest = RegisterScoreRequestObject[]
 
 type SummaryGrade = {
   gpt: number

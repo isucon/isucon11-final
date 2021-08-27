@@ -7,16 +7,6 @@
     - mysql-server-8.0
     update_cache: yes
 
-- name: "roles/contestant/tasks/mysql: Create isucon user on MySQL"
-  become: yes
-  become_user: root
-  shell: >
-      mysql -uroot -e "
-        CREATE USER IF NOT EXISTS isucon@localhost IDENTIFIED BY 'isucon';
-        GRANT ALL PRIVILEGES ON *.* TO isucon@localhost WITH GRANT OPTION;
-        FLUSH PRIVILEGES;
-      "
-
 - name: "roles/contestant/tasks/mysql: Copy configs"
   copy:
     src: "{{ item }}"

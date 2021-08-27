@@ -11,9 +11,20 @@ import (
 type userPool struct {
 	dataset []*model.UserAccount
 	index   int
+	done    bool // sampleUserを排出したかどうかのフラグ
 
 	rmu sync.RWMutex
 }
+
+var (
+	sampleTeacherID   = "isuT"
+	sampleTeacherName = "isucon"
+	sampleTeacherPass = "isucon"
+
+	sampleStudentID   = "isucon"
+	sampleStudentName = "isucon"
+	sampleStudentPass = "isucon"
+)
 
 func NewUserPool(dataSet []*model.UserAccount) *userPool {
 	// shuffle studentDataSet order by Fisher–Yates shuffle
@@ -32,6 +43,15 @@ func NewUserPool(dataSet []*model.UserAccount) *userPool {
 func (p *userPool) newUserData() (*model.UserAccount, error) {
 	p.rmu.Lock()
 	defer p.rmu.Unlock()
+
+	if !p.done {
+		p.done = true
+		return &model.UserAccount{
+			Code:        sampleStudentID,
+			Name:        sampleStudentName,
+			RawPassword: sampleStudentPass,
+		}, nil
+	}
 
 	if p.index >= len(p.dataset) {
 		return nil, fmt.Errorf("student data has been out of stock")

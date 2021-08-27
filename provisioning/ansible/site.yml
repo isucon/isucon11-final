@@ -9,6 +9,7 @@
   roles:
     - common
     - langs.go
+    - langs.rust
 
 - name: "contestant roles"
   hosts: [contestant, standalone]
@@ -16,7 +17,6 @@
   become: true
   roles:
     - langs.nodejs
-    - langs.rust
     - contestant
 
 - name: "bench roles"

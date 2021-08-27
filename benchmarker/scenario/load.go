@@ -2,9 +2,11 @@ package scenario
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -160,6 +162,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// Gradeが早くなった時、常にCapacityが0だとGradeを効率的に回せるようになって点数が高くなるという不正ができるかもしれない
 			remainingRegistrationCapacity := registerCourseLimit - student.RegisteringCount()
 			if remainingRegistrationCapacity == 0 {
+				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
 				continue
 			}
 
@@ -278,31 +281,38 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// ----------------------------------------
 
 			// ベンチ内で仮登録できたコースがあればAPIに登録処理を投げる
-			if len(semiRegistered) > 0 {
-				if s.isNoRequestTime(ctx) {
-					return
-				}
+			if len(semiRegistered) == 0 {
+				DebugLogger.Printf("[履修スキップ（空き講義不足)] code: %v, name: %v", student.Code, student.Name)
+				continue
+			}
 
-				_, err := TakeCoursesAction(ctx, student.Agent, semiRegistered)
-				if err != nil {
-					step.AddError(err)
+			// 冪等なので登録済みのコースにもう一回登録して成功すれば200が返ってくる
+		L:
+			_, err = TakeCoursesAction(ctx, student.Agent, semiRegistered)
+			if err != nil {
+				step.AddError(err)
+				if err, ok := err.(*url.Error); ok && err.Timeout() {
+					// timeout したらもう一回リクエストする
+					<-time.After(100 * time.Millisecond)
+					goto L
+				} else {
 					// 失敗時の仮登録情報のロールバック
 					for _, c := range semiRegistered {
 						c.FailRegistration()
 						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
 					}
-				} else {
-					step.AddScore(score.CountRegisterCourses)
-					for _, c := range semiRegistered {
-						c.SuccessRegistration(student)
-						student.AddCourse(c)
-						c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
-						DebugLogger.Printf("%vは%vを履修した", student.Name, c.Name)
-					}
+				}
+			} else {
+				step.AddScore(score.CountRegisterCourses)
+				for _, c := range semiRegistered {
+					c.SuccessRegistration(student)
+					student.AddCourse(c)
+					c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+					DebugLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 				}
 			}
-			// TODO: できれば登録に失敗したコースを抜いて再度登録する
 		}
+		// TODO: できれば登録に失敗したコースを抜いて再度登録する
 	}
 }
 
@@ -351,7 +361,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 						continue // 次の未読おしらせの確認へ
 					}
 
-					if err := verifyAnnouncement(&res, announcementStatus); err != nil {
+					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
 						step.AddError(err)
 					} else {
 						step.AddScore(score.CountGetAnnouncementsDetail)
@@ -428,7 +438,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 			return
 		}
-		DebugLogger.Printf("%vが開始した", course.Name) // FIXME: for debug
+		DebugLogger.Printf("[コース開始] id: %v, name: %v, registered students: %v", course.ID, course.Name, len(course.Students()))
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
@@ -617,13 +627,23 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	_, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
+L:
+	hres, addCourseRes, err := AddCourseAction(ctx, teacher, courseParam)
 	if err != nil {
-		step.AddError(err)
-		return
-	} else {
-		step.AddScore(score.CountAddCourse)
+		var urlError *url.Error
+		if errors.As(err, &urlError) && urlError.Timeout() {
+			// timeout したらもう一回リクエストする
+			<-time.After(100 * time.Millisecond)
+			goto L
+		} else if hres != nil && hres.StatusCode == http.StatusConflict {
+			// すでにwebappに登録されていたら続ける
+		} else {
+			// タイムアウト以外の何らかのエラーだったら終わり
+			step.AddError(err)
+			return
+		}
 	}
+	step.AddScore(score.CountAddCourse)
 
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher)
 	s.AddCourse(course)
@@ -738,9 +758,20 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 		return nil, nil
 	}
 
-	res, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
+L:
+	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
 	if err != nil {
-		return nil, err
+		var urlError *url.Error
+		if errors.As(err, &urlError) && urlError.Timeout() {
+			// timeout したらもう一回リクエストする
+			<-time.After(100 * time.Millisecond)
+			goto L
+		} else if hres != nil && hres.StatusCode == http.StatusConflict {
+			// すでにwebappに登録されていたら続ける
+		} else {
+			// タイムアウト以外の何らかのエラーだったら終わり
+			return nil, err
+		}
 	}
 
 	// POST成功したスコアをベンチ内に保存する
@@ -751,5 +782,5 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 		}
 		sub.SetScore(scoreData.score)
 	}
-	return res, nil
+	return hres, nil
 }

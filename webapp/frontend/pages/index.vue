@@ -33,16 +33,37 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { Context } from '@nuxt/types'
+import axios from 'axios'
+import type { AxiosError } from 'axios'
 import { notify } from '~/helpers/notification_helper'
 import Button from '~/components/common/Button.vue'
 import TextField from '~/components/common/TextField.vue'
+import { User } from '~/types/courses'
 
 export default Vue.extend({
   components: { TextInput: TextField, Button },
   layout: 'empty',
-  middleware({ app, redirect }) {
-    if (app.$cookies.get('session')) {
-      return redirect('/mypage')
+  async middleware(context: Context) {
+    try {
+      const res = await context.$axios.get<User>(`/api/users/me`)
+      if (res.status > 199 && res.status < 300) {
+        const { isAdmin } = res.data
+        if (isAdmin) {
+          return context.redirect('/teacherpage')
+        } else {
+          return context.redirect('/mypage')
+        }
+      }
+    } catch (e) {
+      if (
+        axios.isAxiosError(e) &&
+        (e as AxiosError)?.response?.status === 401
+      ) {
+        return
+      }
+      console.error(e)
+      notify('ログイン周りの処理に失敗しました')
     }
   },
   data() {
@@ -58,7 +79,12 @@ export default Vue.extend({
           code: this.code,
           password: this.password,
         })
-        await this.$router.push('/mypage')
+        const user: User = await this.$axios.$get(`/api/users/me`)
+        if (user.isAdmin) {
+          return this.$router.push('/teacherpage')
+        } else {
+          return this.$router.push('/mypage')
+        }
       } catch (e) {
         notify('学籍番号またはパスワードが誤っています')
       }

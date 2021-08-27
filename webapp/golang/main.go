@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,7 +28,7 @@ import (
 const (
 	SQLDirectory              = "../sql/"
 	AssignmentsDirectory      = "../assignments/"
-	SessionName               = "session"
+	SessionName               = "isucholar_go"
 	mysqlErrNumDuplicateEntry = 1062
 )
 
@@ -57,6 +56,7 @@ func main() {
 	e.POST("/initialize", h.Initialize)
 
 	e.POST("/login", h.Login)
+	e.POST("/logout", h.Logout)
 	API := e.Group("/api", h.IsLoggedIn)
 	{
 		usersAPI := API.Group("/users")
@@ -305,6 +305,26 @@ func (h *handlers) Login(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+func (h *handlers) Logout(c echo.Context) error {
+	sess, err := session.Get(SessionName, c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	sess.Options = &sessions.Options{
+		Path:   "/",
+		MaxAge: -1,
+	}
+
+	if err := sess.Save(c.Request(), c.Response()); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
 type GetMeResponse struct {
 	Code    string `json:"code"`
 	Name    string `json:"name"`
@@ -503,11 +523,11 @@ type GetGradeResponse struct {
 
 type Summary struct {
 	Credits   int     `json:"credits"`
-	GPT       float64 `json:"gpt"`
-	GptTScore float64 `json:"gpt_t_score"` // 偏差値
-	GptAvg    float64 `json:"gpt_avg"`     // 平均値
-	GptMax    float64 `json:"gpt_max"`     // 最大値
-	GptMin    float64 `json:"gpt_min"`     // 最小値
+	GPA       float64 `json:"gpa"`
+	GpaTScore float64 `json:"gpa_t_score"` // 偏差値
+	GpaAvg    float64 `json:"gpa_avg"`     // 平均値
+	GpaMax    float64 `json:"gpa_max"`     // 最大値
+	GpaMin    float64 `json:"gpa_min"`     // 最小値
 }
 
 type CourseResult struct {
@@ -527,15 +547,6 @@ type ClassScore struct {
 	Part       uint8     `json:"part"`
 	Score      *int      `json:"score"`      // 0~100点
 	Submitters int       `json:"submitters"` // 提出した生徒数
-}
-
-type SubmissionWithClassName struct {
-	UserID  uuid.UUID     `db:"user_id"`
-	ClassID uuid.UUID     `db:"class_id"`
-	Name    string        `db:"file_name"`
-	Score   sql.NullInt64 `db:"score"`
-	Part    uint8         `db:"part"`
-	Title   string        `db:"title"`
 }
 
 func (h *handlers) GetGrades(c echo.Context) error {
@@ -558,42 +569,9 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 	// 科目毎の成績計算処理
 	courseResults := make([]CourseResult, 0, len(registeredCourses))
-	summaryGpt := 0.0
-	summaryCredits := 0
+	myGPA := 0.0
+	myCredits := 0
 	for _, course := range registeredCourses {
-		// この科目を受講している学生のTotalScore一覧を取得
-		var totals []int
-		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
-			" FROM `submissions`" +
-			" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
-			" WHERE `classes`.`course_id` = ?" +
-			" GROUP BY `user_id`"
-		if err := h.DB.Select(&totals, query, course.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		// avg max min stdの計算
-		var totalScoreCount = len(totals)
-		var totalScoreAvg float64
-		var totalScoreMax int
-		var totalScoreMin = 500      // 1科目5クラスなので最大500点
-		var totalScoreStdDev float64 // 標準偏差
-
-		for _, totalScore := range totals {
-			totalScoreAvg += float64(totalScore) / float64(totalScoreCount)
-			if totalScoreMax < totalScore {
-				totalScoreMax = totalScore
-			}
-			if totalScoreMin > totalScore {
-				totalScoreMin = totalScore
-			}
-		}
-		for _, totalScore := range totals {
-			totalScoreStdDev += math.Pow(float64(totalScore)-totalScoreAvg, 2) / float64(totalScoreCount)
-		}
-		totalScoreStdDev = math.Sqrt(totalScoreStdDev)
-
 		// クラス一覧の取得
 		var classes []Class
 		query = "SELECT *" +
@@ -609,114 +587,102 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		classScores := make([]ClassScore, 0, len(classes))
 		var myTotalScore int
 		for _, class := range classes {
-			var submissions []SubmissionWithClassName
-			query := "SELECT `submissions`.*, `classes`.`part` AS `part`, `classes`.`title` AS `title`" +
-				" FROM `submissions`" +
-				" JOIN `classes` ON `submissions`.`class_id` = `classes`.`id`" +
-				" WHERE `submissions`.`class_id` = ?"
-			if err := h.DB.Select(&submissions, query, class.ID); err != nil {
+			var submissionsCount int
+			if err := h.DB.Get(&submissionsCount, "SELECT COUNT(*) FROM `submissions` WHERE `class_id` = ?", class.ID); err != nil {
 				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
 
-			for _, submission := range submissions {
-				if uuid.Equal(userID, submission.UserID) {
-					var myScore *int
-					if submission.Score.Valid {
-						score := int(submission.Score.Int64)
-						myScore = &score
-						myTotalScore += score
-					}
-					classScores = append(classScores, ClassScore{
-						ClassID:    class.ID,
-						Part:       submission.Part,
-						Title:      submission.Title,
-						Score:      myScore,
-						Submitters: len(submissions),
-					})
-				}
+			var myScore sql.NullInt64
+			if err := h.DB.Get(&myScore, "SELECT `submissions`.`score` FROM `submissions` WHERE `user_id` = ? AND `class_id` = ?", userID, class.ID); err != nil && err != sql.ErrNoRows {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			} else if err == sql.ErrNoRows || !myScore.Valid {
+				classScores = append(classScores, ClassScore{
+					ClassID:    class.ID,
+					Part:       class.Part,
+					Title:      class.Title,
+					Score:      nil,
+					Submitters: submissionsCount,
+				})
+			} else {
+				score := int(myScore.Int64)
+				myTotalScore += score
+				classScores = append(classScores, ClassScore{
+					ClassID:    class.ID,
+					Part:       class.Part,
+					Title:      class.Title,
+					Score:      &score,
+					Submitters: submissionsCount,
+				})
 			}
 		}
 
-		// 対象科目の自分の偏差値の計算
-		var totalScoreTScore float64
-		if totalScoreStdDev == 0 {
-			totalScoreTScore = 50
-		} else {
-			totalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
+		// この科目を受講している学生のTotalScore一覧を取得
+		var totals []int
+		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
+			" FROM `users`" +
+			" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+			" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+			" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
+			" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
+			" WHERE `courses`.`id` = ?" +
+			" GROUP BY `users`.`id`"
+		if err := h.DB.Select(&totals, query, course.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
 		}
 
 		courseResults = append(courseResults, CourseResult{
 			Name:             course.Name,
 			Code:             course.Code,
 			TotalScore:       myTotalScore,
-			TotalScoreTScore: totalScoreTScore,
-			TotalScoreAvg:    totalScoreAvg,
-			TotalScoreMax:    totalScoreMax,
-			TotalScoreMin:    totalScoreMin,
+			TotalScoreTScore: tScoreInt(myTotalScore, totals),
+			TotalScoreAvg:    averageInt(totals, 0),
+			TotalScoreMax:    maxInt(totals, 0),
+			TotalScoreMin:    minInt(totals, 0),
 			ClassScores:      classScores,
 		})
 
-		// 自分のGPT計算
-		summaryGpt += float64(myTotalScore*int(course.Credit)) / 100
-		summaryCredits += int(course.Credit)
+		// 自分のGPA計算
+		myGPA += float64(myTotalScore * int(course.Credit))
+		myCredits += int(course.Credit)
+	}
+	if myCredits > 0 {
+		myGPA = myGPA / 100 / float64(myCredits)
 	}
 
-	// GPTの統計値
-	// 一つでも科目を履修している学生のGPT一覧
-	var gpts []float64
-	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit` / 100), 0) AS `gpt`" +
+	// GPAの統計値
+	// 一つでも科目を履修している学生のGPA一覧
+	var gpas []float64
+	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
 		" FROM `users`" +
+		" JOIN (" +
+		"     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`" +
+		"     FROM `users`" +
+		"     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+		"     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+		"     GROUP BY `users`.`id`" +
+		" ) AS `credits` ON `credits`.`user_id` = `users`.`id`" +
 		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
 		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
 		" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
-		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes.id`" +
+		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
 		" WHERE `users`.`type` = ?" +
 		" GROUP BY `users`.`id`"
-	if err := h.DB.Select(&gpts, query, Student); err != nil {
+	if err := h.DB.Select(&gpas, query, Student); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// avg max min stdの計算
-	var gptCount = len(gpts)
-	var gptAvg float64
-	var gptMax float64
-	// MEMO: 1コース500点かつ5秒で20コースを12回転=(240コース)の1/100なので最大1200点
-	var gptMin = math.MaxFloat64
-	var gptStdDev float64
-	for _, gpt := range gpts {
-		gptAvg += gpt / float64(gptCount)
-
-		if gptMax < gpt {
-			gptMax = gpt
-		}
-		if gptMin > gpt {
-			gptMin = gpt
-		}
-	}
-
-	for _, gpt := range gpts {
-		gptStdDev += math.Pow(gpt-gptAvg, 2) / float64(gptCount)
-	}
-	gptStdDev = math.Sqrt(gptStdDev)
-
-	// 自分の偏差値の計算
-	var gptTScore float64
-	if gptStdDev == 0 {
-		gptTScore = 50
-	} else {
-		gptTScore = (summaryGpt-gptAvg)/gptStdDev*10 + 50
-	}
-
 	res := GetGradeResponse{
 		Summary: Summary{
-			Credits:   summaryCredits,
-			GPT:       summaryGpt,
-			GptTScore: gptTScore,
-			GptAvg:    gptAvg,
-			GptMax:    gptMax,
-			GptMin:    gptMin,
+			Credits:   myCredits,
+			GPA:       myGPA,
+			GpaTScore: tScoreFloat64(myGPA, gpas),
+			GpaAvg:    averageFloat64(gpas, 0),
+			GpaMax:    maxFloat64(gpas, 0),
+			GpaMin:    minFloat64(gpas, 0),
 		},
 		CourseResults: courseResults,
 	}
@@ -726,7 +692,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 
 // SearchCourses 科目検索
 func (h *handlers) SearchCourses(c echo.Context) error {
-	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
+	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
 		" WHERE 1=1"
 	var condition string
@@ -773,6 +739,11 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 			args = append(args, "%"+keyword+"%")
 		}
 		condition += fmt.Sprintf(" AND ((1=1%s) OR (1=1%s))", nameCondition, keywordsCondition)
+	}
+
+	if status := c.QueryParam("status"); status != "" {
+		condition += " AND `courses`.`status` = ?"
+		args = append(args, status)
 	}
 
 	condition += " ORDER BY `courses`.`code`"
@@ -832,16 +803,18 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 }
 
 type GetCourseDetailResponse struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	Code        string    `json:"code" db:"code"`
-	Type        string    `json:"type" db:"type"`
-	Name        string    `json:"name" db:"name"`
-	Description string    `json:"description" db:"description"`
-	Credit      uint8     `json:"credit" db:"credit"`
-	Period      uint8     `json:"period" db:"period"`
-	DayOfWeek   string    `json:"day_of_week" db:"day_of_week"`
-	Teacher     string    `json:"teacher" db:"teacher"`
-	Keywords    string    `json:"keywords" db:"keywords"`
+	ID          uuid.UUID    `json:"id" db:"id"`
+	Code        string       `json:"code" db:"code"`
+	Type        string       `json:"type" db:"type"`
+	Name        string       `json:"name" db:"name"`
+	Description string       `json:"description" db:"description"`
+	Credit      uint8        `json:"credit" db:"credit"`
+	Period      uint8        `json:"period" db:"period"`
+	DayOfWeek   string       `json:"day_of_week" db:"day_of_week"`
+	TeacherID   uuid.UUID    `json:"-" db:"teacher_id"`
+	Keywords    string       `json:"keywords" db:"keywords"`
+	Status      CourseStatus `json:"status" db:"status"`
+	Teacher     string       `json:"teacher" db:"teacher"`
 }
 
 // GetCourseDetail 科目詳細の取得
@@ -852,7 +825,7 @@ func (h *handlers) GetCourseDetail(c echo.Context) error {
 	}
 
 	var res GetCourseDetailResponse
-	query := "SELECT `courses`.`id`, `courses`.`code`, `courses`.`type`, `courses`.`name`, `courses`.`description`, `courses`.`credit`, `courses`.`period`, `courses`.`day_of_week`, `courses`.`keywords`, `users`.`name` AS `teacher`" +
+	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses`" +
 		" JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
 		" WHERE `courses`.`id` = ?"
@@ -912,6 +885,9 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1286,6 +1262,15 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
+
+	var classCount int
+	if err := tx.Get(&classCount, "SELECT COUNT(*) FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if classCount > 0 {
+		return echo.NewHTTPError(http.StatusConflict, "This part for the requested course already exists.")
+	}
 
 	classID := uuid.NewRandom()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",

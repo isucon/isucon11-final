@@ -10,28 +10,119 @@
       shadow-lg
     "
   >
-    <div class="flex items-center flex-no-shrink text-white mr-6">
+    <div class="flex-no-shrink text-white">
       <span class="text-xl tracking-tight">
         <NuxtLink to="/">ISUCHOLAR</NuxtLink>
       </span>
     </div>
 
-    <div class="w-full flex-grow lg:flex lg:items-center lg:w-auto text-white">
-      <div class="text-sm lg:flex-grow"></div>
-      <div :class="state">
-        <NuxtLink to="/announce">お知らせ</NuxtLink>
-        <span>学籍番号: xxxxxx</span>
+    <div :class="stateIsLoggedIn" class="text-white flex items-center gap-x-6">
+      <template v-if="!isAdmin">
+        <NuxtLink to="/register" class="block hover:text-gray-200"
+          ><fa-icon icon="pen" class="mr-0.5" />履修登録</NuxtLink
+        >
+        <NuxtLink to="/grade" class="block hover:text-gray-200">
+          <fa-icon icon="graduation-cap" class="mr-0.5" />成績照会</NuxtLink
+        >
+        <NuxtLink to="/announce" class="block hover:text-gray-200">
+          <fa-icon icon="bell" class="mr-0.5" />お知らせ</NuxtLink
+        >
+      </template>
+      <div class="relative">
+        <span
+          class="pl-2 cursor-pointer hover:text-gray-200"
+          @click="onClickDropdown"
+          >学籍番号: {{ code }}</span
+        >
+        <div
+          class="
+            absolute
+            right-0
+            mt-2
+            py-1
+            rounded
+            z-20
+            w-40
+            bg-white
+            shadow-2xl
+          "
+          :class="stateDropdown"
+        >
+          <a
+            href="#"
+            class="
+              block
+              px-4
+              py-2
+              text-black text-sm
+              hover:bg-primary-300 hover:text-white
+            "
+            @click="onClickLogout"
+            >ログアウト</a
+          >
+        </div>
       </div>
     </div>
   </nav>
 </template>
 <script lang="ts">
 import Vue from 'vue'
+import axios, { AxiosError } from 'axios'
+import { notify } from '~/helpers/notification_helper'
+
+type Data = {
+  code: string
+  isAdmin: boolean
+  isOpenDropdown: boolean
+}
 
 export default Vue.extend({
+  data(): Data {
+    return {
+      code: '',
+      isAdmin: false,
+      isOpenDropdown: false,
+    }
+  },
+  async fetch() {
+    try {
+      const res = await this.$axios.get('/api/users/me')
+      if (res.status > 199 && res.status < 300) {
+        const me = res.data
+        this.code = me.code
+        this.isAdmin = me.isAdmin
+      }
+    } catch (e) {
+      if (
+        axios.isAxiosError(e) &&
+        (e as AxiosError)?.response?.status === 401
+      ) {
+        return
+      }
+      console.error(e)
+      notify('自身の情報の取得に失敗しました')
+    }
+  },
   computed: {
-    state() {
-      return this.$cookies.get('session') ? 'block' : 'hidden'
+    stateIsLoggedIn(): string {
+      return this.code !== '' ? 'show' : 'hidden'
+    },
+    stateDropdown(): string {
+      return this.isOpenDropdown ? 'show' : 'hidden'
+    },
+  },
+  methods: {
+    onClickDropdown() {
+      this.isOpenDropdown = !this.isOpenDropdown
+    },
+    async onClickLogout(event: Event) {
+      event.preventDefault()
+      const res = await this.$axios.post('/logout')
+      if (res.status > 199 && res.status < 300) {
+        this.code = ''
+        this.isAdmin = false
+        await this.$router.push('/')
+      }
     },
   },
 })

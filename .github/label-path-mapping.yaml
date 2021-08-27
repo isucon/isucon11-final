@@ -6,8 +6,8 @@ benchmarker:
   - benchmarker/**/*
 infrastructure:
   - provisioning/**/*
-# documentation:
-#   - docs/**/*
+documentation:
+  - docs/**/*
 # transplant:
 #   - webapp/nodejs/**/*
 #   - webapp/perl/**/*
