@@ -284,8 +284,9 @@ func (c *Course) TotalScore(userCode string) int {
 
 	score := 0
 	for _, class := range c.classes {
-		if v, ok := class.submissionSummary[userCode]; ok {
-			score += v.score
+		sub := class.SubmissionSummary(userCode)
+		if sub != nil {
+			score += sub.score
 		}
 	}
 

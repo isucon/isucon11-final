@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/isucon/isucandar/agent"
+
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
@@ -26,6 +28,7 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 		return nil
 	}
 	ContestantLogger.Printf("===> VALIDATION")
+	agent.DefaultRequestTimeout = 10 * time.Second
 
 	s.validateAnnouncements(ctx, step)
 	s.validateCourses(ctx, step)

@@ -41,6 +41,17 @@ func (c *Class) SubmissionSummary(studentCode string) *SubmissionSummary {
 	return c.submissionSummary[studentCode]
 }
 
+func (c *Class) SubmissionSummaries() map[string]*SubmissionSummary {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	res := make(map[string]*SubmissionSummary, len(c.submissionSummary))
+	for s, summary := range c.submissionSummary {
+		res[s] = summary
+	}
+	return res
+}
+
 func (c *Class) GetSubmittedCount() int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
@@ -49,6 +60,9 @@ func (c *Class) GetSubmittedCount() int {
 }
 
 func (c *Class) IntoClassScore(userCode string) *ClassScore {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
 	score := 0
 	if v, ok := c.submissionSummary[userCode]; ok {
 		score = v.score
