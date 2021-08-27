@@ -2,15 +2,20 @@ version: '3'
 
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ../webapp/frontend
+      dockerfile: ../../dev/frontend/Dockerfile
     volumes:
       - ./nginx:/etc/nginx/conf.d
     ports:
       - "8080:80"
     depends_on:
       - backend
+
   backend:
-    build: ./golang
+    build:
+      context: ../webapp/golang
+      dockerfile: ../../dev/golang/Dockerfile
     restart: always
     environment:
       MYSQL_HOSTNAME: mysql
@@ -22,7 +27,7 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ./:/webapp
+      - ../webapp:/webapp
 
   mysql:
     image: mysql
