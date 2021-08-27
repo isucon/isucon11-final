@@ -5,6 +5,10 @@ import (
 	"os"
 )
 
+const (
+	epsilon = 1e-10
+)
+
 func GetEnv(key, val string) string {
 	if v := os.Getenv(key); v == "" {
 		return val
@@ -21,6 +25,8 @@ func contains(arr []DayOfWeek, day DayOfWeek) bool {
 	}
 	return false
 }
+
+// ----- int -----
 
 func averageInt(arr []int, or float64) float64 {
 	if len(arr) == 0 {
@@ -69,6 +75,21 @@ func stdDevInt(arr []int, avg float64) float64 {
 	}
 	return math.Sqrt(sdmSum / float64(len(arr)))
 }
+
+func tScoreInt(v int, arr []int) float64 {
+	if len(arr) == 0 {
+		return 0
+	}
+	avg := averageInt(arr, 0)
+	stdDev := stdDevInt(arr, avg)
+	if stdDev < epsilon {
+		return 50
+	} else {
+		return (float64(v)-avg)/stdDev*10 + 50
+	}
+}
+
+// ----- float64 -----
 
 func isAllEqualFloat64(arr []float64) bool {
 	for _, v := range arr {
@@ -136,4 +157,17 @@ func stdDevFloat64(arr []float64, avg float64) float64 {
 		sdm[i] = math.Pow(v-avg, 2)
 	}
 	return math.Sqrt(sumFloat64(sdm) / float64(len(arr)))
+}
+
+func tScoreFloat64(v float64, arr []float64) float64 {
+	if len(arr) == 0 {
+		return 0
+	}
+	avg := averageFloat64(arr, 0)
+	stdDev := stdDevFloat64(arr, avg)
+	if stdDev < epsilon {
+		return 50
+	} else {
+		return (v-avg)/stdDev*10 + 50
+	}
 }

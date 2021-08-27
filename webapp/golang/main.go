@@ -587,11 +587,10 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		// avg max min std-dev の計算
+		// avg max min の計算
 		totalScoreAvg := averageInt(totals, 0)
 		totalScoreMax := maxInt(totals, 0)
 		totalScoreMin := minInt(totals, 0)
-		totalScoreStdDev := stdDevInt(totals, totalScoreAvg)
 
 		// クラス一覧の取得
 		var classes []Class
@@ -639,13 +638,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			}
 		}
 
-		// 対象科目の自分の偏差値の計算
-		var myTotalScoreTScore float64
-		if totalScoreStdDev == 0 {
-			myTotalScoreTScore = 50
-		} else {
-			myTotalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
-		}
+		myTotalScoreTScore := tScoreInt(myTotalScore, totals)
 
 		courseResults = append(courseResults, CourseResult{
 			Name:             course.Name,
@@ -689,19 +682,12 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// avg max min std-dev の計算
+	// avg max min の計算
 	gpaAvg := averageFloat64(gpas, 0)
 	gpaMax := maxFloat64(gpas, 0)
 	gpaMin := minFloat64(gpas, 0)
-	gpaStdDev := stdDevFloat64(gpas, gpaAvg)
 
-	// 自分の偏差値の計算
-	var myGpaTScore float64
-	if gpaStdDev == 0 {
-		myGpaTScore = 50
-	} else {
-		myGpaTScore = (myGPA-gpaAvg)/gpaStdDev*10 + 50
-	}
+	myGpaTScore := tScoreFloat64(myGPA, gpas)
 
 	res := GetGradeResponse{
 		Summary: Summary{
