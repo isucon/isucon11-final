@@ -273,10 +273,8 @@ func (h *handlers) Login(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	hash := md5.New()
-	io.WriteString(hash, req.Password)
-
-	if hex.EncodeToString(hash.Sum(nil)) != user.HashedPassword {
+	hash := md5.Sum([]byte(req.Password))
+	if hex.EncodeToString(hash[:]) != user.HashedPassword {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
 	}
 
