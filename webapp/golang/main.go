@@ -840,6 +840,7 @@ func (h *handlers) GetCourseDetail(c echo.Context) error {
 }
 
 type AddCourseRequest struct {
+	ID          uuid.UUID  `json:"id"`
 	Code        string     `json:"code"`
 	Type        CourseType `json:"type"`
 	Name        string     `json:"name"`
@@ -848,10 +849,6 @@ type AddCourseRequest struct {
 	Period      int        `json:"period"`
 	DayOfWeek   DayOfWeek  `json:"day_of_week"`
 	Keywords    string     `json:"keywords"`
-}
-
-type AddCourseResponse struct {
-	ID uuid.UUID `json:"id"`
 }
 
 // AddCourse 新規科目登録
@@ -881,12 +878,11 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	courseID := uuid.NewRandom()
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
+		req.ID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
-			return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
+			return echo.NewHTTPError(http.StatusConflict, "A course with the same ID already exists.")
 		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -897,7 +893,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusCreated, AddCourseResponse{ID: courseID})
+	return c.NoContent(http.StatusCreated)
 }
 
 type SetCourseStatusRequest struct {
@@ -1224,15 +1220,11 @@ func createSubmissionsZip(zipFilePath string, classID uuid.UUID, submissions []S
 }
 
 type AddClassRequest struct {
-	Part        uint8  `json:"part"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	CreatedAt   int64  `json:"created_at"`
-}
-
-type AddClassResponse struct {
-	ClassID        uuid.UUID `json:"class_id"`
-	AnnouncementID uuid.UUID `json:"announcement_id"`
+	ID          uuid.UUID `json:"id"`
+	Part        uint8     `json:"part"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CreatedAt   int64     `json:"created_at"`
 }
 
 // AddClass 新規クラス(&課題)追加
@@ -1263,45 +1255,13 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var classCount int
-	if err := tx.Get(&classCount, "SELECT COUNT(*) FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if classCount > 0 {
-		return echo.NewHTTPError(http.StatusConflict, "This part for the requested course already exists.")
-	}
-
-	classID := uuid.NewRandom()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
-		classID, courseID, req.Part, req.Title, req.Description); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	announcementID := uuid.NewRandom()
-	createdAt := time.Unix(req.CreatedAt, 0)
-	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
-		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description), createdAt); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	var targets []User
-	query := "SELECT `users`.*" +
-		" FROM `users`" +
-		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-		" WHERE `registrations`.`course_id` = ?"
-	if err := tx.Select(&targets, query, courseID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", announcementID, user.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
+		req.ID, courseID, req.Part, req.Title, req.Description); err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			return echo.NewHTTPError(http.StatusConflict, "A course with the same ID already exists.")
 		}
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -1309,12 +1269,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := AddClassResponse{
-		ClassID:        classID,
-		AnnouncementID: announcementID,
-	}
-
-	return c.JSON(http.StatusCreated, res)
+	return c.NoContent(http.StatusCreated)
 }
 
 type Announcement struct {
@@ -1511,14 +1466,11 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 }
 
 type AddAnnouncementRequest struct {
+	ID        uuid.UUID `json:"id"`
 	CourseID  uuid.UUID `json:"course_id"`
 	Title     string    `json:"title"`
 	Message   string    `json:"message"`
 	CreatedAt int64     `json:"created_at"`
-}
-
-type AddAnnouncementResponse struct {
-	ID uuid.UUID `json:"id"`
 }
 
 // AddAnnouncement 新規お知らせ追加
@@ -1544,10 +1496,12 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	announcementID := uuid.NewRandom()
 	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
-		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
+		req.ID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			return echo.NewHTTPError(http.StatusConflict, "An announcement with the same ID already exists.")
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1562,7 +1516,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", req.ID, user.ID); err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
@@ -1573,9 +1527,5 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := AddAnnouncementResponse{
-		ID: announcementID,
-	}
-
-	return c.JSON(http.StatusCreated, res)
+	return c.NoContent(http.StatusCreated)
 }
