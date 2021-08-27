@@ -176,6 +176,14 @@ func (c *Course) SuccessRegistration(student *Student) {
 	}
 }
 
+// for prepare
+func (c *Course) AddStudent(student *Student) {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.registeredStudents = append(c.registeredStudents, student)
+}
+
 func (c *Course) FailRegistration() {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()

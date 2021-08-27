@@ -2,7 +2,16 @@ package scenario
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"sync"
 	"time"
+
+	"github.com/isucon/isucandar/worker"
+
+	"github.com/isucon/isucon11-final/benchmarker/generate"
+
+	"github.com/isucon/isucon11-final/benchmarker/model"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -11,8 +20,11 @@ import (
 	"github.com/isucon/isucandar"
 )
 
-func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) error {
+const (
+	prepareTimeout = 20
+)
 
+func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	ContestantLogger.Printf("===> PREPARE")
 
 	a, err := agent.NewAgent(
@@ -33,6 +45,261 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		ContestantLogger.Printf("initializeが失敗しました")
 		return failure.NewError(fails.ErrCritical, err)
 	}
+
+	err = s.prepareNormal(ctx, step)
+	if err != nil {
+		return err
+	}
+
+	errors := step.Result().Errors
+	hasErrors := func() bool {
+		errors.Wait()
+		return len(errors.All()) > 0
+	}
+
+	if hasErrors() {
+		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました")))
+		return nil
+	}
+
+	return nil
+}
+
+func (s *Scenario) prepareCheck(parent context.Context, step *isucandar.BenchmarkStep) error {
+	initializeAgent, err := agent.NewAgent(
+		agent.WithNoCache(),
+		agent.WithNoCookie(),
+		agent.WithTimeout(20*time.Second),
+		agent.WithBaseURL(s.BaseURL.String()),
+	)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
+
+	_, err = InitializeAction(ctx, initializeAgent)
+	if err != nil {
+		return err
+	}
+
+	//studentAgent, err := agent.NewAgent(agent.WithTimeout(prepareTimeout))
+	//if err != nil {
+	//	return err
+	//}
+	//student := s.prepareNewStudent()
+	//student.Agent = studentAgent
+	//
+	//teacherAgent, err := agent.NewAgent(agent.WithTimeout(prepareTimeout))
+	//if err != nil {
+	//	return err
+	//}
+	//teacher := s.prepareNewTeacher()
+	//teacher.Agent = teacherAgent
+
+	return nil
+}
+
+func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkStep) error {
+	const (
+		prepareTeacherCount        = 2
+		prepareStudentCount        = 2
+		prepareCourseCount         = 20
+		prepareCourseRegisterLimit = 20
+		prepareClassCountPerCourse = 5
+	)
+
+	teachers := make([]*model.Teacher, 0, prepareTeacherCount)
+	// TODO: ランダムなので同じ教師が入る可能性がある
+	for i := 0; i < prepareTeacherCount; i++ {
+		teachers = append(teachers, s.GetRandomTeacher())
+	}
+
+	students := make([]*model.Student, 0, prepareStudentCount)
+	for i := 0; i < prepareStudentCount; i++ {
+		userData, err := s.studentPool.newUserData()
+		if err != nil {
+			return err
+		}
+		students = append(students, model.NewStudent(userData, s.BaseURL, prepareCourseRegisterLimit))
+	}
+
+	courses := make([]*model.Course, 0, prepareCourseCount)
+	mu := sync.Mutex{}
+	// 教師のログインとコース登録をするワーカー
+	w, err := worker.NewWorker(func(ctx context.Context, i int) {
+		teacher := teachers[i%len(teachers)]
+		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
+		if err != nil {
+			return
+		}
+		if err != nil {
+			AdminLogger.Printf("teacherのログインに失敗しました")
+			step.AddError(failure.NewError(fails.ErrCritical, err))
+			return
+		}
+
+		_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
+		if err != nil {
+			AdminLogger.Printf("teacherのユーザ情報取得に失敗しました")
+			step.AddError(err)
+			return
+		}
+		if err := verifyMe(&getMeRes, teacher.UserAccount, true); err != nil {
+			step.AddError(err)
+			return
+		}
+
+		param := generate.CourseParam(teacher, generate.WithPeriod(i%6), generate.WithDayOfWeek((i/6)+1))
+		_, res, err := AddCourseAction(ctx, teacher, param)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		course := model.NewCourse(param, res.ID, teacher)
+		mu.Lock()
+		courses = append(courses, course)
+		mu.Unlock()
+	}, worker.WithLoopCount(prepareCourseCount))
+
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
+
+	w.Process(ctx)
+	w.Wait()
+
+	// 生徒のログインとコース登録
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		student := students[i]
+		_, err := LoginAction(ctx, student.Agent, student.UserAccount)
+		if err != nil {
+			return
+		}
+		if err != nil {
+			AdminLogger.Printf("studentのログインに失敗しました")
+			step.AddError(failure.NewError(fails.ErrCritical, err))
+			return
+		}
+
+		_, getMeRes, err := GetMeAction(ctx, student.Agent)
+		if err != nil {
+			AdminLogger.Printf("studentのユーザ情報取得に失敗しました")
+			step.AddError(err)
+			return
+		}
+		if err := verifyMe(&getMeRes, student.UserAccount, false); err != nil {
+			step.AddError(err)
+			return
+		}
+
+		_, err = TakeCoursesAction(ctx, student.Agent, courses)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		for _, course := range courses {
+			student.AddCourse(course)
+			course.AddStudent(student)
+		}
+	}, worker.WithLoopCount(prepareStudentCount))
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
+	w.Process(ctx)
+	w.Wait()
+
+	// コースのステータスの変更
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		course := courses[i]
+		teacher := course.Teacher()
+		_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+	}, worker.WithLoopCount(prepareCourseCount))
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
+	w.Process(ctx)
+	w.Wait()
+
+	// クラス追加、課題提出、ダウンロード、採点（お知らせは見ない）
+	// workerはコースごと
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
+			course := courses[i]
+			teacher := course.Teacher()
+			classParam := generate.ClassParam(course, uint8(i+1))
+			_, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+			course.AddClass(class)
+			course.BroadCastAnnouncement(announcement)
+
+			courseStudents := course.Students()
+
+			// 課題提出,
+			// 生徒ごとのループ
+			w2, err := worker.NewWorker(func(ctx context.Context, i int) {
+				// 課題提出
+				submitter := courseStudents[i]
+				submissionData, fileName := generate.SubmissionData(course, class, submitter.UserAccount)
+				_, err := SubmitAssignmentAction(ctx, submitter.Agent, course.ID, class.ID, fileName, submissionData)
+				if err != nil {
+					step.AddError(err)
+					return
+				}
+				submissionSummary := model.NewSubmissionSummary(fileName, submissionData, true)
+				class.AddSubmissionSummary(submitter.Code, submissionSummary)
+
+			}, worker.WithLoopCount(prepareStudentCount))
+			w2.Process(ctx)
+			w2.Wait()
+
+			// 課題ダウンロード
+			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+			if err := verifyAssignments(assignmentsData, class); err != nil {
+				step.AddError(err)
+				return
+			}
+
+			// 採点
+			scores := make([]StudentScore, 0, len(students))
+			for _, student := range students {
+				sub := class.SubmissionSummary(student.Code)
+				if sub == nil {
+					step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("cannot find submission")))
+					return
+				}
+				score := rand.Intn(101)
+				sub.SetScore(score)
+				scores = append(scores, StudentScore{
+					score: score,
+					code:  student.Code,
+				})
+			}
+
+			_, err = PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+		}
+	}, worker.WithLoopCount(prepareCourseCount))
+	w.Process(ctx)
+	w.Wait()
 
 	return nil
 }
