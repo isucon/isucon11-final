@@ -109,6 +109,11 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		prepareCourseRegisterLimit = 20
 		prepareClassCountPerCourse = 5
 	)
+	errors := step.Result().Errors
+	hasErrors := func() bool {
+		errors.Wait()
+		return len(errors.All()) > 0
+	}
 
 	teachers := make([]*model.Teacher, 0, prepareTeacherCount)
 	// TODO: ランダムなので同じ教師が入る可能性がある
@@ -171,6 +176,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w.Process(ctx)
 	w.Wait()
 
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
 	// 生徒のログインとコース登録
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
@@ -211,6 +220,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}
 	w.Process(ctx)
 	w.Wait()
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
 
 	// コースのステータスの変更
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
@@ -228,6 +240,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}
 	w.Process(ctx)
 	w.Wait()
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
 
 	// クラス追加、課題提出、ダウンロード、採点（お知らせは見ない）
 	// workerはコースごと
@@ -261,6 +276,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				class.AddSubmissionSummary(submitter.Code, submissionSummary)
 
 			}, worker.WithLoopCount(prepareStudentCount))
+			if err != nil {
+				step.AddError(err)
+				return
+			}
 			w2.Process(ctx)
 			w2.Wait()
 
@@ -300,6 +319,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}, worker.WithLoopCount(prepareCourseCount))
 	w.Process(ctx)
 	w.Wait()
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
 
 	return nil
 }

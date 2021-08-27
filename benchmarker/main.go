@@ -255,7 +255,8 @@ func main() {
 			step.Cancel()
 		}
 
-		scenario.ContestantLogger.Printf("ERR: %+v", err)
+		scenario.ContestantLogger.Printf("ERR: %v", err)
+		scenario.AdminLogger.Printf("ERR: %+v", err)
 	})
 
 	b.AddScenario(s)
