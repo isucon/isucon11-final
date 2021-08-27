@@ -885,6 +885,9 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
