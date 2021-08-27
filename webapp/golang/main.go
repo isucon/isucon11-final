@@ -1488,14 +1488,6 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	})
 }
 
-type Announcement struct {
-	ID        uuid.UUID `db:"id"`
-	CourseID  uuid.UUID `db:"course_id"`
-	Title     string    `db:"title"`
-	Message   string    `db:"message"`
-	CreatedAt time.Time `db:"created_at"`
-}
-
 type AddAnnouncementRequest struct {
 	CourseID  uuid.UUID `json:"course_id"`
 	Title     string    `json:"title"`
@@ -1530,15 +1522,13 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var announcement Announcement
-	if err := tx.Get(&announcement, "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?", req.CourseID, req.CreatedAt); err != nil && err != sql.ErrNoRows {
+	var announcementCount int
+	if err := tx.Get(&announcementCount, "SELECT COUNT(*) FROM `announcements` WHERE `course_id` = ? AND `title` = ? AND `message` = ? AND `created_at` = ?", req.CourseID, req.Title, req.Message, req.CreatedAt); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
-	} else if err == nil {
-		if req.Title != announcement.Title || req.Message != announcement.Message {
-			return echo.NewHTTPError(http.StatusConflict, "An announcement with same created at time already exists.")
-		}
-		return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcement.ID})
+	}
+	if announcementCount > 0 {
+		return echo.NewHTTPError(http.StatusConflict, "The same announcement already exists.")
 	}
 
 	announcementID := uuid.NewRandom()
