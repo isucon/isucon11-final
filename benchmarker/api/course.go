@@ -84,7 +84,6 @@ type AddClassRequest struct {
 	Part        uint8  `json:"part"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	CreatedAt   int64  `json:"created_at"`
 }
 type AddClassResponse struct {
 	ClassID string `json:"class_id"`
