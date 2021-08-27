@@ -451,14 +451,12 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 			classParam := generate.ClassParam(course, uint8(i+1))
 		L:
-			hres, class, _, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					<-timer
 					goto L
-				} else if hres != nil && hres.StatusCode == http.StatusConflict {
-					// すでにwebappに登録されていたら続ける
 				} else {
 					step.AddError(err)
 					<-timer
@@ -467,6 +465,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			} else {
 				step.AddScore(score.CountAddClass)
 			}
+			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
 			DebugLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
@@ -476,7 +475,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 			announcement := generate.Announcement(course, class)
 		ancLoop:
-			_, res, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
@@ -488,7 +487,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 					continue
 				}
 			} else {
-				announcement.ID = res.ID
+				announcement.ID = ancRes.ID
 				step.AddScore(score.CountAddClass)
 			}
 			course.BroadCastAnnouncement(announcement)
