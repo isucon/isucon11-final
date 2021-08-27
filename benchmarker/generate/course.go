@@ -59,11 +59,25 @@ var (
 	}
 )
 
+type Option func(param *model.CourseParam)
+
+func WithDayOfWeek(d int) Option {
+	return func(param *model.CourseParam) {
+		param.DayOfWeek = d
+	}
+}
+
+func WithPeriod(p int) Option {
+	return func(param *model.CourseParam) {
+		param.Period = p
+	}
+}
+
 func courseDescription() string {
 	return randElt(courseDescription1) + randElt(courseDescription2)
 }
 
-func majorCourseParam(teacher *model.Teacher) *model.CourseParam {
+func majorCourseParam(teacher *model.Teacher, ops ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&majorCode, 1)
 
 	var (
@@ -85,7 +99,7 @@ func majorCourseParam(teacher *model.Teacher) *model.CourseParam {
 
 	name.WriteString(randElt(majorSuffix))
 
-	return &model.CourseParam{
+	p := model.CourseParam{
 		Code:        fmt.Sprintf("M%04d", code), // 重複不可, L,M+4桁の数字
 		Type:        "major-subjects",
 		Name:        name.String(),
@@ -96,9 +110,15 @@ func majorCourseParam(teacher *model.Teacher) *model.CourseParam {
 		DayOfWeek:   rand.Intn(5) + 1, // いいカンジに分散
 		Keywords:    strings.Join(keywords, " "),
 	}
+
+	for _, option := range ops {
+		option(&p)
+	}
+
+	return &p
 }
 
-func liberalCourseParam(teacher *model.Teacher) *model.CourseParam {
+func liberalCourseParam(teacher *model.Teacher, op ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&liberalCode, 1)
 
 	var (
@@ -116,7 +136,7 @@ func liberalCourseParam(teacher *model.Teacher) *model.CourseParam {
 
 	name.WriteString(randElt(liberalSuffix))
 
-	return &model.CourseParam{
+	p := model.CourseParam{
 		Code:        fmt.Sprintf("L%04d", code), // 重複不可, L,M+4桁の数字
 		Type:        "liberal-arts",
 		Name:        name.String(),
@@ -127,13 +147,19 @@ func liberalCourseParam(teacher *model.Teacher) *model.CourseParam {
 		DayOfWeek:   rand.Intn(5) + 1, // いいカンジに分散
 		Keywords:    strings.Join(keywords, " "),
 	}
+
+	for _, option := range op {
+		option(&p)
+	}
+
+	return &p
 }
 
-func CourseParam(teacher *model.Teacher) *model.CourseParam {
+func CourseParam(teacher *model.Teacher, op ...Option) *model.CourseParam {
 	if rand.Float64() < majorCourseProb {
-		return majorCourseParam(teacher)
+		return majorCourseParam(teacher, op...)
 	} else {
-		return liberalCourseParam(teacher)
+		return liberalCourseParam(teacher, op...)
 	}
 }
 
