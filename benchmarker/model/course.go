@@ -299,7 +299,7 @@ func (c *Course) TotalScores() map[string]int {
 
 	res := make(map[string]int, len(c.classes))
 	for _, class := range c.classes {
-		for userCode, summary := range class.submissionSummary {
+		for userCode, summary := range class.SubmissionSummaries() {
 			res[userCode] = res[userCode] + summary.score
 		}
 	}
