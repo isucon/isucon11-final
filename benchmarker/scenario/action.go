@@ -253,6 +253,33 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	return hres, res, nil
 }
 
+func SendAnnouncementAction(ctx context.Context, agent *agent.Agent, announcement *model.Announcement) (*http.Response, api.AddAnnouncementResponse, error) {
+	req := &api.AddAnnouncementRequest{
+		CourseID:  announcement.CourseID,
+		Title:     announcement.Title,
+		Message:   announcement.Message,
+		CreatedAt: announcement.CreatedAt,
+	}
+
+	res := api.AddAnnouncementResponse{}
+	hres, err := api.AddAnnouncement(ctx, agent, *req)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	defer hres.Body.Close()
+
+	err = verifyStatusCode(hres, []int{http.StatusOK})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+	return hres, res, nil
+}
+
 func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, []*api.GetClassResponse, error) {
 	res := make([]*api.GetClassResponse, 0)
 	hres, err := api.GetClasses(ctx, agent, courseID)

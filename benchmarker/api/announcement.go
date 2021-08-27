@@ -15,9 +15,10 @@ import (
 )
 
 type AddAnnouncementRequest struct {
-	CourseID string `json:"course_id"`
-	Title    string `json:"title"`
-	Message  string `json:"message"`
+	CourseID  string `json:"course_id"`
+	Title     string `json:"title"`
+	Message   string `json:"message"`
+	CreatedAt int64  `json:"created_at"`
 }
 
 type AddAnnouncementResponse struct {
