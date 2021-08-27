@@ -305,7 +305,6 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 		Part:        uint8(param.Part),
 		Title:       param.Title,
 		Description: param.Desc,
-		CreatedAt:   param.CreatedAt,
 	}
 
 	res := api.AddClassResponse{}

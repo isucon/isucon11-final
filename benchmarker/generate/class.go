@@ -59,11 +59,9 @@ func ClassParam(course *model.Course, part uint8) *model.ClassParam {
 	}
 
 	desc := classDescription(course, part)
-	createdAt := GenTime()
 	return &model.ClassParam{
 		Title:     title,
 		Desc:      desc,
 		Part:      part,
-		CreatedAt: createdAt,
 	}
 }
