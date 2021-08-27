@@ -5,9 +5,9 @@ import (
 )
 
 type ClassParam struct {
-	Title     string
-	Desc      string
-	Part      uint8 // n回目のクラス
+	Title string
+	Desc  string
+	Part  uint8 // n回目のクラス
 }
 
 type Class struct {

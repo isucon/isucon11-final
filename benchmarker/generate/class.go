@@ -60,8 +60,8 @@ func ClassParam(course *model.Course, part uint8) *model.ClassParam {
 
 	desc := classDescription(course, part)
 	return &model.ClassParam{
-		Title:     title,
-		Desc:      desc,
-		Part:      part,
+		Title: title,
+		Desc:  desc,
+		Part:  part,
 	}
 }
