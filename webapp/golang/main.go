@@ -572,26 +572,6 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	myGPA := 0.0
 	myCredits := 0
 	for _, course := range registeredCourses {
-		// この科目を受講している学生のTotalScore一覧を取得
-		var totals []int
-		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
-			" FROM `users`" +
-			" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-			" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
-			" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
-			" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
-			" WHERE `courses`.`id` = ?" +
-			" GROUP BY `users`.`id`"
-		if err := h.DB.Select(&totals, query, course.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		// avg max min の計算
-		totalScoreAvg := averageInt(totals, 0)
-		totalScoreMax := maxInt(totals, 0)
-		totalScoreMin := minInt(totals, 0)
-
 		// クラス一覧の取得
 		var classes []Class
 		query = "SELECT *" +
@@ -638,16 +618,29 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			}
 		}
 
-		myTotalScoreTScore := tScoreInt(myTotalScore, totals)
+		// この科目を受講している学生のTotalScore一覧を取得
+		var totals []int
+		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
+			" FROM `users`" +
+			" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+			" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+			" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
+			" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
+			" WHERE `courses`.`id` = ?" +
+			" GROUP BY `users`.`id`"
+		if err := h.DB.Select(&totals, query, course.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
 
 		courseResults = append(courseResults, CourseResult{
 			Name:             course.Name,
 			Code:             course.Code,
 			TotalScore:       myTotalScore,
-			TotalScoreTScore: myTotalScoreTScore,
-			TotalScoreAvg:    totalScoreAvg,
-			TotalScoreMax:    totalScoreMax,
-			TotalScoreMin:    totalScoreMin,
+			TotalScoreTScore: tScoreInt(myTotalScore, totals),
+			TotalScoreAvg:    averageInt(totals, 0),
+			TotalScoreMax:    maxInt(totals, 0),
+			TotalScoreMin:    minInt(totals, 0),
 			ClassScores:      classScores,
 		})
 
@@ -682,21 +675,14 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// avg max min の計算
-	gpaAvg := averageFloat64(gpas, 0)
-	gpaMax := maxFloat64(gpas, 0)
-	gpaMin := minFloat64(gpas, 0)
-
-	myGpaTScore := tScoreFloat64(myGPA, gpas)
-
 	res := GetGradeResponse{
 		Summary: Summary{
 			Credits:   myCredits,
 			GPA:       myGPA,
-			GpaTScore: myGpaTScore,
-			GpaAvg:    gpaAvg,
-			GpaMax:    gpaMax,
-			GpaMin:    gpaMin,
+			GpaTScore: tScoreFloat64(myGPA, gpas),
+			GpaAvg:    averageFloat64(gpas, 0),
+			GpaMax:    maxFloat64(gpas, 0),
+			GpaMin:    minFloat64(gpas, 0),
 		},
 		CourseResults: courseResults,
 	}
