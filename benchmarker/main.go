@@ -75,16 +75,16 @@ func init() {
 }
 
 func checkError(err error) (critical bool, timeout bool, deduction bool) {
-	critical = false  // TODO: クリティカルなエラー(起きたら即ベンチを止める)
-	timeout = false   // TODO: リクエストタイムアウト(ある程度の数許容するかも)
-	deduction = false // TODO: 減点対象になるエラー
-
-	if failure.IsCode(err, fails.ErrCritical) {
+	if fails.IsCritical(err) {
 		critical = true
 		return
 	}
-	if failure.IsCode(err, failure.TimeoutErrorCode) {
+	if fails.IsTimeout(err) {
 		timeout = true
+		return
+	}
+	if fails.IsDeduction(err) {
+		deduction = true
 		return
 	}
 
