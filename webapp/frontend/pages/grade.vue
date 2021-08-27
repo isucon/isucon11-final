@@ -11,21 +11,21 @@
             <thead>
               <tr class="bg-gray-300">
                 <th class="px-4 py-2">取得単位数</th>
-                <th class="px-4 py-2">GPT</th>
-                <th class="px-4 py-2">全学生GPT平均値</th>
-                <th class="px-4 py-2">全学生GPT偏差値</th>
-                <th class="px-4 py-2">全学生GPT最低値</th>
-                <th class="px-4 py-2">全学生GPT最大値</th>
+                <th class="px-4 py-2">GPA</th>
+                <th class="px-4 py-2">全学生GPA平均値</th>
+                <th class="px-4 py-2">全学生GPA偏差値</th>
+                <th class="px-4 py-2">全学生GPA最低値</th>
+                <th class="px-4 py-2">全学生GPA最大値</th>
               </tr>
             </thead>
             <tbody>
               <tr class="bg-gray-200 odd:bg-white">
                 <td class="px-4 py-2 border">{{ grades.summary.credits }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gpt }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gptAvg }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gptTScore }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gptMin }}</td>
-                <td class="px-4 py-2 border">{{ grades.summary.gptMax }}</td>
+                <td class="px-4 py-2 border">{{ grades.summary.gpa }}</td>
+                <td class="px-4 py-2 border">{{ grades.summary.gpaAvg }}</td>
+                <td class="px-4 py-2 border">{{ grades.summary.gpaTScore }}</td>
+                <td class="px-4 py-2 border">{{ grades.summary.gpaMin }}</td>
+                <td class="px-4 py-2 border">{{ grades.summary.gpaMax }}</td>
               </tr>
             </tbody>
           </table>
