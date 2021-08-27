@@ -1,5 +1,5 @@
 data "aws_vpc" "main" {
-  id = "vpc-04f36e0596c6daf7f "
+  id = "vpc-04f36e0596c6daf7f"
 }
 
 data "aws_security_group" "default" {
