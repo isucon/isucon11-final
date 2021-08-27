@@ -56,7 +56,10 @@ export default Vue.extend({
         }
       }
     } catch (e) {
-      if (axios.isAxiosError(e) && (e as AxiosError)?.response?.status === 401) {
+      if (
+        axios.isAxiosError(e) &&
+        (e as AxiosError)?.response?.status === 401
+      ) {
         return
       }
       console.error(e)
