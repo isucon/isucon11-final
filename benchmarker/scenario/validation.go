@@ -256,7 +256,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, studentCount int) error {
 	if len(expected.CourseResults) != len(actual.CourseResults) {
 		AdminLogger.Println("courseResult len. expected: ", len(expected.CourseResults), "actual: ", len(actual.CourseResults))
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のcourseResultsの数が一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません"))
 	}
 
 	err := validateSummary(&expected.Summary, &actual.Summary, studentCount)
