@@ -216,7 +216,7 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 	for _, class := range c.classes {
 		// 多分いらない
 		class := class
-		summary := class.SubmissionSummary(userCode)
+		summary := class.GetSubmissionByStudentCode(userCode)
 		if summary != nil {
 			res = append(res, NewSimpleClassScore(class, summary.Score()))
 		}
@@ -241,11 +241,12 @@ func (c *Course) CollectClassScores(userCode string) []*ClassScore {
 	return res
 }
 
-func (c *Course) IntoCourseResult(userCode string) *CourseResult {
+func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	if _, ok := c.registeredStudents[userCode]; !ok {
+	if _, ok := c.registeredStudents[code]; !ok {
+		// TODO: unreachable
 		return nil
 	}
 
@@ -259,13 +260,13 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 	totalMax := util.MaxInt(totalScoresArr, 0)
 	totalMin := util.MinInt(totalScoresArr, 0)
 
-	totalScore, ok := totalScores[userCode]
+	totalScore, ok := totalScores[code]
 	if !ok {
 		totalScore = 0
 	}
 	totalTScore := util.TScoreInt(totalScore, totalScoresArr)
 
-	classScores := c.CollectClassScores(userCode)
+	classScores := c.CollectClassScores(code)
 
 	return &CourseResult{
 		Name:             c.Name,
@@ -279,13 +280,13 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 	}
 }
 
-func (c *Course) TotalScore(userCode string) int {
+func (c *Course) GetTotalScoreByStudentCode(code string) int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
 	score := 0
 	for _, class := range c.classes {
-		sub := class.SubmissionSummary(userCode)
+		sub := class.GetSubmissionByStudentCode(code)
 		if sub != nil {
 			score += sub.score
 		}
@@ -300,7 +301,7 @@ func (c *Course) TotalScores() map[string]int {
 
 	res := make(map[string]int, len(c.classes))
 	for _, class := range c.classes {
-		submissionSummaries := class.SubmissionSummaries()
+		submissionSummaries := class.Submissions()
 		for code, _ := range c.registeredStudents {
 			score := 0
 			if v, ok := submissionSummaries[code]; ok {

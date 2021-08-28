@@ -71,7 +71,7 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 }
 
 func collectVerifyGradesData(student *model.Student) map[string]*model.SimpleCourseResult {
-	courses := student.Course()
+	courses := student.Courses()
 	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
 	for _, course := range courses {
 		classScore := course.CollectSimpleClassScores(student.Code)
@@ -484,7 +484,7 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 		}
 
 		for studentCode, checksumDownloaded := range downloadedAssignments {
-			summary := class.SubmissionSummary(studentCode)
+			summary := class.GetSubmissionByStudentCode(studentCode)
 			if summary == nil {
 				return errInvalidResponse("課題を提出していない学生のファイルが課題zipに含まれています")
 			} else if checksumDownloaded != summary.Checksum {

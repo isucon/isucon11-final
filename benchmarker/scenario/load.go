@@ -59,7 +59,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Add(initialCourseCount + 1)
 	for i := 0; i < initialCourseCount; i++ {
 		go func() {
-			defer DebugLogger.Printf("[debug] initial Course added")
+			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
 			s.addCourseLoad(ctx, step)
 		}()
@@ -753,8 +753,8 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 					} else {
 						step.AddScore(score.CountSubmitDocx)
 					}
-					submissionSummary := model.NewSubmissionSummary(fileName, submissionData, isCorrectSubmit)
-					class.AddSubmissionSummary(student.Code, submissionSummary)
+					submissionSummary := model.NewSubmission(fileName, submissionData, isCorrectSubmit)
+					class.AddSubmission(student.Code, submissionSummary)
 					break
 				}
 			}
@@ -773,7 +773,7 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 	students := course.Students()
 	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {
-		sub := class.SubmissionSummary(s.Code)
+		sub := class.GetSubmissionByStudentCode(s.Code)
 		if sub == nil {
 			continue
 		}
@@ -811,7 +811,7 @@ L:
 
 	// POST成功したスコアをベンチ内に保存する
 	for _, scoreData := range scores {
-		sub := class.SubmissionSummary(scoreData.code)
+		sub := class.GetSubmissionByStudentCode(scoreData.code)
 		if sub == nil {
 			continue
 		}

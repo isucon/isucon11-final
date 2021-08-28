@@ -175,7 +175,7 @@ func (s *Student) FillTimeslot(course *Course) {
 	s.registeringCount++
 }
 
-func (s *Student) Course() []*Course {
+func (s *Student) Courses() []*Course {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
@@ -198,7 +198,7 @@ func (s *Student) GPA() float64 {
 
 	tmp := 0
 	for _, course := range s.registeredCourses {
-		tmp += course.TotalScore(s.Code) * course.Credit
+		tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
 	}
 
 	gpt := float64(tmp) / 100.0

@@ -12,41 +12,41 @@ type ClassParam struct {
 
 type Class struct {
 	*ClassParam
-	ID                string
-	submissionSummary map[string]*SubmissionSummary // 学籍番号 -> 課題ファイルchecksum
-	rmu               sync.RWMutex
+	ID          string
+	submissions map[string]*Submission // map[学籍番号]*Submission
+	rmu         sync.RWMutex
 }
 
 func NewClass(id string, param *ClassParam) *Class {
 	return &Class{
-		ClassParam:        param,
-		ID:                id,
-		submissionSummary: make(map[string]*SubmissionSummary),
-		rmu:               sync.RWMutex{},
+		ClassParam:  param,
+		ID:          id,
+		submissions: make(map[string]*Submission),
+		rmu:         sync.RWMutex{},
 	}
 }
 
-func (c *Class) AddSubmissionSummary(studentCode string, summary *SubmissionSummary) {
+func (c *Class) AddSubmission(studentCode string, summary *Submission) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	// ここでsummary=nilをセットするとSubmissionSummary(studentCode)で存在チェックしたいときに区別つかなくなる
-	c.submissionSummary[studentCode] = summary
+	// ここでsummary=nilをセットするとGetSubmissionByStudentCode(studentCode)で存在チェックしたいときに区別つかなくなる
+	c.submissions[studentCode] = summary
 }
 
-func (c *Class) SubmissionSummary(studentCode string) *SubmissionSummary {
+func (c *Class) GetSubmissionByStudentCode(code string) *Submission {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	return c.submissionSummary[studentCode]
+	return c.submissions[code]
 }
 
-func (c *Class) SubmissionSummaries() map[string]*SubmissionSummary {
+func (c *Class) Submissions() map[string]*Submission {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	res := make(map[string]*SubmissionSummary, len(c.submissionSummary))
-	for s, summary := range c.submissionSummary {
+	res := make(map[string]*Submission, len(c.submissions))
+	for s, summary := range c.submissions {
 		res[s] = summary
 	}
 	return res
@@ -56,7 +56,7 @@ func (c *Class) GetSubmittedCount() int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	return len(c.submissionSummary)
+	return len(c.submissions)
 }
 
 func (c *Class) IntoClassScore(userCode string) *ClassScore {
@@ -64,7 +64,7 @@ func (c *Class) IntoClassScore(userCode string) *ClassScore {
 	defer c.rmu.RUnlock()
 
 	score := 0
-	if v, ok := c.submissionSummary[userCode]; ok {
+	if v, ok := c.submissions[userCode]; ok {
 		score = v.score
 	}
 
@@ -73,6 +73,6 @@ func (c *Class) IntoClassScore(userCode string) *ClassScore {
 		Title:          c.Title,
 		Part:           c.Part,
 		Score:          score,
-		SubmitterCount: len(c.submissionSummary),
+		SubmitterCount: len(c.submissions),
 	}
 }
