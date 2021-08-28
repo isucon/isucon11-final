@@ -187,7 +187,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					step.AddScore(score.CountSearchCourse)
+					step.AddScore(score.CountSearchCourses)
 
 					if len(res) > 0 {
 						checkTargetID = res[0].ID.String()
@@ -552,7 +552,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 
 		DebugLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
-		step.AddScore(score.CountFinishCourse)
+		step.AddScore(score.CountFinishCourses)
 
 		// コースを追加
 		s.addCourseLoad(ctx, step)

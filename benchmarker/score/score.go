@@ -8,7 +8,7 @@ const (
 	CountRegisterCourses         score.ScoreTag = "01.RegisterCourses"
 	CountGetRegisteredCourses    score.ScoreTag = "02.GetRegisteredCourses"
 	CountGetGrades               score.ScoreTag = "03.GetGrades"
-	CountSearchCourse            score.ScoreTag = "04.SearchCourses"
+	CountSearchCourses           score.ScoreTag = "04.SearchCourses"
 	CountGetCourseDetail         score.ScoreTag = "05.GetCourseDetail"
 	CountAddCourse               score.ScoreTag = "06.AddCourse"
 	CountAddClass                score.ScoreTag = "07.AddClass"
@@ -21,14 +21,14 @@ const (
 	CountGetAnnouncementList     score.ScoreTag = "14.GetAnnouncementList"
 	CountGetAnnouncementsDetail  score.ScoreTag = "15.GetAnnouncementDetail"
 	CountActiveStudents          score.ScoreTag = "_1.ActiveStudents"
-	CountFinishCourse            score.ScoreTag = "_2.FinishCourse"
+	CountFinishCourses           score.ScoreTag = "_2.FinishCourses"
 )
 
 var ScoreTags = []score.ScoreTag{
 	CountRegisterCourses,
 	CountGetRegisteredCourses,
 	CountGetGrades,
-	CountSearchCourse,
+	CountSearchCourses,
 	CountGetCourseDetail,
 	CountAddCourse,
 	CountAddClass,
@@ -41,7 +41,7 @@ var ScoreTags = []score.ScoreTag{
 	CountGetAnnouncementList,
 	CountGetAnnouncementsDetail,
 	CountActiveStudents,
-	CountFinishCourse,
+	CountFinishCourses,
 }
 
 type mag int64      // 1回でn点
