@@ -1,7 +1,5 @@
 package model
 
-import "github.com/isucon/isucon11-final/benchmarker/util/optional"
-
 // CourseResultのうち計算しなくていいやつ
 type SimpleCourseResult struct {
 	Name              string // course name
@@ -24,7 +22,7 @@ type SimpleClassScore struct {
 	Title   string
 	Part    uint8
 
-	Score optional.Int // null or 0 - 100点
+	Score int // 0 - 100点
 }
 
 type GradeRes struct {
@@ -65,6 +63,6 @@ type ClassScore struct {
 	Title   string
 	Part    uint8
 
-	Score          optional.Int // 0 - 100点
+	Score          int // 0 - 100点
 	SubmitterCount int
 }
