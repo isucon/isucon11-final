@@ -2,6 +2,8 @@ package model
 
 import (
 	"sync"
+
+	"github.com/isucon/isucon11-final/benchmarker/util/optional"
 )
 
 type ClassParam struct {
@@ -63,9 +65,9 @@ func (c *Class) IntoSimpleClassScore(userCode string) *SimpleClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	score := 0
+	score := optional.NewInt(0, false)
 	if v, ok := c.submissionSummary[userCode]; ok {
-		score = v.score
+		score = optional.IntFrom(int64(v.score))
 	}
 
 	return &SimpleClassScore{
@@ -80,9 +82,9 @@ func (c *Class) IntoClassScore(userCode string) *ClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	score := 0
+	score := optional.NewInt(0, false)
 	if v, ok := c.submissionSummary[userCode]; ok {
-		score = v.score
+		score = optional.IntFrom(int64(v.score))
 	}
 
 	return &ClassScore{

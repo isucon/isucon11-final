@@ -10,7 +10,9 @@ type SubmissionSummary struct {
 	Checksum uint32
 	IsValid  bool
 
-	// score は課題に対する講師によって追加されるスコア（提出直後は0で扱う）
+	// score は課題に対する講師によって追加されるスコア
+	// 課題を出していて採点されていないときは0点
+	// 課題を出していて採点されていればその採点された点数
 	score int
 	rmu   sync.RWMutex
 }

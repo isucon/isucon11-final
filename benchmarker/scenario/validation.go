@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/util"
+
 	"github.com/isucon/isucandar/agent"
 
 	"github.com/isucon/isucandar"
@@ -16,7 +18,6 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
-	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
 const (
@@ -398,8 +399,8 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 	}
 
 	// スコアが登録されていないときはwebappではnilでベンチでは0にしている
-	if (actual.Score == nil && expected.Score != 0) ||
-		(actual.Score != nil && (expected.Score != *actual.Score)) {
+	if (expected.Score.Valid != actual.Score.Valid) ||
+		(expected.Score.Valid && (expected.Score.ValueOrZero() != actual.Score.ValueOrZero())) {
 		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
 	}
