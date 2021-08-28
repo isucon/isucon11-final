@@ -218,6 +218,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	p := parallel.NewParallel(ctx, int32(len(users)))
 
 	for _, user := range users {
+		user := user
 		p.Do(func(ctx context.Context) {
 			// 1〜5秒ランダムに待つ
 			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
@@ -403,10 +404,18 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 	return nil
 }
 
+// userCodeがstudentsの中にないとpanicしたり返り値が変な値になったりする
 func calculateSummary(students map[string]*model.Student, userCode string) model.Summary {
 	n := len(students)
 	if n == 0 {
 		panic("TODO: len (students) is 0")
+	}
+
+	if _, ok := students[userCode]; !ok {
+		// ベンチのバグ用のloggerを作ったらそこに出すようにする
+		// 呼び出し元が1箇所しか無くて、そこではstudentsのrangeをとってそのkeyをuserCode
+		// に渡すので大丈夫なはず
+		panic("unreachable!")
 	}
 
 	gpas := make([]float64, 0, n)

@@ -214,6 +214,7 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 
 	res := make([]*SimpleClassScore, 0, len(c.classes))
 	for _, class := range c.classes {
+		// 多分いらない
 		class := class
 		summary := class.SubmissionSummary(userCode)
 		if summary != nil {
