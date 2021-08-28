@@ -130,9 +130,13 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
 	// 競技者には最終的なScoreTagの統計のみ見せる
-	// TODO: 見せるタグを絞る
 	if finish {
 		for _, tag := range score.ScoreTags {
+			// _ で始まるタグは競技者には見せない
+			if tag[0] == '_' {
+				continue
+			}
+
 			scenario.ContestantLogger.Printf("tag: %v: %v", tag, breakdown[tag])
 		}
 	}

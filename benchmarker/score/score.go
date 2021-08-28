@@ -5,18 +5,18 @@ import (
 )
 
 const (
-	CountAddCourse              score.ScoreTag = "add course"
-	CountAddClass               score.ScoreTag = "add class"
-	CountSubmitPDF              score.ScoreTag = "submit pdf assignment"
-	CountSubmitDocx             score.ScoreTag = "submit docx assignment"
-	CountRegisterScore          score.ScoreTag = "register score"
-	CountAddAnnouncement        score.ScoreTag = "add announcement"
-	CountGetAnnouncements       score.ScoreTag = "get announcements"
-	CountGetAnnouncementsDetail score.ScoreTag = "get announcement detail"
-	CountDownloadSubmission     score.ScoreTag = "download submissions"
-	CountGetGrades              score.ScoreTag = "get grades"
-	CountSearchCourse           score.ScoreTag = "search courses"
-	CountRegisterCourses        score.ScoreTag = "register courses"
+	CountAddCourse              score.ScoreTag = "01.add course"
+	CountAddClass               score.ScoreTag = "02.add class"
+	CountSubmitPDF              score.ScoreTag = "03.submit pdf assignment"
+	CountSubmitDocx             score.ScoreTag = "04.submit docx assignment"
+	CountRegisterScore          score.ScoreTag = "05.register score"
+	CountAddAnnouncement        score.ScoreTag = "06.add announcement"
+	CountGetAnnouncements       score.ScoreTag = "07.get announcements"
+	CountGetAnnouncementsDetail score.ScoreTag = "08.get announcement detail"
+	CountDownloadSubmission     score.ScoreTag = "09.download submissions"
+	CountGetGrades              score.ScoreTag = "10.get grades"
+	CountSearchCourse           score.ScoreTag = "11.search courses"
+	CountRegisterCourses        score.ScoreTag = "12.register courses"
 )
 
 var ScoreTags = []score.ScoreTag{
