@@ -63,9 +63,10 @@ func (c *Class) IntoSimpleClassScore(userCode string) *SimpleClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	score := 0
+	var score *int
 	if v, ok := c.submissionSummary[userCode]; ok {
-		score = v.score
+		tmp := v.score
+		score = &tmp
 	}
 
 	return &SimpleClassScore{
@@ -80,9 +81,10 @@ func (c *Class) IntoClassScore(userCode string) *ClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	score := 0
+	var score *int
 	if v, ok := c.submissionSummary[userCode]; ok {
-		score = v.score
+		tmp := v.score
+		score = &tmp
 	}
 
 	return &ClassScore{

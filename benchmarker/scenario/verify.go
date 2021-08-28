@@ -149,8 +149,8 @@ func verifyClassScores(expected *model.SimpleClassScore, res *api.ClassScore) er
 		return errInvalidResponse("成績確認でのクラスのタイトルが一致しません")
 	}
 
-	if (res.Score == nil && expected.Score != 0) ||
-		(res.Score != nil && (expected.Score != *res.Score)) {
+	if !((expected.Score == nil && res.Score == nil) ||
+		((expected.Score != nil && res.Score != nil) && (*expected.Score == *res.Score))) {
 		AdminLogger.Println("expected: ", expected.Score, "actual: ", res.Score)
 		return errInvalidResponse("成績確認でのクラスのスコアが一致しません")
 	}

@@ -22,7 +22,7 @@ type SimpleClassScore struct {
 	Title   string
 	Part    uint8
 
-	Score int // 0 - 100点
+	Score *int // 0 - 100点
 }
 
 type GradeRes struct {
@@ -63,6 +63,6 @@ type ClassScore struct {
 	Title   string
 	Part    uint8
 
-	Score          int // 0 - 100点
+	Score          *int // 0 - 100点
 	SubmitterCount int
 }
