@@ -214,12 +214,7 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 
 	res := make([]*SimpleClassScore, 0, len(c.classes))
 	for _, class := range c.classes {
-		// 多分いらない
-		class := class
-		summary := class.SubmissionSummary(userCode)
-		if summary != nil {
-			res = append(res, NewSimpleClassScore(class, summary.Score()))
-		}
+		res = append(res, class.IntoSimpleClassScore(userCode))
 	}
 
 	return res
@@ -228,10 +223,6 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 func (c *Course) CollectClassScores(userCode string) []*ClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
-
-	if _, ok := c.registeredStudents[userCode]; !ok {
-		return nil
-	}
 
 	res := make([]*ClassScore, 0, len(c.classes))
 	for _, class := range c.classes {
