@@ -59,7 +59,7 @@ func (c *Class) GetSubmittedCount() int {
 	return len(c.submissionSummary)
 }
 
-func (c *Class) IntoSimpleClassSCore(userCode string) *SimpleClassScore {
+func (c *Class) IntoSimpleClassScore(userCode string) *SimpleClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
