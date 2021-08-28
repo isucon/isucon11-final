@@ -32,3 +32,15 @@ func (s *Submission) SetScore(score int) {
 
 	s.score = &score
 }
+
+func (s *Submission) Score() *int {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	if s.score != nil {
+		scpy := *s.score
+		return &scpy
+	}
+
+	return nil
+}
