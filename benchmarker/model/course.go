@@ -278,8 +278,8 @@ func (c *Course) GetTotalScoreByStudentCode(code string) int {
 	score := 0
 	for _, class := range c.classes {
 		sub := class.GetSubmissionByStudentCode(code)
-		if sub != nil {
-			score += sub.score
+		if sub != nil && sub.score != nil {
+			score += *sub.score
 		}
 	}
 
@@ -295,8 +295,10 @@ func (c *Course) TotalScores() map[string]int {
 		res[userCode] = 0
 	}
 	for _, class := range c.classes {
-		for userCode, summary := range class.Submissions() {
-			res[userCode] += summary.score
+		for userCode, submission := range class.Submissions() {
+			if submission != nil && submission.score != nil {
+				res[userCode] += *submission.score
+			}
 		}
 	}
 

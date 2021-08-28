@@ -65,8 +65,10 @@ func (c *Class) IntoSimpleClassScore(userCode string) *SimpleClassScore {
 
 	var score *int
 	if v, ok := c.submissions[userCode]; ok {
-		tmp := v.score
-		score = &tmp
+		if v.score != nil {
+			scpy := *v.score
+			score = &scpy
+		}
 	}
 
 	return &SimpleClassScore{
@@ -83,8 +85,10 @@ func (c *Class) IntoClassScore(userCode string) *ClassScore {
 
 	var score *int
 	if v, ok := c.submissions[userCode]; ok {
-		tmp := v.score
-		score = &tmp
+		if v.score != nil {
+			scpy := *v.score
+			score = &scpy
+		}
 	}
 
 	return &ClassScore{
