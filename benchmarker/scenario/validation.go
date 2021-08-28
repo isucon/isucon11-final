@@ -410,24 +410,12 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 	}
 
 	gpas := make([]float64, 0, n)
-
-	targetUserGpa := 0.0
-	credits := 0
-
-	flg := false
-	for key, student := range students {
-		if key == userCode {
-			targetUserGpa = student.GPA()
-			gpas = append(gpas, targetUserGpa)
-			credits = student.TotalCredit()
-			flg = true
-		} else {
-			gpas = append(gpas, student.GPA())
-		}
+	for _, student := range students {
+		gpas = append(gpas, student.GPA())
 	}
-	if !flg {
-		panic("TODO: userCode: " + userCode + " is not found")
-	}
+
+	targetUserGpa := students[userCode].GPA()
+	credits := students[userCode].TotalCredit()
 
 	gpaAvg := util.AverageFloat64(gpas, 0)
 	gpaMax := util.MaxFloat64(gpas, 0)
