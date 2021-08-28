@@ -513,6 +513,8 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 			if err := verifyAssignments(assignmentsData, class); err != nil {
 				step.AddError(err)
+			} else {
+				step.AddScore(score.CountDownloadSubmission)
 			}
 			DebugLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
