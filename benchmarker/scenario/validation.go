@@ -420,7 +420,7 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 	if expected.SubmitterCount != actual.Submitters {
 		AdminLogger.Println("submitters. expected: ", expected.SubmitterCount, "actual: ", actual.Submitters)
 		// TODO: 課題提出もリトライをする
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題の提出者の数が一致しません"))
+		// return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題の提出者の数が一致しません"))
 	}
 
 	return nil
