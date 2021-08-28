@@ -5,44 +5,54 @@ import (
 )
 
 const (
-	CountAddCourse              score.ScoreTag = "01.add course"
-	CountAddClass               score.ScoreTag = "02.add class"
-	CountSubmitPDF              score.ScoreTag = "03.submit pdf assignment"
-	CountSubmitDocx             score.ScoreTag = "04.submit docx assignment"
-	CountRegisterScore          score.ScoreTag = "05.register score"
-	CountAddAnnouncement        score.ScoreTag = "06.add announcement"
-	CountGetAnnouncements       score.ScoreTag = "07.get announcements"
-	CountGetAnnouncementsDetail score.ScoreTag = "08.get announcement detail"
-	CountDownloadSubmission     score.ScoreTag = "09.download submissions"
-	CountGetGrades              score.ScoreTag = "10.get grades"
-	CountSearchCourse           score.ScoreTag = "11.search courses"
-	CountRegisterCourses        score.ScoreTag = "12.register courses"
+	CountRegisterCourses         score.ScoreTag = "01.RegisterCourses"
+	CountGetRegisteredCourses    score.ScoreTag = "02.GetRegisteredCourses"
+	CountGetGrades               score.ScoreTag = "03.GetGrades"
+	CountSearchCourse            score.ScoreTag = "04.SearchCourses"
+	CountGetCourseDetail         score.ScoreTag = "05.GetCourseDetail"
+	CountAddCourse               score.ScoreTag = "06.AddCourse"
+	CountAddClass                score.ScoreTag = "07.AddClass"
+	CountGetClasses              score.ScoreTag = "08.GetClasses"
+	CountSubmitValidAssignment   score.ScoreTag = "09.SubmitValidAssignment"
+	CountSubmitInvalidAssignment score.ScoreTag = "10.SubmitInvalidAssignment"
+	CountDownloadSubmissions     score.ScoreTag = "11.DownloadSubmissions"
+	CountRegisterScore           score.ScoreTag = "12.RegisterScore"
+	CountAddAnnouncement         score.ScoreTag = "13.AddAnnouncement"
+	CountGetAnnouncementList     score.ScoreTag = "14.GetAnnouncementList"
+	CountGetAnnouncementsDetail  score.ScoreTag = "15.GetAnnouncementDetail"
+	CountActiveStudents          score.ScoreTag = "_1.ActiveStudents"
+	CountFinishCourse            score.ScoreTag = "_2.FinishCourse"
 )
 
 var ScoreTags = []score.ScoreTag{
-	CountAddCourse,
-	CountAddClass,
-	CountSubmitPDF,
-	CountSubmitDocx,
-	CountRegisterScore,
-	CountAddAnnouncement,
-	CountGetAnnouncements,
-	CountGetAnnouncementsDetail,
-	CountDownloadSubmission,
+	CountRegisterCourses,
+	CountGetRegisteredCourses,
 	CountGetGrades,
 	CountSearchCourse,
-	CountRegisterCourses,
+	CountGetCourseDetail,
+	CountAddCourse,
+	CountAddClass,
+	CountGetClasses,
+	CountSubmitValidAssignment,
+	CountSubmitInvalidAssignment,
+	CountDownloadSubmissions,
+	CountRegisterScore,
+	CountAddAnnouncement,
+	CountGetAnnouncementList,
+	CountGetAnnouncementsDetail,
+	CountActiveStudents,
+	CountFinishCourse,
 }
 
 type mag int64      // 1回でn点
 type fraction int64 // n回で1点
 
 var scoreCoefTable = map[score.ScoreTag]interface{}{
-	CountSubmitPDF:       mag(5),
-	CountRegisterCourses: mag(10),
+	CountRegisterCourses:       mag(10),
+	CountSubmitValidAssignment: mag(5),
 
-	CountGetAnnouncements: fraction(10),
-	CountGetGrades:        fraction(10),
+	CountGetGrades:           fraction(10),
+	CountGetAnnouncementList: fraction(10),
 }
 
 var (
