@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/isucon/isucandar"
@@ -37,99 +39,110 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
 
-	// TODO: 並列化
-	sampleCount := s.ActiveStudentCount() * validateAnnouncementsRate
+	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
-	for sampleIndex := range sampleIndices {
-		student := s.activeStudents[sampleIndex]
-		var responseUnreadCount int // responseに含まれるunread_count
-		actualAnnouncements := map[string]api.AnnouncementResponse{}
-		lastCreatedAt := int64(math.MaxInt64)
 
-		timer := time.After(10 * time.Second)
-		var next string
-		for {
-			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
-			if err != nil {
-				step.AddError(failure.NewError(fails.ErrCritical, err))
-				return
+	wg := sync.WaitGroup{}
+	wg.Add(len(sampleIndices))
+	for _, sampleIndex := range sampleIndices {
+		student := s.activeStudents[sampleIndex]
+		go func() {
+			defer wg.Done()
+
+			// 1〜5秒ランダムに待つ
+			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+
+			var responseUnreadCount int // responseに含まれるunread_count
+			actualAnnouncements := map[string]api.AnnouncementResponse{}
+			lastCreatedAt := int64(math.MaxInt64)
+
+			timer := time.After(10 * time.Second)
+			var next string
+			for {
+				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
+				if err != nil {
+					step.AddError(failure.NewError(fails.ErrCritical, err))
+					return
+				}
+
+				// UnreadCount は各ページのレスポンスですべて同じ値が返ってくるはず
+				if next == "" {
+					responseUnreadCount = res.UnreadCount
+				} else if responseUnreadCount != res.UnreadCount {
+					step.AddError(errNotMatchUnreadCount)
+					return
+				}
+
+				for _, announcement := range res.Announcements {
+					actualAnnouncements[announcement.ID] = announcement
+
+					// 順序の検証
+					if lastCreatedAt < announcement.CreatedAt {
+						step.AddError(errNotSorted)
+						return
+					}
+					lastCreatedAt = announcement.CreatedAt
+				}
+
+				_, next = parseLinkHeader(hres)
+				if next == "" {
+					break
+				}
+
+				select {
+				case <-timer:
+					step.AddError(errTimeout)
+					break
+				default:
+				}
 			}
 
-			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくるはず
-			if next == "" {
-				responseUnreadCount = res.UnreadCount
-			} else if responseUnreadCount != res.UnreadCount {
+			// レスポンスのunread_countの検証
+			var actualUnreadCount int
+			for _, a := range actualAnnouncements {
+				if a.Unread {
+					actualUnreadCount++
+				}
+			}
+			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCount) {
 				step.AddError(errNotMatchUnreadCount)
 				return
 			}
 
-			for _, announcement := range res.Announcements {
-				actualAnnouncements[announcement.ID] = announcement
+			expectAnnouncements := student.Announcements()
+			for _, expectStatus := range expectAnnouncements {
+				expect := expectStatus.Announcement
+				actual, ok := actualAnnouncements[expect.ID]
 
-				// 順序の検証
-				if lastCreatedAt < announcement.CreatedAt {
-					step.AddError(errNotSorted)
+				if !ok {
+					AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
+					step.AddError(errNotMatchUnder)
 					return
 				}
-				lastCreatedAt = announcement.CreatedAt
-			}
 
-			_, next = parseLinkHeader(hres)
-			if next == "" {
-				break
-			}
+				// ベンチ内データが既読の場合のみUnreadの検証を行う
+				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+				if !expectStatus.Unread {
+					if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
+						AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
+						step.AddError(errNotMatchOver)
+						return
+					}
+				}
 
-			select {
-			case <-timer:
-				step.AddError(errTimeout)
-				break
-			default:
-			}
-		}
-
-		// レスポンスのunread_countの検証
-		var actualUnreadCount int
-		for _, a := range actualAnnouncements {
-			if a.Unread {
-				actualUnreadCount++
-			}
-		}
-		if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCount) {
-			step.AddError(errNotMatchUnreadCount)
-			return
-		}
-
-		expectAnnouncements := student.Announcements()
-		for _, expectStatus := range expectAnnouncements {
-			expect := expectStatus.Announcement
-			actual, ok := actualAnnouncements[expect.ID]
-
-			if !ok {
-				AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
-				step.AddError(errNotMatchUnder)
-			}
-
-			// ベンチ内データが既読の場合のみUnreadの検証を行う
-			// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-			if !expectStatus.Unread {
-				if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
+				if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
+					!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
+					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
+					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
+					!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
 					AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
 					step.AddError(errNotMatchOver)
 					return
 				}
 			}
-
-			if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
-				!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
-				!AssertEqual("announcement Title", expect.Title, actual.Title) ||
-				!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
-				!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
-				AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
-				step.AddError(errNotMatchOver)
-				return
-			}
-		}
+		}()
 	}
+	wg.Wait()
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
