@@ -216,8 +216,16 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	}
 
 	p := parallel.NewParallel(ctx, int32(len(users)))
-
+	// n回に1回validationする
+	n := 3
+	i := 0
 	for _, user := range users {
+		if i%n != 0 {
+			i++
+			continue
+		} else {
+			i++
+		}
 		user := user
 		p.Do(func(ctx context.Context) {
 			// 1〜5秒ランダムに待つ
