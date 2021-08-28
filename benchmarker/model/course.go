@@ -241,7 +241,7 @@ func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 		return nil
 	}
 
-	totalScores := c.TotalScores()
+	totalScores := c.calcTotalScores()
 
 	totalScoresArr := make([]int, 0, len(totalScores))
 	for _, totalScore := range totalScores {
@@ -277,16 +277,16 @@ func (c *Course) GetTotalScoreByStudentCode(code string) int {
 
 	score := 0
 	for _, class := range c.classes {
-		sub := class.GetSubmissionByStudentCode(code)
-		if sub != nil && sub.score != nil {
-			score += *sub.score
+		submission := class.GetSubmissionByStudentCode(code)
+		if submission != nil && submission.score != nil {
+			score += *submission.score
 		}
 	}
 
 	return score
 }
 
-func (c *Course) TotalScores() map[string]int {
+func (c *Course) calcTotalScores() map[string]int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
