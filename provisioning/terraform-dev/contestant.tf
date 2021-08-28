@@ -16,7 +16,12 @@
 
 variable "contestant_names" {
   type    = list(string)
-  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt"]
+  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt", "sapphi_red"]
+}
+
+variable "two_instance_contestant_names" {
+  type    = list(string)
+  default = ["sapphi_red"]
 }
 
 variable "contestant_team_ids" {
@@ -32,6 +37,7 @@ variable "contestant_team_ids" {
     hattori    = "18"
     takahashi  = "20"
     eagletmt   = "14"
+    sapphi_red = "2"
   }
 }
 
@@ -39,7 +45,7 @@ resource "aws_instance" "contestant-1" {
   for_each = toset(var.contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-02fbcf0d7a6dcbd71"
+  ami           = "ami-027107e4db237a066"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -67,6 +73,12 @@ resource "aws_instance" "contestant-1" {
   }
 
   user_data = file("${path.module}/contestant-user-data.sh")
+
+  lifecycle {
+    ignore_changes = [
+      ami,
+    ]
+  }
 }
 
 resource "aws_eip" "contestant-1" {
@@ -74,4 +86,51 @@ resource "aws_eip" "contestant-1" {
 
   vpc      = true
   instance = aws_instance.contestant-1[each.key].id
+}
+
+resource "aws_instance" "contestant-2" {
+  for_each = toset(var.two_instance_contestant_names)
+
+  #ami           = data.aws_ami.contestant.id
+  ami           = "ami-027107e4db237a066"
+  instance_type = "c5.large"
+
+  availability_zone = var.availability_zones[0]
+  subnet_id         = data.aws_subnet.public[0].id
+
+  vpc_security_group_ids = [
+    data.aws_security_group.default.id,
+    aws_security_group.final-dev-contestant.id,
+  ]
+
+  tags = {
+    Name = "final-dev-contestant-${each.key}-2"
+
+    IsuconTeamID      = var.contestant_team_ids[each.key]
+    IsuconInstanceNum = "2"
+  }
+
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = "30"
+    tags = {
+      Name    = "final-dev-contestant-${each.key}-2"
+      Project = "final-dev"
+    }
+  }
+
+  user_data = file("${path.module}/contestant-user-data.sh")
+
+  lifecycle {
+    ignore_changes = [
+      ami,
+    ]
+  }
+}
+
+resource "aws_eip" "contestant-2" {
+  for_each = toset(var.two_instance_contestant_names)
+
+  vpc      = true
+  instance = aws_instance.contestant-2[each.key].id
 }

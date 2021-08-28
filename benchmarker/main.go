@@ -20,10 +20,11 @@ import (
 	score2 "github.com/isucon/isucandar/score"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
+	"github.com/pkg/profile"
+
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 	"github.com/isucon/isucon11-final/benchmarker/score"
-	"github.com/pkg/profile"
 )
 
 const (
@@ -255,7 +256,8 @@ func main() {
 			step.Cancel()
 		}
 
-		scenario.ContestantLogger.Printf("ERR: %+v", err)
+		scenario.ContestantLogger.Printf("ERR: %v", err)
+		scenario.DebugLogger.Printf("ERR: %+v", err) // includes stack trace
 	})
 
 	b.AddScenario(s)
