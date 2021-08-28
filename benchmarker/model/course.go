@@ -298,15 +298,13 @@ func (c *Course) TotalScores() map[string]int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	res := make(map[string]int, len(c.classes))
+	res := make(map[string]int, len(c.registeredStudents))
+	for userCode := range c.registeredStudents {
+		res[userCode] = 0
+	}
 	for _, class := range c.classes {
-		submissionSummaries := class.SubmissionSummaries()
-		for code, _ := range c.registeredStudents {
-			score := 0
-			if v, ok := submissionSummaries[code]; ok {
-				score = v.score
-			}
-			res[code] = res[code] + score
+		for userCode, summary := range class.SubmissionSummaries() {
+			res[userCode] += summary.score
 		}
 	}
 
