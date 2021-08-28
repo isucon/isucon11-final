@@ -214,12 +214,7 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 
 	res := make([]*SimpleClassScore, 0, len(c.classes))
 	for _, class := range c.classes {
-		// 多分いらない
-		class := class
-		summary := class.GetSubmissionByStudentCode(userCode)
-		if summary != nil {
-			res = append(res, NewSimpleClassScore(class, summary.Score()))
-		}
+		res = append(res, class.IntoSimpleClassScore(userCode))
 	}
 
 	return res
@@ -228,10 +223,6 @@ func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 func (c *Course) CollectClassScores(userCode string) []*ClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
-
-	if _, ok := c.registeredStudents[userCode]; !ok {
-		return nil
-	}
 
 	res := make([]*ClassScore, 0, len(c.classes))
 	for _, class := range c.classes {
@@ -262,7 +253,7 @@ func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 
 	totalScore, ok := totalScores[code]
 	if !ok {
-		totalScore = 0
+		panic("unreachable! userCode: " + code)
 	}
 	totalTScore := util.TScoreInt(totalScore, totalScoresArr)
 
@@ -299,15 +290,13 @@ func (c *Course) TotalScores() map[string]int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	res := make(map[string]int, len(c.classes))
+	res := make(map[string]int, len(c.registeredStudents))
+	for userCode := range c.registeredStudents {
+		res[userCode] = 0
+	}
 	for _, class := range c.classes {
-		submissionSummaries := class.Submissions()
-		for code, _ := range c.registeredStudents {
-			score := 0
-			if v, ok := submissionSummaries[code]; ok {
-				score = v.score
-			}
-			res[code] = res[code] + score
+		for userCode, summary := range class.Submissions() {
+			res[userCode] += summary.score
 		}
 	}
 

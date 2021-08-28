@@ -235,9 +235,11 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			courseResults := make(map[string]*model.CourseResult, len(courses))
 			for _, course := range courses {
 				result := course.CalcCourseResultByStudentCode(user.Code)
-				if result != nil {
-					courseResults[course.Code] = result
+				if result == nil {
+					panic("unreachable! userCode:" + user.Code)
 				}
+
+				courseResults[course.Code] = result
 			}
 
 			summary := calculateSummary(users, user.Code)
@@ -397,9 +399,8 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
 	}
 
-	// スコアが登録されていないときはwebappではnilでベンチでは0にしている
-	if (actual.Score == nil && expected.Score != 0) ||
-		(actual.Score != nil && (expected.Score != *actual.Score)) {
+	if !((expected.Score == nil && actual.Score == nil) ||
+		((expected.Score != nil && actual.Score != nil) && (*expected.Score == *actual.Score))) {
 		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
 	}
@@ -423,7 +424,7 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 		// ベンチのバグ用のloggerを作ったらそこに出すようにする
 		// 呼び出し元が1箇所しか無くて、そこではstudentsのrangeをとってそのkeyをuserCode
 		// に渡すので大丈夫なはず
-		panic("unreachable!")
+		panic("unreachable! userCode: " + userCode)
 	}
 
 	gpas := make([]float64, 0, n)
