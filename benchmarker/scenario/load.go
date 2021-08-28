@@ -753,8 +753,8 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 					} else {
 						step.AddScore(score.CountSubmitDocx)
 					}
-					submissionSummary := model.NewSubmission(fileName, submissionData, isCorrectSubmit)
-					class.AddSubmission(student.Code, submissionSummary)
+					submission := model.NewSubmission(fileName, submissionData, isCorrectSubmit)
+					class.AddSubmission(student.Code, submission)
 					break
 				}
 			}
