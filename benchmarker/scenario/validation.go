@@ -235,9 +235,11 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			courseResults := make(map[string]*model.CourseResult, len(courses))
 			for _, course := range courses {
 				result := course.IntoCourseResult(user.Code)
-				if result != nil {
-					courseResults[course.Code] = result
+				if result == nil {
+					panic("unreachable! userCode:" + user.Code)
 				}
+
+				courseResults[course.Code] = result
 			}
 
 			summary := calculateSummary(users, user.Code)
@@ -423,7 +425,7 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 		// ベンチのバグ用のloggerを作ったらそこに出すようにする
 		// 呼び出し元が1箇所しか無くて、そこではstudentsのrangeをとってそのkeyをuserCode
 		// に渡すので大丈夫なはず
-		panic("unreachable!")
+		panic("unreachable! userCode: " + userCode)
 	}
 
 	gpas := make([]float64, 0, n)

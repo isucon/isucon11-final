@@ -261,7 +261,7 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 
 	totalScore, ok := totalScores[userCode]
 	if !ok {
-		totalScore = 0
+		panic("unreachable! userCode: " + userCode)
 	}
 	totalTScore := util.TScoreInt(totalScore, totalScoresArr)
 
