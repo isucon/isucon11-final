@@ -232,11 +232,12 @@ func (c *Course) CollectClassScores(userCode string) []*ClassScore {
 	return res
 }
 
-func (c *Course) IntoCourseResult(userCode string) *CourseResult {
+func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
-	if _, ok := c.registeredStudents[userCode]; !ok {
+	if _, ok := c.registeredStudents[code]; !ok {
+		// TODO: unreachable
 		return nil
 	}
 
@@ -250,13 +251,13 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 	totalMax := util.MaxInt(totalScoresArr, 0)
 	totalMin := util.MinInt(totalScoresArr, 0)
 
-	totalScore, ok := totalScores[userCode]
+	totalScore, ok := totalScores[code]
 	if !ok {
-		panic("unreachable! userCode: " + userCode)
+		panic("unreachable! userCode: " + code)
 	}
 	totalTScore := util.TScoreInt(totalScore, totalScoresArr)
 
-	classScores := c.CollectClassScores(userCode)
+	classScores := c.CollectClassScores(code)
 
 	return &CourseResult{
 		Name:             c.Name,
@@ -270,13 +271,13 @@ func (c *Course) IntoCourseResult(userCode string) *CourseResult {
 	}
 }
 
-func (c *Course) TotalScore(userCode string) int {
+func (c *Course) GetTotalScoreByStudentCode(code string) int {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
 
 	score := 0
 	for _, class := range c.classes {
-		sub := class.SubmissionSummary(userCode)
+		sub := class.GetSubmissionByStudentCode(code)
 		if sub != nil {
 			score += sub.score
 		}
@@ -294,7 +295,7 @@ func (c *Course) TotalScores() map[string]int {
 		res[userCode] = 0
 	}
 	for _, class := range c.classes {
-		for userCode, summary := range class.SubmissionSummaries() {
+		for userCode, summary := range class.Submissions() {
 			res[userCode] += summary.score
 		}
 	}

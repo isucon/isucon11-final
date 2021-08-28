@@ -210,7 +210,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	activeStudents := s.activeStudents
 	users := make(map[string]*model.Student, len(activeStudents))
 	for _, activeStudent := range activeStudents {
-		if len(activeStudent.Course()) > 0 {
+		if len(activeStudent.Courses()) > 0 {
 			users[activeStudent.Code] = activeStudent
 		}
 	}
@@ -231,10 +231,10 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			// 1〜5秒ランダムに待つ
 			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
 
-			courses := user.Course()
+			courses := user.Courses()
 			courseResults := make(map[string]*model.CourseResult, len(courses))
 			for _, course := range courses {
-				result := course.IntoCourseResult(user.Code)
+				result := course.CalcCourseResultByStudentCode(user.Code)
 				if result == nil {
 					panic("unreachable! userCode:" + user.Code)
 				}
