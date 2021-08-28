@@ -404,7 +404,7 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			return
 		}
 
-		DebugLogger.Println(course.Name, "のタスクが追加された") // FIXME: for debug
+		DebugLogger.Printf("[コース追加] code: %v, name: %v", course.Code, course.Name)
 		loadCourseWorker.Do(courseScenario(course, step, s))
 	})
 	return loadCourseWorker
