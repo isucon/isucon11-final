@@ -10,8 +10,10 @@ type Submission struct {
 	Checksum uint32
 	IsValid  bool
 
-	// score は課題に対する講師によって追加されるスコア（提出直後は0で扱う）
-	score int
+	// score は課題に対する講師によって追加されるスコア
+	// 提出後採点されるまではNULL
+	// 採点されたら採点された点
+	score *int
 	rmu   sync.RWMutex
 }
 
@@ -28,12 +30,17 @@ func (s *Submission) SetScore(score int) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.score = score
+	s.score = &score
 }
 
-func (s *Submission) Score() int {
+func (s *Submission) Score() *int {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
-	return s.score
+	if s.score != nil {
+		scpy := *s.score
+		return &scpy
+	}
+
+	return nil
 }

@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/isucon/isucandar/agent"
-
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
@@ -29,7 +27,6 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 		return nil
 	}
 	ContestantLogger.Printf("===> VALIDATION")
-	agent.DefaultRequestTimeout = 10 * time.Second
 
 	s.validateAnnouncements(ctx, step)
 	s.validateCourses(ctx, step)
@@ -414,7 +411,7 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 	if !((expected.Score == nil && actual.Score == nil) ||
 		((expected.Score != nil && actual.Score != nil) && (*expected.Score == *actual.Score))) {
 		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
-		// return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
 	}
 
 	if expected.SubmitterCount != actual.Submitters {
