@@ -5,19 +5,34 @@ import (
 )
 
 const (
-	CountAddCourse              = "add course"
-	CountAddClass               = "add class"
-	CountSubmitPDF              = "submit pdf assignment"
-	CountSubmitDocx             = "submit docx assignment"
-	CountRegisterScore          = "register score"
-	CountAddAnnouncement        = "add announcement"
-	CountGetAnnouncements       = "get announcements"
-	CountGetAnnouncementsDetail = "get announcement detail"
-	CountDownloadSubmission     = "download submissions"
-	CountGetGrades              = "get grades"
-	CountSearchCourse           = "search courses"
-	CountRegisterCourses        = "register courses"
+	CountAddCourse              score.ScoreTag = "add course"
+	CountAddClass               score.ScoreTag = "add class"
+	CountSubmitPDF              score.ScoreTag = "submit pdf assignment"
+	CountSubmitDocx             score.ScoreTag = "submit docx assignment"
+	CountRegisterScore          score.ScoreTag = "register score"
+	CountAddAnnouncement        score.ScoreTag = "add announcement"
+	CountGetAnnouncements       score.ScoreTag = "get announcements"
+	CountGetAnnouncementsDetail score.ScoreTag = "get announcement detail"
+	CountDownloadSubmission     score.ScoreTag = "download submissions"
+	CountGetGrades              score.ScoreTag = "get grades"
+	CountSearchCourse           score.ScoreTag = "search courses"
+	CountRegisterCourses        score.ScoreTag = "register courses"
 )
+
+var ScoreTags = []score.ScoreTag{
+	CountAddCourse,
+	CountAddClass,
+	CountSubmitPDF,
+	CountSubmitDocx,
+	CountRegisterScore,
+	CountAddAnnouncement,
+	CountGetAnnouncements,
+	CountGetAnnouncementsDetail,
+	CountDownloadSubmission,
+	CountGetGrades,
+	CountSearchCourse,
+	CountRegisterCourses,
+}
 
 type mag int64      // 1回でn点
 type fraction int64 // n回で1点

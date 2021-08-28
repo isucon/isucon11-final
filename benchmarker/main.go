@@ -10,14 +10,12 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"sort"
 	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	score2 "github.com/isucon/isucandar/score"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
 	"github.com/pkg/profile"
@@ -131,24 +129,16 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	logger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
 	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
-	scoreTags := make([]score2.ScoreTag, 0, len(breakdown))
-	for k := range breakdown {
-		scoreTags = append(scoreTags, k)
-	}
-	sort.Slice(scoreTags, func(i, j int) bool {
-		return scoreTags[i] < scoreTags[j]
-	})
-
 	// 競技者には最終的なScoreTagの統計のみ見せる
 	// TODO: 見せるタグを絞る
 	if finish {
-		for _, tag := range scoreTags {
+		for _, tag := range score.ScoreTags {
 			scenario.ContestantLogger.Printf("tag: %v: %v", tag, breakdown[tag])
 		}
 	}
 
 	if writeScoreToAdminLogger {
-		for _, tag := range scoreTags {
+		for _, tag := range score.ScoreTags {
 			scenario.AdminLogger.Printf("tag: %v: %v", tag, breakdown[tag])
 		}
 	}
