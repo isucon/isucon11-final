@@ -25,15 +25,6 @@ type SimpleClassScore struct {
 	Score int // 0 - 100点
 }
 
-func NewSimpleClassScore(class *Class, score int) *SimpleClassScore {
-	return &SimpleClassScore{
-		ClassID: class.ID,
-		Title:   class.Title,
-		Part:    class.Part,
-		Score:   score,
-	}
-}
-
 type GradeRes struct {
 	Summary       Summary
 	CourseResults map[string]*CourseResult
