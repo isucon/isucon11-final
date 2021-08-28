@@ -39,13 +39,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
 
-	// TODO: 並列化
-	sampleCount := s.ActiveStudentCount() * validateAnnouncementsRate
+	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(sampleIndices))
-	for sampleIndex := range sampleIndices {
+	for _, sampleIndex := range sampleIndices {
 		student := s.activeStudents[sampleIndex]
 		go func() {
 			defer wg.Done()
