@@ -16,7 +16,7 @@
 
 variable "contestant_names" {
   type    = list(string)
-  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt"]
+  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt", "sapphi_red"]
 }
 
 variable "contestant_team_ids" {
@@ -32,6 +32,7 @@ variable "contestant_team_ids" {
     hattori    = "18"
     takahashi  = "20"
     eagletmt   = "14"
+    sapphi_red = "2"
   }
 }
 
@@ -39,7 +40,7 @@ resource "aws_instance" "contestant-1" {
   for_each = toset(var.contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-02fbcf0d7a6dcbd71"
+  ami           = "ami-027107e4db237a066"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -67,6 +68,12 @@ resource "aws_instance" "contestant-1" {
   }
 
   user_data = file("${path.module}/contestant-user-data.sh")
+
+  lifecycle {
+    ignore_changes = [
+      ami,
+    ]
+  }
 }
 
 resource "aws_eip" "contestant-1" {
