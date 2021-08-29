@@ -38,8 +38,8 @@
 - name: "Add sudoers"
   copy:
     content: |
-      "isucon        ALL=(ALL) NOPASSWD:ALL\n"
-      "isucon-admin  ALL=(ALL) NOPASSWD:ALL\n"
+      isucon        ALL=(ALL) NOPASSWD:ALL
+      isucon-admin  ALL=(ALL) NOPASSWD:ALL
     dest: /etc/sudoers.d/99-isucon-user
     owner: root
     group: root
