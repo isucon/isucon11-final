@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucandar"
@@ -123,10 +124,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 		// 同時実行可能数を制限する際には注意
 		// 成績確認 + (空きがあれば履修登録)
-		DebugLogger.Println(student.Name, "の成績確認タスクが追加された") // FIXME: for debug
 		studentLoadWorker.Do(s.registrationScenario(student, step))
 		// おしらせ確認 + 既読追加
-		DebugLogger.Println(student.Name, "のおしらせタスクが追加された") // FIXME: for debug
 		studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
 	})
 	return studentLoadWorker
@@ -154,8 +153,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			} else {
 				step.AddScore(score.CountGetGrades)
 			}
-
-			DebugLogger.Printf("%vは成績を確認した", student.Name)
 
 			// ----------------------------------------
 
@@ -223,8 +220,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.CountGetCourseDetailVerifySkipped)
 				}
 			}
-
-			DebugLogger.Printf("%vはコースを%v回検索した", student.Name, remainingRegistrationCapacity*searchCountPerRegistration)
 
 			// ----------------------------------------
 
@@ -315,7 +310,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					c.SuccessRegistration(student)
 					student.AddCourse(c)
 					c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
-					DebugLogger.Printf("%vは%vを履修した", student.Name, c.Name)
 				}
 			}
 		}
@@ -345,8 +339,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				step.AddScore(score.CountGetAnnouncementList)
 			}
 
-			DebugLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
-
 			for _, ans := range res.Announcements {
 
 				if ans.Unread {
@@ -375,7 +367,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					}
 
 					student.ReadAnnouncement(ans.ID)
-					DebugLogger.Printf("%vはお知らせ詳細を確認した", student.Name)
 				}
 			}
 
@@ -409,8 +400,6 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			AdminLogger.Println("cPubSub に *model.Course以外が飛んできました")
 			return
 		}
-
-		DebugLogger.Printf("[コース追加] code: %v, name: %v", course.Code, course.Name)
 		loadCourseWorker.Do(courseScenario(course, step, s))
 	})
 	return loadCourseWorker
@@ -475,7 +464,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
-			DebugLogger.Printf("%vの第%v回講義が追加された", course.Name, i+1) // FIXME: for debug
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -506,7 +494,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 
 			s.submitAssignments(ctx, course.Students(), course, class, announcement.ID, step)
-			DebugLogger.Printf("%vの第%v回講義の課題提出が完了した", course.Name, i+1) // FIXME: for debug
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -522,7 +509,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			} else {
 				step.AddScore(score.CountDownloadSubmissions)
 			}
-			DebugLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -536,7 +522,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			} else {
 				step.AddScore(score.CountRegisterScore)
 			}
-			DebugLogger.Printf("%vの第%v回講義の採点が完了した", course.Name, i+1) // FIXME: for debug
 		}
 
 		if s.isNoRequestTime(ctx) {
@@ -551,7 +536,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			return
 		}
 
-		DebugLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
 		step.AddScore(score.CountFinishCourses)
 
 		// コースを追加
@@ -690,6 +674,8 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
+	var unsuccess int64
+
 	for _, student := range students {
 		student := student
 		go func() {
@@ -700,7 +686,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			case <-time.After(endTimeDuration):
 				return
 			case <-time.After(waitReadClassAnnouncementTimeout):
-				DebugLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
+				atomic.AddInt64(&unsuccess, 1)
 				return
 			case <-student.WaitReadAnnouncement(ctx, announcementID):
 				// 学生sが課題お知らせを読むまで待つ
@@ -764,6 +750,9 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 		}()
 	}
 	wg.Wait()
+	if unsuccess > 0 {
+		DebugLogger.Printf("[debug] %d 人( %d 人)の学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", unsuccess, len(students), 5)
+	}
 }
 
 // これここじゃないほうがいいかも知れない
