@@ -2,7 +2,7 @@ package generate
 
 type Timeslot struct {
 	DayOfWeek int // 0 - 6
-	Period int // 1 - 5
+	Period    int // 1 - 5
 }
 
 // PreferredTimeSlots は学生が履修希望するTimeslotsを表すsliceを返す

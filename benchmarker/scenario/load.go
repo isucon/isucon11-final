@@ -249,7 +249,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			//randTimeSlots := generate.ShuffledInts(30) // 平日分のコマ 5*6
 			randTimeSlots := generate.PreferredTimeSlots()
 
-
 			studentScheduleMutex := student.ScheduleMutex()
 			studentScheduleMutex.Lock()
 			for _, timeSlot := range randTimeSlots {
