@@ -137,9 +137,6 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		teacher := teachers[i%len(teachers)]
 		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 		if err != nil {
-			return
-		}
-		if err != nil {
 			AdminLogger.Printf("teacherのログインに失敗しました")
 			step.AddError(failure.NewError(fails.ErrCritical, err))
 			return
