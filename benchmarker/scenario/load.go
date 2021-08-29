@@ -141,13 +141,13 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// 学生は成績を確認し続ける
 			expected := collectVerifyGradesData(student)
-			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
+			hres, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
 				<-time.After(1 * time.Millisecond)
 				continue
 			}
-			err = verifyGrades(expected, &getGradeRes)
+			err = verifyGrades(hres, expected, &getGradeRes)
 			if err != nil {
 				step.AddError(err)
 			} else {
@@ -180,7 +180,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					if err := verifySearchCourseResults(res, param); err != nil {
+					if err := verifySearchCourseResults(hres, res, param); err != nil {
 						step.AddError(err)
 						continue
 					}
@@ -211,7 +211,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				expected, exists := s.GetCourse(res.ID.String())
 				// ベンチ側の登録がまだの場合は検証スキップ
 				if exists {
-					if err := verifyCourseDetail(&res, expected); err != nil {
+					if err := verifyCourseDetail(hres, &res, expected); err != nil {
 						step.AddError(err)
 					} else {
 						step.AddScore(score.CountGetCourseDetail)
@@ -234,7 +234,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				<-time.After(1 * time.Millisecond)
 				continue
 			}
-			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
+			if err := verifyRegisteredCourses(hres, getRegisteredCoursesRes, registeredSchedule); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CountGetRegisteredCourses)
@@ -333,7 +333,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				<-time.After(1 * time.Millisecond)
 				continue
 			}
-			if err := verifyAnnouncements(&res, student); err != nil {
+			if err := verifyAnnouncements(hres, &res, student); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CountGetAnnouncementList)
@@ -360,7 +360,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 						continue // 次の未読おしらせの確認へ
 					}
 
-					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
+					if err := verifyAnnouncementDetail(hres, &res, announcementStatus); err != nil {
 						step.AddError(err)
 					} else {
 						step.AddScore(score.CountGetAnnouncementsDetail)
@@ -505,12 +505,12 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				return
 			}
 
-			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
+			hres, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
 				step.AddError(err)
 				continue
 			}
-			if err := verifyAssignments(assignmentsData, class); err != nil {
+			if err := verifyAssignments(hres, assignmentsData, class); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CountDownloadSubmissions)
@@ -606,7 +606,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(err)
 				return
 			}
-			if err := verifyMe(&res, userData, false); err != nil {
+			if err := verifyMe(hres, &res, userData, false); err != nil {
 				step.AddError(err)
 				return
 			}
@@ -638,13 +638,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
+	hres, getMeRes, err := GetMeAction(ctx, teacher.Agent)
 	if err != nil {
 		AdminLogger.Printf("teacherのユーザ情報取得に失敗しました")
 		step.AddError(err)
 		return
 	}
-	if err := verifyMe(&getMeRes, teacher.UserAccount, true); err != nil {
+	if err := verifyMe(hres, &getMeRes, teacher.UserAccount, true); err != nil {
 		step.AddError(err)
 		return
 	}
@@ -704,12 +704,12 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			}
 
 			// 講義一覧を取得する
-			_, res, err := GetClassesAction(ctx, student.Agent, course.ID)
+			hres, res, err := GetClassesAction(ctx, student.Agent, course.ID)
 			if err != nil {
 				step.AddError(err)
 				return
 			}
-			if err := verifyClasses(res, course.Classes()); err != nil {
+			if err := verifyClasses(hres, res, course.Classes()); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CountGetClasses)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"net/http"
 	"sync"
 	"time"
 
@@ -254,13 +255,13 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			summary := calculateSummary(users, user.Code)
 			expected := model.NewGradeRes(summary, courseResults)
 
-			_, res, err := GetGradeAction(ctx, user.Agent)
+			hres, res, err := GetGradeAction(ctx, user.Agent)
 			if err != nil {
 				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
 
-			err = validateUserGrade(&expected, &res, len(users))
+			err = validateUserGrade(hres, &expected, &res, len(users))
 			if err != nil {
 				step.AddError(err)
 				return
@@ -273,13 +274,13 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	return
 }
 
-func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, studentCount int) error {
+func validateUserGrade(hres *http.Response, expected *model.GradeRes, actual *api.GetGradeResponse, studentCount int) error {
 	if len(expected.CourseResults) != len(actual.CourseResults) {
 		AdminLogger.Println("courseResult len. expected: ", len(expected.CourseResults), "actual: ", len(actual.CourseResults))
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません", hres))
 	}
 
-	err := validateSummary(&expected.Summary, &actual.Summary, studentCount)
+	err := validateSummary(hres, &expected.Summary, &actual.Summary, studentCount)
 	if err != nil {
 		return err
 	}
@@ -287,11 +288,11 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, s
 	for _, courseResult := range actual.CourseResults {
 		if _, ok := expected.CourseResults[courseResult.Code]; !ok {
 			AdminLogger.Println(courseResult.Code, "は予期せぬコースです")
-			return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認に意図しないcourseの結果が含まれています"))
+			return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認に意図しないcourseの結果が含まれています", hres))
 		}
 
 		expected := expected.CourseResults[courseResult.Code]
-		err := validateCourseResult(expected, &courseResult)
+		err := validateCourseResult(hres, expected, &courseResult)
 		if err != nil {
 			return err
 		}
@@ -300,66 +301,66 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, s
 	return nil
 }
 
-func validateSummary(expected *model.Summary, actual *api.Summary, studentCount int) error {
+func validateSummary(hres *http.Response, expected *model.Summary, actual *api.Summary, studentCount int) error {
 	if expected.Credits != actual.Credits {
 		AdminLogger.Println("credits. expected: ", expected.Credits, "actual: ", actual.Credits)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません", hres))
 	}
 
 	// これは適当
 	acceptableGpaError := 0.5
 	if math.Abs(expected.GPA-actual.GPA) > acceptableGpaError {
 		AdminLogger.Println("gpa. expected: ", expected.GPA, "actual: ", actual.GPA)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません", hres))
 	}
 
 	if math.Abs(expected.GpaAvg-actual.GpaAvg) > acceptableGpaError/float64(studentCount) {
 		AdminLogger.Println("gpaavg. expected: ", expected.GpaAvg, "actual: ", actual.GpaAvg)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaAvgが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaAvgが一致しません", hres))
 	}
 
 	if math.Abs(expected.GpaMax-actual.GpaMax) > acceptableGpaError {
 		AdminLogger.Println("gpamax. expected: ", expected.GpaMax, "actual: ", actual.GpaMax)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMaxが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMaxが一致しません", hres))
 	}
 
 	if math.Abs(expected.GpaMin-actual.GpaMin) > acceptableGpaError {
 		AdminLogger.Println("gpamin. expected: ", expected.GpaMin, "actual: ", actual.GpaMin)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMinが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMinが一致しません", hres))
 	}
 
 	if math.Abs(expected.GpaTScore-actual.GpaTScore) > acceptableGpaError {
 		AdminLogger.Println("gpatscore. expected: ", expected.GpaTScore, "actual: ", actual.GpaTScore)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaTScoreが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaTScoreが一致しません", hres))
 	}
 
 	return nil
 }
 
-func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult) error {
+func validateCourseResult(hres *http.Response, expected *model.CourseResult, actual *api.CourseResult) error {
 	if expected.Name != actual.Name {
 		AdminLogger.Println("name. expected: ", expected.Name, "actual: ", actual.Name)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースの名前が一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースの名前が一致しません", hres))
 	}
 
 	if expected.Code != actual.Code {
 		AdminLogger.Println("code. expected: ", expected.Code, "actual: ", actual.Code)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのコードが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのコードが一致しません", hres))
 	}
 
 	if expected.TotalScore != actual.TotalScore {
 		AdminLogger.Println("TotalScore. expected: ", expected.TotalScore, "actual: ", actual.TotalScore)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreが一致しません", hres))
 	}
 
 	if expected.TotalScoreMax != actual.TotalScoreMax {
 		AdminLogger.Println("TotalScoreMax. expected: ", expected.TotalScoreMax, "actual: ", actual.TotalScoreMax)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません", hres))
 	}
 
 	if expected.TotalScoreMin != actual.TotalScoreMin {
 		AdminLogger.Println("TotalScoreMin. expected: ", expected.TotalScoreMin, "actual: ", actual.TotalScoreMin)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません", hres))
 	}
 
 	// これは適当
@@ -368,22 +369,22 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 	// 決め打ちで5にした
 	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > acceptableGpaError/5 {
 		AdminLogger.Println("TotalScoreAvg. expected: ", expected.TotalScoreAvg, "actual: ", actual.TotalScoreAvg)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません", hres))
 	}
 
 	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > acceptableGpaError {
 		AdminLogger.Println("TotalScoreTScore. expected: ", expected.TotalScoreTScore, "actual: ", actual.TotalScoreTScore)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません", hres))
 	}
 
 	if len(expected.ClassScores) != len(actual.ClassScores) {
 		AdminLogger.Println("len ClassScores. expected: ", len(expected.ClassScores), "actual: ", len(actual.ClassScores))
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のClassScoresの数が一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のClassScoresの数が一致しません", hres))
 	}
 
 	for i := 0; i < len(expected.ClassScores); i++ {
 		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
-		err := validateClassScore(expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1])
+		err := validateClassScore(hres, expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1])
 		if err != nil {
 			return err
 		}
@@ -392,32 +393,32 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 	return nil
 }
 
-func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) error {
+func validateClassScore(hres *http.Response, expected *model.ClassScore, actual *api.ClassScore) error {
 	if expected.ClassID != actual.ClassID {
 		AdminLogger.Println("classID. expected: ", expected.ClassID, "actual: ", actual.ClassID)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのIDが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのIDが一致しません", hres))
 	}
 
 	if expected.Part != actual.Part {
 		AdminLogger.Println("part. expected: ", expected.Part, "actual: ", actual.Part)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのpartが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのpartが一致しません", hres))
 	}
 
 	if expected.Title != actual.Title {
 		AdminLogger.Println("title. expected: ", expected.Title, "actual: ", actual.Title)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません", hres))
 	}
 
 	if !((expected.Score == nil && actual.Score == nil) ||
 		((expected.Score != nil && actual.Score != nil) && (*expected.Score == *actual.Score))) {
 		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません", hres))
 	}
 
 	if expected.SubmitterCount != actual.Submitters {
 		AdminLogger.Println("submitters. expected: ", expected.SubmitterCount, "actual: ", actual.Submitters)
 		// TODO: 課題提出もリトライをする
-		// return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題の提出者の数が一致しません"))
+		// return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題の提出者の数が一致しません", hres))
 	}
 
 	return nil
