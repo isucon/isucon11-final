@@ -59,7 +59,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Add(initialCourseCount + 1)
 	for i := 0; i < initialCourseCount; i++ {
 		go func() {
-			defer DebugLogger.Printf("[debug] initial Course added")
+			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
 			s.addCourseLoad(ctx, step)
 		}()
@@ -686,7 +686,7 @@ L:
 	s.cPubSub.Publish(course)
 }
 
-func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) {
+func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*model.Student, course *model.Course, class *model.Class, announcementID string, step *isucandar.BenchmarkStep) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
@@ -756,8 +756,8 @@ func (s *Scenario) submitAssignments(ctx context.Context, students []*model.Stud
 					} else {
 						step.AddScore(score.CountSubmitInvalidAssignment)
 					}
-					submissionSummary := model.NewSubmissionSummary(fileName, submissionData, isCorrectSubmit)
-					class.AddSubmissionSummary(student.Code, submissionSummary)
+					submission := model.NewSubmission(fileName, submissionData, isCorrectSubmit)
+					class.AddSubmission(student.Code, submission)
 					break
 				}
 			}
@@ -776,7 +776,7 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 	students := course.Students()
 	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {
-		sub := class.SubmissionSummary(s.Code)
+		sub := class.GetSubmissionByStudentCode(s.Code)
 		if sub == nil {
 			continue
 		}
@@ -816,7 +816,7 @@ L:
 
 	// POST成功したスコアをベンチ内に保存する
 	for _, scoreData := range scores {
-		sub := class.SubmissionSummary(scoreData.code)
+		sub := class.GetSubmissionByStudentCode(scoreData.code)
 		if sub == nil {
 			continue
 		}
