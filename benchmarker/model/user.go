@@ -17,8 +17,7 @@ type UserAccount struct {
 
 type Student struct {
 	*UserAccount
-	RegisteringCourseLimit int
-	Agent                  *agent.Agent
+	Agent *agent.Agent
 
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
@@ -35,15 +34,14 @@ type AnnouncementStatus struct {
 	Unread       bool
 }
 
-func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student {
+func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	a, _ := agent.NewAgent()
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
 	s := &Student{
-		UserAccount:            userData,
-		RegisteringCourseLimit: regLimit,
-		Agent:                  a,
+		UserAccount: userData,
+		Agent:       a,
 
 		registeredCourses:     make([]*Course, 0, 20),
 		announcements:         make([]*AnnouncementStatus, 0, 100),
@@ -159,9 +157,12 @@ func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
 	s.registeringCount--
 }
 
-// ScheduleMutex はstudent内で完結しない同期処理を行う際に利用
-func (s *Student) ScheduleMutex() *sync.RWMutex {
-	return &s.scheduleMutex
+func (s *Student) LockSchedule() {
+	s.scheduleMutex.Lock()
+}
+
+func (s *Student) UnlockSchedule() {
+	s.scheduleMutex.Unlock()
 }
 
 // IsEmptyTimeSlots でコマを参照する場合は別途scheduleMutexで(R)Lockすること
