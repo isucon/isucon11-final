@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucandar"
@@ -432,6 +433,8 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		case <-course.WaitPreparedCourse(ctx):
 		}
 
+		DebugLogger.Printf("[debug] コース開始 履修人数: %d", len(course.Students()))
+
 		// selectでのwaitは複数該当だとランダムなのでここでも判定
 		if s.isNoRequestTime(ctx) {
 			return
@@ -690,6 +693,8 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
+	var unsuccess int64
+
 	for _, student := range students {
 		student := student
 		go func() {
@@ -701,6 +706,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				return
 			case <-time.After(waitReadClassAnnouncementTimeout):
 				DebugLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
+				atomic.AddInt64(&unsuccess, 1)
 				return
 			case <-student.WaitReadAnnouncement(ctx, announcementID):
 				// 学生sが課題お知らせを読むまで待つ
@@ -764,6 +770,9 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 		}()
 	}
 	wg.Wait()
+	if unsuccess > 0 {
+		DebugLogger.Printf("[debug] %d 人( %d 人)の学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", unsuccess, len(students), 5)
+	}
 }
 
 // これここじゃないほうがいいかも知れない
