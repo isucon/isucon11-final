@@ -1054,7 +1054,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	dst, err := os.Create(AssignmentsDirectory + classID + "-" + userID)
+	dst, err := os.Create(AssignmentsDirectory + classID + "-" + userID + ".pdf")
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
