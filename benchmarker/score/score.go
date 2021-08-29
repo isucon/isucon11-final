@@ -23,6 +23,13 @@ const (
 	CountActiveStudents               score.ScoreTag = "_1.ActiveStudents"
 	CountFinishCourses                score.ScoreTag = "_2.FinishCourses"
 	CountGetCourseDetailVerifySkipped score.ScoreTag = "_3.GetCourseDetailVerifySkipped"
+	CountStartCourseUnder10           score.ScoreTag = "_4.StartCourseUnder10"
+	CountStartCourseUnder20           score.ScoreTag = "_5.StartCourseUnder20"
+	CountStartCourseUnder30           score.ScoreTag = "_6.StartCourseUnder30"
+	CountStartCourseUnder40           score.ScoreTag = "_7.StartCourseUnder40"
+	CountStartCourseUnder50           score.ScoreTag = "_8.StartCourseUnder50"
+	CountStartCourseFull              score.ScoreTag = "_9.StartCourseFull"
+	CountStartCourseOver50            score.ScoreTag = "_10.StartCourseOver50"
 )
 
 var ScoreTags = []score.ScoreTag{
@@ -44,6 +51,13 @@ var ScoreTags = []score.ScoreTag{
 	CountActiveStudents,
 	CountFinishCourses,
 	CountGetCourseDetailVerifySkipped,
+	CountStartCourseUnder10,
+	CountStartCourseUnder20,
+	CountStartCourseUnder30,
+	CountStartCourseUnder40,
+	CountStartCourseUnder50,
+	CountStartCourseFull,
+	CountStartCourseOver50,
 }
 
 type mag int64      // 1回でn点
