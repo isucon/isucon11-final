@@ -93,7 +93,6 @@ func checkError(err error) (critical bool, timeout bool, deduction bool) {
 }
 
 func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish bool, writeScoreToAdminLogger bool) bool {
-	logger := scenario.ContestantLogger
 	passed := true
 	reason := "passed"
 	errors := result.Errors.All()
@@ -116,7 +115,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	}
 	if passed && deductionCount > errorFailThreshold {
 		passed = false
-		reason = fmt.Sprintf("エラーが%d回以上発生しました", errorFailThreshold)
+		reason = fmt.Sprintf("エラーの発生回数が%d回を超えました", errorFailThreshold)
 	}
 
 	resultScore, raw, deducted := score.Calc(breakdown, deductionCount, timeoutCount)
@@ -128,8 +127,8 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		}
 	}
 
-	logger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
-	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
+	scenario.ContestantLogger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
+	scenario.ContestantLogger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
 	scoreTags := make([]score2.ScoreTag, 0, len(breakdown))
 	for k := range breakdown {
@@ -252,7 +251,7 @@ func main() {
 			return
 		}
 
-		if critical || (deduction && atomic.AddInt64(&errorCount, 1) >= errorFailThreshold) {
+		if critical || (deduction && atomic.AddInt64(&errorCount, 1) > errorFailThreshold) {
 			step.Cancel()
 		}
 
