@@ -834,8 +834,8 @@ L:
 	return hres, nil
 }
 
-// readAnnouncementWithTimeout はn秒以内に特定のお知らせ詳細を確認しにいく
-func (s *Scenario) readAnnouncementWithTimeout(ctx context.Context, student *model.Student, targetID string, timeout time.Duration, step *isucandar.BenchmarkStep) (isSuccess bool) {
+// readAnnouncementWithTimeout は特定のお知らせ詳細を確認しにいく
+func (s *Scenario) readAnnouncementWithTimeout(ctx context.Context, student *model.Student, targetID string, timeout time.Duration, step *isucandar.BenchmarkStep) bool {
 	expiredTimer := time.After(timeout)
 	noRequestTimer := time.After(s.loadRequestEndTime.Sub(time.Now()))
 
@@ -896,6 +896,8 @@ func (s *Scenario) readAnnouncementWithTimeout(ctx context.Context, student *mod
 			}
 			student.ReadAnnouncement(targetID)
 			DebugLogger.Printf("%vはお知らせ詳細を確認した", student.Name)
+
+			return true
 		}
 
 		_, nextPathParam = parseLinkHeader(hres)
