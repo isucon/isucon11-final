@@ -431,11 +431,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	var newlyAdded []Course
 	for _, courseReq := range req {
 		courseID := courseReq.ID
-		if courseID == "" {
-			errors.CourseNotFound = append(errors.CourseNotFound, courseReq.ID)
-			continue
-		}
-
 		var course Course
 		if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
 			errors.CourseNotFound = append(errors.CourseNotFound, courseReq.ID)
@@ -817,9 +812,6 @@ type GetCourseDetailResponse struct {
 // GetCourseDetail 科目詳細の取得
 func (h *handlers) GetCourseDetail(c echo.Context) error {
 	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "CourseID cannot be empty.")
-	}
 
 	var res GetCourseDetailResponse
 	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
@@ -912,9 +904,6 @@ type SetCourseStatusRequest struct {
 // SetCourseStatus 科目のステータスを変更
 func (h *handlers) SetCourseStatus(c echo.Context) error {
 	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "CourseID cannot be empty.")
-	}
 
 	var req SetCourseStatusRequest
 	if err := c.Bind(&req); err != nil {
@@ -964,9 +953,6 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	}
 
 	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "CourseID cannot be empty.")
-	}
 
 	var count int
 	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
@@ -1014,13 +1000,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 
 	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "CourseID cannot be empty.")
-	}
 	classID := c.Param("classID")
-	if classID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "ClassID cannot be empty.")
-	}
 
 	tx, err := h.DB.Beginx()
 	if err != nil {
@@ -1101,9 +1081,6 @@ type Score struct {
 
 func (h *handlers) RegisterScores(c echo.Context) error {
 	classID := c.Param("classID")
-	if classID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "ClassID cannot be empty.")
-	}
 
 	tx, err := h.DB.Beginx()
 	if err != nil {
@@ -1152,14 +1129,7 @@ type Submission struct {
 
 // DownloadSubmittedAssignments 提出済みの課題ファイルをzip形式で一括ダウンロード
 func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
-	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "CourseID cannot be empty.")
-	}
 	classID := c.Param("classID")
-	if classID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "ClassID cannot be empty.")
-	}
 
 	tx, err := h.DB.Beginx()
 	if err != nil {
@@ -1241,9 +1211,6 @@ type AddClassResponse struct {
 // AddClass 新規クラス(&課題)追加
 func (h *handlers) AddClass(c echo.Context) error {
 	courseID := c.Param("courseID")
-	if courseID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "CourseID cannot be empty.")
-	}
 
 	var count int
 	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
@@ -1442,9 +1409,6 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	}
 
 	announcementID := c.Param("announcementID")
-	if announcementID == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "AnnouncementID cannot be empty.")
-	}
 
 	var announcement AnnouncementDetail
 	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
