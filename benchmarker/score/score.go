@@ -51,6 +51,13 @@ var ScoreTags = []score.ScoreTag{
 	CountActiveStudents,
 	CountFinishCourses,
 	CountGetCourseDetailVerifySkipped,
+	CountStartCourseUnder10,
+	CountStartCourseUnder20,
+	CountStartCourseUnder30,
+	CountStartCourseUnder40,
+	CountStartCourseUnder50,
+	CountStartCourseFull,
+	CountStartCourseOver50,
 }
 
 type mag int64      // 1回でn点
