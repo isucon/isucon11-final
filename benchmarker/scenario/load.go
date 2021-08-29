@@ -773,7 +773,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 	}
 	wg.Wait()
 	if unsuccess > 0 {
-		AdminLogger.Printf("%d 人の学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", unsuccess, 5)
+		AdminLogger.Printf("%d 人( %d 人)の学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", unsuccess, len(students), 5)
 	}
 }
 
