@@ -378,13 +378,19 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
+			// 未読お知らせがないのなら少しwaitして1ページ目から見直す
+			if res.UnreadCount == 0 {
+				nextPathParam = ""
+				<-time.After(200 * time.Millisecond)
+			}
+
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 			select {
 			case <-ctx.Done():
 				return
 			case <-time.After(endTimeDuration):
 				return
-			case <-time.After(1 * time.Millisecond):
+			default:
 			}
 		}
 	}
