@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/isucon/isucandar/parallel"
+
 	"github.com/isucon/isucandar/worker"
 
 	"github.com/isucon/isucon11-final/benchmarker/generate"
@@ -237,6 +239,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}
 	w.Process(ctx)
 	w.Wait()
+
 	if hasErrors() {
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
@@ -244,41 +247,48 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	// クラス追加、課題提出、ダウンロード、採点（お知らせは見ない）
 	// workerはコースごと
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		course := courses[i]
+		teacher := course.Teacher()
+
 		for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
-			course := courses[i]
-			teacher := course.Teacher()
-			classParam := generate.ClassParam(course, uint8(i+1))
-			_, class, announcement, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+			classParam := generate.ClassParam(course, uint8(classPart+1))
+			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				step.AddError(err)
 				return
 			}
+			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
+
+			announcement := generate.Announcement(course, class)
+			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+			announcement.ID = ancRes.ID
 			course.BroadCastAnnouncement(announcement)
 
 			courseStudents := course.Students()
 
 			// 課題提出,
 			// 生徒ごとのループ
-			w2, err := worker.NewWorker(func(ctx context.Context, i int) {
-				// 課題提出
-				submitter := courseStudents[i]
-				submissionData, fileName := generate.SubmissionData(course, class, submitter.UserAccount)
-				_, err := SubmitAssignmentAction(ctx, submitter.Agent, course.ID, class.ID, fileName, submissionData)
-				if err != nil {
-					step.AddError(err)
-					return
-				}
-				submissionSummary := model.NewSubmissionSummary(fileName, submissionData, true)
-				class.AddSubmissionSummary(submitter.Code, submissionSummary)
-
-			}, worker.WithLoopCount(prepareStudentCount))
-			if err != nil {
-				step.AddError(err)
-				return
+			p := parallel.NewParallel(ctx, prepareStudentCount)
+			for _, student := range courseStudents {
+				submitter := student
+				p.Do(func(ctx context.Context) {
+					submissionData, fileName := generate.SubmissionData(course, class, submitter.UserAccount)
+					_, err := SubmitAssignmentAction(ctx, submitter.Agent, course.ID, class.ID, fileName, submissionData)
+					if err != nil {
+						step.AddError(err)
+						fmt.Println(class.ID, submitter.Code)
+						return
+					}
+					submissionSummary := model.NewSubmission(fileName, submissionData, true)
+					class.AddSubmission(submitter.Code, submissionSummary)
+				})
 			}
-			w2.Process(ctx)
-			w2.Wait()
+			p.Wait()
 
 			// 課題ダウンロード
 			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
@@ -294,7 +304,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			// 採点
 			scores := make([]StudentScore, 0, len(students))
 			for _, student := range students {
-				sub := class.SubmissionSummary(student.Code)
+				sub := class.GetSubmissionByStudentCode(student.Code)
 				if sub == nil {
 					step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("cannot find submission")))
 					return

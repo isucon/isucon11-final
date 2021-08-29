@@ -111,7 +111,7 @@ func (cg *CourseGenerator) nextTimeslot() (dayOfWeek int, period int) {
 	return
 }
 
-func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher, opt ...Option) *model.CourseParam {
+func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher, options ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&majorCode, 1)
 
 	var (
@@ -146,14 +146,14 @@ func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher, opt ...Optio
 		Keywords:    strings.Join(keywords, " "),
 	}
 
-	for _, option := range ops {
+	for _, option := range options {
 		option(&p)
 	}
 
 	return &p
 }
 
-func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher, op ...Option) *model.CourseParam {
+func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher, options ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&liberalCode, 1)
 
 	var (
@@ -184,7 +184,7 @@ func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher, op ...Opti
 		Keywords:    strings.Join(keywords, " "),
 	}
 
-	for _, option := range op {
+	for _, option := range options {
 		option(&p)
 	}
 

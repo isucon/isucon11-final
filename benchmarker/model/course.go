@@ -185,7 +185,7 @@ func (c *Course) AddStudent(student *Student) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	c.registeredStudents = append(c.registeredStudents, student)
+	c.registeredStudents[student.Code] = student
 }
 
 func (c *Course) FailRegistration() {
