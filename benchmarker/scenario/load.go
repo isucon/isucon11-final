@@ -442,6 +442,24 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 		DebugLogger.Printf("[コース開始] id: %v, name: %v, registered students: %v", course.ID, course.Name, len(course.Students()))
 
+		studentLen := len(course.Students())
+		switch {
+		case studentLen < 10:
+			step.AddScore(score.CountStartCourseUnder10)
+		case studentLen < 20:
+			step.AddScore(score.CountStartCourseUnder20)
+		case studentLen < 30:
+			step.AddScore(score.CountStartCourseUnder30)
+		case studentLen < 40:
+			step.AddScore(score.CountStartCourseUnder40)
+		case studentLen < 50:
+			step.AddScore(score.CountStartCourseUnder50)
+		case studentLen == 50:
+			step.AddScore(score.CountStartCourseFull)
+		case studentLen > 50:
+			step.AddScore(score.CountStartCourseOver50)
+		}
+
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
 
