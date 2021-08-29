@@ -29,12 +29,6 @@ import (
 // param: http.Response, 検証用modelオブジェクト
 // return: error
 
-// TODO: 決め打ちではなく外から指定できるようにする
-const (
-	searchCourseVerifyRate = 0.2
-	assignmentsVerifyRate  = 0.2
-)
-
 func errInvalidStatusCode(res *http.Response, expected []int) error {
 	str := ""
 	for _, v := range expected {
@@ -205,7 +199,7 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expe
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
 	}
 
-	// コースの終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
+	// 科目の終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
 	// ただし、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降削除されず、また履修登録は直列であるため、レスポンスに存在する科目は必ずベンチにも存在することを期待する。
 	// したがって、レスポンスに含まれる科目はベンチにある科目(registeredSchedule)の部分集合であることを確認すれば十分である。
 	for d := 0; d < 7; d++ {

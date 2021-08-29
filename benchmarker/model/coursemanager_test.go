@@ -1,11 +1,9 @@
-package util
+package model
 
 import (
 	"math/rand"
 	"strconv"
 	"testing"
-
-	"github.com/isucon/isucon11-final/benchmarker/model"
 )
 
 func TestCourseQueue_IsEmpty(t *testing.T) {
@@ -25,7 +23,7 @@ func TestCourseQueue_IsEmpty(t *testing.T) {
 			name: "empty with 2 push, 2 pop",
 			queue: func() *courseQueue {
 				q := newCourseQueue(1)
-				q.Push(&model.Course{})
+				q.Push(&Course{})
 				q.Pop()
 				return q
 			},
@@ -35,7 +33,7 @@ func TestCourseQueue_IsEmpty(t *testing.T) {
 			name: "non empty with 2 push, 1 pop",
 			queue: func() *courseQueue {
 				q := newCourseQueue(1)
-				q.Push(&model.Course{})
+				q.Push(&Course{})
 				return q
 			},
 			want: false,
@@ -68,7 +66,7 @@ func TestCourseQueue_Len(t *testing.T) {
 			name: "len 1",
 			queue: func() *courseQueue {
 				q := newCourseQueue(1)
-				q.Push(&model.Course{})
+				q.Push(&Course{})
 				return q
 			},
 			want: 1,
@@ -77,8 +75,8 @@ func TestCourseQueue_Len(t *testing.T) {
 			name: "len with grow",
 			queue: func() *courseQueue {
 				q := newCourseQueue(1)
-				q.Push(&model.Course{})
-				q.Push(&model.Course{})
+				q.Push(&Course{})
+				q.Push(&Course{})
 				return q
 			},
 			want: 2,
@@ -99,13 +97,13 @@ func TestCourseDeque_Push_Pop(t *testing.T) {
 		q := newCourseQueue(10)
 		loopCount := 100
 
-		expected := make([]*model.Course, 0, loopCount)
+		expected := make([]*Course, 0, loopCount)
 		for i := 0; i < loopCount; i++ {
-			a := &model.Course{ID: strconv.FormatInt(int64(i), 10)}
+			a := &Course{ID: strconv.FormatInt(int64(i), 10)}
 			switch rand.Intn(2) {
 			case 0:
 				q.Push(a)
-				expected = append([]*model.Course{a}, expected...)
+				expected = append([]*Course{a}, expected...)
 			case 1:
 				q.Pop()
 				if len(expected) > 0 {
