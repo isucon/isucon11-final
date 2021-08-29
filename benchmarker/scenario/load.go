@@ -246,7 +246,9 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// TODO: 1度も検索成功してなかったら登録しない
 			semiRegistered := make([]*model.Course, 0, remainingRegistrationCapacity)
 
-			randTimeSlots := generate.ShuffledInts(30) // 平日分のコマ 5*6
+			//randTimeSlots := generate.ShuffledInts(30) // 平日分のコマ 5*6
+			randTimeSlots := generate.PreferredTimeSlots()
+
 
 			studentScheduleMutex := student.ScheduleMutex()
 			studentScheduleMutex.Lock()
@@ -256,8 +258,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					break
 				}
 
-				dayOfWeek := timeSlot/6 + 1 // 日曜日分+1
-				period := timeSlot % 6
+				dayOfWeek := timeSlot.DayOfWeek // 日曜日分+1
+				period := timeSlot.Period
 
 				if !student.IsEmptyTimeSlots(dayOfWeek, period) {
 					continue
