@@ -38,11 +38,9 @@ func InvalidSubmissionData(course *model.Course, class *model.Class, user *model
 	tRand := rand.Float32()
 	var title string
 	if tRand > 0.7 {
-		// 拡張子だけpdfに変えたdocxファイル
-		title = fmt.Sprintf("%s_%s_%s.pdf", course.Name, class.Title, user.Code)
+		title = fmt.Sprintf("%s_%s_%s.docx", course.Name, class.Title, user.Code)
 	} else if tRand > 0.4 {
-		// 拡張子だけpdfに変えたdocxファイル
-		title = fmt.Sprintf("%s_%s.pdf", class.Title, user.Name)
+		title = fmt.Sprintf("%s_%s.docx", class.Title, user.Name)
 	} else {
 		title = fmt.Sprintf("%s.docx", user.Code)
 	}
