@@ -5,23 +5,24 @@ import (
 )
 
 const (
-	CountRegisterCourses         score.ScoreTag = "01.RegisterCourses"
-	CountGetRegisteredCourses    score.ScoreTag = "02.GetRegisteredCourses"
-	CountGetGrades               score.ScoreTag = "03.GetGrades"
-	CountSearchCourses           score.ScoreTag = "04.SearchCourses"
-	CountGetCourseDetail         score.ScoreTag = "05.GetCourseDetail"
-	CountAddCourse               score.ScoreTag = "06.AddCourse"
-	CountAddClass                score.ScoreTag = "07.AddClass"
-	CountGetClasses              score.ScoreTag = "08.GetClasses"
-	CountSubmitValidAssignment   score.ScoreTag = "09.SubmitValidAssignment"
-	CountSubmitInvalidAssignment score.ScoreTag = "10.SubmitInvalidAssignment"
-	CountDownloadSubmissions     score.ScoreTag = "11.DownloadSubmissions"
-	CountRegisterScore           score.ScoreTag = "12.RegisterScore"
-	CountAddAnnouncement         score.ScoreTag = "13.AddAnnouncement"
-	CountGetAnnouncementList     score.ScoreTag = "14.GetAnnouncementList"
-	CountGetAnnouncementsDetail  score.ScoreTag = "15.GetAnnouncementDetail"
-	CountActiveStudents          score.ScoreTag = "_1.ActiveStudents"
-	CountFinishCourses           score.ScoreTag = "_2.FinishCourses"
+	CountRegisterCourses              score.ScoreTag = "01.RegisterCourses"
+	CountGetRegisteredCourses         score.ScoreTag = "02.GetRegisteredCourses"
+	CountGetGrades                    score.ScoreTag = "03.GetGrades"
+	CountSearchCourses                score.ScoreTag = "04.SearchCourses"
+	CountGetCourseDetail              score.ScoreTag = "05.GetCourseDetail"
+	CountAddCourse                    score.ScoreTag = "06.AddCourse"
+	CountAddClass                     score.ScoreTag = "07.AddClass"
+	CountGetClasses                   score.ScoreTag = "08.GetClasses"
+	CountSubmitValidAssignment        score.ScoreTag = "09.SubmitValidAssignment"
+	CountSubmitInvalidAssignment      score.ScoreTag = "10.SubmitInvalidAssignment"
+	CountDownloadSubmissions          score.ScoreTag = "11.DownloadSubmissions"
+	CountRegisterScore                score.ScoreTag = "12.RegisterScore"
+	CountAddAnnouncement              score.ScoreTag = "13.AddAnnouncement"
+	CountGetAnnouncementList          score.ScoreTag = "14.GetAnnouncementList"
+	CountGetAnnouncementsDetail       score.ScoreTag = "15.GetAnnouncementDetail"
+	CountActiveStudents               score.ScoreTag = "_1.ActiveStudents"
+	CountFinishCourses                score.ScoreTag = "_2.FinishCourses"
+	CountGetCourseDetailVerifySkipped score.ScoreTag = "_3.GetCourseDetailVerifySkipped"
 )
 
 var ScoreTags = []score.ScoreTag{
@@ -42,6 +43,7 @@ var ScoreTags = []score.ScoreTag{
 	CountGetAnnouncementsDetail,
 	CountActiveStudents,
 	CountFinishCourses,
+	CountGetCourseDetailVerifySkipped,
 }
 
 type mag int64      // 1回でn点

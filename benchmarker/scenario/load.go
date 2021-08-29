@@ -220,7 +220,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddScore(score.CountGetCourseDetail)
 					}
 				} else {
-					step.AddScore(score.CountGetCourseDetail)
+					step.AddScore(score.CountGetCourseDetailVerifySkipped)
 				}
 			}
 
