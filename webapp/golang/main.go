@@ -572,27 +572,6 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	myGPA := 0.0
 	myCredits := 0
 	for _, course := range registeredCourses {
-		// この科目を受講している学生のTotalScore一覧を取得
-		var totals []int
-		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
-			" FROM `users`" +
-			" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-			" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
-			" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
-			" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
-			" WHERE `courses`.`id` = ?" +
-			" GROUP BY `users`.`id`"
-		if err := h.DB.Select(&totals, query, course.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		// avg max min std-dev の計算
-		totalScoreAvg := averageInt(totals, 0)
-		totalScoreMax := maxInt(totals, 0)
-		totalScoreMin := minInt(totals, 0)
-		totalScoreStdDev := stdDevInt(totals, totalScoreAvg)
-
 		// クラス一覧の取得
 		var classes []Class
 		query = "SELECT *" +
@@ -639,22 +618,29 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			}
 		}
 
-		// 対象科目の自分の偏差値の計算
-		var myTotalScoreTScore float64
-		if totalScoreStdDev == 0 {
-			myTotalScoreTScore = 50
-		} else {
-			myTotalScoreTScore = (float64(myTotalScore)-totalScoreAvg)/totalScoreStdDev*10 + 50
+		// この科目を受講している学生のTotalScore一覧を取得
+		var totals []int
+		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
+			" FROM `users`" +
+			" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+			" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+			" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
+			" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
+			" WHERE `courses`.`id` = ?" +
+			" GROUP BY `users`.`id`"
+		if err := h.DB.Select(&totals, query, course.ID); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
 		}
 
 		courseResults = append(courseResults, CourseResult{
 			Name:             course.Name,
 			Code:             course.Code,
 			TotalScore:       myTotalScore,
-			TotalScoreTScore: myTotalScoreTScore,
-			TotalScoreAvg:    totalScoreAvg,
-			TotalScoreMax:    totalScoreMax,
-			TotalScoreMin:    totalScoreMin,
+			TotalScoreTScore: tScoreInt(myTotalScore, totals),
+			TotalScoreAvg:    averageInt(totals, 0),
+			TotalScoreMax:    maxInt(totals, 0),
+			TotalScoreMin:    minInt(totals, 0),
 			ClassScores:      classScores,
 		})
 
@@ -689,28 +675,14 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// avg max min std-dev の計算
-	gpaAvg := averageFloat64(gpas, 0)
-	gpaMax := maxFloat64(gpas, 0)
-	gpaMin := minFloat64(gpas, 0)
-	gpaStdDev := stdDevFloat64(gpas, gpaAvg)
-
-	// 自分の偏差値の計算
-	var myGpaTScore float64
-	if gpaStdDev == 0 {
-		myGpaTScore = 50
-	} else {
-		myGpaTScore = (myGPA-gpaAvg)/gpaStdDev*10 + 50
-	}
-
 	res := GetGradeResponse{
 		Summary: Summary{
 			Credits:   myCredits,
 			GPA:       myGPA,
-			GpaTScore: myGpaTScore,
-			GpaAvg:    gpaAvg,
-			GpaMax:    gpaMax,
-			GpaMin:    gpaMin,
+			GpaTScore: tScoreFloat64(myGPA, gpas),
+			GpaAvg:    averageFloat64(gpas, 0),
+			GpaMax:    maxFloat64(gpas, 0),
+			GpaMin:    minFloat64(gpas, 0),
 		},
 		CourseResults: courseResults,
 	}
@@ -908,6 +880,17 @@ func (h *handlers) AddCourse(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
+
+	var course Course
+	if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `code` = ?", req.Code); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if err == nil {
+		if req.Type != course.Type || req.Name != course.Name || req.Description != course.Description || req.Credit != int(course.Credit) || req.Period != int(course.Period) || req.DayOfWeek != course.DayOfWeek || req.Keywords != course.Keywords {
+			return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
+		}
+		return c.JSON(http.StatusCreated, AddCourseResponse{ID: course.ID})
+	}
 
 	courseID := uuid.NewRandom()
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1252,12 +1235,10 @@ type AddClassRequest struct {
 	Part        uint8  `json:"part"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	CreatedAt   int64  `json:"created_at"`
 }
 
 type AddClassResponse struct {
-	ClassID        uuid.UUID `json:"class_id"`
-	AnnouncementID uuid.UUID `json:"announcement_id"`
+	ClassID uuid.UUID `json:"class_id"`
 }
 
 // AddClass 新規クラス(&課題)追加
@@ -1288,6 +1269,17 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
+	var class Class
+	if err := tx.Get(&class, "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if err == nil {
+		if req.Title != class.Title || req.Description != class.Description {
+			return echo.NewHTTPError(http.StatusConflict, "A class with the same part already exists.")
+		}
+		return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
+	}
+
 	classID := uuid.NewRandom()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
@@ -1295,45 +1287,15 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	announcementID := uuid.NewRandom()
-	createdAt := time.Unix(req.CreatedAt, 0)
-	if _, err = tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
-		announcementID, courseID, fmt.Sprintf("クラス追加: %s", req.Title), fmt.Sprintf("クラスが新しく追加されました: %s\n%s", req.Title, req.Description), createdAt); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	var targets []User
-	query := "SELECT `users`.*" +
-		" FROM `users`" +
-		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-		" WHERE `registrations`.`course_id` = ?"
-	if err := tx.Select(&targets, query, courseID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", announcementID, user.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := AddClassResponse{
-		ClassID:        classID,
-		AnnouncementID: announcementID,
-	}
-
-	return c.JSON(http.StatusCreated, res)
+	return c.JSON(http.StatusCreated, AddClassResponse{ClassID: classID})
 }
 
-type Announcement struct {
+type AnnouncementWithoutDetail struct {
 	ID         uuid.UUID `db:"id"`
 	CourseID   uuid.UUID `db:"course_id"`
 	CourseName string    `db:"course_name"`
@@ -1364,7 +1326,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var announcements []Announcement
+	var announcements []AnnouncementWithoutDetail
 	var args []interface{}
 	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
@@ -1560,6 +1522,14 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
+	var existingAnnouncementID uuid.UUID
+	if err := tx.Get(&existingAnnouncementID, "SELECT `id` FROM `announcements` WHERE `course_id` = ? AND `title` = ? AND `message` = ? AND `created_at` = ?", req.CourseID, req.Title, req.Message, req.CreatedAt); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if err == nil {
+		return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: existingAnnouncementID})
+	}
+
 	announcementID := uuid.NewRandom()
 	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
@@ -1589,9 +1559,5 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res := AddAnnouncementResponse{
-		ID: announcementID,
-	}
-
-	return c.JSON(http.StatusCreated, res)
+	return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcementID})
 }

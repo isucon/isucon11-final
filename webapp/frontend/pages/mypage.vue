@@ -127,7 +127,7 @@ type DataType = {
 
 export default Vue.extend({
   components: { Button, Card, CalendarCell, Calendar },
-  middleware: 'is_loggedin',
+  middleware: 'is_student',
   async asyncData(
     ctx: Context
   ): Promise<{ registeredCourses: MinimalCourse[] }> {

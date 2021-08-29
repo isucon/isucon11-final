@@ -22,16 +22,15 @@ var (
 type Scenario struct {
 	Config
 
-	sPubSub             *pubsub.PubSub
-	cPubSub             *pubsub.PubSub
-	courses             map[string]*model.Course
-	emptyCourseManager  *util.CourseManager
-	faculties           []*model.Teacher
-	studentPool         *userPool
-	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
-	finishedCourseCount int              // FIXME Debug
-	language            string
-	loadRequestEndTime  time.Time
+	sPubSub            *pubsub.PubSub
+	cPubSub            *pubsub.PubSub
+	courses            map[string]*model.Course
+	emptyCourseManager *util.CourseManager
+	faculties          []*model.Teacher
+	studentPool        *userPool
+	activeStudents     []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
+	language           string
+	loadRequestEndTime time.Time
 
 	mu sync.RWMutex
 }
@@ -92,19 +91,6 @@ func (s *Scenario) ActiveStudentCount() int {
 	defer s.mu.Unlock()
 
 	return len(s.activeStudents)
-}
-
-func (s *Scenario) CourseCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return len(s.courses)
-}
-func (s *Scenario) FinishedCourseCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.finishedCourseCount
 }
 
 func (s *Scenario) AddCourse(course *model.Course) {

@@ -1,6 +1,11 @@
 package fails
 
-import "github.com/isucon/isucandar/failure"
+import (
+	"context"
+	"net"
+
+	"github.com/isucon/isucandar/failure"
+)
 
 // BenchmarkStepにAddErrorしていくエラー郡
 const (
@@ -13,3 +18,27 @@ const (
 	ErrInvalidStatus  failure.StringCode = "invalid status code"
 	ErrStaticResource failure.StringCode = "invalid resource"
 )
+
+func IsCritical(err error) bool {
+	return failure.IsCode(err, ErrCritical)
+}
+
+func IsDeduction(err error) bool {
+	return failure.IsCode(err, ErrApplication) ||
+		failure.IsCode(err, ErrHTTP) ||
+		failure.IsCode(err, ErrInvalidStatus)
+}
+
+func IsTimeout(err error) bool {
+	var nerr net.Error
+	if failure.As(err, &nerr) {
+		if nerr.Timeout() || nerr.Temporary() {
+			return true
+		}
+	}
+	if failure.Is(err, context.DeadlineExceeded) ||
+		failure.Is(err, context.Canceled) {
+		return true
+	}
+	return failure.IsCode(err, failure.TimeoutErrorCode)
+}

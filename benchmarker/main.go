@@ -10,20 +10,19 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"sort"
 	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	score2 "github.com/isucon/isucandar/score"
 	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
+	"github.com/pkg/profile"
+
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/scenario"
 	"github.com/isucon/isucon11-final/benchmarker/score"
-	"github.com/pkg/profile"
 )
 
 const (
@@ -75,16 +74,16 @@ func init() {
 }
 
 func checkError(err error) (critical bool, timeout bool, deduction bool) {
-	critical = false  // TODO: クリティカルなエラー(起きたら即ベンチを止める)
-	timeout = false   // TODO: リクエストタイムアウト(ある程度の数許容するかも)
-	deduction = false // TODO: 減点対象になるエラー
-
-	if failure.IsCode(err, fails.ErrCritical) {
+	if fails.IsCritical(err) {
 		critical = true
 		return
 	}
-	if failure.IsCode(err, failure.TimeoutErrorCode) {
+	if fails.IsTimeout(err) {
 		timeout = true
+		return
+	}
+	if fails.IsDeduction(err) {
+		deduction = true
 		return
 	}
 
@@ -92,7 +91,6 @@ func checkError(err error) (critical bool, timeout bool, deduction bool) {
 }
 
 func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish bool, writeScoreToAdminLogger bool) bool {
-	logger := scenario.ContestantLogger
 	passed := true
 	reason := "passed"
 	errors := result.Errors.All()
@@ -115,7 +113,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	}
 	if passed && deductionCount > errorFailThreshold {
 		passed = false
-		reason = fmt.Sprintf("エラーが%d回以上発生しました", errorFailThreshold)
+		reason = fmt.Sprintf("エラーの発生回数が%d回を超えました", errorFailThreshold)
 	}
 
 	resultScore, raw, deducted := score.Calc(breakdown, deductionCount, timeoutCount)
@@ -127,27 +125,23 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		}
 	}
 
-	logger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
-	logger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
-
-	scoreTags := make([]score2.ScoreTag, 0, len(breakdown))
-	for k := range breakdown {
-		scoreTags = append(scoreTags, k)
-	}
-	sort.Slice(scoreTags, func(i, j int) bool {
-		return scoreTags[i] < scoreTags[j]
-	})
+	scenario.ContestantLogger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
+	scenario.ContestantLogger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
 	// 競技者には最終的なScoreTagの統計のみ見せる
-	// TODO: 見せるタグを絞る
 	if finish {
-		for _, tag := range scoreTags {
+		for _, tag := range score.ScoreTags {
+			// _ で始まるタグは競技者には見せない
+			if tag[0] == '_' {
+				continue
+			}
+
 			scenario.ContestantLogger.Printf("tag: %v: %v", tag, breakdown[tag])
 		}
 	}
 
 	if writeScoreToAdminLogger {
-		for _, tag := range scoreTags {
+		for _, tag := range score.ScoreTags {
 			scenario.AdminLogger.Printf("tag: %v: %v", tag, breakdown[tag])
 		}
 	}
@@ -251,12 +245,12 @@ func main() {
 			return
 		}
 
-		if critical || (deduction && atomic.AddInt64(&errorCount, 1) >= errorFailThreshold) {
+		if critical || (deduction && atomic.AddInt64(&errorCount, 1) > errorFailThreshold) {
 			step.Cancel()
 		}
 
 		scenario.ContestantLogger.Printf("ERR: %v", err)
-		scenario.AdminLogger.Printf("ERR: %+v", err)
+		scenario.DebugLogger.Printf("ERR: %+v", err) // includes stack trace
 	})
 
 	b.AddScenario(s)
@@ -274,8 +268,7 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				scenario.DebugLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
-				scenario.DebugLogger.Printf("[debug] active student: %v, course: %v, finished course: %v\n", s.ActiveStudentCount(), s.CourseCount(), s.FinishedCourseCount())
+				scenario.AdminLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
 				sendResult(s, step.Result(), false, count%5 == 0)
 			case <-ctx.Done():
 				ticker.Stop()

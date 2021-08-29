@@ -91,7 +91,7 @@ export default Vue.extend({
     RegisterScoresModal,
     DownloadAssignmentsModal,
   },
-  middleware: 'is_loggedin',
+  middleware: 'is_teacher',
   data(): FacultyPageData {
     return {
       visibleModal: null,

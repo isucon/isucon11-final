@@ -1,30 +1,8 @@
-package main
+package util
 
-import (
-	"math"
-	"os"
-)
+import "math"
 
-func GetEnv(key, val string) string {
-	if v := os.Getenv(key); v == "" {
-		return val
-	} else {
-		return v
-	}
-}
-
-func contains(arr []DayOfWeek, day DayOfWeek) bool {
-	for _, v := range arr {
-		if v == day {
-			return true
-		}
-	}
-	return false
-}
-
-// ----- int -----
-
-func averageInt(arr []int, or float64) float64 {
+func AverageInt(arr []int, or float64) float64 {
 	if len(arr) == 0 {
 		return or
 	}
@@ -35,7 +13,7 @@ func averageInt(arr []int, or float64) float64 {
 	return float64(sum) / float64(len(arr))
 }
 
-func maxInt(arr []int, or int) int {
+func MaxInt(arr []int, or int) int {
 	if len(arr) == 0 {
 		return or
 	}
@@ -48,7 +26,7 @@ func maxInt(arr []int, or int) int {
 	return max
 }
 
-func minInt(arr []int, or int) int {
+func MinInt(arr []int, or int) int {
 	if len(arr) == 0 {
 		return or
 	}
@@ -72,8 +50,8 @@ func stdDevInt(arr []int, avg float64) float64 {
 	return math.Sqrt(sdmSum / float64(len(arr)))
 }
 
-func tScoreInt(v int, arr []int) float64 {
-	avg := averageInt(arr, 0)
+func TScoreInt(v int, arr []int) float64 {
+	avg := AverageInt(arr, 0)
 	stdDev := stdDevInt(arr, avg)
 	if stdDev == 0 {
 		return 50
@@ -111,14 +89,14 @@ func sumFloat64(arr []float64) float64 {
 	return sum
 }
 
-func averageFloat64(arr []float64, or float64) float64 {
+func AverageFloat64(arr []float64, or float64) float64 {
 	if len(arr) == 0 {
 		return or
 	}
 	return sumFloat64(arr) / float64(len(arr))
 }
 
-func maxFloat64(arr []float64, or float64) float64 {
+func MaxFloat64(arr []float64, or float64) float64 {
 	if len(arr) == 0 {
 		return or
 	}
@@ -131,7 +109,7 @@ func maxFloat64(arr []float64, or float64) float64 {
 	return max
 }
 
-func minFloat64(arr []float64, or float64) float64 {
+func MinFloat64(arr []float64, or float64) float64 {
 	if len(arr) == 0 {
 		return or
 	}
@@ -155,11 +133,11 @@ func stdDevFloat64(arr []float64, avg float64) float64 {
 	return math.Sqrt(sumFloat64(sdm) / float64(len(arr)))
 }
 
-func tScoreFloat64(v float64, arr []float64) float64 {
+func TScoreFloat64(v float64, arr []float64) float64 {
 	if isAllEqualFloat64(arr) {
 		return 50
 	}
-	avg := averageFloat64(arr, 0)
+	avg := AverageFloat64(arr, 0)
 	stdDev := stdDevFloat64(arr, avg)
 	if stdDev == 0 {
 		// should be unreachable

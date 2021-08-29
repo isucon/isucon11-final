@@ -114,7 +114,7 @@ export default Vue.extend({
     Calendar,
     Button,
   },
-  middleware: 'is_loggedin',
+  middleware: 'is_student',
   async asyncData(ctx: Context) {
     try {
       const registeredCourses = await ctx.$axios.$get<Course[]>(
