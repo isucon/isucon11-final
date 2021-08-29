@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucandar"
@@ -126,8 +127,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		DebugLogger.Println(student.Name, "の成績確認タスクが追加された") // FIXME: for debug
 		studentLoadWorker.Do(s.registrationScenario(student, step))
 		// おしらせ確認 + 既読追加
-		DebugLogger.Println(student.Name, "のおしらせタスクが追加された") // FIXME: for debug
-		studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
+		//DebugLogger.Println(student.Name, "のおしらせタスクが追加された") // FIXME: for debug
+		//studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
 	})
 	return studentLoadWorker
 }
@@ -317,6 +318,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 	}
 }
 
+/*
 func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
@@ -333,7 +335,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				<-time.After(1 * time.Millisecond)
 				continue
 			}
-			if err := verifyAnnouncements(&res, student); err != nil {
+			if err := verifyAnnouncementsList(&res, student); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CountGetAnnouncements)
@@ -392,6 +394,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 		}
 	}
 }
+*/
 
 func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.BenchmarkStep) *parallel.Parallel {
 	// 追加されたコースの動作を回し続けるParallel
@@ -689,20 +692,28 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 	wg := sync.WaitGroup{}
 	wg.Add(len(students))
 
+	var unsuccess int64
+
 	for _, student := range students {
 		student := student
 		go func() {
 			defer wg.Done()
-
-			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
-			select {
-			case <-time.After(endTimeDuration):
+			/*
+				endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
+				select {
+				case <-time.After(endTimeDuration):
+					return
+				case <-time.After(waitReadClassAnnouncementTimeout):
+					DebugLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
+					return
+				case <-student.WaitReadAnnouncement(ctx, announcementID):
+					// 学生sが課題お知らせを読むまで待つ
+				}
+			*/
+			isSuccess := s.readAnnouncementWithTimeout(ctx, student, announcementID, 5*time.Second, step)
+			if !isSuccess {
+				atomic.AddInt64(&unsuccess, 1)
 				return
-			case <-time.After(waitReadClassAnnouncementTimeout):
-				DebugLogger.Printf("学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", waitReadClassAnnouncementTimeout/time.Second)
-				return
-			case <-student.WaitReadAnnouncement(ctx, announcementID):
-				// 学生sが課題お知らせを読むまで待つ
 			}
 
 			// selectでのwaitは複数該当だとランダムなのでここでも判定
@@ -761,6 +772,9 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 		}()
 	}
 	wg.Wait()
+	if unsuccess > 0 {
+		AdminLogger.Printf("%d 人の学生が%d秒以内に課題のお知らせを確認できなかったため課題を提出しませんでした", unsuccess, 5)
+	}
 }
 
 // これここじゃないほうがいいかも知れない
@@ -818,4 +832,77 @@ L:
 		sub.SetScore(scoreData.score)
 	}
 	return hres, nil
+}
+
+// readAnnouncementWithTimeout はn秒以内に特定のお知らせ詳細を確認しにいく
+func (s *Scenario) readAnnouncementWithTimeout(ctx context.Context, student *model.Student, targetID string, timeout time.Duration, step *isucandar.BenchmarkStep) (isSuccess bool) {
+	expiredTimer := time.After(timeout)
+	noRequestTimer := time.After(s.loadRequestEndTime.Sub(time.Now()))
+
+	nextPathParam := ""
+	for {
+		select {
+		case <-expiredTimer:
+			return false
+		case <-noRequestTimer:
+			return false
+		default:
+		}
+
+		hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
+		if err != nil {
+			step.AddError(err)
+			<-time.After(1 * time.Millisecond)
+			continue
+		}
+		if err := verifyAnnouncementsList(&res, student); err != nil {
+			step.AddError(err)
+		} else {
+			step.AddScore(score.CountGetAnnouncements)
+		}
+		DebugLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
+
+		for _, ans := range res.Announcements {
+			if ans.ID != targetID {
+				continue
+			}
+
+			select {
+			case <-expiredTimer:
+				return false
+			case <-noRequestTimer:
+				return false
+			default:
+			}
+
+			// 登録した課題お知らせが見つかったら
+			// お知らせの詳細を取得する
+			_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+			if err != nil {
+				step.AddError(err)
+				continue // 次の未読おしらせの確認へ
+			}
+
+			announcementStatus := student.GetAnnouncement(targetID)
+			if announcementStatus == nil {
+				// unreachable
+				panic("登録された課題お知らせがベンチ内に存在しない")
+			}
+			if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
+				AdminLogger.Printf("sID:%s", student.Name)
+				step.AddError(err)
+			} else {
+				step.AddScore(score.CountGetAnnouncementsDetail)
+			}
+			student.ReadAnnouncement(targetID)
+			DebugLogger.Printf("%vはお知らせ詳細を確認した", student.Name)
+		}
+
+		_, nextPathParam = parseLinkHeader(hres)
+
+		// 最後のページまで確認した
+		if nextPathParam == "" {
+			return false
+		}
+	}
 }

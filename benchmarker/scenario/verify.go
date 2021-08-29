@@ -359,40 +359,8 @@ func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus 
 	return nil
 }
 
-// お知らせ一覧の中身の検証
-// TODO: ヘルパ関数作ってverifyAnnouncementとまとめても良いかも
-func verifyAnnouncementsContent(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
-	if res.CourseID != announcementStatus.Announcement.CourseID {
-		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
-	}
-
-	if res.CourseName != announcementStatus.Announcement.CourseName {
-		return errInvalidResponse("お知らせの講義名が期待する値と一致しません")
-	}
-
-	if res.Title != announcementStatus.Announcement.Title {
-		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
-	}
-
-	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
-		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
-	}
-
-	// ベンチ内データが既読の場合のみUnreadの検証を行う
-	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-	if !announcementStatus.Unread {
-		if !AssertEqual("announce unread", announcementStatus.Unread, res.Unread) {
-			return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
-		}
-	}
-
-	return nil
-}
-
-func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) error {
+func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, student *model.Student) error {
 	// リストの中身の検証
-	// MEMO: ランダムで数件チェックにしてもいいかも
-	// MEMO: unreadだけ返すとハックできそう
 	for _, announcement := range res.Announcements {
 		announcementStatus := student.GetAnnouncement(announcement.ID)
 		if announcementStatus == nil {
@@ -401,9 +369,23 @@ func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Stude
 			continue
 		}
 
-		if err := verifyAnnouncementsContent(&announcement, announcementStatus); err != nil {
-			return err
+		if announcement.CourseID != announcementStatus.Announcement.CourseID {
+			return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
 		}
+
+		if announcement.CourseName != announcementStatus.Announcement.CourseName {
+			return errInvalidResponse("お知らせの講義名が期待する値と一致しません")
+		}
+
+		if announcement.Title != announcementStatus.Announcement.Title {
+			return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
+		}
+
+		if announcement.CreatedAt != announcementStatus.Announcement.CreatedAt {
+			return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
+		}
+		// お知らせ確認は並列で実施しているので既読/未読判定が行えない
+		// 既読/未読判定はValidationとDetail確認時に行う
 	}
 
 	// CreatedAtの降順でソートされているか
