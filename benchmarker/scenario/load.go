@@ -187,7 +187,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					step.AddScore(score.CountSearchCourse)
+					step.AddScore(score.CountSearchCourses)
 
 					if len(res) > 0 {
 						checkTargetID = res[0].ID.String()
@@ -216,7 +216,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				if exists {
 					if err := verifyCourseDetail(&res, expected); err != nil {
 						step.AddError(err)
+					} else {
+						step.AddScore(score.CountGetCourseDetail)
 					}
+				} else {
+					step.AddScore(score.CountGetCourseDetailVerifySkipped)
 				}
 			}
 
@@ -237,6 +241,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
 				step.AddError(err)
+			} else {
+				step.AddScore(score.CountGetRegisteredCourses)
 			}
 
 			// ----------------------------------------
@@ -336,7 +342,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			if err := verifyAnnouncements(&res, student); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountGetAnnouncements)
+				step.AddScore(score.CountGetAnnouncementList)
 			}
 
 			DebugLogger.Printf("%vはお知らせ一覧を確認した", student.Name)
@@ -514,7 +520,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			if err := verifyAssignments(assignmentsData, class); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountDownloadSubmission)
+				step.AddScore(score.CountDownloadSubmissions)
 			}
 			DebugLogger.Printf("%vの第%v回講義の課題DLが完了した", course.Name, i+1) // FIXME: for debug
 
@@ -522,7 +528,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				return
 			}
 
-			_, err = s.scoringAssignments(ctx, course, class, teacher)
+			_, err = s.scoringAssignments(ctx, course, class, teacher, step)
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -546,13 +552,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 
 		DebugLogger.Printf("%vが終了した", course.Name) // FIXME: for debug
-
-		// FIXME: Debug
-		{
-			s.mu.Lock()
-			s.finishedCourseCount++
-			s.mu.Unlock()
-		}
+		step.AddScore(score.CountFinishCourses)
 
 		// コースを追加
 		s.addCourseLoad(ctx, step)
@@ -623,6 +623,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			s.AddActiveStudent(student)
 			s.sPubSub.Publish(student)
+			step.AddScore(score.CountActiveStudents)
 		}()
 	}
 	wg.Wait()
@@ -718,6 +719,8 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			}
 			if err := verifyClasses(res, course.Classes()); err != nil {
 				step.AddError(err)
+			} else {
+				step.AddScore(score.CountGetClasses)
 			}
 
 			// 課題を提出する
@@ -749,9 +752,9 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				} else {
 					// 提出課題がwebappで受理された
 					if isCorrectSubmit {
-						step.AddScore(score.CountSubmitPDF)
+						step.AddScore(score.CountSubmitValidAssignment)
 					} else {
-						step.AddScore(score.CountSubmitDocx)
+						step.AddScore(score.CountSubmitInvalidAssignment)
 					}
 					submission := model.NewSubmission(fileName, submissionData, isCorrectSubmit)
 					class.AddSubmission(student.Code, submission)
@@ -769,7 +772,7 @@ type StudentScore struct {
 	code  string
 }
 
-func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, teacher *model.Teacher) (*http.Response, error) {
+func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course, class *model.Class, teacher *model.Teacher, step *isucandar.BenchmarkStep) (*http.Response, error) {
 	students := course.Students()
 	scores := make([]StudentScore, 0, len(students))
 	for _, s := range students {
@@ -808,6 +811,8 @@ L:
 			return nil, err
 		}
 	}
+
+	step.AddScore(score.CountRegisterScore)
 
 	// POST成功したスコアをベンチ内に保存する
 	for _, scoreData := range scores {

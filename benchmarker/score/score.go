@@ -5,29 +5,56 @@ import (
 )
 
 const (
-	CountAddCourse              = "add course"
-	CountAddClass               = "add class"
-	CountSubmitPDF              = "submit pdf assignment"
-	CountSubmitDocx             = "submit docx assignment"
-	CountRegisterScore          = "register score"
-	CountAddAnnouncement        = "add announcement"
-	CountGetAnnouncements       = "get announcements"
-	CountGetAnnouncementsDetail = "get announcement detail"
-	CountDownloadSubmission     = "download submissions"
-	CountGetGrades              = "get grades"
-	CountSearchCourse           = "search courses"
-	CountRegisterCourses        = "register courses"
+	CountRegisterCourses              score.ScoreTag = "01.RegisterCourses"
+	CountGetRegisteredCourses         score.ScoreTag = "02.GetRegisteredCourses"
+	CountGetGrades                    score.ScoreTag = "03.GetGrades"
+	CountSearchCourses                score.ScoreTag = "04.SearchCourses"
+	CountGetCourseDetail              score.ScoreTag = "05.GetCourseDetail"
+	CountAddCourse                    score.ScoreTag = "06.AddCourse"
+	CountAddClass                     score.ScoreTag = "07.AddClass"
+	CountGetClasses                   score.ScoreTag = "08.GetClasses"
+	CountSubmitValidAssignment        score.ScoreTag = "09.SubmitValidAssignment"
+	CountSubmitInvalidAssignment      score.ScoreTag = "10.SubmitInvalidAssignment"
+	CountDownloadSubmissions          score.ScoreTag = "11.DownloadSubmissions"
+	CountRegisterScore                score.ScoreTag = "12.RegisterScore"
+	CountAddAnnouncement              score.ScoreTag = "13.AddAnnouncement"
+	CountGetAnnouncementList          score.ScoreTag = "14.GetAnnouncementList"
+	CountGetAnnouncementsDetail       score.ScoreTag = "15.GetAnnouncementDetail"
+	CountActiveStudents               score.ScoreTag = "_1.ActiveStudents"
+	CountFinishCourses                score.ScoreTag = "_2.FinishCourses"
+	CountGetCourseDetailVerifySkipped score.ScoreTag = "_3.GetCourseDetailVerifySkipped"
 )
+
+var ScoreTags = []score.ScoreTag{
+	CountRegisterCourses,
+	CountGetRegisteredCourses,
+	CountGetGrades,
+	CountSearchCourses,
+	CountGetCourseDetail,
+	CountAddCourse,
+	CountAddClass,
+	CountGetClasses,
+	CountSubmitValidAssignment,
+	CountSubmitInvalidAssignment,
+	CountDownloadSubmissions,
+	CountRegisterScore,
+	CountAddAnnouncement,
+	CountGetAnnouncementList,
+	CountGetAnnouncementsDetail,
+	CountActiveStudents,
+	CountFinishCourses,
+	CountGetCourseDetailVerifySkipped,
+}
 
 type mag int64      // 1回でn点
 type fraction int64 // n回で1点
 
 var scoreCoefTable = map[score.ScoreTag]interface{}{
-	CountSubmitPDF:       mag(5),
-	CountRegisterCourses: mag(10),
+	CountRegisterCourses:       mag(10),
+	CountSubmitValidAssignment: mag(5),
 
-	CountGetAnnouncements: fraction(10),
-	CountGetGrades:        fraction(10),
+	CountGetGrades:           fraction(10),
+	CountGetAnnouncementList: fraction(10),
 }
 
 var (
