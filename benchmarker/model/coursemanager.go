@@ -1,6 +1,9 @@
 package model
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 // CourseManager は科目の履修管理を行う
 // 科目の追加 → 履修登録 → 科目の開始までが責任範囲
@@ -73,8 +76,10 @@ func (m *CourseManager) ReserveCoursesForStudent(student *Student, remainingRegi
 			// 対象が履修登録を締め切っていた場合、キューから除き、現在のインデックスから再開する
 			m.queue.Remove(i)
 			picked := m.getRandomCourse(target)
-			if picked == nil {
-				panic("available course not found. improvement required.")
+			// 科目の消費から科目の追加までにラグがあるのでそこの待ち
+			for picked == nil {
+				picked = m.getRandomCourse(target)
+				time.Sleep(50 * time.Millisecond)
 			}
 			m.queue.Add(picked)
 			i--
