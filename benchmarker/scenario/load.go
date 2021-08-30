@@ -43,14 +43,18 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 	wg := sync.WaitGroup{}
 	wg.Add(initialCourseCount + 1)
-	for i := 0; i < initialCourseCount; i++ {
+	for i := 0; i < initialCourseCount && i < 6*7*5; i++ {
 		i := i % 30
+		dayOfWeek := i / 6
+		period := i % 6
+		s.CourseManager.Timeslots <- [2]int{dayOfWeek, period}
+	}
+	for i := 0; i < initialCourseCount; i++ {
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
-			dayOfWeek := i / 6
-			period := i % 6
-			s.addCourseLoad(ctx, dayOfWeek, period, step)
+			timeslot := <-s.CourseManager.Timeslots
+			s.addCourseLoad(ctx, timeslot[0], timeslot[1], step)
 		}()
 	}
 	go func() {
@@ -560,9 +564,10 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 		step.AddScore(score.FinishCourses)
 
+		timeslot := <-s.CourseManager.Timeslots
 		// 科目を追加
-		s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
-		s.addCourseLoad(ctx, course.DayOfWeek, course.DayOfWeek, step)
+		s.addCourseLoad(ctx, timeslot[0], timeslot[1], step)
+		s.addCourseLoad(ctx, timeslot[0], timeslot[1], step)
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
 		s.addActiveStudentLoads(ctx, step, 1)

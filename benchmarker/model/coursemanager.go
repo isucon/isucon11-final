@@ -2,25 +2,25 @@ package model
 
 import (
 	"sync"
-	"time"
 )
 
 // CourseManager は科目の履修管理を行う
 // 科目の追加 → 履修登録 → 科目の開始までが責任範囲
 // 科目の終了は科目用のgoroutine内で行われ、新規科目の追加が呼ばれる
 type CourseManager struct {
-	courses       map[string]*Course
-	newCoursePool map[string]*Course
-	queue         *courseQueue // 優先的に履修させる科目を各timeslotごとに保持
-	rmu           sync.RWMutex
+	courses   map[string]*Course
+	queue     *courseQueue // 優先的に履修させる科目を各timeslotごとに保持
+	Timeslots chan [2]int
+	rmu       sync.RWMutex
 }
 
 const queueLength = 6 * 7 * 5 // Period * DayOfWeek * 5 (この値を調整する)
 
 func NewCourseManager() *CourseManager {
 	m := &CourseManager{
-		courses: map[string]*Course{},
-		queue:   newCourseQueue(queueLength),
+		courses:   map[string]*Course{},
+		queue:     newCourseQueue(queueLength),
+		Timeslots: make(chan [2]int, queueLength),
 	}
 	return m
 }
@@ -77,14 +77,13 @@ func (m *CourseManager) ReserveCoursesForStudent(student *Student, remainingRegi
 		case Closed:
 			// 対象が履修登録を締め切っていた場合、キューから除き、現在のインデックスから再開する
 			m.queue.Remove(i)
+			m.Timeslots <- [2]int{target.DayOfWeek, target.Period}
+			i--
 			picked := m.getRandomCourse(target)
-			// 科目の消費から科目の追加までにラグがあるのでそこの待ち
 			for picked == nil {
-				picked = m.getRandomCourse(target)
-				time.Sleep(50 * time.Millisecond)
+				continue
 			}
 			m.queue.Add(picked)
-			i--
 		}
 	}
 	m.queue.Unlock()
