@@ -3,57 +3,57 @@ package score
 import "github.com/isucon/isucandar/score"
 
 const (
-	CountRegisterCourses              score.ScoreTag = "01.RegisterCourses"
-	CountGetRegisteredCourses         score.ScoreTag = "02.GetRegisteredCourses"
-	CountGetGrades                    score.ScoreTag = "03.GetGrades"
-	CountSearchCourses                score.ScoreTag = "04.SearchCourses"
-	CountGetCourseDetail              score.ScoreTag = "05.GetCourseDetail"
-	CountAddCourse                    score.ScoreTag = "06.AddCourse"
-	CountAddClass                     score.ScoreTag = "07.AddClass"
-	CountGetClasses                   score.ScoreTag = "08.GetClasses"
-	CountSubmitAssignment             score.ScoreTag = "09.SubmitAssignment"
-	CountDownloadSubmissions          score.ScoreTag = "10.DownloadSubmissions"
-	CountRegisterScore                score.ScoreTag = "11.RegisterScore"
-	CountAddAnnouncement              score.ScoreTag = "12.AddAnnouncement"
-	CountGetAnnouncementList          score.ScoreTag = "13.GetAnnouncementList"
-	CountGetAnnouncementsDetail       score.ScoreTag = "14.GetAnnouncementDetail"
-	CountActiveStudents               score.ScoreTag = "_01.ActiveStudents"
-	CountFinishCourses                score.ScoreTag = "_02.FinishCourses"
-	CountGetCourseDetailVerifySkipped score.ScoreTag = "_03.GetCourseDetailVerifySkipped"
-	CountStartCourseUnder10           score.ScoreTag = "_04.StartCourseUnder10"
-	CountStartCourseUnder20           score.ScoreTag = "_05.StartCourseUnder20"
-	CountStartCourseUnder30           score.ScoreTag = "_06.StartCourseUnder30"
-	CountStartCourseUnder40           score.ScoreTag = "_07.StartCourseUnder40"
-	CountStartCourseUnder50           score.ScoreTag = "_08.StartCourseUnder50"
-	CountStartCourseFull              score.ScoreTag = "_09.StartCourseFull"
-	CountStartCourseOver50            score.ScoreTag = "_10.StartCourseOver50"
+	RegisterCourses              score.ScoreTag = "01.RegisterCourses"
+	GetRegisteredCourses         score.ScoreTag = "02.GetRegisteredCourses"
+	GetGrades                    score.ScoreTag = "03.GetGrades"
+	SearchCourses                score.ScoreTag = "04.SearchCourses"
+	GetCourseDetail              score.ScoreTag = "05.GetCourseDetail"
+	AddCourse                    score.ScoreTag = "06.AddCourse"
+	AddClass                     score.ScoreTag = "07.AddClass"
+	GetClasses                   score.ScoreTag = "08.GetClasses"
+	SubmitAssignment             score.ScoreTag = "09.SubmitAssignment"
+	DownloadSubmissions          score.ScoreTag = "10.DownloadSubmissions"
+	RegisterScore                score.ScoreTag = "11.RegisterScore"
+	AddAnnouncement              score.ScoreTag = "12.AddAnnouncement"
+	GetAnnouncementList          score.ScoreTag = "13.GetAnnouncementList"
+	GetAnnouncementsDetail       score.ScoreTag = "14.GetAnnouncementDetail"
+	ActiveStudents               score.ScoreTag = "_01.ActiveStudents"
+	FinishCourses                score.ScoreTag = "_02.FinishCourses"
+	GetCourseDetailVerifySkipped score.ScoreTag = "_03.GetCourseDetailVerifySkipped"
+	StartCourseUnder10           score.ScoreTag = "_04.StartCourseUnder10"
+	StartCourseUnder20           score.ScoreTag = "_05.StartCourseUnder20"
+	StartCourseUnder30           score.ScoreTag = "_06.StartCourseUnder30"
+	StartCourseUnder40           score.ScoreTag = "_07.StartCourseUnder40"
+	StartCourseUnder50           score.ScoreTag = "_08.StartCourseUnder50"
+	StartCourseFull              score.ScoreTag = "_09.StartCourseFull"
+	StartCourseOver50            score.ScoreTag = "_10.StartCourseOver50"
 )
 
 var Tags = []score.ScoreTag{
-	CountRegisterCourses,
-	CountGetRegisteredCourses,
-	CountGetGrades,
-	CountSearchCourses,
-	CountGetCourseDetail,
-	CountAddCourse,
-	CountAddClass,
-	CountGetClasses,
-	CountSubmitAssignment,
-	CountDownloadSubmissions,
-	CountRegisterScore,
-	CountAddAnnouncement,
-	CountGetAnnouncementList,
-	CountGetAnnouncementsDetail,
-	CountActiveStudents,
-	CountFinishCourses,
-	CountGetCourseDetailVerifySkipped,
-	CountStartCourseUnder10,
-	CountStartCourseUnder20,
-	CountStartCourseUnder30,
-	CountStartCourseUnder40,
-	CountStartCourseUnder50,
-	CountStartCourseFull,
-	CountStartCourseOver50,
+	RegisterCourses,
+	GetRegisteredCourses,
+	GetGrades,
+	SearchCourses,
+	GetCourseDetail,
+	AddCourse,
+	AddClass,
+	GetClasses,
+	SubmitAssignment,
+	DownloadSubmissions,
+	RegisterScore,
+	AddAnnouncement,
+	GetAnnouncementList,
+	GetAnnouncementsDetail,
+	ActiveStudents,
+	FinishCourses,
+	GetCourseDetailVerifySkipped,
+	StartCourseUnder10,
+	StartCourseUnder20,
+	StartCourseUnder30,
+	StartCourseUnder40,
+	StartCourseUnder50,
+	StartCourseFull,
+	StartCourseOver50,
 }
 
 var (

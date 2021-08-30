@@ -6,11 +6,11 @@ type mag int64      // 1回でn点
 type fraction int64 // n回で1点
 
 var scoreCoefTable = map[score.ScoreTag]interface{}{
-	CountRegisterCourses:  mag(10),
-	CountSubmitAssignment: mag(5),
+	RegisterCourses:  mag(10),
+	SubmitAssignment: mag(5),
 
-	CountGetGrades:           fraction(10),
-	CountGetAnnouncementList: fraction(10),
+	GetGrades:           fraction(10),
+	GetAnnouncementList: fraction(10),
 }
 
 var (
