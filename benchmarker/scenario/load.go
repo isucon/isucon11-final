@@ -28,8 +28,6 @@ const (
 	searchCountPerRegistration = 3
 	// classCountPerCourse は科目あたりのクラス数
 	classCountPerCourse = 5
-	// invalidSubmitFrequency は誤ったFileTypeのファイルを提出する確率
-	invalidSubmitFrequency = 0.1
 	// waitReadClassAnnouncementTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
 	waitReadClassAnnouncementTimeout = 5 * time.Second
 	// loadRequestTime はLoadシナリオ内でリクエストを送り続ける時間(Load自体のTimeoutより早めに終わらせる)
@@ -734,42 +732,19 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			}
 
 			// 課題を提出する
-			isCorrectSubmit := rand.Float32() > invalidSubmitFrequency // 一定確率でdocxのファイルを投げる
-			for {
-				var (
-					submissionData []byte
-					fileName       string
-				)
-				if isCorrectSubmit {
-					submissionData, fileName = generate.SubmissionData(course, class, student.UserAccount)
-				} else {
-					submissionData, fileName = generate.InvalidSubmissionData(course, class, student.UserAccount)
-				}
+			submissionData, fileName := generate.SubmissionData(course, class, student.UserAccount)
 
-				if s.isNoRequestTime(ctx) {
-					return
-				}
+			if s.isNoRequestTime(ctx) {
+				return
+			}
 
-				hres, err := SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
-				if err != nil {
-					if !isCorrectSubmit && hres != nil && hres.StatusCode == http.StatusBadRequest {
-						isCorrectSubmit = true // 次は正しいSubmissionを提出
-						// 400エラーのときのみ再送をする
-					} else {
-						step.AddError(err)
-						break
-					}
-				} else {
-					// 提出課題がwebappで受理された
-					if isCorrectSubmit {
-						step.AddScore(score.CountSubmitValidAssignment)
-					} else {
-						step.AddScore(score.CountSubmitInvalidAssignment)
-					}
-					submission := model.NewSubmission(fileName, submissionData, isCorrectSubmit)
-					class.AddSubmission(student.Code, submission)
-					break
-				}
+			_, err = SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
+			if err != nil {
+				step.AddError(err)
+			} else {
+				step.AddScore(score.CountSubmitAssignment)
+				submission := model.NewSubmission(fileName, submissionData)
+				class.AddSubmission(student.Code, submission)
 			}
 		}()
 	}
@@ -794,12 +769,8 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 			continue
 		}
 
-		var scoreData int
-		if sub.IsValid {
-			scoreData = rand.Intn(101)
-		}
 		scores = append(scores, StudentScore{
-			score: scoreData,
+			score: rand.Intn(101),
 			code:  s.Code,
 		})
 	}
