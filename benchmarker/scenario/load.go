@@ -324,7 +324,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 			}
 
-			s.debugData.AddInt("registrationTimeMS", time.Since(registerStart).Milliseconds())
+			s.debugData.AddInt("registrationTime", time.Since(registerStart).Milliseconds())
 			DebugLogger.Printf("[履修完了] code: %v, time: %d ms, register count: %d", student.Code, time.Since(registerStart).Milliseconds(), len(semiRegistered))
 		}
 	}
