@@ -110,11 +110,12 @@ func (s *Scenario) prepareCheck(parent context.Context, step *isucandar.Benchmar
 
 func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	const (
-		prepareTeacherCount        = 2
-		prepareStudentCount        = 2
-		prepareCourseCount         = 20
-		prepareCourseRegisterLimit = 20
-		prepareClassCountPerCourse = 5
+		prepareTeacherCount              = 2
+		prepareStudentCount              = 2
+		prepareCourseCount               = 20
+		prepareCourseRegisterLimit       = 20
+		prepareClassCountPerCourse       = 5
+		checkAnnouncementDetailFrequency = 0.1
 	)
 	errors := step.Result().Errors
 	hasErrors := func() bool {
@@ -256,6 +257,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		teacher := course.Teacher()
 
 		for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
+			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
@@ -265,6 +267,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
 
+			// お知らせ追加
 			announcement := generate.Announcement(course, class)
 			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
@@ -276,17 +279,33 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 			courseStudents := course.Students()
 
-			// 課題提出,
+			// 課題提出, ランダムでお知らせを読む
 			// 生徒ごとのループ
 			p := parallel.NewParallel(ctx, prepareStudentCount)
 			for _, student := range courseStudents {
 				student := student
 				p.Do(func(ctx context.Context) {
+					if rand.Float64() < checkAnnouncementDetailFrequency {
+						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, announcement.ID)
+						if err != nil {
+							step.AddError(err)
+							return
+						}
+						expected := student.GetAnnouncement(announcement.ID)
+						if expected == nil {
+							panic("unreachable! announcementID" + announcement.ID)
+						}
+						err = prepareCheckAnnouncementDetailContent(expected, &res)
+						if err != nil {
+							step.AddError(err)
+							return
+						}
+						student.ReadAnnouncement(announcement.ID)
+					}
 					submissionData, fileName := generate.SubmissionData(course, class, student.UserAccount)
 					_, err := SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
 					if err != nil {
 						step.AddError(err)
-						fmt.Println(class.ID, student.Code)
 						return
 					}
 					submissionSummary := model.NewSubmission(fileName, submissionData, true)
@@ -440,13 +459,29 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 		actual := actual.Announcements[i]
 		if !AssertEqual("announcement unread", expected[i].Unread, actual.Unread) ||
 			!AssertEqual("announcement ID", expect.ID, actual.ID) ||
-			!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
+			!AssertEqual("announcement CourseID", expect.CourseID, actual.CourseID) ||
 			!AssertEqual("announcement Title", expect.Title, actual.Title) ||
 			!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
 			!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
 			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
 			return errNotMatch
 		}
+	}
+
+	return nil
+}
+
+func prepareCheckAnnouncementDetailContent(expected *model.AnnouncementStatus, actual *api.GetAnnouncementDetailResponse) error {
+	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement が期待したものと一致しませんでした"))
+	if !AssertEqual("announcement unread", expected.Unread, actual.Unread) ||
+		!AssertEqual("announcement ID", expected.Announcement.ID, actual.ID) ||
+		!AssertEqual("announcement Title", expected.Announcement.Title, actual.Title) ||
+		!AssertEqual("announcement CourseID", expected.Announcement.CourseID, actual.CourseID) ||
+		!AssertEqual("announcement CourseName", expected.Announcement.CourseName, actual.CourseName) ||
+		!AssertEqual("announcement CreatedAt", expected.Announcement.CreatedAt, actual.CreatedAt) ||
+		!AssertEqual("announcement Message", expected.Announcement.Message, actual.Message) {
+		AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
+		return errNotMatch
 	}
 
 	return nil
