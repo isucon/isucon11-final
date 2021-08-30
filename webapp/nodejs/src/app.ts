@@ -41,6 +41,12 @@ app.use(
 app.use(morgan("combined"));
 app.set("etag", false);
 
+const api = express.Router();
+const usersApi = express.Router();
+app.use("/api", api);
+api.use(isLoggedIn);
+api.use("/users", usersApi);
+
 interface InitializeResponse {
   language: string;
 }
@@ -65,6 +71,52 @@ app.post("/initialize", async (_, res) => {
   const response: InitializeResponse = { language: "nodejs" };
   return res.status(200).json(response);
 });
+
+// IsLoggedIn ログイン確認用middleware
+async function isLoggedIn(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  if (!req.session) {
+    return res.status(500).send();
+  }
+  if (req.session.isNew) {
+    return res.status(401).send("You are not logged in.");
+  }
+  if (!("userID" in req.session)) {
+    return res.status(401).send("You are not logged in.");
+  }
+  next();
+}
+
+interface SessionUserInfo {
+  userId: string;
+  userName: string;
+  isAdmin: boolean;
+}
+
+function getUserInfo(
+  session?: CookieSessionInterfaces.CookieSessionObject | null
+): SessionUserInfo {
+  if (!session) {
+    throw new Error();
+  }
+  if (!("userID" in session)) {
+    throw new Error("failed to get userID from session");
+  }
+  if (!("userName" in session)) {
+    throw new Error("failed to get userName from session");
+  }
+  if (!("isAdmin" in session)) {
+    throw new Error("failed to get isAdmin from session");
+  }
+  return {
+    userId: session["userID"],
+    userName: session["userName"],
+    isAdmin: session["isAdmin"],
+  };
+}
 
 interface LoginRequest {
   code: string;
@@ -134,6 +186,45 @@ app.post(
 app.post("/logout", (req, res) => {
   req.session = null;
   return res.status(200).send();
+});
+
+interface GetMeResponse {
+  code: string;
+  name: string;
+  is_admin: boolean;
+}
+
+usersApi.get("/me", async (req, res) => {
+  let userInfo: SessionUserInfo;
+  try {
+    userInfo = getUserInfo(req.session);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send();
+  }
+
+  const db = await pool.getConnection();
+  try {
+    const [[{ code }]] = await db.query<({ code: string } & RowDataPacket)[]>(
+      "SELECT `code` FROM `users` WHERE `id` = ?",
+      [userInfo.userId]
+    );
+    if (!code) {
+      throw new Error();
+    }
+
+    const response: GetMeResponse = {
+      code,
+      name: userInfo.userName,
+      is_admin: userInfo.isAdmin,
+    };
+    return res.status(200).json(response);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send();
+  } finally {
+    db.release();
+  }
 });
 
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
