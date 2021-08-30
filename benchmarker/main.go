@@ -130,19 +130,20 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 
 	// 競技者には最終的なScoreTagの統計のみ見せる
 	if finish {
+		tagFormat := fmt.Sprintf("tag: %%-%ds : %%d", score.MaxTagLengthForContestant())
 		for _, tag := range score.ScoreTags {
 			// _ で始まるタグは競技者には見せない
 			if tag[0] == '_' {
 				continue
 			}
-
-			scenario.ContestantLogger.Printf("tag: %v: %v", tag, breakdown[tag])
+			scenario.ContestantLogger.Printf(tagFormat, tag, breakdown[tag])
 		}
 	}
 
 	if writeScoreToAdminLogger {
+		tagFormat := fmt.Sprintf("tag: %%-%ds : %%d", score.MaxTagLength())
 		for _, tag := range score.ScoreTags {
-			scenario.AdminLogger.Printf("tag: %v: %v", tag, breakdown[tag])
+			scenario.AdminLogger.Printf(tagFormat, tag, breakdown[tag])
 		}
 	}
 

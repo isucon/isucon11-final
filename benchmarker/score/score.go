@@ -20,15 +20,15 @@ const (
 	CountAddAnnouncement              score.ScoreTag = "13.AddAnnouncement"
 	CountGetAnnouncementList          score.ScoreTag = "14.GetAnnouncementList"
 	CountGetAnnouncementsDetail       score.ScoreTag = "15.GetAnnouncementDetail"
-	CountActiveStudents               score.ScoreTag = "_1.ActiveStudents"
-	CountFinishCourses                score.ScoreTag = "_2.FinishCourses"
-	CountGetCourseDetailVerifySkipped score.ScoreTag = "_3.GetCourseDetailVerifySkipped"
-	CountStartCourseUnder10           score.ScoreTag = "_4.StartCourseUnder10"
-	CountStartCourseUnder20           score.ScoreTag = "_5.StartCourseUnder20"
-	CountStartCourseUnder30           score.ScoreTag = "_6.StartCourseUnder30"
-	CountStartCourseUnder40           score.ScoreTag = "_7.StartCourseUnder40"
-	CountStartCourseUnder50           score.ScoreTag = "_8.StartCourseUnder50"
-	CountStartCourseFull              score.ScoreTag = "_9.StartCourseFull"
+	CountActiveStudents               score.ScoreTag = "_01.ActiveStudents"
+	CountFinishCourses                score.ScoreTag = "_02.FinishCourses"
+	CountGetCourseDetailVerifySkipped score.ScoreTag = "_03.GetCourseDetailVerifySkipped"
+	CountStartCourseUnder10           score.ScoreTag = "_04.StartCourseUnder10"
+	CountStartCourseUnder20           score.ScoreTag = "_05.StartCourseUnder20"
+	CountStartCourseUnder30           score.ScoreTag = "_06.StartCourseUnder30"
+	CountStartCourseUnder40           score.ScoreTag = "_07.StartCourseUnder40"
+	CountStartCourseUnder50           score.ScoreTag = "_08.StartCourseUnder50"
+	CountStartCourseFull              score.ScoreTag = "_09.StartCourseFull"
 	CountStartCourseOver50            score.ScoreTag = "_10.StartCourseOver50"
 )
 
@@ -58,6 +58,26 @@ var ScoreTags = []score.ScoreTag{
 	CountStartCourseUnder50,
 	CountStartCourseFull,
 	CountStartCourseOver50,
+}
+
+func MaxTagLength() int {
+	maxLength := 0
+	for _, tag := range ScoreTags {
+		if len(tag) > maxLength {
+			maxLength = len(tag)
+		}
+	}
+	return maxLength
+}
+
+func MaxTagLengthForContestant() int {
+	maxLength := 0
+	for _, tag := range ScoreTags {
+		if tag[0] != '_' && len(tag) > maxLength {
+			maxLength = len(tag)
+		}
+	}
+	return maxLength
 }
 
 type mag int64      // 1回でn点
