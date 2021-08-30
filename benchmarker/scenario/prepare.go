@@ -50,18 +50,7 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 
 	err = s.prepareNormal(ctx, step)
 	if err != nil {
-		return err
-	}
-
-	errors := step.Result().Errors
-	hasErrors := func() bool {
-		errors.Wait()
-		return len(errors.All()) > 0
-	}
-
-	if hasErrors() {
-		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました")))
-		return nil
+		return failure.NewError(fails.ErrCritical, err)
 	}
 
 	return nil
@@ -183,9 +172,6 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
 		_, err := LoginAction(ctx, student.Agent, student.UserAccount)
-		if err != nil {
-			return
-		}
 		if err != nil {
 			AdminLogger.Printf("studentのログインに失敗しました")
 			step.AddError(failure.NewError(fails.ErrCritical, err))
