@@ -1188,7 +1188,7 @@ func createSubmissionsZip(zipFilePath string, classID string, submissions []Subm
 		if err := exec.Command(
 			"cp",
 			AssignmentsDirectory+classID+"-"+submission.UserID,
-			tmpDir+submission.UserCode,
+			tmpDir+submission.UserCode+submission.FileName,
 		).Run(); err != nil {
 			return err
 		}
