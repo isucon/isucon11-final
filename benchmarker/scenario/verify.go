@@ -340,10 +340,6 @@ func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus 
 		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
 	}
 
-	if res.Message != announcementStatus.Announcement.Message {
-		return errInvalidResponse("お知らせのメッセージが期待する値と一致しません")
-	}
-
 	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
 		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
 	}

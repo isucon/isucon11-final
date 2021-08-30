@@ -46,7 +46,6 @@ type AnnouncementResponse struct {
 	CourseID   string `json:"course_id"`
 	CourseName string `json:"course_name"`
 	Title      string `json:"title"`
-	Message    string `json:"message"`
 	Unread     bool   `json:"unread"`
 	CreatedAt  int64  `json:"created_at"`
 }
