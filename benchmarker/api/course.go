@@ -149,7 +149,7 @@ func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fi
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignment", courseID, classID), &body)
+	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID), &body)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}

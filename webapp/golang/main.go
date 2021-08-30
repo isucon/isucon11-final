@@ -77,7 +77,7 @@ func main() {
 			coursesAPI.PUT("/:courseID/status", h.SetCourseStatus, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
-			coursesAPI.POST("/:courseID/classes/:classID/assignment", h.SubmitAssignment)
+			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.SubmitAssignment)
 			coursesAPI.PUT("/:courseID/classes/:classID/assignments/scores", h.RegisterScores, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/assignments/export", h.DownloadSubmittedAssignments, h.IsAdmin)
 		}
