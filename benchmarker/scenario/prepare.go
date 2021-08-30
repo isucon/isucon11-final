@@ -52,7 +52,11 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
-
+	_, err = InitializeAction(ctx, a)
+	if err != nil {
+		ContestantLogger.Printf("initializeが失敗しました")
+		return failure.NewError(fails.ErrCritical, err)
+	}
 	return nil
 }
 
