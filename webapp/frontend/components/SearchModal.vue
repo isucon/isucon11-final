@@ -79,6 +79,17 @@
               :selected="params.period || selected.period"
               @change="params.period = $event"
             />
+            <Select
+              id="params-period"
+              label="ステータス"
+              :options="[
+                { text: '履修登録期間', value: 'registration' },
+                { text: '開講中', value: 'in-progress' },
+                { text: '閉講', value: 'closed' },
+              ]"
+              :selected="params.status || selected.status"
+              @change="params.status = $event"
+            />
           </div>
           <div class="flex justify-center">
             <Button type="button" class="mt-6 flex-grow-0" @click="onClickReset"
@@ -204,6 +215,7 @@ const initParams = {
   teacher: '',
   period: undefined,
   dayOfWeek: '',
+  status: '',
 }
 
 export default Vue.extend({
