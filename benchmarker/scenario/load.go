@@ -460,7 +460,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
-
 			if s.isNoRequestTime(ctx) {
 				return
 			}
