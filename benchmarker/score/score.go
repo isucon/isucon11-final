@@ -31,7 +31,7 @@ const (
 	CountStartCourseOver50            score.ScoreTag = "_10.StartCourseOver50"
 )
 
-var ScoreTags = []score.ScoreTag{
+var Tags = []score.ScoreTag{
 	CountRegisterCourses,
 	CountGetRegisteredCourses,
 	CountGetGrades,
@@ -58,24 +58,32 @@ var ScoreTags = []score.ScoreTag{
 	CountStartCourseOver50,
 }
 
-func MaxTagLength() int {
-	maxLength := 0
-	for _, tag := range ScoreTags {
-		if len(tag) > maxLength {
-			maxLength = len(tag)
+var (
+	// TagsForContestant 競技者に見せるタグ一覧
+	// _ で始まるタグは競技者には見せない
+	TagsForContestant         []score.ScoreTag
+	MaxTagLength              int
+	MaxTagLengthForContestant int
+)
+
+func init() {
+	for _, tag := range Tags {
+		if tag[0] != '_' {
+			TagsForContestant = append(TagsForContestant, tag)
 		}
 	}
-	return maxLength
+	MaxTagLength = maxLength(Tags)
+	MaxTagLengthForContestant = maxLength(TagsForContestant)
 }
 
-func MaxTagLengthForContestant() int {
-	maxLength := 0
-	for _, tag := range ScoreTags {
-		if tag[0] != '_' && len(tag) > maxLength {
-			maxLength = len(tag)
+func maxLength(arr []score.ScoreTag) int {
+	max := 0
+	for _, v := range arr {
+		if len(v) > max {
+			max = len(v)
 		}
 	}
-	return maxLength
+	return max
 }
 
 type mag int64      // 1回でn点
