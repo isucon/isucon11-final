@@ -110,12 +110,11 @@ func (s *Scenario) prepareCheck(parent context.Context, step *isucandar.Benchmar
 
 func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	const (
-		prepareTeacherCount              = 2
-		prepareStudentCount              = 2
-		prepareCourseCount               = 20
-		prepareCourseRegisterLimit       = 20
-		prepareClassCountPerCourse       = 5
-		checkAnnouncementDetailFrequency = 0.1
+		prepareTeacherCount        = 2
+		prepareStudentCount        = 2
+		prepareCourseCount         = 20
+		prepareCourseRegisterLimit = 20
+		prepareClassCountPerCourse = 5
 	)
 	errors := step.Result().Errors
 	hasErrors := func() bool {
@@ -256,6 +255,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		course := courses[i]
 		teacher := course.Teacher()
 
+		checkAnnouncementDetailPart := rand.Intn(5) + 1
 		for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
 			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
@@ -285,7 +285,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			for _, student := range courseStudents {
 				student := student
 				p.Do(func(ctx context.Context) {
-					if rand.Float64() < checkAnnouncementDetailFrequency {
+					if classPart == checkAnnouncementDetailPart {
 						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, announcement.ID)
 						if err != nil {
 							step.AddError(err)
@@ -367,7 +367,13 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		sort.Slice(expected, func(i, j int) bool {
 			return expected[i].Announcement.CreatedAt > expected[j].Announcement.CreatedAt
 		})
-		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, len(expected))
+		expectedUnreadCount := 0
+		for _, announcement := range expected {
+			if announcement.Unread {
+				expectedUnreadCount++
+			}
+		}
+		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, expectedUnreadCount)
 		if err != nil {
 			step.AddError(err)
 			return
@@ -389,6 +395,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
 	errHttp := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
+	errInvalidNext := failure.NewError(fails.ErrCritical, fmt.Errorf("link header の next の値が不正です"))
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path)
 	if err != nil {
@@ -396,8 +403,11 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 	}
 	prev, next := parseLinkHeader(hres)
 
+	if (len(expected) <= AnnouncementCountPerPage && next != "") || (len(expected) > AnnouncementCountPerPage && next == "") {
+		return "", errInvalidNext
+	}
 	// 次のページが存在しない
-	if len(res.Announcements) < AnnouncementCountPerPage || len(expected) < AnnouncementCountPerPage || next == "" {
+	if next == "" {
 		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount)
 		if err != nil {
 			return "", err
@@ -431,10 +441,13 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 
 func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int) error {
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
-	//errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("存在しないはずの Announcement が見つかりました"))
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement が期待したものと一致しませんでした"))
-	//errHttp := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
 	errNoCount := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement の数が期待したものと一致しませんでした"))
+	errNoMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement の unread_cout が期待したものと一致しませんでした"))
+
+	if actual.UnreadCount != expectedUnreadCount {
+		return errNoMatchUnreadCount
+	}
 
 	if len(expected) != len(actual.Announcements) {
 		return errNoCount
