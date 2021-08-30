@@ -13,13 +13,12 @@ const (
 	CountAddCourse                    score.ScoreTag = "06.AddCourse"
 	CountAddClass                     score.ScoreTag = "07.AddClass"
 	CountGetClasses                   score.ScoreTag = "08.GetClasses"
-	CountSubmitValidAssignment        score.ScoreTag = "09.SubmitValidAssignment"
-	CountSubmitInvalidAssignment      score.ScoreTag = "10.SubmitInvalidAssignment"
-	CountDownloadSubmissions          score.ScoreTag = "11.DownloadSubmissions"
-	CountRegisterScore                score.ScoreTag = "12.RegisterScore"
-	CountAddAnnouncement              score.ScoreTag = "13.AddAnnouncement"
-	CountGetAnnouncementList          score.ScoreTag = "14.GetAnnouncementList"
-	CountGetAnnouncementsDetail       score.ScoreTag = "15.GetAnnouncementDetail"
+	CountSubmitAssignment             score.ScoreTag = "09.SubmitAssignment"
+	CountDownloadSubmissions          score.ScoreTag = "10.DownloadSubmissions"
+	CountRegisterScore                score.ScoreTag = "11.RegisterScore"
+	CountAddAnnouncement              score.ScoreTag = "12.AddAnnouncement"
+	CountGetAnnouncementList          score.ScoreTag = "13.GetAnnouncementList"
+	CountGetAnnouncementsDetail       score.ScoreTag = "14.GetAnnouncementDetail"
 	CountActiveStudents               score.ScoreTag = "_01.ActiveStudents"
 	CountFinishCourses                score.ScoreTag = "_02.FinishCourses"
 	CountGetCourseDetailVerifySkipped score.ScoreTag = "_03.GetCourseDetailVerifySkipped"
@@ -41,8 +40,7 @@ var ScoreTags = []score.ScoreTag{
 	CountAddCourse,
 	CountAddClass,
 	CountGetClasses,
-	CountSubmitValidAssignment,
-	CountSubmitInvalidAssignment,
+	CountSubmitAssignment,
 	CountDownloadSubmissions,
 	CountRegisterScore,
 	CountAddAnnouncement,
@@ -84,8 +82,8 @@ type mag int64      // 1回でn点
 type fraction int64 // n回で1点
 
 var scoreCoefTable = map[score.ScoreTag]interface{}{
-	CountRegisterCourses:       mag(10),
-	CountSubmitValidAssignment: mag(5),
+	CountRegisterCourses:  mag(10),
+	CountSubmitAssignment: mag(5),
 
 	CountGetGrades:           fraction(10),
 	CountGetAnnouncementList: fraction(10),
