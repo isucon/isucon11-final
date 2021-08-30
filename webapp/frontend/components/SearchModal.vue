@@ -130,7 +130,7 @@
                   <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
                   <td>{{ c.credit }}</td>
                   <td>{{ formatStatus(c.status) }}</td>
-                  <td>椅子 昆</td>
+                  <td>{{ c.teacher }}</td>
                   <td>
                     <a
                       :href="`/syllabus/${c.id}`"
