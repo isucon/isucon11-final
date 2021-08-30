@@ -69,7 +69,7 @@ func GetMeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.G
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -90,7 +90,7 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -110,7 +110,7 @@ func GetRegisteredCoursesAction(ctx context.Context, agent *agent.Agent) (*http.
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, nil, err
 	}
@@ -152,7 +152,7 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 		defer hres.Body.Close()
 	}
 
-	err := verifyStatusCode(hres, []int{http.StatusOK})
+	err := verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, nil, err
 	}
@@ -174,7 +174,7 @@ func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -218,7 +218,7 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -239,7 +239,7 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -287,7 +287,7 @@ func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) 
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -380,7 +380,7 @@ func DownloadSubmissionsAction(ctx context.Context, agent *agent.Agent, courseID
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, nil, err
 	}
