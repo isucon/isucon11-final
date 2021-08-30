@@ -40,6 +40,7 @@ type Config struct {
 	BaseURL *url.URL
 	UseTLS  bool
 	NoLoad  bool
+	IsDebug bool
 }
 
 func NewScenario(config *Config) (*Scenario, error) {
@@ -67,7 +68,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		faculties:          faculties,
 		studentPool:        NewUserPool(studentsData),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
-		debugData:          NewDebugData(),
+		debugData:          NewDebugData(config.IsDebug),
 	}, nil
 }
 

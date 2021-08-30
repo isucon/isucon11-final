@@ -106,7 +106,6 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 		avg := int64(float64(sum) / float64(len(v)))
 		DebugLogger.Printf("%s: avg %d", k, avg)
 	}
-	s.debugData.Close()
 
 	return nil
 }
@@ -480,9 +479,9 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
-			
-      classStart := time.Now()
-      
+
+			classStart := time.Now()
+
 			if s.isNoRequestTime(ctx) {
 				return
 			}
