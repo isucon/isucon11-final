@@ -20,13 +20,9 @@ const (
 	ActiveStudents               score.ScoreTag = "_01.ActiveStudents"
 	FinishCourses                score.ScoreTag = "_02.FinishCourses"
 	GetCourseDetailVerifySkipped score.ScoreTag = "_03.GetCourseDetailVerifySkipped"
-	StartCourseUnder10           score.ScoreTag = "_04.StartCourseUnder10"
-	StartCourseUnder20           score.ScoreTag = "_05.StartCourseUnder20"
-	StartCourseUnder30           score.ScoreTag = "_06.StartCourseUnder30"
-	StartCourseUnder40           score.ScoreTag = "_07.StartCourseUnder40"
-	StartCourseUnder50           score.ScoreTag = "_08.StartCourseUnder50"
-	StartCourseFull              score.ScoreTag = "_09.StartCourseFull"
-	StartCourseOver50            score.ScoreTag = "_10.StartCourseOver50"
+	StartCourseUnder50           score.ScoreTag = "_04.StartCourseUnder50"
+	StartCourseFull              score.ScoreTag = "_05.StartCourseFull"
+	StartCourseOver50            score.ScoreTag = "_06.StartCourseOver50"
 )
 
 var Tags = []score.ScoreTag{
@@ -47,10 +43,6 @@ var Tags = []score.ScoreTag{
 	ActiveStudents,
 	FinishCourses,
 	GetCourseDetailVerifySkipped,
-	StartCourseUnder10,
-	StartCourseUnder20,
-	StartCourseUnder30,
-	StartCourseUnder40,
 	StartCourseUnder50,
 	StartCourseFull,
 	StartCourseOver50,
