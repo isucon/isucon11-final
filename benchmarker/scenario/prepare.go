@@ -391,12 +391,13 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 		return "", err
 	}
 
+	// この_prevはpathと同じところを指すはず
 	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, expected[AnnouncementCountPerPage:], expectedUnreadCount)
 	if err != nil {
 		return "", err
 	}
 
-	hres, res, err = GetAnnouncementListAction(ctx, a, _prev)
+	_, res, err = GetAnnouncementListAction(ctx, a, _prev)
 	if err != nil {
 		return "", errHttp
 	}
