@@ -327,7 +327,7 @@ func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Cou
 	return nil
 }
 
-func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
+func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announcementStatus *model.AnnouncementStatus) error {
 	if res.CourseID != announcementStatus.Announcement.CourseID {
 		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
 	}
@@ -338,6 +338,10 @@ func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus 
 
 	if res.Title != announcementStatus.Announcement.Title {
 		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
+	}
+
+	if res.Message != announcementStatus.Announcement.Message {
+		return errInvalidResponse("お知らせのメッセージが期待する値と一致しません")
 	}
 
 	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {

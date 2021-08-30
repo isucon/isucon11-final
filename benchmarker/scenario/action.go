@@ -231,8 +231,8 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	return hres, res, nil
 }
 
-func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.AnnouncementResponse, error) {
-	res := api.AnnouncementResponse{}
+func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.GetAnnouncementDetailResponse, error) {
+	res := api.GetAnnouncementDetailResponse{}
 	hres, err := api.GetAnnouncementDetail(ctx, agent, id)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
