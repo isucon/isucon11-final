@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
@@ -59,11 +60,58 @@ var (
 	}
 )
 
+type Option func(param *model.CourseParam)
+
+func WithDayOfWeek(d int) Option {
+	return func(param *model.CourseParam) {
+		param.DayOfWeek = d
+	}
+}
+
+func WithPeriod(p int) Option {
+	return func(param *model.CourseParam) {
+		param.Period = p
+	}
+}
+
 func courseDescription() string {
 	return randElt(courseDescription1) + randElt(courseDescription2)
 }
 
-func majorCourseParam(teacher *model.Teacher) *model.CourseParam {
+var (
+	courseGenerator = NewCourseGenerator()
+)
+
+type CourseGenerator struct {
+	randTimeslots []int
+	next          int
+	mu            sync.Mutex
+}
+
+func NewCourseGenerator() *CourseGenerator {
+	return &CourseGenerator{
+		randTimeslots: ShuffledInts(30),
+		next:          0,
+		mu:            sync.Mutex{},
+	}
+}
+
+func (cg *CourseGenerator) nextTimeslot() (dayOfWeek int, period int) {
+	cg.mu.Lock()
+	defer cg.mu.Unlock()
+
+	nextTimeslot := cg.randTimeslots[cg.next]
+	dayOfWeek = nextTimeslot/6 + 1
+	period = nextTimeslot % 6
+	cg.next++
+	if cg.next == 30 {
+		cg.randTimeslots = ShuffledInts(30)
+		cg.next = 0
+	}
+	return
+}
+
+func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher, options ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&majorCode, 1)
 
 	var (
@@ -85,20 +133,27 @@ func majorCourseParam(teacher *model.Teacher) *model.CourseParam {
 
 	name.WriteString(randElt(majorSuffix))
 
-	return &model.CourseParam{
+	dayOfWeek, period := cg.nextTimeslot()
+	p := model.CourseParam{
 		Code:        fmt.Sprintf("M%04d", code), // 重複不可, L,M+4桁の数字
 		Type:        "major-subjects",
 		Name:        name.String(),
 		Description: courseDescription(),
 		Credit:      rand.Intn(3) + 1, // 1-3
 		Teacher:     teacher.Name,
-		Period:      rand.Intn(6),     // いいカンジに分散
-		DayOfWeek:   rand.Intn(5) + 1, // いいカンジに分散
+		Period:      period,
+		DayOfWeek:   dayOfWeek,
 		Keywords:    strings.Join(keywords, " "),
 	}
+
+	for _, option := range options {
+		option(&p)
+	}
+
+	return &p
 }
 
-func liberalCourseParam(teacher *model.Teacher) *model.CourseParam {
+func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher, options ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&liberalCode, 1)
 
 	var (
@@ -116,24 +171,31 @@ func liberalCourseParam(teacher *model.Teacher) *model.CourseParam {
 
 	name.WriteString(randElt(liberalSuffix))
 
-	return &model.CourseParam{
+	dayOfWeek, period := cg.nextTimeslot()
+	p := model.CourseParam{
 		Code:        fmt.Sprintf("L%04d", code), // 重複不可, L,M+4桁の数字
 		Type:        "liberal-arts",
 		Name:        name.String(),
 		Description: courseDescription(),
 		Credit:      rand.Intn(3) + 1, // 1-3
 		Teacher:     teacher.Name,
-		Period:      rand.Intn(6),     // いいカンジに分散
-		DayOfWeek:   rand.Intn(5) + 1, // いいカンジに分散
+		Period:      period,
+		DayOfWeek:   dayOfWeek,
 		Keywords:    strings.Join(keywords, " "),
 	}
+
+	for _, option := range options {
+		option(&p)
+	}
+
+	return &p
 }
 
-func CourseParam(teacher *model.Teacher) *model.CourseParam {
+func CourseParam(teacher *model.Teacher, op ...Option) *model.CourseParam {
 	if rand.Float64() < majorCourseProb {
-		return majorCourseParam(teacher)
+		return courseGenerator.majorCourseParam(teacher, op...)
 	} else {
-		return liberalCourseParam(teacher)
+		return courseGenerator.liberalCourseParam(teacher, op...)
 	}
 }
 

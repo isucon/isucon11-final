@@ -5,13 +5,14 @@ var (
 		"": "55920142e0aadbaa284119f0c7ed599c",
 		"/200.html": "55920142e0aadbaa284119f0c7ed599c",
 		"/README.md": "5034cfd9edf3fa7d7d23589ecb2488f9",
-		"/_nuxt/app.js": "e90f8c6745fab78506e961666be53c84",
-		"/_nuxt/css/app.css": "76a6a0807083c9a6e3f66e1423821f2f",
+		"/_nuxt/app.js": "de07e354d6ed5f0207244f4d7e77a47d",
+		"/_nuxt/css/app.css": "db2f6b7e1b5cd0cbb38622bf3431a210",
 		"/_nuxt/runtime.js": "c51ffc86f28b62f78d641758e2dab72e",
 		"/announce": "55920142e0aadbaa284119f0c7ed599c",
 		"/favicon.ico": "ddf2e14a825fc1fff4b1d5f0cb48acda",
 		"/grade": "55920142e0aadbaa284119f0c7ed599c",
 		"/mypage": "55920142e0aadbaa284119f0c7ed599c",
 		"/register": "55920142e0aadbaa284119f0c7ed599c",
+		"/teacherpage": "55920142e0aadbaa284119f0c7ed599c",
 	}
 )

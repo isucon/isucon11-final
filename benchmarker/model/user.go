@@ -64,6 +64,13 @@ func (s *Student) AddCourse(course *Course) {
 	s.registeredCourses = append(s.registeredCourses, course)
 }
 
+func (s *Student) Announcements() []*AnnouncementStatus {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	return s.announcements
+}
+
 func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
@@ -81,6 +88,13 @@ func (s *Student) GetAnnouncement(id string) *AnnouncementStatus {
 		return nil
 	}
 	return s.announcements[index]
+}
+
+func (s *Student) AnnouncementCount() int {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	return len(s.announcements)
 }
 
 func (s *Student) ReadAnnouncement(id string) {
@@ -161,7 +175,7 @@ func (s *Student) FillTimeslot(course *Course) {
 	s.registeringCount++
 }
 
-func (s *Student) Course() []*Course {
+func (s *Student) Courses() []*Course {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
@@ -176,6 +190,32 @@ func (s *Student) RegisteredSchedule() [7][6]*Course {
 	defer s.scheduleMutex.RUnlock()
 
 	return s.registeredSchedule
+}
+
+func (s *Student) GPA() float64 {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	tmp := 0
+	for _, course := range s.registeredCourses {
+		tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
+	}
+
+	gpt := float64(tmp) / 100.0
+
+	return gpt / float64(s.TotalCredit())
+}
+
+func (s *Student) TotalCredit() int {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	res := 0
+	for _, course := range s.registeredCourses {
+		res += course.Credit
+	}
+
+	return res
 }
 
 type Teacher struct {

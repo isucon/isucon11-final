@@ -39,7 +39,15 @@ const config = {
         component: 'Fa',
         suffix: true,
         icons: {
-          solid: ['faTimes', 'faChevronLeft', 'faChevronRight', 'faPen'],
+          solid: [
+            'faTimes',
+            'faChevronLeft',
+            'faChevronRight',
+            'faPen',
+            'faPlus',
+            'faBell',
+            'faGraduationCap',
+          ],
           regular: ['faClock'],
         },
       },
@@ -100,6 +108,7 @@ if (!isProd) {
   config.proxy = {
     '/api/': 'http://localhost:7000',
     '/login': 'http://localhost:7000',
+    '/logout': 'http://localhost:7000',
   }
 }
 

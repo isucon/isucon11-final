@@ -5,35 +5,40 @@ import (
 	"sync"
 )
 
-type SubmissionSummary struct {
+type Submission struct {
 	Title    string
 	Checksum uint32
-	IsValid  bool
 
-	// score は課題に対する講師によって追加されるスコア（提出直後は0で扱う）
-	score int
+	// score は課題に対する講師によって追加されるスコア
+	// 提出後採点されるまではNULL
+	// 採点されたら採点された点
+	score *int
 	rmu   sync.RWMutex
 }
 
-func NewSubmissionSummary(title string, data []byte, isValid bool) *SubmissionSummary {
-	return &SubmissionSummary{
+func NewSubmission(title string, data []byte) *Submission {
+	return &Submission{
 		Title:    title,
-		IsValid:  isValid,
 		Checksum: crc32.ChecksumIEEE(data),
 		rmu:      sync.RWMutex{},
 	}
 }
 
-func (s *SubmissionSummary) SetScore(score int) {
+func (s *Submission) SetScore(score int) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.score = score
+	s.score = &score
 }
 
-func (s *SubmissionSummary) Score() int {
+func (s *Submission) Score() *int {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
-	return s.score
+	if s.score != nil {
+		scpy := *s.score
+		return &scpy
+	}
+
+	return nil
 }
