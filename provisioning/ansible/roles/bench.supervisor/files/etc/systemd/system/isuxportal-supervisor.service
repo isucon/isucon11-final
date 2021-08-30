@@ -6,7 +6,6 @@ After=network.target cloud-config.service
 # 基本設定
 User=isucon
 ExecStart=/home/isucon/bin/isuxportal-supervisor /home/isucon/benchmarker/bin/benchmarker
-          -prom-out /run/prometheus-node-exporter/textfile/xsuconbench.prom
 WorkingDirectory=/home/isucon/benchmarker
 LogsDirectory=isuxportal-supervisor
 LimitNOFILE=2000000
