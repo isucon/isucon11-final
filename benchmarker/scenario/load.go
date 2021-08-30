@@ -157,9 +157,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// Gradeが早くなった時、常にCapacityが0だとGradeを効率的に回せるようになって点数が高くなるという不正ができるかもしれない
 			remainingRegistrationCapacity := registerCourseLimit - student.RegisteringCount()
 			if remainingRegistrationCapacity == 0 {
-				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
+				// DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
 				continue
 			}
+
+			registerStart := time.Now()
 
 			// remainingRegistrationCapacity * searchCountPerRegistration 回 検索を行う
 			// remainingRegistrationCapacity 分のシラバス確認を行う
@@ -310,8 +312,9 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
 				}
 			}
+
+			DebugLogger.Printf("[履修完了] code: %v, time: %d ms, register count: %d", student.Code, time.Since(registerStart).Milliseconds(), len(semiRegistered))
 		}
-		// TODO: できれば登録に失敗したコースを抜いて再度登録する
 	}
 }
 
@@ -417,6 +420,8 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			}
 		}()
 
+		waitStart := time.Now()
+
 		// コースgoroutineは満員 or 履修締め切りまではなにもしない or LoadEndTime
 		endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 		select {
@@ -438,7 +443,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 			return
 		}
-		DebugLogger.Printf("[コース開始] id: %v, name: %v, registered students: %v", course.ID, course.Name, len(course.Students()))
+		DebugLogger.Printf("[科目開始] id: %v, time: %v, registered students: %v", course.ID, time.Since(waitStart).Milliseconds(), len(course.Students()))
 
 		studentLen := len(course.Students())
 		switch {
@@ -458,9 +463,11 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			step.AddScore(score.CountStartCourseOver50)
 		}
 
+		var classRaps [classCountPerCourse]int64
+
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
-
+			classStart := time.Now()
 			if s.isNoRequestTime(ctx) {
 				return
 			}
@@ -544,7 +551,19 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			} else {
 				step.AddScore(score.CountRegisterScore)
 			}
+
+			classRaps[i] = time.Since(classStart).Milliseconds()
 		}
+
+		// クラスのラップタイム表示
+		var compCount int
+		var sumTime int64
+		for _, cr := range classRaps {
+			sumTime += cr
+			if cr != 0 {compCount++}
+		}
+		DebugLogger.Printf("[debug] 科目完了 講義 Avg: %.f ms, List(ms): %d, %d, %d, %d, %d",
+			float64(sumTime)/float64(compCount), classRaps[0], classRaps[1], classRaps[2], classRaps[3], classRaps[4])
 
 		if s.isNoRequestTime(ctx) {
 			return
