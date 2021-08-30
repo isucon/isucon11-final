@@ -84,15 +84,9 @@ func tScoreInt(v int, arr []int) float64 {
 
 // ----- float64 -----
 
-var epsilon = math.Nextafter(1, 2) - 1
-
-func isEqualFloat64(v1, v2 float64) bool {
-	return v1 == v2 || math.Abs(v1-v2)/math.Max(math.Abs(v1), math.Abs(v2)) <= epsilon
-}
-
 func isAllEqualFloat64(arr []float64) bool {
 	for _, v := range arr {
-		if !isEqualFloat64(arr[0], v) {
+		if arr[0] != v {
 			return false
 		}
 	}
