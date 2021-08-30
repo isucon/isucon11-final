@@ -31,6 +31,7 @@ type Scenario struct {
 	activeStudents     []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
 	language           string
 	loadRequestEndTime time.Time
+	debugData          *DebugData
 
 	mu sync.RWMutex
 }
@@ -66,6 +67,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		faculties:          faculties,
 		studentPool:        NewUserPool(studentsData),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
+		debugData:          NewDebugData(),
 	}, nil
 }
 

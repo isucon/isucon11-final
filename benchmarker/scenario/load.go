@@ -40,6 +40,17 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	}
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
+	defer func() {
+		DebugLogger.Printf("========STATS_DATA=========")
+		for k, v := range s.debugData.ints {
+			var sum int64
+			for _, t := range v {
+				sum += t
+			}
+			avg := int64(float64(sum)/float64(len(v)))
+			DebugLogger.Printf("%s: avg %d", k, avg)
+		}
+	}()
 
 	ContestantLogger.Printf("===> LOAD")
 	AdminLogger.Printf("LOAD INFO")
@@ -313,6 +324,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 			}
 
+			s.debugData.AddInt("registrationTimeMS", time.Since(registerStart).Milliseconds())
 			DebugLogger.Printf("[履修完了] code: %v, time: %d ms, register count: %d", student.Code, time.Since(registerStart).Milliseconds(), len(semiRegistered))
 		}
 	}
@@ -443,6 +455,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 			return
 		}
+		s.debugData.AddInt("waitCourseTime", time.Since(waitStart).Milliseconds())
 		DebugLogger.Printf("[科目開始] id: %v, time: %v, registered students: %v", course.ID, time.Since(waitStart).Milliseconds(), len(course.Students()))
 
 		studentLen := len(course.Students())
@@ -562,8 +575,11 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			sumTime += cr
 			if cr != 0 {compCount++}
 		}
-		DebugLogger.Printf("[debug] 科目完了 講義 Avg: %.f ms, List(ms): %d, %d, %d, %d, %d",
-			float64(sumTime)/float64(compCount), classRaps[0], classRaps[1], classRaps[2], classRaps[3], classRaps[4])
+
+		s.debugData.AddInt("classAvgTime", int64(float64(sumTime)/float64(compCount)))
+		s.debugData.AddInt("courseSumTime", sumTime)
+		DebugLogger.Printf("[debug] 科目完了 Sum: %d ms, Avg: %.f ms, List(ms): %d, %d, %d, %d, %d",
+			sumTime, float64(sumTime)/float64(compCount), classRaps[0], classRaps[1], classRaps[2], classRaps[3], classRaps[4])
 
 		if s.isNoRequestTime(ctx) {
 			return
