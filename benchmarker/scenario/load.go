@@ -44,11 +44,11 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg := sync.WaitGroup{}
 	wg.Add(initialCourseCount + 1)
 	for i := 0; i < initialCourseCount; i++ {
-		i := i
+		i := i % 30
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
-			dayOfWeek := i/6 + 1
+			dayOfWeek := i / 6
 			period := i % 6
 			s.addCourseLoad(ctx, dayOfWeek, period, step)
 		}()

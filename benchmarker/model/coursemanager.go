@@ -9,9 +9,10 @@ import (
 // 科目の追加 → 履修登録 → 科目の開始までが責任範囲
 // 科目の終了は科目用のgoroutine内で行われ、新規科目の追加が呼ばれる
 type CourseManager struct {
-	courses map[string]*Course
-	queue   *courseQueue // 優先的に履修させる科目を各timeslotごとに保持
-	rmu     sync.RWMutex
+	courses       map[string]*Course
+	newCoursePool map[string]*Course
+	queue         *courseQueue // 優先的に履修させる科目を各timeslotごとに保持
+	rmu           sync.RWMutex
 }
 
 const queueLength = 6 * 7 * 5 // Period * DayOfWeek * 5 (この値を調整する)
@@ -52,6 +53,7 @@ func (m *CourseManager) GetCourseCount() int {
 }
 
 // ReserveCoursesForStudent は学生を受け取って、キュー内の科目に仮登録を行う
+// キューのロックを取るのでここで直列化される
 func (m *CourseManager) ReserveCoursesForStudent(student *Student, remainingRegistrationCapacity int) []*Course {
 	student.LockSchedule()
 	defer student.UnlockSchedule()
