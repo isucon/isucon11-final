@@ -1054,7 +1054,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	dst, err := os.Create(AssignmentsDirectory + classID + "-" + userID)
+	dst, err := os.Create(AssignmentsDirectory + classID + "-" + userID + ".pdf")
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1146,7 +1146,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	var submissions []Submission
-	query := "SELECT `submissions`.`user_id`, `users`.`code` AS `user_code`" +
+	query := "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +
 		" FROM `submissions`" +
 		" JOIN `users` ON `users`.`id` = `submissions`.`user_id`" +
 		" WHERE `class_id` = ? FOR SHARE"
@@ -1187,8 +1187,8 @@ func createSubmissionsZip(zipFilePath string, classID string, submissions []Subm
 	for _, submission := range submissions {
 		if err := exec.Command(
 			"cp",
-			AssignmentsDirectory+classID+"-"+submission.UserID,
-			tmpDir+submission.UserCode,
+			AssignmentsDirectory+classID+"-"+submission.UserID+".pdf",
+			tmpDir+submission.UserCode+"-"+submission.FileName,
 		).Run(); err != nil {
 			return err
 		}
