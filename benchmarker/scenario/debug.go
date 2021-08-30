@@ -1,25 +1,34 @@
 package scenario
 
-import "sync"
+type intData struct {
+	tag string
+	d   int64
+}
 
 type DebugData struct {
-	ints map[string][]int64
-
-	mu sync.Mutex
+	ints  map[string][]int64
+	intCh chan intData
 }
 
 func NewDebugData() *DebugData {
-	return &DebugData{
-		ints: map[string][]int64{},
-		mu: sync.Mutex{},
+	d := &DebugData{
+		ints:  map[string][]int64{},
+		intCh: make(chan intData, 50),
 	}
+
+	go func() {
+		for data := range d.intCh {
+			d.ints[data.tag] = append(d.ints[data.tag], data.d)
+		}
+	}()
+
+	return d
 }
 
 func (d *DebugData) AddInt(key string, data int64) {
-	go func() {
-		d.mu.Lock()
-		defer d.mu.Unlock()
+	d.intCh <- intData{key, data}
+}
 
-		d.ints[key] = append(d.ints[key], data)
-	}()
+func (d *DebugData) Close() {
+	close(d.intCh)
 }

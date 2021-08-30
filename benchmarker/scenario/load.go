@@ -40,17 +40,6 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	}
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
-	defer func() {
-		DebugLogger.Printf("========STATS_DATA=========")
-		for k, v := range s.debugData.ints {
-			var sum int64
-			for _, t := range v {
-				sum += t
-			}
-			avg := int64(float64(sum)/float64(len(v)))
-			DebugLogger.Printf("%s: avg %d", k, avg)
-		}
-	}()
 
 	ContestantLogger.Printf("===> LOAD")
 	AdminLogger.Printf("LOAD INFO")
@@ -107,6 +96,17 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// loadRequestTimeが終了しても最後に送ったリクエストの処理が終わるまで（loadTimeoutまで）待つ
 	<-ctx.Done()
 	AdminLogger.Printf("[debug] load finished")
+
+	DebugLogger.Printf("========STATS_DATA=========")
+	for k, v := range s.debugData.ints {
+		var sum int64
+		for _, t := range v {
+			sum += t
+		}
+		avg := int64(float64(sum) / float64(len(v)))
+		DebugLogger.Printf("%s: avg %d", k, avg)
+	}
+	s.debugData.Close()
 
 	return nil
 }
@@ -573,7 +573,9 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		var sumTime int64
 		for _, cr := range classRaps {
 			sumTime += cr
-			if cr != 0 {compCount++}
+			if cr != 0 {
+				compCount++
+			}
 		}
 
 		s.debugData.AddInt("classAvgTime", int64(float64(sumTime)/float64(compCount)))
