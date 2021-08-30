@@ -1,31 +1,16 @@
 package score
 
-import (
-	"github.com/isucon/isucandar/score"
-)
-
-const (
-	CountAddCourse              = "add course"
-	CountAddClass               = "add class"
-	CountSubmitPDF              = "submit pdf assignment"
-	CountSubmitDocx             = "submit docx assignment"
-	CountRegisterScore          = "register score"
-	CountGetAnnouncements       = "get announcements"
-	CountGetAnnouncementsDetail = "get announcement detail"
-	CountGetGrades              = "get grades"
-	CountSearchCourse           = "search courses"
-	CountRegisterCourses        = "register courses"
-)
+import "github.com/isucon/isucandar/score"
 
 type mag int64      // 1回でn点
 type fraction int64 // n回で1点
 
 var scoreCoefTable = map[score.ScoreTag]interface{}{
-	CountSubmitPDF:       mag(5),
-	CountRegisterCourses: mag(10),
+	RegisterCourses:  mag(10),
+	SubmitAssignment: mag(5),
 
-	CountGetAnnouncements: fraction(10),
-	CountGetGrades:        fraction(10),
+	GetGrades:           fraction(10),
+	GetAnnouncementList: fraction(10),
 }
 
 var (

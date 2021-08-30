@@ -71,10 +71,10 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 }
 
 func collectVerifyGradesData(student *model.Student) map[string]*model.SimpleCourseResult {
-	courses := student.Course()
+	courses := student.Courses()
 	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
 	for _, course := range courses {
-		classScore := course.CollectUserScores(student.Code)
+		classScore := course.CollectSimpleClassScores(student.Code)
 		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
 	}
 
@@ -114,8 +114,8 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 
 	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
 	// そのため、追加済みクラスのスコアの数よりレスポンス内クラスのスコアの数が少ない場合はエラーとなる
-	if len(expected.ClassScores) > len(res.ClassScores) {
-		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.ClassScores), len(res.ClassScores)))
+	if len(expected.SimpleClassScores) > len(res.ClassScores) {
+		AdminLogger.Println(fmt.Printf("expected: %d, actual: %d", len(expected.SimpleClassScores), len(res.ClassScores)))
 		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
 	}
 
@@ -123,9 +123,9 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	// 一つ前のクラスの処理が終わらないと次のクラスの処理は始まらないので、
 	// 一つ前のクラスまでの成績は正しくなっているはず
 	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
-	for i := 0; i < len(expected.ClassScores)-1; i++ {
+	for i := 0; i < len(expected.SimpleClassScores)-1; i++ {
 		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
-		err := verifyClassScores(expected.ClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
+		err := verifyClassScores(expected.SimpleClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	return nil
 }
 
-func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) error {
+func verifyClassScores(expected *model.SimpleClassScore, res *api.ClassScore) error {
 	if expected.ClassID != res.ClassID {
 		AdminLogger.Println("expected: ", expected.ClassID, "actual: ", res.ClassID)
 		return errInvalidResponse("成績確認でのクラスのIDが一致しません")
@@ -149,12 +149,10 @@ func verifyClassScores(expected *model.ClassScore, res *api.ClassScore) error {
 		return errInvalidResponse("成績確認でのクラスのタイトルが一致しません")
 	}
 
-	// TODO: 成績が未登録でnullの場合を検証する
-	if res.Score != nil {
-		if expected.Score != *res.Score {
-			AdminLogger.Println("expected: ", expected.Score, "actual: ", res.Score)
-			return errInvalidResponse("成績確認でのクラスのスコアが一致しません")
-		}
+	if !((expected.Score == nil && res.Score == nil) ||
+		((expected.Score != nil && res.Score != nil) && (*expected.Score == *res.Score))) {
+		AdminLogger.Println("expected: ", expected.Score, "actual: ", res.Score)
+		return errInvalidResponse("成績確認でのクラスのスコアが一致しません")
 	}
 
 	return nil
@@ -474,21 +472,22 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			if err != nil {
 				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
 			}
-			studentCode := f.Name
-			downloadedAssignments[studentCode] = crc32.ChecksumIEEE(assignmentData)
+			downloadedAssignments[f.Name] = crc32.ChecksumIEEE(assignmentData)
 		}
 
-		// mapのサイズが等しく、ダウンロードされた課題がすべて実際に提出した課題ならば、ダウンロードされた課題と提出した課題は集合として等しい
+		// mapのサイズが等しく、提出した課題がすべてダウンロードされた課題に含まれていれば、提出した課題とダウンロードされた課題は集合として等しい
 		if len(downloadedAssignments) != class.GetSubmittedCount() {
 			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
 		}
 
-		for studentCode, checksumDownloaded := range downloadedAssignments {
-			summary := class.SubmissionSummary(studentCode)
-			if summary == nil {
-				return errInvalidResponse("課題を提出していない学生のファイルが課題zipに含まれています")
-			} else if checksumDownloaded != summary.Checksum {
-				return errInvalidResponse("ダウンロードされた課題が提出された課題と一致しません")
+		for studentCode, submission := range class.Submissions() {
+			expectedFileName := studentCode + "-" + submission.Title
+			checksumDownloaded, ok := downloadedAssignments[expectedFileName]
+			if !ok {
+				return errInvalidResponse("提出した課題が課題zipに含まれていないか、ファイル名が間違っています")
+			}
+			if submission.Checksum != checksumDownloaded {
+				return errInvalidResponse("提出した課題とダウンロードされた課題の内容が一致しません")
 			}
 		}
 	}
