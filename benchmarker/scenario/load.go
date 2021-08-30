@@ -742,7 +742,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			_, err = SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
 			var urlError *url.Error
 			if errors.As(err, &urlError) && urlError.Timeout() {
-				ContestantLogger.Printf("課題提出(POST /:courseID/classes/:classID/assignment)がタイムアウトしました。学生はリトライを試みます。")
+				ContestantLogger.Printf("課題提出(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。学生はリトライを試みます。")
 				<-time.After(100 * time.Millisecond)
 				goto L
 			}
