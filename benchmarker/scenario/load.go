@@ -149,7 +149,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			if err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountGetGrades)
+				step.AddScore(score.GetGrades)
 			}
 
 			// ----------------------------------------
@@ -182,7 +182,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					step.AddScore(score.CountSearchCourses)
+					step.AddScore(score.SearchCourses)
 
 					if len(res) > 0 {
 						checkTargetID = res[0].ID.String()
@@ -212,10 +212,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					if err := verifyCourseDetail(&res, expected); err != nil {
 						step.AddError(err)
 					} else {
-						step.AddScore(score.CountGetCourseDetail)
+						step.AddScore(score.GetCourseDetail)
 					}
 				} else {
-					step.AddScore(score.CountGetCourseDetailVerifySkipped)
+					step.AddScore(score.GetCourseDetailVerifySkipped)
 				}
 			}
 
@@ -235,7 +235,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountGetRegisteredCourses)
+				step.AddScore(score.GetRegisteredCourses)
 			}
 
 			// ----------------------------------------
@@ -303,7 +303,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					}
 				}
 			} else {
-				step.AddScore(score.CountRegisterCourses)
+				step.AddScore(score.RegisterCourses)
 				for _, c := range semiRegistered {
 					c.SuccessRegistration(student)
 					student.AddCourse(c)
@@ -334,7 +334,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			if err := verifyAnnouncements(&res, student); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountGetAnnouncementList)
+				step.AddScore(score.GetAnnouncementList)
 			}
 
 			for _, ans := range res.Announcements {
@@ -361,7 +361,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
 						step.AddError(err)
 					} else {
-						step.AddScore(score.CountGetAnnouncementsDetail)
+						step.AddScore(score.GetAnnouncementsDetail)
 					}
 
 					student.ReadAnnouncement(ans.ID)
@@ -443,19 +443,19 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		studentLen := len(course.Students())
 		switch {
 		case studentLen < 10:
-			step.AddScore(score.CountStartCourseUnder10)
+			step.AddScore(score.StartCourseUnder10)
 		case studentLen < 20:
-			step.AddScore(score.CountStartCourseUnder20)
+			step.AddScore(score.StartCourseUnder20)
 		case studentLen < 30:
-			step.AddScore(score.CountStartCourseUnder30)
+			step.AddScore(score.StartCourseUnder30)
 		case studentLen < 40:
-			step.AddScore(score.CountStartCourseUnder40)
+			step.AddScore(score.StartCourseUnder40)
 		case studentLen < 50:
-			step.AddScore(score.CountStartCourseUnder50)
+			step.AddScore(score.StartCourseUnder50)
 		case studentLen == 50:
-			step.AddScore(score.CountStartCourseFull)
+			step.AddScore(score.StartCourseFull)
 		case studentLen > 50:
-			step.AddScore(score.CountStartCourseOver50)
+			step.AddScore(score.StartCourseOver50)
 		}
 
 		// コースの処理
@@ -482,7 +482,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 					continue
 				}
 			} else {
-				step.AddScore(score.CountAddClass)
+				step.AddScore(score.AddClass)
 			}
 			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
@@ -507,7 +507,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				}
 			} else {
 				announcement.ID = ancRes.ID
-				step.AddScore(score.CountAddAnnouncement)
+				step.AddScore(score.AddAnnouncement)
 			}
 			course.BroadCastAnnouncement(announcement)
 
@@ -529,7 +529,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			if err := verifyAssignments(assignmentsData, class); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountDownloadSubmissions)
+				step.AddScore(score.DownloadSubmissions)
 			}
 
 			if s.isNoRequestTime(ctx) {
@@ -542,7 +542,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				<-timer
 				continue
 			} else {
-				step.AddScore(score.CountRegisterScore)
+				step.AddScore(score.RegisterScore)
 			}
 		}
 
@@ -558,7 +558,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			return
 		}
 
-		step.AddScore(score.CountFinishCourses)
+		step.AddScore(score.FinishCourses)
 
 		// コースを追加
 		s.addCourseLoad(ctx, step)
@@ -629,7 +629,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			s.AddActiveStudent(student)
 			s.sPubSub.Publish(student)
-			step.AddScore(score.CountActiveStudents)
+			step.AddScore(score.ActiveStudents)
 		}()
 	}
 	wg.Wait()
@@ -684,7 +684,7 @@ L:
 			return
 		}
 	}
-	step.AddScore(score.CountAddCourse)
+	step.AddScore(score.AddCourse)
 
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher)
 	s.AddCourse(course)
@@ -728,7 +728,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			if err := verifyClasses(res, course.Classes()); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountGetClasses)
+				step.AddScore(score.GetClasses)
 			}
 
 			// 課題を提出する
@@ -742,7 +742,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			if err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.CountSubmitAssignment)
+				step.AddScore(score.SubmitAssignment)
 				submission := model.NewSubmission(fileName, submissionData)
 				class.AddSubmission(student.Code, submission)
 			}
@@ -796,7 +796,7 @@ L:
 		}
 	}
 
-	step.AddScore(score.CountRegisterScore)
+	step.AddScore(score.RegisterScore)
 
 	// POST成功したスコアをベンチ内に保存する
 	for _, scoreData := range scores {
