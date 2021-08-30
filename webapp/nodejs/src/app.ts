@@ -19,10 +19,8 @@ const UserType = {
 } as const;
 type UserType = typeof UserType[keyof typeof UserType];
 
-type Uuid = Buffer;
-
 interface User extends RowDataPacket {
-  id: Uuid;
+  id: string;
   code: string;
   name: string;
   hashed_password: Buffer;
@@ -38,7 +36,6 @@ app.use(
   session({
     secret: "trapnomura",
     name: SessionName,
-    maxAge: 86400 * 1000 * 30,
   })
 );
 app.use(morgan("combined"));
@@ -113,10 +110,12 @@ app.post(
         return res.status(401).send("Code or Password is wrong.");
       }
 
-      // TODO
+      if (req.session && req.session["userID"] === user.id) {
+        return res.status(400).send("You are already logged in.");
+      }
 
       req.session = {
-        userID: user.id.toString(),
+        userID: user.id,
         userName: user.name,
         isAdmin: user.type === UserType.Teacher,
       };
@@ -131,5 +130,10 @@ app.post(
     }
   }
 );
+
+app.post("/logout", (req, res) => {
+  req.session = null;
+  return res.status(200).send();
+});
 
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
