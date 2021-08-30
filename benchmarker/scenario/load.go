@@ -784,7 +784,7 @@ L:
 	if err != nil {
 		var urlError *url.Error
 		if errors.As(err, &urlError) && urlError.Timeout() {
-			ContestantLogger.Printf("成績追加(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。教師はリトライを試みます。")
+			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L

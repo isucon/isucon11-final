@@ -78,7 +78,7 @@ func main() {
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
 			coursesAPI.POST("/:courseID/classes/:classID/assignment", h.SubmitAssignment)
-			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.RegisterScores, h.IsAdmin)
+			coursesAPI.PUT("/:courseID/classes/:classID/assignments/scores", h.RegisterScores, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/assignments/export", h.DownloadSubmittedAssignments, h.IsAdmin)
 		}
 		announcementsAPI := API.Group("/announcements")
