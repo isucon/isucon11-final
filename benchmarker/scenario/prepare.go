@@ -274,7 +274,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 						fmt.Println(class.ID, submitter.Code)
 						return
 					}
-					submissionSummary := model.NewSubmission(fileName, submissionData, true)
+					submissionSummary := model.NewSubmission(fileName, submissionData)
 					class.AddSubmission(submitter.Code, submissionSummary)
 				})
 			}
