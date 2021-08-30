@@ -38,7 +38,7 @@ def save_sql(users, file_name, is_teacher)
         user[:uuid],
         user[:code],
         user[:full_name],
-        BCrypt::Password.create(user[:password], :cost => 10),
+        BCrypt::Password.create(user[:password], :cost => 4),
         is_teacher ? "teacher" : "student"
       )
     }.join(",\n")
@@ -49,6 +49,9 @@ end
 if File.exist?("init.sql")
   File.delete("init.sql")
 end
+
+save_sql([{ uuid: SecureRandom.uuid, code: "isuT", full_name: "isucon(教員)", password: "isucon" }], "init.sql", true)
+save_sql([{ uuid: SecureRandom.uuid, code: "isucon", full_name: "isucon(学生)", password: "isucon" }], "init.sql", false)
 
 teachers = gen_user_data(50, true)
 save_tsv(teachers, "teacher.tsv")
