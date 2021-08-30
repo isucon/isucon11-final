@@ -44,10 +44,13 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg := sync.WaitGroup{}
 	wg.Add(initialCourseCount + 1)
 	for i := 0; i < initialCourseCount; i++ {
+		i := i
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
-			s.addCourseLoad(ctx, step)
+			dayOfWeek := i/6 + 1
+			period := i % 6
+			s.addCourseLoad(ctx, dayOfWeek, period, step)
 		}()
 	}
 	go func() {
@@ -243,10 +246,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// TODO: 1度も検索成功してなかったら登録しない
 
 			temporaryReservedCourses := s.CourseManager.ReserveCoursesForStudent(student, remainingRegistrationCapacity)
-
-			for _, reservedCourse := range temporaryReservedCourses {
-				student.FillTimeslot(reservedCourse)
-			}
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -562,8 +561,8 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		step.AddScore(score.FinishCourses)
 
 		// 科目を追加
-		s.addCourseLoad(ctx, step)
-		s.addCourseLoad(ctx, step)
+		s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
+		s.addCourseLoad(ctx, course.DayOfWeek, course.DayOfWeek, step)
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
 		s.addActiveStudentLoads(ctx, step, 1)
@@ -636,9 +635,10 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 	wg.Wait()
 }
 
-func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkStep) {
+// CourseManagerと整合性を取るためdayOfWeekとPeriodを前回から引き継ぐ必要がある（初回を除く）
+func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, step *isucandar.BenchmarkStep) {
 	teacher := s.GetRandomTeacher()
-	courseParam := generate.CourseParam(teacher)
+	courseParam := generate.CourseParam(dayOfWeek, period, teacher)
 
 	if s.isNoRequestTime(ctx) {
 		return

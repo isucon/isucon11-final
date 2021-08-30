@@ -82,7 +82,9 @@ func (c *Course) Wait(ctx context.Context) <-chan struct{} {
 		case <-c.closer:
 		case <-ctx.Done():
 		}
+		c.rmu.Lock()
 		c.isRegistrationClosed = true
+		c.rmu.Unlock()
 		cancel()
 	}()
 	return _ctx.Done()
@@ -142,7 +144,8 @@ func (c *Course) CommitReservation(s *Student) {
 	c.registeredStudents[s.Code] = s
 	c.reservations--
 
-	if c.reservations == 0 && len(c.registeredStudents) == c.capacity {
+	// >=にしてもいいけどロックとってるので多分不必要
+	if len(c.registeredStudents) == c.capacity {
 		close(c.closer)
 		c.isRegistrationClosed = true
 	}

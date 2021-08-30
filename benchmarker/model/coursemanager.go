@@ -66,6 +66,7 @@ func (m *CourseManager) ReserveCoursesForStudent(student *Student, remainingRegi
 		switch result {
 		case Succeeded:
 			temporaryReservedCourses = append(temporaryReservedCourses, target)
+			student.FillTimeslot(target)
 		case TemporaryFull:
 			continue
 		case Closed:
