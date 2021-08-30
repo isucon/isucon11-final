@@ -480,12 +480,13 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
 		}
 
-		for studentCode, summary := range class.Submissions() {
-			checksumDownloaded, ok := downloadedAssignments[studentCode+".pdf"]
+		for studentCode, submission := range class.Submissions() {
+			expectedFileName := studentCode + "-" + submission.Title
+			checksumDownloaded, ok := downloadedAssignments[expectedFileName]
 			if !ok {
-				return errInvalidResponse("提出した課題が課題zipに含まれていません")
+				return errInvalidResponse("提出した課題が課題zipに含まれていないか、ファイル名が間違っています")
 			}
-			if summary.Checksum != checksumDownloaded {
+			if submission.Checksum != checksumDownloaded {
 				return errInvalidResponse("提出した課題とダウンロードされた課題の内容が一致しません")
 			}
 		}
