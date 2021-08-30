@@ -213,8 +213,8 @@ export default Vue.extend({
     },
     async submit() {
       try {
-        await this.$axios.post(
-          `/api/courses/${this.courseId}/classes/${this.classId}/assignments`,
+        await this.$axios.put(
+          `/api/courses/${this.courseId}/classes/${this.classId}/assignments/scores`,
           this.params
         )
         notify('成績の登録が完了しました')
