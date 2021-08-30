@@ -4,46 +4,30 @@ import (
 	"sync"
 )
 
-type courseQueue struct {
+type courseList struct {
 	items []*Course
-	rmu   sync.RWMutex
+	sync.RWMutex
 }
 
-func newCourseQueue(cap int) *courseQueue {
+func newCourseList(cap int) *courseList {
 	m := make([]*Course, 0, cap)
-	return &courseQueue{
+	return &courseList{
 		items: m,
 	}
 }
 
-func (q *courseQueue) Lock() {
-	q.rmu.Lock()
-}
-
-func (q *courseQueue) Unlock() {
-	q.rmu.Unlock()
-}
-
-func (q *courseQueue) RLock() {
-	q.rmu.RLock()
-}
-
-func (q *courseQueue) RUnlock() {
-	q.rmu.RUnlock()
-}
-
-func (q *courseQueue) Len() int {
+func (q *courseList) Len() int {
 	return len(q.items)
 }
 
-func (q *courseQueue) Seek(i int) *Course {
+func (q *courseList) Seek(i int) *Course {
 	return q.items[i]
 }
 
-func (q *courseQueue) Add(c *Course) {
+func (q *courseList) Add(c *Course) {
 	q.items = append(q.items, c)
 }
 
-func (q *courseQueue) Remove(i int) {
+func (q *courseList) Remove(i int) {
 	q.items = append(q.items[:i], q.items[i+1:]...)
 }

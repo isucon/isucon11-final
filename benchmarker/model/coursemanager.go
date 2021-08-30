@@ -8,19 +8,15 @@ import (
 // 科目の追加 → 履修登録 → 科目の開始までが責任範囲
 // 科目の終了は科目用のgoroutine内で行われ、新規科目の追加が呼ばれる
 type CourseManager struct {
-	courses   map[string]*Course
-	queue     *courseQueue // 優先的に履修させる科目を各timeslotごとに保持
-	Timeslots chan [2]int
-	rmu       sync.RWMutex
+	courses           map[string]*Course
+	waitingCourseList *courseList // 優先的に履修させる科目を各timeslotごとに保持
+	rmu               sync.RWMutex
 }
-
-const queueLength = 6 * 7 * 5 // Period * DayOfWeek * 5 (この値を調整する)
 
 func NewCourseManager() *CourseManager {
 	m := &CourseManager{
-		courses:   map[string]*Course{},
-		queue:     newCourseQueue(queueLength),
-		Timeslots: make(chan [2]int, queueLength),
+		courses:           map[string]*Course{},
+		waitingCourseList: newCourseList(1000),
 	}
 	return m
 }
@@ -30,11 +26,9 @@ func (m *CourseManager) AddNewCourse(course *Course) {
 	defer m.rmu.Unlock()
 
 	m.courses[course.ID] = course
-	m.queue.Lock()
-	if m.queue.Len() < queueLength {
-		m.queue.Add(course)
-	}
-	m.queue.Unlock()
+	m.waitingCourseList.Lock()
+	m.waitingCourseList.Add(course)
+	m.waitingCourseList.Unlock()
 }
 
 func (m *CourseManager) GetCourseByID(id string) (*Course, bool) {
@@ -61,44 +55,35 @@ func (m *CourseManager) ReserveCoursesForStudent(student *Student, remainingRegi
 	temporaryReservedCourses := make([]*Course, 0, remainingRegistrationCapacity)
 
 	// 重い時はqueueをシャーディングする
-	m.queue.Lock()
-	for i := 0; i < m.queue.Len() && len(temporaryReservedCourses) < remainingRegistrationCapacity; i++ {
-		target := m.queue.Seek(i) // i
+	m.waitingCourseList.RLock()
+	for i := 0; i < m.waitingCourseList.Len() && len(temporaryReservedCourses) < remainingRegistrationCapacity; i++ {
+		target := m.waitingCourseList.Seek(i)
 		if !student.IsEmptyTimeSlots(target.DayOfWeek, target.Period) {
 			continue
 		}
-		result := target.ReserveIfRegistrable()
+		result := target.ReserveIfAvailable()
 		switch result {
 		case Succeeded:
 			temporaryReservedCourses = append(temporaryReservedCourses, target)
 			student.FillTimeslot(target)
-		case TemporaryFull:
+		case NotAvailable:
 			continue
-		case Closed:
-			// 対象が履修登録を締め切っていた場合、キューから除き、現在のインデックスから再開する
-			m.queue.Remove(i)
-			m.Timeslots <- [2]int{target.DayOfWeek, target.Period}
-			i--
-			picked := m.getRandomCourse(target)
-			for picked == nil {
-				continue
-			}
-			m.queue.Add(picked)
 		}
 	}
-	m.queue.Unlock()
+	m.waitingCourseList.RUnlock()
 
 	return temporaryReservedCourses
 }
 
-// 遅い時はもう少し考える
-func (m *CourseManager) getRandomCourse(old *Course) (new *Course) {
-	for _, course := range m.courses {
-		if !course.isRegistrationClosed && course.DayOfWeek == old.DayOfWeek && course.Period == old.Period {
-			return course
+func (m *CourseManager) RemoveRegistrationClosedCourse(c *Course) {
+	m.waitingCourseList.Lock()
+	defer m.waitingCourseList.Unlock()
+	for i, v := range m.waitingCourseList.items {
+		if v == c {
+			m.waitingCourseList.Remove(i)
+			break
 		}
 	}
-	return nil
 }
 
 func (m *CourseManager) ExposeCoursesForValidation() map[string]*Course {

@@ -43,18 +43,14 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 	wg := sync.WaitGroup{}
 	wg.Add(initialCourseCount + 1)
-	for i := 0; i < initialCourseCount && i < 6*7*5; i++ {
-		i := i % 30
-		dayOfWeek := i / 6
-		period := i % 6
-		s.CourseManager.Timeslots <- [2]int{dayOfWeek, period}
-	}
 	for i := 0; i < initialCourseCount; i++ {
+		i := i % 30
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
-			timeslot := <-s.CourseManager.Timeslots
-			s.addCourseLoad(ctx, timeslot[0], timeslot[1], step)
+			dayOfWeek := i/5 + 1
+			period := i % 6
+			s.addCourseLoad(ctx, dayOfWeek, period, step)
 		}()
 	}
 	go func() {
@@ -413,6 +409,12 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			return
 		}
 
+		// 履修登録を締め切ったので候補から取り除く
+		s.CourseManager.RemoveRegistrationClosedCourse(course)
+		// 科目を追加
+		s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
+		s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
+
 		teacher := course.Teacher()
 		// 科目ステータスをin-progressにする
 		_, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
@@ -426,14 +428,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 		studentLen := len(course.Students())
 		switch {
-		case studentLen < 10:
-			step.AddScore(score.StartCourseUnder10)
-		case studentLen < 20:
-			step.AddScore(score.StartCourseUnder20)
-		case studentLen < 30:
-			step.AddScore(score.StartCourseUnder30)
-		case studentLen < 40:
-			step.AddScore(score.StartCourseUnder40)
 		case studentLen < 50:
 			step.AddScore(score.StartCourseUnder50)
 		case studentLen == 50:
@@ -563,11 +557,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 		}
 
 		step.AddScore(score.FinishCourses)
-
-		timeslot := <-s.CourseManager.Timeslots
-		// 科目を追加
-		s.addCourseLoad(ctx, timeslot[0], timeslot[1], step)
-		s.addCourseLoad(ctx, timeslot[0], timeslot[1], step)
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
 		s.addActiveStudentLoads(ctx, step, 1)

@@ -10,9 +10,8 @@ import (
 type ReservationResult string
 
 const (
-	Succeeded     ReservationResult = "successfully reserved"
-	TemporaryFull ReservationResult = "this course is temporary full"
-	Closed        ReservationResult = "this course is closed"
+	Succeeded    ReservationResult = "successfully reserved"
+	NotAvailable ReservationResult = "this course is not available"
 )
 
 const (
@@ -119,17 +118,13 @@ func (c *Course) Classes() []*Class {
 	return cs
 }
 
-// ReserveIfRegistrable は履修受付中なら1枠確保する
-func (c *Course) ReserveIfRegistrable() ReservationResult {
+// ReserveIfAvailable は履修受付中なら1枠確保する
+func (c *Course) ReserveIfAvailable() ReservationResult {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	if c.isRegistrationClosed {
-		return Closed
-	}
-
-	if len(c.registeredStudents)+c.reservations >= c.capacity {
-		return TemporaryFull
+	if c.isRegistrationClosed || len(c.registeredStudents)+c.reservations >= c.capacity {
+		return NotAvailable
 	}
 
 	c.reservations++
