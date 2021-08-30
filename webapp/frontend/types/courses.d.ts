@@ -27,18 +27,22 @@ export type SearchCourseRequest = {
 
 export type Course = {
   id: string
-  code: string
-  type: CourseType
   name: string
-  description: string
-  credit: number
   period: number
   dayOfWeek: DayOfWeek
   teacher: string
-  keywords: string
 }
 
-export type AddCourseRequest = Omit<Course, 'id' | 'teacher'>
+export type SyllabusCourse = Course & {
+  code: string
+  type: CourseType
+  description: string
+  credit: number
+  keywords: string
+  status: CourseStatus
+}
+
+export type AddCourseRequest = Omit<SyllabusCourse, 'id' | 'teacher' | 'status'>
 
 export type SetCourseStatusRequest = {
   status: CourseStatus

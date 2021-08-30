@@ -1,4 +1,4 @@
-import { CourseType, DayOfWeek } from '~/types/courses'
+import { CourseStatus, CourseType, DayOfWeek } from '~/types/courses'
 
 export function formatType(type: CourseType): string {
   if (type === 'liberal-arts') {
@@ -26,5 +26,18 @@ export function formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
     default:
       const _n: never = dayOfWeek
       return ''
+  }
+}
+
+export function formatStatus(status: CourseStatus): string {
+  if (status === 'in-progress') {
+    return '開講中'
+  } else if (status === 'registration') {
+    return '履修登録中'
+  } else if (status === 'closed') {
+    return '閉講'
+  } else {
+    const _s: never = status
+    return ''
   }
 }

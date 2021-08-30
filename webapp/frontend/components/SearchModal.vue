@@ -102,6 +102,7 @@
                 <th>科目種別</th>
                 <th>時間</th>
                 <th>単位数</th>
+                <th>ステータス</th>
                 <th>担当</th>
                 <th></th>
               </tr>
@@ -128,6 +129,7 @@
                   <td>{{ formatType(c.type) }}</td>
                   <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
                   <td>{{ c.credit }}</td>
+                  <td>{{ formatStatus(c.status) }}</td>
                   <td>椅子 昆</td>
                   <td>
                     <a
@@ -170,13 +172,14 @@ import TextField from './common/TextField.vue'
 import Select from './common/Select.vue'
 import Button from '~/components/common/Button.vue'
 import {
-  Course,
+  CourseStatus,
   CourseType,
   DayOfWeek,
   SearchCourseRequest,
+  SyllabusCourse,
 } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
-import { formatPeriod, formatType } from '~/helpers/course_helper'
+import { formatPeriod, formatStatus, formatType } from '~/helpers/course_helper'
 import Pagination from '~/components/common/Pagination.vue'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { PeriodCount } from '~/constants/calendar'
@@ -188,8 +191,8 @@ type Selected = {
 }
 
 type DataType = {
-  courses: Course[]
-  checkedCourses: Course[]
+  courses: SyllabusCourse[]
+  checkedCourses: SyllabusCourse[]
   params: SearchCourseRequest
   link: Partial<Link>
 }
@@ -216,7 +219,7 @@ export default Vue.extend({
       default: () => ({ dayOfWeek: undefined, period: undefined }),
     },
     value: {
-      type: Array as PropType<Course[]>,
+      type: Array as PropType<SyllabusCourse[]>,
       default: () => [],
       required: true,
     },
@@ -246,6 +249,9 @@ export default Vue.extend({
     formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
       return formatPeriod(dayOfWeek, period)
     },
+    formatStatus(status: CourseStatus): string {
+      return formatStatus(status)
+    },
     isChecked(courseId: string): boolean {
       const course = this.checkedCourses.find((v) => v.id === courseId)
       return course !== undefined
@@ -256,7 +262,7 @@ export default Vue.extend({
     async onSubmitSearch(query?: Record<string, any>): Promise<void> {
       const params = this.filterParams(this.params)
       try {
-        const res = await this.$axios.get<Course[]>('/api/syllabus', {
+        const res = await this.$axios.get<SyllabusCourse[]>('/api/syllabus', {
           params: { ...params, ...query },
         })
         if (res.status === 200) {
@@ -274,7 +280,7 @@ export default Vue.extend({
         notify('検索結果を取得できませんでした')
       }
     },
-    onChangeCheckbox(course: Course): void {
+    onChangeCheckbox(course: SyllabusCourse): void {
       const c = this.checkedCourses.find((v) => v.id === course.id)
       if (c) {
         this.checkedCourses = this.checkedCourses.filter(

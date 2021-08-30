@@ -105,6 +105,23 @@
                 border
               "
             >
+              科目ステータス
+            </div>
+            <div class="px-2 py-2 border">
+              {{ courseStatus }}
+            </div>
+            <div
+              class="
+                px-2
+                py-2
+                bg-primary-500
+                text-white
+                flex flex-col
+                justify-center
+                items-center
+                border
+              "
+            >
               担当教員
             </div>
             <div class="px-2 py-2 border">
@@ -154,11 +171,11 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Context } from '@nuxt/types'
-import { Course } from '~/types/courses'
-import { formatType, formatPeriod } from '~/helpers/course_helper'
+import { SyllabusCourse } from '~/types/courses'
+import { formatType, formatPeriod, formatStatus } from '~/helpers/course_helper'
 
 type SyllabusData = {
-  course: Course
+  course: SyllabusCourse
 }
 
 export default Vue.extend({
@@ -166,7 +183,7 @@ export default Vue.extend({
   async asyncData(ctx: Context): Promise<SyllabusData> {
     const id = ctx.params.id
     const res = await ctx.$axios.get(`/api/syllabus/${id}`)
-    const course: Course = res.data
+    const course: SyllabusCourse = res.data
 
     return { course }
   },
@@ -183,6 +200,7 @@ export default Vue.extend({
         dayOfWeek: 'monday',
         teacher: '',
         keywords: '',
+        status: 'registration',
       },
     }
   },
@@ -192,6 +210,9 @@ export default Vue.extend({
     },
     coursePeriod(): string {
       return formatPeriod(this.course.dayOfWeek, this.course.period)
+    },
+    courseStatus(): string {
+      return formatStatus(this.course.status)
     },
   },
 })
