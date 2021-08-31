@@ -5,25 +5,21 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"net/http"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/isucon/isucon11-final/benchmarker/api"
-
-	"github.com/isucon/isucandar/parallel"
-
-	"github.com/isucon/isucandar/worker"
-
-	"github.com/isucon/isucon11-final/benchmarker/generate"
-
-	"github.com/isucon/isucon11-final/benchmarker/model"
-
+	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/isucon/isucandar/parallel"
+	"github.com/isucon/isucandar/worker"
 
-	"github.com/isucon/isucandar"
+	"github.com/isucon/isucon11-final/benchmarker/api"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
+	"github.com/isucon/isucon11-final/benchmarker/generate"
+	"github.com/isucon/isucon11-final/benchmarker/model"
 )
 
 const (
@@ -57,6 +53,12 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
+
+	err = s.prepareAbnormal(ctx, step)
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
+
 	_, err = InitializeAction(ctx, a)
 	if err != nil {
 		ContestantLogger.Printf("initializeが失敗しました")
@@ -154,7 +156,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		}
 
 		param := generate.CourseParam(teacher, generate.WithPeriod(i%6), generate.WithDayOfWeek((i/6)+1))
-		_, res, err := AddCourseAction(ctx, teacher, param)
+		_, res, err := AddCourseAction(ctx, teacher.Agent, param)
 		if err != nil {
 			step.AddError(err)
 			return
@@ -514,6 +516,343 @@ func prepareCheckAnnouncementDetailContent(expected *model.AnnouncementStatus, a
 		!AssertEqual("announcement Message", expected.Announcement.Message, actual.Message) {
 		AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
 		return errNotMatch
+	}
+
+	return nil
+}
+
+type SampleDataForPrepareAbnormal struct {
+	RegistrationCourse    *model.Course
+	InProgressCourse      *model.Course
+	ClosedCourse          *model.Course
+	SubmissionClosedClass *model.Class
+	SubmissionOpenClass   *model.Class
+	Announcement          *model.Announcement
+}
+
+func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.BenchmarkStep) error {
+	const (
+		prepareCourseRegisterLimit = 20
+	)
+
+	// チェックで使用する学生ユーザ
+	userDataForStudent, err := s.studentPool.newUserData()
+	if err != nil {
+		panic("unreachable! studentPool is empty")
+	}
+	student := model.NewStudent(userDataForStudent, s.BaseURL, prepareCourseRegisterLimit)
+	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
+	if err != nil {
+		return nil
+	}
+
+	// チェックで使用する講師ユーザ
+	teacher := s.GetRandomTeacher()
+	_, err = LoginAction(ctx, teacher.Agent, teacher.UserAccount)
+	if err != nil {
+		return nil
+	}
+
+	// チェックで使用するサンプルデータの生成
+	sampleData := &SampleDataForPrepareAbnormal{}
+
+	courseParam := generate.CourseParam(teacher)
+	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	sampleData.RegistrationCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
+
+	courseParam = generate.CourseParam(teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	sampleData.InProgressCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID)
+	if err != nil {
+		return err
+	}
+
+	courseParam = generate.CourseParam(teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	sampleData.ClosedCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
+	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, sampleData.ClosedCourse.ID)
+	if err != nil {
+		return err
+	}
+
+	classParam := generate.ClassParam(sampleData.InProgressCourse, 1)
+	_, addClassRes, err := AddClassAction(ctx, teacher.Agent, sampleData.InProgressCourse, classParam)
+	if err != nil {
+		return err
+	}
+	sampleData.SubmissionClosedClass = model.NewClass(addClassRes.ClassID, classParam)
+	_, _, err = DownloadSubmissionsAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionClosedClass.ID)
+	if err != nil {
+		return err
+	}
+
+	classParam = generate.ClassParam(sampleData.InProgressCourse, 2)
+	_, addClassRes, err = AddClassAction(ctx, teacher.Agent, sampleData.InProgressCourse, classParam)
+	if err != nil {
+		return err
+	}
+	sampleData.SubmissionOpenClass = model.NewClass(addClassRes.ClassID, classParam)
+
+	announcement := generate.Announcement(sampleData.InProgressCourse, sampleData.SubmissionOpenClass)
+	_, announcementRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	if err != nil {
+		return err
+	}
+	announcement.ID = announcementRes.ID
+	sampleData.Announcement = announcement
+
+	// ======== 未ログイン状態で行う異常系チェック ========
+
+	// 未ログイン状態でのチェックは別ユーザで行う
+	userDataForUnloggedInCheck, err := s.studentPool.newUserData()
+	if err != nil {
+		panic("unreachable! studentPool is empty")
+	}
+	studentForUnloggedInCheck := model.NewStudent(userDataForUnloggedInCheck, s.BaseURL, prepareCourseRegisterLimit)
+	teacherForUnloggedInCheck := s.GetRandomTeacher()
+
+	// エンドポイントの認証チェック
+	if err := checkAuthentication(ctx, studentForUnloggedInCheck, teacherForUnloggedInCheck, sampleData); err != nil {
+		return err
+	}
+
+	// ログインの異常系チェック
+	// 渡したユーザは副作用としてログインされるので、これ以降未ログイン状態のチェックには使えない
+	if err := checkLoginAbnormal(ctx, studentForUnloggedInCheck); err != nil {
+		return err
+	}
+
+	// ======== ログイン状態で行う異常系チェック ========
+
+	// 講師用APIの認可チェック
+	if err := checkAdminAuthorization(ctx, student, teacher, sampleData); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkLoginAbnormal(ctx context.Context, student *model.Student) error {
+	errInvalidAuthenticationLogin := failure.NewError(fails.ErrApplication, fmt.Errorf("間違った認証情報でのログインに成功しました"))
+	errRelogin := failure.NewError(fails.ErrApplication, fmt.Errorf("ログイン状態での再ログインに成功しました"))
+
+	// 存在しないユーザでのログイン
+	hres, err := LoginAction(ctx, student.Agent, &model.UserAccount{
+		Code:        "X12345",
+		Name:        "unknown",
+		RawPassword: "password",
+	})
+	if err == nil {
+		return errInvalidAuthenticationLogin
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusUnauthorized}); err != nil {
+		return err
+	}
+
+	// 間違ったパスワードでのログイン
+	hres, err = LoginAction(ctx, student.Agent, &model.UserAccount{
+		Code:        student.Code,
+		Name:        student.Name,
+		RawPassword: student.RawPassword + "abc",
+	})
+	if err == nil {
+		return errInvalidAuthenticationLogin
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusUnauthorized}); err != nil {
+		return err
+	}
+
+	// 再ログインチェックのため一度ちゃんとログインする
+	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
+	if err != nil {
+		return err
+	}
+
+	// 再ログイン
+	hres, err = LoginAction(ctx, student.Agent, student.UserAccount)
+	if err == nil {
+		return errRelogin
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkAuthentication(ctx context.Context, student *model.Student, teacher *model.Teacher, sampleData *SampleDataForPrepareAbnormal) error {
+	errAuthentication := failure.NewError(fails.ErrApplication, fmt.Errorf("未ログイン状態で認証が必要なAPIへのアクセスが成功しました"))
+	checkAuthentication := func(hres *http.Response, err error) error {
+		// リクエストが成功したらwebappの不具合
+		if err == nil {
+			return errAuthentication
+		}
+
+		// ステータスコードのチェック
+		if err := verifyStatusCode(hres, []int{http.StatusUnauthorized}); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	hres, _, err := GetMeAction(ctx, student.Agent)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = GetRegisteredCoursesAction(ctx, student.Agent)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{sampleData.RegistrationCourse})
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = GetGradeAction(ctx, student.Agent)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	param := generate.SearchCourseParam()
+	hres, _, err = SearchCourseAction(ctx, student.Agent, param, "")
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = GetCourseDetailAction(ctx, student.Agent, sampleData.RegistrationCourse.ID)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	courseParam := generate.CourseParam(teacher)
+	hres, _, err = AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, sampleData.RegistrationCourse.ID)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = GetClassesAction(ctx, student.Agent, sampleData.InProgressCourse.ID)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	classParam := generate.ClassParam(sampleData.InProgressCourse, 3)
+	hres, _, err = AddClassAction(ctx, teacher.Agent, sampleData.InProgressCourse, classParam)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	submissionData, fileName := generate.SubmissionData(sampleData.InProgressCourse, sampleData.SubmissionOpenClass, student.UserAccount)
+	hres, err = SubmitAssignmentAction(ctx, student.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionOpenClass.ID, fileName, submissionData)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	scores := []StudentScore{
+		{
+			score: 90,
+			code:  student.Code,
+		},
+	}
+	hres, err = PostGradeAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionClosedClass.ID, scores)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = DownloadSubmissionsAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionOpenClass.ID)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = GetAnnouncementListAction(ctx, student.Agent, "")
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	announcement := generate.Announcement(sampleData.InProgressCourse, sampleData.SubmissionOpenClass)
+	hres, _, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = GetAnnouncementDetailAction(ctx, student.Agent, sampleData.Announcement.ID)
+	if err := checkAuthentication(hres, err); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkAdminAuthorization(ctx context.Context, student *model.Student, teacher *model.Teacher, sampleData *SampleDataForPrepareAbnormal) error {
+	errAuthorization := failure.NewError(fails.ErrApplication, fmt.Errorf("学生ユーザで講師用APIへのアクセスが成功しました"))
+	checkAuthorization := func(hres *http.Response, err error) error {
+		// リクエストが成功したらwebappの不具合
+		if err == nil {
+			return errAuthorization
+		}
+
+		// ステータスコードのチェック
+		if err := verifyStatusCode(hres, []int{http.StatusForbidden}); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	courseParam := generate.CourseParam(teacher)
+	hres, _, err := AddCourseAction(ctx, student.Agent, courseParam)
+	if err := checkAuthorization(hres, err); err != nil {
+		return err
+	}
+
+	hres, err = SetCourseStatusInProgressAction(ctx, student.Agent, sampleData.RegistrationCourse.ID)
+	if err := checkAuthorization(hres, err); err != nil {
+		return err
+	}
+
+	classParam := generate.ClassParam(sampleData.InProgressCourse, 3)
+	hres, _, err = AddClassAction(ctx, student.Agent, sampleData.InProgressCourse, classParam)
+	if err := checkAuthorization(hres, err); err != nil {
+		return err
+	}
+
+	scores := []StudentScore{
+		{
+			score: 90,
+			code:  student.Code,
+		},
+	}
+	hres, err = PostGradeAction(ctx, student.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionClosedClass.ID, scores)
+	if err := checkAuthorization(hres, err); err != nil {
+		return err
+	}
+
+	hres, _, err = DownloadSubmissionsAction(ctx, student.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionOpenClass.ID)
+	if err := checkAuthorization(hres, err); err != nil {
+		return err
+	}
+
+	announcement := generate.Announcement(sampleData.InProgressCourse, sampleData.SubmissionOpenClass)
+	hres, _, err = SendAnnouncementAction(ctx, student.Agent, announcement)
+	if err := checkAuthorization(hres, err); err != nil {
+		return err
 	}
 
 	return nil
