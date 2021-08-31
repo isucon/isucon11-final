@@ -9,33 +9,31 @@
           科目検索
         </h3>
         <form class="flex-1 flex-col" @submit.prevent="onSubmitSearch()">
-          <div class="flex items-center">
-            <TextField
-              id="params-keywords"
-              v-model="params.keywords"
-              label="キーワード"
-              type="text"
-              placeholder="キーワードを入力してください"
-            />
-          </div>
+          <TextField
+            id="params-keywords"
+            v-model="params.keywords"
+            label="キーワード"
+            type="text"
+            placeholder="キーワードを入力してください"
+          />
           <div class="flex mt-4 space-x-2">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >科目</label
             >
-            <div class="">
+            <div class="flex flex-auto">
               <TextField
                 id="params-teacher"
+                class="flex-1"
                 v-model="params.teacher"
                 label="担当教員"
                 label-direction="vertical"
                 type="text"
                 placeholder="教員名を入力"
               />
-            </div>
-            <div class="flex items-center">
               <TextField
                 id="params-credit"
+                class="flex-1"
                 v-model="params.credit"
                 label="単位数"
                 label-direction="vertical"
@@ -43,53 +41,59 @@
                 min="1"
                 placeholder="単位数を入力"
               />
+              <Select
+                id="params-type"
+                class="flex-1"
+                v-model="params.type"
+                label="科目種別"
+                :options="[
+                  { text: '一般教養', value: 'liberal-arts' },
+                  { text: '専門', value: 'major-subjects' },
+                ]"
+              />
             </div>
-            <Select
-              id="params-type"
-              v-model="params.type"
-              label="科目種別"
-              :options="[
-                { text: '一般教養', value: 'liberal-arts' },
-                { text: '専門', value: 'major-subjects' },
-              ]"
-            />
           </div>
           <div class="flex mt-4 space-x-2">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >開講</label
             >
-            <Select
-              id="params-day-of-week"
-              label="曜日"
-              :options="[
-                { text: '月曜', value: 'monday' },
-                { text: '火曜', value: 'tuesday' },
-                { text: '水曜', value: 'wednesday' },
-                { text: '木曜', value: 'thursday' },
-                { text: '金曜', value: 'friday' },
-              ]"
-              :selected="params.dayOfWeek || selected.dayOfWeek"
-              @change="params.dayOfWeek = $event"
-            />
-            <Select
-              id="params-period"
-              label="時限"
-              :options="periods"
-              :selected="params.period || selected.period"
-              @change="params.period = $event"
-            />
-            <Select
-              id="params-period"
-              label="ステータス"
-              :options="[
-                { text: '履修登録中', value: 'registration' },
-                { text: '開講中', value: 'in-progress' },
-                { text: '閉講', value: 'closed' },
-              ]"
-              :selected="params.status || selected.status"
-              @change="params.status = $event"
-            />
+            <div class="flex flex-auto">
+              <Select
+                id="params-day-of-week"
+                class="flex-1"
+                label="曜日"
+                :options="[
+                  { text: '月曜', value: 'monday' },
+                  { text: '火曜', value: 'tuesday' },
+                  { text: '水曜', value: 'wednesday' },
+                  { text: '木曜', value: 'thursday' },
+                  { text: '金曜', value: 'friday' },
+                ]"
+                :selected="params.dayOfWeek || selected.dayOfWeek"
+                @change="params.dayOfWeek = $event"
+              />
+              <Select
+                id="params-period"
+                class="flex-1"
+                label="時限"
+                :options="periods"
+                :selected="params.period || selected.period"
+                @change="params.period = $event"
+              />
+              <Select
+                id="params-period"
+                class="flex-1"
+                label="ステータス"
+                :options="[
+                  { text: '履修登録中', value: 'registration' },
+                  { text: '開講中', value: 'in-progress' },
+                  { text: '閉講', value: 'closed' },
+                ]"
+                :selected="params.status || selected.status"
+                @change="params.status = $event"
+              />
+            </div>
           </div>
           <div class="flex justify-center">
             <Button type="button" class="mt-6 flex-grow-0" @click="onClickReset"

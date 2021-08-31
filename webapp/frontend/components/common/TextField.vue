@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-auto" :class="wrapperClass">
+  <div class="flex" :class="wrapperClass">
     <div class="flex-shrink-0 mr-2" :class="labelClass">
       <label class="text-gray-500 font-bold text-right" :for="id">
         {{ label }}

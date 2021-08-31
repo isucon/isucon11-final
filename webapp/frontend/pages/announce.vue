@@ -19,7 +19,7 @@
             <TextField
               id="input-course-name"
               v-model="courseName"
-              class=""
+              class="flex-auto"
               label=""
               type="text"
               placeholder="科目名で絞り込み"
