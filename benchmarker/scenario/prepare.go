@@ -614,35 +614,35 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 	// ======== 未ログイン状態で行う異常系チェック ========
 
 	// 未ログイン状態でのチェックは別ユーザで行う
-	userDataForUnloggedInCheck, err := s.studentPool.newUserData()
+	userDataForNotLoggedInCheck, err := s.studentPool.newUserData()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	studentForUnloggedInCheck := model.NewStudent(userDataForUnloggedInCheck, s.BaseURL, prepareCourseRegisterLimit)
-	teacherForUnloggedInCheck := s.GetRandomTeacher()
+	studentForNotLoggedInCheck := model.NewStudent(userDataForNotLoggedInCheck, s.BaseURL, prepareCourseRegisterLimit)
+	teacherForNotLoggedInCheck := s.GetRandomTeacher()
 
-	// エンドポイントの認証チェック
-	if err := checkAuthentication(ctx, studentForUnloggedInCheck, teacherForUnloggedInCheck, sampleData); err != nil {
+	// 認証チェック
+	if err := prepareCheckAuthenticationAbnormal(ctx, studentForNotLoggedInCheck, teacherForNotLoggedInCheck, sampleData); err != nil {
 		return err
 	}
 
 	// ログインの異常系チェック
 	// 渡したユーザは副作用としてログインされるので、これ以降未ログイン状態のチェックには使えない
-	if err := checkLoginAbnormal(ctx, studentForUnloggedInCheck); err != nil {
+	if err := prepareCheckLoginAbnormal(ctx, studentForNotLoggedInCheck); err != nil {
 		return err
 	}
 
 	// ======== ログイン状態で行う異常系チェック ========
 
 	// 講師用APIの認可チェック
-	if err := checkAdminAuthorization(ctx, student, teacher, sampleData); err != nil {
+	if err := prepareCheckAdminAuthorizationAbnormal(ctx, student, teacher, sampleData); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func checkLoginAbnormal(ctx context.Context, student *model.Student) error {
+func prepareCheckLoginAbnormal(ctx context.Context, student *model.Student) error {
 	errInvalidAuthenticationLogin := failure.NewError(fails.ErrApplication, fmt.Errorf("間違った認証情報でのログインに成功しました"))
 	errRelogin := failure.NewError(fails.ErrApplication, fmt.Errorf("ログイン状態での再ログインに成功しました"))
 
@@ -690,7 +690,7 @@ func checkLoginAbnormal(ctx context.Context, student *model.Student) error {
 	return nil
 }
 
-func checkAuthentication(ctx context.Context, student *model.Student, teacher *model.Teacher, sampleData *SampleDataForPrepareAbnormal) error {
+func prepareCheckAuthenticationAbnormal(ctx context.Context, student *model.Student, teacher *model.Teacher, sampleData *SampleDataForPrepareAbnormal) error {
 	errAuthentication := failure.NewError(fails.ErrApplication, fmt.Errorf("未ログイン状態で認証が必要なAPIへのアクセスが成功しました"))
 	checkAuthentication := func(hres *http.Response, err error) error {
 		// リクエストが成功したらwebappの不具合
@@ -800,7 +800,7 @@ func checkAuthentication(ctx context.Context, student *model.Student, teacher *m
 	return nil
 }
 
-func checkAdminAuthorization(ctx context.Context, student *model.Student, teacher *model.Teacher, sampleData *SampleDataForPrepareAbnormal) error {
+func prepareCheckAdminAuthorizationAbnormal(ctx context.Context, student *model.Student, teacher *model.Teacher, sampleData *SampleDataForPrepareAbnormal) error {
 	errAuthorization := failure.NewError(fails.ErrApplication, fmt.Errorf("学生ユーザで講師用APIへのアクセスが成功しました"))
 	checkAuthorization := func(hres *http.Response, err error) error {
 		// リクエストが成功したらwebappの不具合
