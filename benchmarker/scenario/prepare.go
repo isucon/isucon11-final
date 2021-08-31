@@ -239,14 +239,19 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
 
-	// クラス追加、課題提出、ダウンロード、採点（お知らせは見ない）
+	studentByCode := make(map[string]*model.Student)
+	for _, student := range students {
+		studentByCode[student.Code] = student
+	}
+	// クラス追加、おしらせ追加、（一部）お知らせ確認
+	// 課題提出、ダウンロード、採点、成績確認
 	// workerはコースごと
-	w, err = worker.NewWorker(func(ctx context.Context, i int) {
-		course := courses[i]
-		teacher := course.Teacher()
+	checkAnnouncementDetailPart := rand.Intn(prepareClassCountPerCourse)
+	for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
+		w, err = worker.NewWorker(func(ctx context.Context, i int) {
+			course := courses[i]
+			teacher := course.Teacher()
 
-		checkAnnouncementDetailPart := rand.Intn(5) + 1
-		for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
 			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
@@ -336,19 +341,42 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				step.AddError(err)
 				return
 			}
+		}, worker.WithLoopCount(prepareCourseCount))
+		if err != nil {
+			step.AddError(err)
+			return err
 		}
-	}, worker.WithLoopCount(prepareCourseCount))
-	if err != nil {
-		step.AddError(err)
-		return err
+		w.Process(ctx)
+		w.Wait()
+
+		w, err = worker.NewWorker(func(ctx context.Context, i int) {
+			student := students[i]
+			expected := calculateGradeRes(student, studentByCode)
+			_, res, err := GetGradeAction(ctx, student.Agent)
+			if err != nil {
+				step.AddError(failure.NewError(fails.ErrCritical, err))
+				return
+			}
+
+			err = validateUserGrade(&expected, &res, len(students))
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+		}, worker.WithLoopCount(prepareStudentCount))
+		if err != nil {
+			step.AddError(err)
+			return err
+		}
+		w.Process(ctx)
+		w.Wait()
 	}
-	w.Process(ctx)
-	w.Wait()
 
 	if hasErrors() {
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
 
+	// お知らせの検証
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
 		expected := student.Announcements()
