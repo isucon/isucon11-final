@@ -334,6 +334,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
+			timer := time.After(300 * time.Millisecond)
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -352,9 +353,13 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				step.AddScore(score.GetAnnouncementList)
 			}
 
+			// このページで未読お知らせを読んだカウント（ページングするかどうかの判定用）
+			var readCount int
 			for _, ans := range res.Announcements {
 
 				if ans.Unread {
+					readCount++
+
 					announcementStatus := student.GetAnnouncement(ans.ID)
 					if announcementStatus == nil {
 						// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
@@ -384,17 +389,15 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
-			// TODO: 現状: ページングで最後のページまで確認したら最初のページに戻る
-			// TODO: 理想1: 未読お知らせを早く確認するため以降のページに未読が存在しないなら最初に戻る
-			// TODO: 理想2: 10ページぐらい最低ページングする。10ページ目末尾のお知らせ以降に未読があればさらにページングする。無いならしない。
 			// MEMO: Student.Announcementsはwebapp内のお知らせの順番(createdAt)と完全同期できていない
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
-			// 未読お知らせがないのなら少しwaitして1ページ目から見直す
-			if res.UnreadCount == 0 {
+			// 未読お知らせがない or 未読をすべて読み終えたら
+			// 少しwaitして1ページ目から見直す
+			if res.UnreadCount == 0 || res.UnreadCount == readCount {
 				nextPathParam = ""
-				<-time.After(200 * time.Millisecond)
+				<-timer // TODO: 未読お知らせが追加されたらエスパーで待ち解消する
 			}
 
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
