@@ -327,7 +327,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	return hres, res, nil
 }
 
-func AddCourseAction(ctx context.Context, teacher *model.Teacher, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
+func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
 	req := api.AddCourseRequest{
 		Code:        param.Code,
 		Type:        api.CourseType(param.Type),
@@ -339,7 +339,7 @@ func AddCourseAction(ctx context.Context, teacher *model.Teacher, param *model.C
 		Keywords:    param.Keywords,
 	}
 	res := api.AddCourseResponse{}
-	hres, err := api.AddCourse(ctx, teacher.Agent, req)
+	hres, err := api.AddCourse(ctx, agent, req)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
