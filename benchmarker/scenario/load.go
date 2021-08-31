@@ -475,7 +475,7 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 			step.AddScore(score.StartCourseOver50)
 		}
 
-		var classRaps [classCountPerCourse]int64
+		var classTimes [classCountPerCourse]int64
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
@@ -566,23 +566,23 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 				step.AddScore(score.RegisterScore)
 			}
 
-			classRaps[i] = time.Since(classStart).Milliseconds()
+			classTimes[i] = time.Since(classStart).Milliseconds()
 		}
 
 		// クラスのラップタイム表示
 		var compCount int
 		var sumTime int64
-		for _, cr := range classRaps {
-			sumTime += cr
-			if cr != 0 {
+		for _, ct := range classTimes {
+			sumTime += ct
+			if ct != 0 {
 				compCount++
 			}
 		}
 
 		s.debugData.AddInt("classAvgTime", int64(float64(sumTime)/float64(compCount)))
-		s.debugData.AddInt("courseSumTime", sumTime)
+		s.debugData.AddInt("classTotalTime", sumTime)
 		DebugLogger.Printf("[debug] 科目完了 Sum: %d ms, Avg: %.f ms, List(ms): %d, %d, %d, %d, %d",
-			sumTime, float64(sumTime)/float64(compCount), classRaps[0], classRaps[1], classRaps[2], classRaps[3], classRaps[4])
+			sumTime, float64(sumTime)/float64(compCount), classTimes[0], classTimes[1], classTimes[2], classTimes[3], classTimes[4])
 
 		if s.isNoRequestTime(ctx) {
 			return
