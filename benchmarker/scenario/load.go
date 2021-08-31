@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -100,12 +101,24 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	DebugLogger.Printf("========STATS_DATA=========")
 	for k, v := range s.debugData.ints {
+		if len(v) == 0 {continue}
+
 		var sum int64
 		for _, t := range v {
 			sum += t
 		}
 		avg := int64(float64(sum) / float64(len(v)))
-		DebugLogger.Printf("%s: avg %d", k, avg)
+
+		sorted := make([]int64, len(v))
+		copy(sorted, v)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i] < sorted[j]
+		})
+
+		tile50 := sorted[int(float64(len(sorted)) * 0.5)]
+		tile90 := sorted[int(float64(len(sorted)) * 0.9)]
+		tile99 := sorted[int(float64(len(sorted)) * 0.99)]
+		DebugLogger.Printf("%s: avg %d, 50tile %d, 90tile %d, 99tile %d", k, avg, tile50, tile90, tile99)
 	}
 
 	return nil
@@ -340,6 +353,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				return
 			}
 
+			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
@@ -347,6 +361,8 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				<-time.After(1 * time.Millisecond)
 				continue
 			}
+			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
+
 			if err := verifyAnnouncements(&res, student); err != nil {
 				step.AddError(err)
 			} else {
@@ -371,12 +387,14 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 						return
 					}
 
+					startGetAnnouncementDetail := time.Now()
 					// お知らせの詳細を取得する
 					_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
 					if err != nil {
 						step.AddError(err)
 						continue // 次の未読おしらせの確認へ
 					}
+					s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
 					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
 						step.AddError(err)
@@ -751,6 +769,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 		go func() {
 			defer wg.Done()
 
+			waitStartTime := time.Now()
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 			select {
 			case <-time.After(endTimeDuration):
@@ -761,6 +780,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			case <-student.WaitReadAnnouncement(ctx, announcementID):
 				// 学生sが課題お知らせを読むまで待つ
 			}
+			s.debugData.AddInt("waitReadAnnouncement", time.Since(waitStartTime).Milliseconds())
 
 			// selectでのwaitは複数該当だとランダムなのでここでも判定
 			if s.isNoRequestTime(ctx) {
