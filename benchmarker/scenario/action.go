@@ -53,7 +53,7 @@ func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.Use
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusBadRequest, http.StatusForbidden})
+	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
 		return hres, err
 	}
