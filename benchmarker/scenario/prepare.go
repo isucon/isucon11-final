@@ -543,14 +543,14 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 	student := model.NewStudent(userDataForStudent, s.BaseURL, prepareCourseRegisterLimit)
 	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	// チェックで使用する講師ユーザ
 	teacher := s.GetRandomTeacher()
 	_, err = LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	// チェックで使用するサンプルデータの生成
