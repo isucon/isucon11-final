@@ -2,5 +2,5 @@ parameters:
     level: 4
     ignoreErrors:
         -
-            message: '#If condition is always false\.#'
+            message: '#If condition is always true\.#'
             path: public/index.php

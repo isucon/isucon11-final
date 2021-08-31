@@ -13,13 +13,23 @@ return function (ContainerBuilder $containerBuilder) {
     $containerBuilder->addDefinitions([
         SettingsInterface::class => function () {
             return new Settings([
-                'displayErrorDetails' => true, // Should be set to false in production
-                'logError'            => false,
-                'logErrorDetails'     => false,
+                'displayErrorDetails' => false, // Should be set to false in production
+                'logError'            => true,
+                'logErrorDetails'     => true,
                 'logger' => [
                     'name' => 'slim-app',
-                    'path' => isset($_ENV['docker']) ? 'php://stdout' : __DIR__ . '/../logs/app.log',
+                    'path' => 'php://stdout',
                     'level' => Logger::DEBUG,
+                ],
+                'database' => [
+                    'host' => getenv('MYSQL_HOSTNAME') ?: '127.0.0.1',
+                    'port' => getenv('MYSQL_PORT') ?: '3306',
+                    'database' => getenv('MYSQL_DATABASE') ?: 'isucholar',
+                    'user' => getenv('MYSQL_USER') ?: 'isucon',
+                    'password' => getenv('MYSQL_PASS') ?: 'isucon',
+                ],
+                'session' => [
+                    'name' => 'isucholar_php',
                 ],
             ]);
         }
