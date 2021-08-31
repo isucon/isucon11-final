@@ -60,6 +60,20 @@ var (
 	}
 )
 
+type Option func(param *model.CourseParam)
+
+func WithDayOfWeek(d int) Option {
+	return func(param *model.CourseParam) {
+		param.DayOfWeek = d
+	}
+}
+
+func WithPeriod(p int) Option {
+	return func(param *model.CourseParam) {
+		param.Period = p
+	}
+}
+
 func courseDescription() string {
 	return randElt(courseDescription1) + randElt(courseDescription2)
 }
@@ -97,7 +111,7 @@ func (cg *CourseGenerator) nextTimeslot() (dayOfWeek int, period int) {
 	return
 }
 
-func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher) *model.CourseParam {
+func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher, options ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&majorCode, 1)
 
 	var (
@@ -120,7 +134,7 @@ func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher) *model.Cours
 	name.WriteString(randElt(majorSuffix))
 
 	dayOfWeek, period := cg.nextTimeslot()
-	return &model.CourseParam{
+	p := model.CourseParam{
 		Code:        fmt.Sprintf("M%04d", code), // 重複不可, L,M+4桁の数字
 		Type:        "major-subjects",
 		Name:        name.String(),
@@ -131,9 +145,15 @@ func (cg *CourseGenerator) majorCourseParam(teacher *model.Teacher) *model.Cours
 		DayOfWeek:   dayOfWeek,
 		Keywords:    strings.Join(keywords, " "),
 	}
+
+	for _, option := range options {
+		option(&p)
+	}
+
+	return &p
 }
 
-func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher) *model.CourseParam {
+func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher, options ...Option) *model.CourseParam {
 	code := atomic.AddInt32(&liberalCode, 1)
 
 	var (
@@ -152,7 +172,7 @@ func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher) *model.Cou
 	name.WriteString(randElt(liberalSuffix))
 
 	dayOfWeek, period := cg.nextTimeslot()
-	return &model.CourseParam{
+	p := model.CourseParam{
 		Code:        fmt.Sprintf("L%04d", code), // 重複不可, L,M+4桁の数字
 		Type:        "liberal-arts",
 		Name:        name.String(),
@@ -163,13 +183,19 @@ func (cg *CourseGenerator) liberalCourseParam(teacher *model.Teacher) *model.Cou
 		DayOfWeek:   dayOfWeek,
 		Keywords:    strings.Join(keywords, " "),
 	}
+
+	for _, option := range options {
+		option(&p)
+	}
+
+	return &p
 }
 
-func CourseParam(teacher *model.Teacher) *model.CourseParam {
+func CourseParam(teacher *model.Teacher, op ...Option) *model.CourseParam {
 	if rand.Float64() < majorCourseProb {
-		return courseGenerator.majorCourseParam(teacher)
+		return courseGenerator.majorCourseParam(teacher, op...)
 	} else {
-		return courseGenerator.liberalCourseParam(teacher)
+		return courseGenerator.liberalCourseParam(teacher, op...)
 	}
 }
 

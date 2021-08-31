@@ -5,7 +5,7 @@ var (
 		"": "55920142e0aadbaa284119f0c7ed599c",
 		"/200.html": "55920142e0aadbaa284119f0c7ed599c",
 		"/README.md": "5034cfd9edf3fa7d7d23589ecb2488f9",
-		"/_nuxt/app.js": "302177bd1f42bd5cd2c892dbc500a4bf",
+		"/_nuxt/app.js": "5da044bd89a5a49e65be0f1e99e9594c",
 		"/_nuxt/css/app.css": "db2f6b7e1b5cd0cbb38622bf3431a210",
 		"/_nuxt/runtime.js": "c51ffc86f28b62f78d641758e2dab72e",
 		"/announce": "55920142e0aadbaa284119f0c7ed599c",

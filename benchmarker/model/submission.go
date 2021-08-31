@@ -8,7 +8,6 @@ import (
 type Submission struct {
 	Title    string
 	Checksum uint32
-	IsValid  bool
 
 	// score は課題に対する講師によって追加されるスコア
 	// 提出後採点されるまではNULL
@@ -17,10 +16,9 @@ type Submission struct {
 	rmu   sync.RWMutex
 }
 
-func NewSubmission(title string, data []byte, isValid bool) *Submission {
+func NewSubmission(title string, data []byte) *Submission {
 	return &Submission{
 		Title:    title,
-		IsValid:  isValid,
 		Checksum: crc32.ChecksumIEEE(data),
 		rmu:      sync.RWMutex{},
 	}

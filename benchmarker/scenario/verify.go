@@ -327,7 +327,7 @@ func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Cou
 	return nil
 }
 
-func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
+func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announcementStatus *model.AnnouncementStatus) error {
 	if res.CourseID != announcementStatus.Announcement.CourseID {
 		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
 	}
@@ -472,21 +472,22 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 			if err != nil {
 				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
 			}
-			studentCode := f.Name
-			downloadedAssignments[studentCode] = crc32.ChecksumIEEE(assignmentData)
+			downloadedAssignments[f.Name] = crc32.ChecksumIEEE(assignmentData)
 		}
 
-		// mapのサイズが等しく、ダウンロードされた課題がすべて実際に提出した課題ならば、ダウンロードされた課題と提出した課題は集合として等しい
+		// mapのサイズが等しく、提出した課題がすべてダウンロードされた課題に含まれていれば、提出した課題とダウンロードされた課題は集合として等しい
 		if len(downloadedAssignments) != class.GetSubmittedCount() {
 			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
 		}
 
-		for studentCode, checksumDownloaded := range downloadedAssignments {
-			summary := class.GetSubmissionByStudentCode(studentCode)
-			if summary == nil {
-				return errInvalidResponse("課題を提出していない学生のファイルが課題zipに含まれています")
-			} else if checksumDownloaded != summary.Checksum {
-				return errInvalidResponse("ダウンロードされた課題が提出された課題と一致しません")
+		for studentCode, submission := range class.Submissions() {
+			expectedFileName := studentCode + "-" + submission.Title
+			checksumDownloaded, ok := downloadedAssignments[expectedFileName]
+			if !ok {
+				return errInvalidResponse("提出した課題が課題zipに含まれていないか、ファイル名が間違っています")
+			}
+			if submission.Checksum != checksumDownloaded {
+				return errInvalidResponse("提出した課題とダウンロードされた課題の内容が一致しません")
 			}
 		}
 	}

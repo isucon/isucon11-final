@@ -149,7 +149,7 @@ func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fi
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignment", courseID, classID), &body)
+	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID), &body)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
@@ -169,9 +169,9 @@ func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID strin
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
-	path := fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID)
+	path := fmt.Sprintf("/api/courses/%s/classes/%s/assignments/scores", courseID, classID)
 
-	req, err := a.POST(path, bytes.NewReader(body))
+	req, err := a.PUT(path, bytes.NewReader(body))
 	if err != nil {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
