@@ -256,7 +256,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	// クラス追加、おしらせ追加、（一部）お知らせ確認
 	// 課題提出、ダウンロード、採点、成績確認
 	// workerはコースごと
-	checkAnnouncementDetailPart := rand.Intn(5) + 1
+	checkAnnouncementDetailPart := rand.Intn(prepareClassCountPerCourse)
 	for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
 		w, err = worker.NewWorker(func(ctx context.Context, i int) {
 			course := courses[i]
