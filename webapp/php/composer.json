@@ -4,10 +4,25 @@
   "homepage": "https://isucon.net/",
   "license": "MIT",
   "require": {
-    "php": "^8.0"
+    "php": "^8.0",
+    "monolog/monolog": "^2.3",
+    "php-di/php-di": "^6.3",
+    "slim/psr7": "^1.4",
+    "slim/slim": "^4.8"
+  },
+  "require-dev": {
+    "jangregor/phpstan-prophecy": "^0.8.1",
+    "phpstan/extension-installer": "^1.1.0",
+    "phpstan/phpstan": "^0.12.94"
   },
   "config": {
-    "process-timeout": 0
+    "process-timeout": 0,
+    "sort-packages": true
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
   },
   "scripts": {
     "start": "php -S 0.0.0.0:7000 -t public public/index.php"
