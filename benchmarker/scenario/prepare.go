@@ -395,7 +395,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
 	errHttp := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
-	errInvalidNext := failure.NewError(fails.ErrCritical, fmt.Errorf("link header の next の値が不正です"))
+	errInvalidNext := failure.NewError(fails.ErrCritical, fmt.Errorf("link header の next によってページングできる回数が不正です"))
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path)
 	if err != nil {
@@ -421,6 +421,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 	}
 
 	// この_prevはpathと同じところを指すはず
+	// _prevとpathが同じ文字列であるとは限らない（pathが"" で_prevが/api/announcements?page=1とか）
 	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, expected[AnnouncementCountPerPage:], expectedUnreadCount)
 	if err != nil {
 		return "", err
