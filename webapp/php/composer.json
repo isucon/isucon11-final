@@ -1,0 +1,15 @@
+{
+  "name": "isucon/isucon11-final",
+  "description": "ISUCON 11 final",
+  "homepage": "https://isucon.net/",
+  "license": "MIT",
+  "require": {
+    "php": "^8.0"
+  },
+  "config": {
+    "process-timeout": 0
+  },
+  "scripts": {
+    "start": "php -S 0.0.0.0:7000 -t public public/index.php"
+  }
+}
