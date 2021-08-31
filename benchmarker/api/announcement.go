@@ -46,7 +46,6 @@ type AnnouncementResponse struct {
 	CourseID   string `json:"course_id"`
 	CourseName string `json:"course_name"`
 	Title      string `json:"title"`
-	Message    string `json:"message"`
 	Unread     bool   `json:"unread"`
 	CreatedAt  int64  `json:"created_at"`
 }
@@ -73,6 +72,16 @@ func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, cou
 	}
 
 	return a.Do(ctx, req)
+}
+
+type GetAnnouncementDetailResponse struct {
+	ID         string `json:"id"`
+	CourseID   string `json:"course_id"`
+	CourseName string `json:"course_name"`
+	Title      string `json:"title"`
+	Message    string `json:"message"`
+	Unread     bool   `json:"unread"`
+	CreatedAt  int64  `json:"created_at"`
 }
 
 func GetAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*http.Response, error) {

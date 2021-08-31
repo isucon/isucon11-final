@@ -3,9 +3,13 @@ package scenario
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
+
+	"github.com/isucon/isucon11-final/benchmarker/api"
 
 	"github.com/isucon/isucandar/parallel"
 
@@ -23,7 +27,8 @@ import (
 )
 
 const (
-	prepareTimeout = 20
+	prepareTimeout           = 20
+	AnnouncementCountPerPage = 20
 )
 
 func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) error {
@@ -234,13 +239,20 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
 
-	// クラス追加、課題提出、ダウンロード、採点（お知らせは見ない）
+	studentByCode := make(map[string]*model.Student)
+	for _, student := range students {
+		studentByCode[student.Code] = student
+	}
+	// クラス追加、おしらせ追加、（一部）お知らせ確認
+	// 課題提出、ダウンロード、採点、成績確認
 	// workerはコースごと
-	w, err = worker.NewWorker(func(ctx context.Context, i int) {
-		course := courses[i]
-		teacher := course.Teacher()
+	checkAnnouncementDetailPart := rand.Intn(prepareClassCountPerCourse)
+	for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
+		w, err = worker.NewWorker(func(ctx context.Context, i int) {
+			course := courses[i]
+			teacher := course.Teacher()
 
-		for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
+			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
@@ -250,6 +262,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
 
+			// お知らせ追加
 			announcement := generate.Announcement(course, class)
 			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
@@ -261,21 +274,37 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 			courseStudents := course.Students()
 
-			// 課題提出,
+			// 課題提出, ランダムでお知らせを読む
 			// 生徒ごとのループ
 			p := parallel.NewParallel(ctx, prepareStudentCount)
 			for _, student := range courseStudents {
-				submitter := student
+				student := student
 				p.Do(func(ctx context.Context) {
-					submissionData, fileName := generate.SubmissionData(course, class, submitter.UserAccount)
-					_, err := SubmitAssignmentAction(ctx, submitter.Agent, course.ID, class.ID, fileName, submissionData)
+					if classPart == checkAnnouncementDetailPart {
+						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, announcement.ID)
+						if err != nil {
+							step.AddError(err)
+							return
+						}
+						expected := student.GetAnnouncement(announcement.ID)
+						if expected == nil {
+							panic("unreachable! announcementID" + announcement.ID)
+						}
+						err = prepareCheckAnnouncementDetailContent(expected, &res)
+						if err != nil {
+							step.AddError(err)
+							return
+						}
+						student.ReadAnnouncement(announcement.ID)
+					}
+					submissionData, fileName := generate.SubmissionData(course, class, student.UserAccount)
+					_, err := SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
 					if err != nil {
 						step.AddError(err)
-						fmt.Println(class.ID, submitter.Code)
 						return
 					}
 					submissionSummary := model.NewSubmission(fileName, submissionData)
-					class.AddSubmission(submitter.Code, submissionSummary)
+					class.AddSubmission(student.Code, submissionSummary)
 				})
 			}
 			p.Wait()
@@ -312,12 +341,179 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				step.AddError(err)
 				return
 			}
+		}, worker.WithLoopCount(prepareCourseCount))
+		if err != nil {
+			step.AddError(err)
+			return err
 		}
-	}, worker.WithLoopCount(prepareCourseCount))
+		w.Process(ctx)
+		w.Wait()
+
+		w, err = worker.NewWorker(func(ctx context.Context, i int) {
+			student := students[i]
+			expected := calculateGradeRes(student, studentByCode)
+			_, res, err := GetGradeAction(ctx, student.Agent)
+			if err != nil {
+				step.AddError(failure.NewError(fails.ErrCritical, err))
+				return
+			}
+
+			err = validateUserGrade(&expected, &res, len(students))
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+		}, worker.WithLoopCount(prepareStudentCount))
+		if err != nil {
+			step.AddError(err)
+			return err
+		}
+		w.Process(ctx)
+		w.Wait()
+	}
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	// お知らせの検証
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		student := students[i]
+		expected := student.Announcements()
+
+		// createdAtが新しい方が先頭に来るようにソート
+		sort.Slice(expected, func(i, j int) bool {
+			return expected[i].Announcement.CreatedAt > expected[j].Announcement.CreatedAt
+		})
+		expectedUnreadCount := 0
+		for _, announcement := range expected {
+			if announcement.Unread {
+				expectedUnreadCount++
+			}
+		}
+		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, expectedUnreadCount)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+
+	}, worker.WithLoopCount(prepareStudentCount))
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
 	w.Process(ctx)
 	w.Wait()
 	if hasErrors() {
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	return nil
+}
+
+func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
+	errHttp := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
+	errInvalidNext := failure.NewError(fails.ErrCritical, fmt.Errorf("link header の next によってページングできる回数が不正です"))
+
+	hres, res, err := GetAnnouncementListAction(ctx, a, path)
+	if err != nil {
+		return "", errHttp
+	}
+	prev, next := parseLinkHeader(hres)
+
+	if (len(expected) <= AnnouncementCountPerPage && next != "") || (len(expected) > AnnouncementCountPerPage && next == "") {
+		return "", errInvalidNext
+	}
+	// 次のページが存在しない
+	if next == "" {
+		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount)
+		if err != nil {
+			return "", err
+		}
+		return prev, nil
+	}
+
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount)
+	if err != nil {
+		return "", err
+	}
+
+	// この_prevはpathと同じところを指すはず
+	// _prevとpathが同じ文字列であるとは限らない（pathが"" で_prevが/api/announcements?page=1とか）
+	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, expected[AnnouncementCountPerPage:], expectedUnreadCount)
+	if err != nil {
+		return "", err
+	}
+
+	_, res, err = GetAnnouncementListAction(ctx, a, _prev)
+	if err != nil {
+		return "", errHttp
+	}
+
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount)
+	if err != nil {
+		return "", err
+	}
+
+	return prev, nil
+}
+
+func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int) error {
+	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
+	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement が期待したものと一致しませんでした"))
+	errNoCount := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement の数が期待したものと一致しませんでした"))
+	errNoMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement の unread_count が期待したものと一致しませんでした"))
+
+	if actual.UnreadCount != expectedUnreadCount {
+		return errNoMatchUnreadCount
+	}
+
+	if len(expected) != len(actual.Announcements) {
+		return errNoCount
+	}
+
+	if expected == nil && actual.Announcements == nil {
+		return nil
+	} else if (expected == nil && actual.Announcements != nil) || (expected != nil && actual.Announcements == nil) {
+		return errNotMatch
+	}
+
+	lastCreatedAt := int64(math.MaxInt64)
+	for _, announcement := range actual.Announcements {
+		// 順序の検証
+		if lastCreatedAt < announcement.CreatedAt {
+			return errNotSorted
+		}
+		lastCreatedAt = announcement.CreatedAt
+	}
+	for i := 0; i < len(actual.Announcements); i++ {
+		expect := expected[i].Announcement
+		actual := actual.Announcements[i]
+		if !AssertEqual("announcement unread", expected[i].Unread, actual.Unread) ||
+			!AssertEqual("announcement ID", expect.ID, actual.ID) ||
+			!AssertEqual("announcement CourseID", expect.CourseID, actual.CourseID) ||
+			!AssertEqual("announcement Title", expect.Title, actual.Title) ||
+			!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
+			!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
+			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
+			return errNotMatch
+		}
+	}
+
+	return nil
+}
+
+func prepareCheckAnnouncementDetailContent(expected *model.AnnouncementStatus, actual *api.GetAnnouncementDetailResponse) error {
+	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement が期待したものと一致しませんでした"))
+	if !AssertEqual("announcement unread", expected.Unread, actual.Unread) ||
+		!AssertEqual("announcement ID", expected.Announcement.ID, actual.ID) ||
+		!AssertEqual("announcement Title", expected.Announcement.Title, actual.Title) ||
+		!AssertEqual("announcement CourseID", expected.Announcement.CourseID, actual.CourseID) ||
+		!AssertEqual("announcement CourseName", expected.Announcement.CourseName, actual.CourseName) ||
+		!AssertEqual("announcement CreatedAt", expected.Announcement.CreatedAt, actual.CreatedAt) ||
+		!AssertEqual("announcement Message", expected.Announcement.Message, actual.Message) {
+		AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
+		return errNotMatch
 	}
 
 	return nil
