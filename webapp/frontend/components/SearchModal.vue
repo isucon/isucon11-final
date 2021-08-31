@@ -83,7 +83,7 @@
               id="params-period"
               label="ステータス"
               :options="[
-                { text: '履修登録期間', value: 'registration' },
+                { text: '履修登録中', value: 'registration' },
                 { text: '開講中', value: 'in-progress' },
                 { text: '閉講', value: 'closed' },
               ]"
