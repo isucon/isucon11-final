@@ -7,11 +7,11 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
-type ReservationResult string
+type ReservationResult int
 
 const (
-	Succeeded    ReservationResult = "successfully reserved"
-	NotAvailable ReservationResult = "this course is not available"
+	Succeeded ReservationResult = iota
+	NotAvailable
 )
 
 const (
@@ -74,8 +74,7 @@ func (c *Course) AddClass(class *Class) {
 	c.classes = append(c.classes, class)
 }
 
-func (c *Course) Wait(ctx context.Context) <-chan struct{} {
-	_ctx, cancel := context.WithCancel(ctx)
+func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc) <-chan struct{} {
 	go func() {
 		select {
 		case <-c.closer:
@@ -86,7 +85,7 @@ func (c *Course) Wait(ctx context.Context) <-chan struct{} {
 		c.rmu.Unlock()
 		cancel()
 	}()
-	return _ctx.Done()
+	return ctx.Done()
 }
 
 func (c *Course) Teacher() *Teacher {

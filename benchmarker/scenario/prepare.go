@@ -154,7 +154,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		param := generate.CourseParam((i/5)+1, i%6, teacher)
+		param := generate.CourseParam((i/6)+1, i%6, teacher)
 		_, res, err := AddCourseAction(ctx, teacher, param)
 		if err != nil {
 			step.AddError(err)

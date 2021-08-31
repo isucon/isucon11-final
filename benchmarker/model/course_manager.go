@@ -4,12 +4,11 @@ import (
 	"sync"
 )
 
-// CourseManager は科目の履修管理を行う
-// 科目の追加 → 履修登録 → 科目の開始までが責任範囲
-// 科目の終了は科目用のgoroutine内で行われ、新規科目の追加が呼ばれる
+// CourseManager は科目の履修登録を行う。
+// 空き科目の管理 → 履修登録までが責任範囲。
 type CourseManager struct {
 	courses           map[string]*Course
-	waitingCourseList *courseList // 優先的に履修させる科目を各timeslotごとに保持
+	waitingCourseList *courseList // 空きのある科目を優先順に並べたもの
 	rmu               sync.RWMutex
 }
 
@@ -47,7 +46,6 @@ func (m *CourseManager) GetCourseCount() int {
 }
 
 // ReserveCoursesForStudent は学生を受け取って、キュー内の科目に仮登録を行う
-// キューのロックを取るのでここで直列化される
 func (m *CourseManager) ReserveCoursesForStudent(student *Student, remainingRegistrationCapacity int) []*Course {
 	student.LockSchedule()
 	defer student.UnlockSchedule()

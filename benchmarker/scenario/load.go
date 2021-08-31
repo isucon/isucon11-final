@@ -43,13 +43,13 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 	wg := sync.WaitGroup{}
 	wg.Add(initialCourseCount + 1)
+	arr := generate.ShuffledInts(initialCourseCount)
 	for i := 0; i < initialCourseCount; i++ {
-		i := i % 30
+		dayOfWeek := arr[i]/6 + 1
+		period := arr[i] % 6
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
-			dayOfWeek := i/5 + 1
-			period := i % 6
 			s.addCourseLoad(ctx, dayOfWeek, period, step)
 		}()
 	}
@@ -270,7 +270,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					<-time.After(100 * time.Millisecond)
 					goto L
 				} else {
-					// 失敗に科目の仮登録をロールバック
+					// 失敗時に科目の仮登録をロールバック
 					for _, c := range temporaryReservedCourses {
 						c.RollbackReservation()
 						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
@@ -396,15 +396,10 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 		waitStart := time.Now()
 
-		// 科目goroutineは満員 or 履修締め切りまではなにもしない or LoadEndTime
-		endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
-		select {
-		case <-time.After(endTimeDuration):
-			return
-		case <-course.Wait(ctx):
-		}
+		// 履修締め切りを待つ
+		_ctx, cancel := context.WithDeadline(ctx, s.loadRequestEndTime)
+		<-course.Wait(_ctx, cancel)
 
-		// selectでのwaitは複数該当だとランダムなのでここでも判定
 		if s.isNoRequestTime(ctx) {
 			return
 		}

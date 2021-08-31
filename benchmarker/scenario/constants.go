@@ -6,8 +6,8 @@ import "time"
 const (
 	// initialStudentsCount 初期学生数
 	initialStudentsCount = 50
-	// initialCourseCount 初期科目数
-	initialCourseCount = 20
+	// initialCourseCount 初期科目数 30以上である必要がある
+	initialCourseCount = 30
 	// registerCourseLimitPerStudent は学生あたりの同時履修可能科目数の制限
 	registerCourseLimitPerStudent = 20
 	// StudentCapacityPerCourse は科目あたりの履修定員
