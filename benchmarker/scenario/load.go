@@ -682,12 +682,16 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
-	if err != nil {
-		AdminLogger.Printf("teacherのログインに失敗しました")
-		step.AddError(failure.NewError(fails.ErrCritical, err))
-		return
-	}
+	teacher.LoginAtOnce(func(teacher *model.Teacher) {
+		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
+		if err != nil {
+			AdminLogger.Printf("teacherのログインに失敗しました")
+			step.AddError(failure.NewError(fails.ErrCritical, err))
+			return
+		}
+		teacher.IsLogin = true
+	})
+
 
 	if s.isNoRequestTime(ctx) {
 		return
