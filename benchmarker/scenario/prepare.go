@@ -612,13 +612,17 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 }
 
 func (pas *prepareAbnormalScenario) prepareSampleData(ctx context.Context) error {
+	const (
+		prepareCourseCapacity = 50
+	)
+
 	// RegistrationCourse: ステータスが registration の科目
 	courseParam := generate.CourseParam(pas.Teacher, generate.WithDayOfWeek(1), generate.WithPeriod(0))
 	_, addCourseRes, err := AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
 	if err != nil {
 		return err
 	}
-	pas.SampleData.RegistrationCourse = model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher)
+	pas.SampleData.RegistrationCourse = model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
 
 	// InProgressCourse: ステータスが in-progress の科目
 	courseParam = generate.CourseParam(pas.Teacher, generate.WithDayOfWeek(1), generate.WithPeriod(1))
@@ -626,7 +630,7 @@ func (pas *prepareAbnormalScenario) prepareSampleData(ctx context.Context) error
 	if err != nil {
 		return err
 	}
-	pas.SampleData.InProgressCourse = model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher)
+	pas.SampleData.InProgressCourse = model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
 	_, err = SetCourseStatusInProgressAction(ctx, pas.Teacher.Agent, pas.SampleData.InProgressCourse.ID)
 	if err != nil {
 		return err
@@ -638,7 +642,7 @@ func (pas *prepareAbnormalScenario) prepareSampleData(ctx context.Context) error
 	if err != nil {
 		return err
 	}
-	pas.SampleData.ClosedCourse = model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher)
+	pas.SampleData.ClosedCourse = model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
 	_, err = SetCourseStatusClosedAction(ctx, pas.Teacher.Agent, pas.SampleData.ClosedCourse.ID)
 	if err != nil {
 		return err
