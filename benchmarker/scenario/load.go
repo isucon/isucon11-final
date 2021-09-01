@@ -45,8 +45,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Add(initialCourseCount + 1)
 	arr := generate.ShuffledInts(initialCourseCount)
 	for i := 0; i < initialCourseCount; i++ {
-		dayOfWeek := arr[i]/6 + 1
-		period := arr[i] % 6
+		timeslot := arr[i] % 30
+		dayOfWeek := timeslot/6 + 1
+		period := timeslot % 6
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
 			defer wg.Done()
@@ -255,7 +256,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ベンチ内で仮登録できた科目があればAPIに登録処理を投げる
 			if len(temporaryReservedCourses) == 0 {
-				DebugLogger.Printf("[履修スキップ（空き講義不足)] code: %v, name: %v", student.Code, student.Name)
+				DebugLogger.Printf("[履修スキップ（空き科目不足)] code: %v, name: %v", student.Code, student.Name)
 				continue
 			}
 
