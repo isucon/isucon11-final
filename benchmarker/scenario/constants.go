@@ -34,4 +34,5 @@ const (
 // Validation
 const (
 	validateAnnouncementsRate = 1.0
+	validateGPAErrorTolerance = 0.01
 )
