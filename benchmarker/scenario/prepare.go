@@ -554,62 +554,10 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	// チェックで使用するサンプルデータの生成
-	sampleData := &SampleDataForPrepareAbnormal{}
-
-	courseParam := generate.CourseParam(teacher)
-	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
+	sampleData, err := postSampleDataForPrepareAbnormal(ctx, student, teacher)
 	if err != nil {
 		return err
 	}
-	sampleData.RegistrationCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
-
-	courseParam = generate.CourseParam(teacher)
-	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
-	if err != nil {
-		return err
-	}
-	sampleData.InProgressCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
-	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID)
-	if err != nil {
-		return err
-	}
-
-	courseParam = generate.CourseParam(teacher)
-	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
-	if err != nil {
-		return err
-	}
-	sampleData.ClosedCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
-	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, sampleData.ClosedCourse.ID)
-	if err != nil {
-		return err
-	}
-
-	classParam := generate.ClassParam(sampleData.InProgressCourse, 1)
-	_, addClassRes, err := AddClassAction(ctx, teacher.Agent, sampleData.InProgressCourse, classParam)
-	if err != nil {
-		return err
-	}
-	sampleData.SubmissionClosedClass = model.NewClass(addClassRes.ClassID, classParam)
-	_, _, err = DownloadSubmissionsAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionClosedClass.ID)
-	if err != nil {
-		return err
-	}
-
-	classParam = generate.ClassParam(sampleData.InProgressCourse, 2)
-	_, addClassRes, err = AddClassAction(ctx, teacher.Agent, sampleData.InProgressCourse, classParam)
-	if err != nil {
-		return err
-	}
-	sampleData.SubmissionOpenClass = model.NewClass(addClassRes.ClassID, classParam)
-
-	announcement := generate.Announcement(sampleData.InProgressCourse, sampleData.SubmissionOpenClass)
-	_, announcementRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
-	if err != nil {
-		return err
-	}
-	announcement.ID = announcementRes.ID
-	sampleData.Announcement = announcement
 
 	// ======== 未ログイン状態で行う異常系チェック ========
 
@@ -640,6 +588,67 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	return nil
+}
+
+func postSampleDataForPrepareAbnormal(ctx context.Context, student *model.Student, teacher *model.Teacher) (*SampleDataForPrepareAbnormal, error) {
+	sampleData := &SampleDataForPrepareAbnormal{}
+
+	courseParam := generate.CourseParam(teacher)
+	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err != nil {
+		return nil, err
+	}
+	sampleData.RegistrationCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
+
+	courseParam = generate.CourseParam(teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err != nil {
+		return nil, err
+	}
+	sampleData.InProgressCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	courseParam = generate.CourseParam(teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err != nil {
+		return nil, err
+	}
+	sampleData.ClosedCourse = model.NewCourse(courseParam, addCourseRes.ID, teacher)
+	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, sampleData.ClosedCourse.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	classParam := generate.ClassParam(sampleData.InProgressCourse, 1)
+	_, addClassRes, err := AddClassAction(ctx, teacher.Agent, sampleData.InProgressCourse, classParam)
+	if err != nil {
+		return nil, err
+	}
+	sampleData.SubmissionClosedClass = model.NewClass(addClassRes.ClassID, classParam)
+	_, _, err = DownloadSubmissionsAction(ctx, teacher.Agent, sampleData.InProgressCourse.ID, sampleData.SubmissionClosedClass.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	classParam = generate.ClassParam(sampleData.InProgressCourse, 2)
+	_, addClassRes, err = AddClassAction(ctx, teacher.Agent, sampleData.InProgressCourse, classParam)
+	if err != nil {
+		return nil, err
+	}
+	sampleData.SubmissionOpenClass = model.NewClass(addClassRes.ClassID, classParam)
+
+	announcement := generate.Announcement(sampleData.InProgressCourse, sampleData.SubmissionOpenClass)
+	_, announcementRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	if err != nil {
+		return nil, err
+	}
+	announcement.ID = announcementRes.ID
+	sampleData.Announcement = announcement
+
+	return sampleData, nil
 }
 
 func prepareCheckLoginAbnormal(ctx context.Context, student *model.Student) error {
