@@ -179,7 +179,7 @@ func (c *Course) RollbackReservation() {
 func (c *Course) StartTimer(duration time.Duration) {
 	c.once.Do(func() {
 		go func() {
-			<-time.After(duration)
+			time.Sleep(duration)
 			c.rmu.Lock()
 			defer c.rmu.Unlock()
 			select {

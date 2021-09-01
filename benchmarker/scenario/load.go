@@ -142,7 +142,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(1 * time.Millisecond)
+				time.Sleep(1 * time.Millisecond)
 				continue
 			}
 			err = verifyGrades(expected, &getGradeRes)
@@ -231,7 +231,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(1 * time.Millisecond)
+				time.Sleep(1 * time.Millisecond)
 				continue
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
@@ -267,7 +267,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				if err, ok := err.(*url.Error); ok && err.Timeout() {
 					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
 					// timeout したらもう一回リクエストする
-					<-time.After(100 * time.Millisecond)
+					time.Sleep(100 * time.Millisecond)
 					goto L
 				} else {
 					// 失敗時に科目の仮登録をロールバック
@@ -305,7 +305,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
 				step.AddError(err)
-				<-time.After(1 * time.Millisecond)
+				time.Sleep(1 * time.Millisecond)
 				continue
 			}
 			if err := verifyAnnouncements(&res, student); err != nil {
@@ -356,7 +356,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// 未読お知らせがないのなら少しwaitして1ページ目から見直す
 			if res.UnreadCount == 0 {
 				nextPathParam = ""
-				<-time.After(200 * time.Millisecond)
+				time.Sleep(200 * time.Millisecond)
 			}
 
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
@@ -450,7 +450,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトしました。教師はリトライを試みます。")
-					<-time.After(100 * time.Millisecond)
+					time.Sleep(100 * time.Millisecond)
 					goto L
 				} else {
 					step.AddError(err)
@@ -474,7 +474,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトしました。教師はリトライを試みます。")
-					<-time.After(100 * time.Millisecond)
+					time.Sleep(100 * time.Millisecond)
 					goto ancLoop
 				} else {
 					step.AddError(err)
@@ -666,7 +666,7 @@ L:
 		if errors.As(err, &urlError) && urlError.Timeout() {
 			// timeout したらもう一回リクエストする
 			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教師はリトライを試みます。")
-			<-time.After(100 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			goto L
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
@@ -732,7 +732,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			var urlError *url.Error
 			if errors.As(err, &urlError) && urlError.Timeout() {
 				ContestantLogger.Printf("課題提出(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。学生はリトライを試みます。")
-				<-time.After(100 * time.Millisecond)
+				time.Sleep(100 * time.Millisecond)
 				goto L
 			}
 			if err != nil {
@@ -782,7 +782,7 @@ L:
 		if errors.As(err, &urlError) && urlError.Timeout() {
 			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
-			<-time.After(100 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			goto L
 		} else if hres != nil && hres.StatusCode == http.StatusNoContent {
 			// すでにwebappに登録されていたら続ける

@@ -49,7 +49,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			defer wg.Done()
 
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			var responseUnreadCount int // responseに含まれるunread_count
 			actualAnnouncements := map[string]api.AnnouncementResponse{}
@@ -234,7 +234,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 		user := user
 		p.Do(func(ctx context.Context) {
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			expected := calculateGradeRes(user, users)
 
