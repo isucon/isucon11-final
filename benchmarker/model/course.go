@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/isucon/isucon11-final/benchmarker/util"
 )
@@ -41,6 +42,7 @@ type Course struct {
 	classes              []*Class
 	isRegistrationClosed bool
 	closer               chan struct{}
+	once                 sync.Once
 	rmu                  sync.RWMutex
 }
 
@@ -149,6 +151,15 @@ func (c *Course) RollbackReservation() {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 	c.reservations--
+}
+
+func (c *Course) StartTimer(duration time.Duration) {
+	c.once.Do(func() {
+		go func() {
+			<-time.After(duration)
+			close(c.closer)
+		}()
+	})
 }
 
 // for prepare

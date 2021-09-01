@@ -281,7 +281,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				for _, c := range temporaryReservedCourses {
 					c.CommitReservation(student)
 					student.AddCourse(c)
-					//c.SetClosingAfterSecAtOnce(5 * time.Second) // 初履修者からn秒後に履修を締め切る
+					c.StartTimer(waitCourseFullTimeout)
 				}
 			}
 
@@ -381,12 +381,12 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			AdminLogger.Println("cPubSub に *model.Course以外が飛んできました")
 			return
 		}
-		loadCourseWorker.Do(courseScenario(course, step, s))
+		loadCourseWorker.Do(s.courseScenario(course, step))
 	})
 	return loadCourseWorker
 }
 
-func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scenario) func(ctx context.Context) {
+func (s *Scenario) courseScenario(course *model.Course, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		defer func() {
 			for _, student := range course.Students() {
