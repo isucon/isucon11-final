@@ -158,7 +158,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// Gradeが早くなった時、常にCapacityが0だとGradeを効率的に回せるようになって点数が高くなるという不正ができるかもしれない
 			remainingRegistrationCapacity := registerCourseLimitPerStudent - student.RegisteringCount()
 			if remainingRegistrationCapacity == 0 {
-				// DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
+				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
 				continue
 			}
 

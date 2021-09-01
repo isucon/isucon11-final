@@ -149,14 +149,6 @@ func (s *Student) RegisteringCount() int {
 	return s.registeringCount
 }
 
-func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
-	s.scheduleMutex.Lock()
-	defer s.scheduleMutex.Unlock()
-
-	s.registeredSchedule[dayOfWeek][period] = nil
-	s.registeringCount--
-}
-
 func (s *Student) LockSchedule() {
 	s.scheduleMutex.Lock()
 }
@@ -174,6 +166,14 @@ func (s *Student) IsEmptyTimeSlots(dayOfWeek, period int) bool {
 func (s *Student) FillTimeslot(course *Course) {
 	s.registeredSchedule[course.DayOfWeek][course.Period] = course
 	s.registeringCount++
+}
+
+func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
+	s.scheduleMutex.Lock()
+	defer s.scheduleMutex.Unlock()
+
+	s.registeredSchedule[dayOfWeek][period] = nil
+	s.registeringCount--
 }
 
 func (s *Student) Courses() []*Course {

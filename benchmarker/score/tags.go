@@ -24,7 +24,7 @@ const (
 	StartCourseUnder50           score.ScoreTag = "_04.StartCourseUnder50"
 	StartCourseFull              score.ScoreTag = "_05.StartCourseFull"
 
-	StartCourseOver50 score.ScoreTag = "!02.StartCourseOver50"
+	StartCourseOver50 score.ScoreTag = "!01.StartCourseOver50"
 )
 
 var Tags = []score.ScoreTag{
