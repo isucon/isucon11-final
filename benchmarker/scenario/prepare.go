@@ -14,6 +14,7 @@ import (
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
+	"github.com/isucon/isucandar/random/useragent"
 	"github.com/isucon/isucandar/worker"
 
 	"github.com/isucon/isucon11-final/benchmarker/api"
@@ -576,18 +577,22 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 
 	// ======== 未ログイン状態で行う異常系チェック ========
 
-	// 未ログイン状態でのチェックは別ユーザで行う
+	agent, _ := agent.NewAgent(
+		agent.WithUserAgent(useragent.UserAgent()),
+		agent.WithBaseURL(s.BaseURL.String()),
+	)
+
+	// 認証チェック
+	if err := pas.prepareCheckAuthenticationAbnormal(ctx, agent); err != nil {
+		return err
+	}
+
+	// ログインの異常系チェック用ユーザ
 	userDataForNotLoggedInCheck, err := s.studentPool.newUserData()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
 	studentForNotLoggedInCheck := model.NewStudent(userDataForNotLoggedInCheck, s.BaseURL, prepareCourseRegisterLimit)
-	teacherForNotLoggedInCheck := s.GetRandomTeacher()
-
-	// 認証チェック
-	if err := pas.prepareCheckAuthenticationAbnormal(ctx, studentForNotLoggedInCheck, teacherForNotLoggedInCheck); err != nil {
-		return err
-	}
 
 	// ログインの異常系チェック
 	// 渡したユーザは副作用としてログインされるので、これ以降未ログイン状態のチェックには使えない
@@ -718,7 +723,7 @@ func (pas *prepareAbnormalScenario) prepareCheckLoginAbnormal(ctx context.Contex
 	return nil
 }
 
-func (pas *prepareAbnormalScenario) prepareCheckAuthenticationAbnormal(ctx context.Context, student *model.Student, teacher *model.Teacher) error {
+func (pas *prepareAbnormalScenario) prepareCheckAuthenticationAbnormal(ctx context.Context, agent *agent.Agent) error {
 	errAuthentication := failure.NewError(fails.ErrApplication, fmt.Errorf("未ログイン状態で認証が必要なAPIへのアクセスが成功しました"))
 	checkAuthentication := func(hres *http.Response, err error) error {
 		// リクエストが成功したらwebappの不具合
@@ -734,61 +739,61 @@ func (pas *prepareAbnormalScenario) prepareCheckAuthenticationAbnormal(ctx conte
 		return nil
 	}
 
-	hres, _, err := GetMeAction(ctx, student.Agent)
+	hres, _, err := GetMeAction(ctx, agent)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, _, err = GetRegisteredCoursesAction(ctx, student.Agent)
+	hres, _, err = GetRegisteredCoursesAction(ctx, agent)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{pas.SampleData.RegistrationCourse})
+	hres, err = TakeCoursesAction(ctx, agent, []*model.Course{pas.SampleData.RegistrationCourse})
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, _, err = GetGradeAction(ctx, student.Agent)
+	hres, _, err = GetGradeAction(ctx, agent)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
 	param := generate.SearchCourseParam()
-	hres, _, err = SearchCourseAction(ctx, student.Agent, param, "")
+	hres, _, err = SearchCourseAction(ctx, agent, param, "")
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, _, err = GetCourseDetailAction(ctx, student.Agent, pas.SampleData.RegistrationCourse.ID)
+	hres, _, err = GetCourseDetailAction(ctx, agent, pas.SampleData.RegistrationCourse.ID)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	courseParam := generate.CourseParam(teacher)
-	hres, _, err = AddCourseAction(ctx, teacher.Agent, courseParam)
+	courseParam := generate.CourseParam(pas.Teacher)
+	hres, _, err = AddCourseAction(ctx, agent, courseParam)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, pas.SampleData.RegistrationCourse.ID)
+	hres, err = SetCourseStatusInProgressAction(ctx, agent, pas.SampleData.RegistrationCourse.ID)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, _, err = GetClassesAction(ctx, student.Agent, pas.SampleData.InProgressCourse.ID)
+	hres, _, err = GetClassesAction(ctx, agent, pas.SampleData.InProgressCourse.ID)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
 	classParam := generate.ClassParam(pas.SampleData.InProgressCourse, 3)
-	hres, _, err = AddClassAction(ctx, teacher.Agent, pas.SampleData.InProgressCourse, classParam)
+	hres, _, err = AddClassAction(ctx, agent, pas.SampleData.InProgressCourse, classParam)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	submissionData, fileName := generate.SubmissionData(pas.SampleData.InProgressCourse, pas.SampleData.SubmissionOpenClass, student.UserAccount)
-	hres, err = SubmitAssignmentAction(ctx, student.Agent, pas.SampleData.InProgressCourse.ID, pas.SampleData.SubmissionOpenClass.ID, fileName, submissionData)
+	submissionData, fileName := generate.SubmissionData(pas.SampleData.InProgressCourse, pas.SampleData.SubmissionOpenClass, pas.Student.UserAccount)
+	hres, err = SubmitAssignmentAction(ctx, agent, pas.SampleData.InProgressCourse.ID, pas.SampleData.SubmissionOpenClass.ID, fileName, submissionData)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
@@ -796,31 +801,31 @@ func (pas *prepareAbnormalScenario) prepareCheckAuthenticationAbnormal(ctx conte
 	scores := []StudentScore{
 		{
 			score: 90,
-			code:  student.Code,
+			code:  pas.Student.Code,
 		},
 	}
-	hres, err = PostGradeAction(ctx, teacher.Agent, pas.SampleData.InProgressCourse.ID, pas.SampleData.SubmissionClosedClass.ID, scores)
+	hres, err = PostGradeAction(ctx, agent, pas.SampleData.InProgressCourse.ID, pas.SampleData.SubmissionClosedClass.ID, scores)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, _, err = DownloadSubmissionsAction(ctx, teacher.Agent, pas.SampleData.InProgressCourse.ID, pas.SampleData.SubmissionOpenClass.ID)
+	hres, _, err = DownloadSubmissionsAction(ctx, agent, pas.SampleData.InProgressCourse.ID, pas.SampleData.SubmissionOpenClass.ID)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, _, err = GetAnnouncementListAction(ctx, student.Agent, "")
+	hres, _, err = GetAnnouncementListAction(ctx, agent, "")
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
 	announcement := generate.Announcement(pas.SampleData.InProgressCourse, pas.SampleData.SubmissionOpenClass)
-	hres, _, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	hres, _, err = SendAnnouncementAction(ctx, agent, announcement)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
 
-	hres, _, err = GetAnnouncementDetailAction(ctx, student.Agent, pas.SampleData.Announcement.ID)
+	hres, _, err = GetAnnouncementDetailAction(ctx, agent, pas.SampleData.Announcement.ID)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
