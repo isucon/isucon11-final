@@ -21,6 +21,7 @@
           label="パスワード"
           type="password"
           placeholder="********"
+          autocomplete="current-password"
         />
 
         <Button type="submit" color="primary" class="mt-4 col-start-2"
