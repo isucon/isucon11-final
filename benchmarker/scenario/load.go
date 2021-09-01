@@ -101,7 +101,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	DebugLogger.Printf("========STATS_DATA=========")
 	for k, v := range s.debugData.ints {
-		if len(v) == 0 {continue}
+		if len(v) == 0 {
+			continue
+		}
 
 		var sum int64
 		for _, t := range v {
@@ -115,9 +117,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 			return sorted[i] < sorted[j]
 		})
 
-		tile50 := sorted[int(float64(len(sorted)) * 0.5)]
-		tile90 := sorted[int(float64(len(sorted)) * 0.9)]
-		tile99 := sorted[int(float64(len(sorted)) * 0.99)]
+		tile50 := sorted[int(float64(len(sorted))*0.5)]
+		tile90 := sorted[int(float64(len(sorted))*0.9)]
+		tile99 := sorted[int(float64(len(sorted))*0.99)]
 		DebugLogger.Printf("%s: avg %d, 50tile %d, 90tile %d, 99tile %d", k, avg, tile50, tile90, tile99)
 	}
 
@@ -347,7 +349,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
-			timer := time.After(50*time.Millisecond)
+			timer := time.After(50 * time.Millisecond)
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -411,11 +413,11 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
-			// 50ms以上の頻度で一覧取得をしない
+			// 50msより短い間隔で一覧取得をしない
 			<-timer
 
 			// 未読お知らせがない or 未読をすべて読み終えていたら
-			// DOSにならないように少しwaitして1ページ目から見直す
+			// DoSにならないように少しwaitして1ページ目から見直す
 			if res.UnreadCount == readCount {
 				nextPathParam = ""
 				if !student.HasUnreadAnnouncement() {

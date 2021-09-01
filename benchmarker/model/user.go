@@ -24,7 +24,7 @@ type Student struct {
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
 	readAnnouncementCond  *sync.Cond
-	addAnnouncementCond    *sync.Cond
+	addAnnouncementCond   *sync.Cond
 	rmu                   sync.RWMutex
 
 	registeredSchedule [7][6]*Course // 空きコマ管理[DayOfWeek:7][Period:6]
@@ -138,7 +138,7 @@ func (s *Student) WaitNewUnreadAnnouncement(ctx context.Context) <-chan struct{}
 
 func (s *Student) waitAddAnnouncement() <-chan struct{} {
 	ch := make(chan struct{})
-	// MEMO: このgoroutineはWaitReadAnnouncementがctx.Done()で抜けた場合放置される
+	// MEMO: このgoroutineはWaitNewUnreadAnnouncementがctx.Done()で抜けた場合放置される
 	s.rmu.RLock()
 	go func() {
 		s.addAnnouncementCond.L.Lock()
