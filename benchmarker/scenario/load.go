@@ -347,7 +347,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
-			timer := time.After(300 * time.Millisecond)
+			timer := time.After(50*time.Millisecond)
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -411,15 +411,18 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
-			// 未読お知らせがない or 未読をすべて読み終えたら
-			// 少しwaitして1ページ目から見直す
+			// 50ms以上の頻度で一覧取得をしない
+			<-timer
+
+			// 未読お知らせがない or 未読をすべて読み終えていたら
+			// DOSにならないように少しwaitして1ページ目から見直す
 			if res.UnreadCount == readCount {
 				nextPathParam = ""
 				if !student.HasUnreadAnnouncement() {
-					// waitはお知らせ追加したらエスパーで即解消する
 					select {
-					case <-timer:
+					case <-time.After(200 * time.Millisecond):
 					case <-student.WaitNewUnreadAnnouncement(ctx):
+						// waitはお知らせ追加したらエスパーで即解消する
 					}
 				}
 			}
