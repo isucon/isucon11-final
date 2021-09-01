@@ -108,6 +108,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		prepareCourseCount         = 20
 		prepareCourseRegisterLimit = 20
 		prepareClassCountPerCourse = 5
+		prepareCourseCapacity      = 50
 	)
 	errors := step.Result().Errors
 	hasErrors := func() bool {
@@ -159,7 +160,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			step.AddError(err)
 			return
 		}
-		course := model.NewCourse(param, res.ID, teacher)
+		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity)
 		mu.Lock()
 		courses = append(courses, course)
 		mu.Unlock()
