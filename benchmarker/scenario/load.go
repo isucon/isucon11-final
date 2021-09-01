@@ -460,7 +460,6 @@ func courseScenario(course *model.Course, step *isucandar.BenchmarkStep, s *Scen
 
 		// コースの処理
 		for i := 0; i < classCountPerCourse; i++ {
-
 			if s.isNoRequestTime(ctx) {
 				return
 			}
@@ -738,7 +737,14 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				return
 			}
 
+		L:
 			_, err = SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
+			var urlError *url.Error
+			if errors.As(err, &urlError) && urlError.Timeout() {
+				ContestantLogger.Printf("課題提出(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。学生はリトライを試みます。")
+				<-time.After(100 * time.Millisecond)
+				goto L
+			}
 			if err != nil {
 				step.AddError(err)
 			} else {
@@ -784,7 +790,7 @@ L:
 	if err != nil {
 		var urlError *url.Error
 		if errors.As(err, &urlError) && urlError.Timeout() {
-			ContestantLogger.Printf("成績追加(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。教師はリトライを試みます。")
+			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
 			<-time.After(100 * time.Millisecond)
 			goto L

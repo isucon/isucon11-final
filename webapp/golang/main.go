@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
@@ -26,10 +25,9 @@ import (
 )
 
 const (
-	SQLDirectory              = "../sql/"
-	AssignmentsDirectory      = "../assignments/"
-	SessionName               = "isucholar_go"
-	mysqlErrNumDuplicateEntry = 1062
+	SQLDirectory         = "../sql/"
+	AssignmentsDirectory = "../assignments/"
+	SessionName          = "isucholar_go"
 )
 
 type handlers struct {
@@ -77,8 +75,8 @@ func main() {
 			coursesAPI.PUT("/:courseID/status", h.SetCourseStatus, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
-			coursesAPI.POST("/:courseID/classes/:classID/assignment", h.SubmitAssignment)
-			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.RegisterScores, h.IsAdmin)
+			coursesAPI.POST("/:courseID/classes/:classID/assignments", h.SubmitAssignment)
+			coursesAPI.PUT("/:courseID/classes/:classID/assignments/scores", h.RegisterScores, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes/:classID/assignments/export", h.DownloadSubmittedAssignments, h.IsAdmin)
 		}
 		announcementsAPI := API.Group("/announcements")
@@ -1046,10 +1044,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	defer file.Close()
 
-	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?)", userID, classID, header.Filename); err != nil {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
-			return echo.NewHTTPError(http.StatusBadRequest, "You have already submitted to this assignment.")
-		}
+	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `file_name` = VALUES(`file_name`)", userID, classID, header.Filename); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}

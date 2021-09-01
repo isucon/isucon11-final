@@ -240,19 +240,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			// 1〜5秒ランダムに待つ
 			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
 
-			courses := user.Courses()
-			courseResults := make(map[string]*model.CourseResult, len(courses))
-			for _, course := range courses {
-				result := course.CalcCourseResultByStudentCode(user.Code)
-				if result == nil {
-					panic("unreachable! userCode:" + user.Code)
-				}
-
-				courseResults[course.Code] = result
-			}
-
-			summary := calculateSummary(users, user.Code)
-			expected := model.NewGradeRes(summary, courseResults)
+			expected := calculateGradeRes(user, users)
 
 			_, res, err := GetGradeAction(ctx, user.Agent)
 			if err != nil {
@@ -416,11 +404,26 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 
 	if expected.SubmitterCount != actual.Submitters {
 		AdminLogger.Println("submitters. expected: ", expected.SubmitterCount, "actual: ", actual.Submitters)
-		// TODO: 課題提出もリトライをする
-		// return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題の提出者の数が一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題提出者の数が一致しません"))
 	}
 
 	return nil
+}
+
+func calculateGradeRes(student *model.Student, students map[string]*model.Student) model.GradeRes {
+	courses := student.Courses()
+	courseResults := make(map[string]*model.CourseResult, len(courses))
+	for _, course := range courses {
+		result := course.CalcCourseResultByStudentCode(student.Code)
+		if result == nil {
+			panic("unreachable! userCode:" + student.Code)
+		}
+
+		courseResults[course.Code] = result
+	}
+
+	summary := calculateSummary(students, student.Code)
+	return model.NewGradeRes(summary, courseResults)
 }
 
 // userCodeがstudentsの中にないとpanicしたり返り値が変な値になったりする

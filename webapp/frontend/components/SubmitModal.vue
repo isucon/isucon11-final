@@ -180,7 +180,7 @@ export default Vue.extend({
       }
       this.$axios
         .post(
-          `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignment`,
+          `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignments`,
           formData
         )
         .then(() => {
