@@ -26,7 +26,7 @@ type Course struct {
 	teacher            *Teacher
 	registeredStudents map[string]*Student
 	classes            []*Class
-	registeredLimit    int // 登録学生上限
+	capacity           int // 登録学生上限
 	rmu                sync.RWMutex
 
 	// コース登録を締切る際に参照
@@ -45,13 +45,13 @@ type SearchCourseParam struct {
 	Keywords  []string
 }
 
-func NewCourse(param *CourseParam, id string, teacher *Teacher) *Course {
+func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *Course {
 	c := &Course{
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
 		registeredStudents: make(map[string]*Student, 0),
-		registeredLimit:    50, // 引数で渡す？
+		capacity:           capacity,
 		rmu:                sync.RWMutex{},
 
 		registrationCloser: make(chan struct{}, 0),
@@ -161,7 +161,7 @@ func (c *Course) TempRegisterIfRegistrable() bool {
 
 	// 履修closeしていない場合は仮登録する
 	c.tempRegCount++ // コース仮登録者+1
-	if len(c.registeredStudents)+c.tempRegCount >= c.registeredLimit {
+	if len(c.registeredStudents)+c.tempRegCount >= c.capacity {
 		// 本登録 + 仮登録が上限以上ならcloseする
 		close(c.registrationCloser)
 	}
