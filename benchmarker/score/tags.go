@@ -21,10 +21,10 @@ const (
 	ActiveStudents               score.ScoreTag = "_01.ActiveStudents"
 	FinishCourses                score.ScoreTag = "_02.FinishCourses"
 	GetCourseDetailVerifySkipped score.ScoreTag = "_03.GetCourseDetailVerifySkipped"
-	StartCourseFull              score.ScoreTag = "_04.StartCourseFull"
+	StartCourseUnder50           score.ScoreTag = "_04.StartCourseUnder50"
+	StartCourseFull              score.ScoreTag = "_05.StartCourseFull"
 
-	StartCourseUnder50 score.ScoreTag = "!01.StartCourseUnder50"
-	StartCourseOver50  score.ScoreTag = "!02.StartCourseOver50"
+	StartCourseOver50 score.ScoreTag = "!02.StartCourseOver50"
 )
 
 var Tags = []score.ScoreTag{
@@ -46,9 +46,9 @@ var Tags = []score.ScoreTag{
 	ActiveStudents,
 	FinishCourses,
 	GetCourseDetailVerifySkipped,
+	StartCourseUnder50,
 	StartCourseFull,
 
-	StartCourseUnder50,
 	StartCourseOver50,
 }
 

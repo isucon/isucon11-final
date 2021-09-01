@@ -41,6 +41,7 @@ type Course struct {
 	capacity           int // 登録学生上限
 	classes            []*Class
 	closer             chan struct{}
+	isZeroReservation  chan struct{}
 	once               sync.Once
 	rmu                sync.RWMutex
 }
@@ -55,7 +56,7 @@ type SearchCourseParam struct {
 }
 
 func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *Course {
-	c := &Course{
+	return &Course{
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
@@ -63,9 +64,9 @@ func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *C
 		capacity:           capacity,
 		classes:            make([]*Class, 0, ClassCountPerCourse),
 		closer:             make(chan struct{}, 0),
+		isZeroReservation:  make(chan struct{}, 0),
 		rmu:                sync.RWMutex{},
 	}
-	return c
 }
 
 func (c *Course) AddClass(class *Class) {
@@ -81,6 +82,7 @@ func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc) <-chan str
 		case <-c.closer:
 		case <-ctx.Done():
 		}
+		<-c.isZeroReservation
 		cancel()
 	}()
 	return ctx.Done()
@@ -141,9 +143,22 @@ func (c *Course) CommitReservation(s *Student) {
 	c.registeredStudents[s.Code] = s
 	c.reservations--
 
-	// >=にしてもいいけどロックとってるので多分不必要
+	// 満員が確定した時、履修を締め切る
 	if len(c.registeredStudents) == c.capacity {
-		close(c.closer)
+		select {
+		case <-c.closer:
+			// close済み
+		default:
+			close(c.closer)
+		}
+	}
+	// 仮登録数がゼロですでに履修が締め切られているなら、仮登録の待ちを閉じる
+	if c.reservations == 0 {
+		select {
+		case <-c.closer:
+			close(c.isZeroReservation)
+		default:
+		}
 	}
 }
 
@@ -151,13 +166,26 @@ func (c *Course) RollbackReservation() {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 	c.reservations--
+	// 仮登録数がゼロですでに履修が締め切られているなら、仮登録の待ちを閉じる
+	if c.reservations == 0 {
+		select {
+		case <-c.closer:
+			close(c.isZeroReservation)
+		default:
+		}
+	}
 }
 
 func (c *Course) StartTimer(duration time.Duration) {
 	c.once.Do(func() {
 		go func() {
 			<-time.After(duration)
-			if _, open := <-c.closer; open {
+			c.rmu.Lock()
+			defer c.rmu.Unlock()
+			select {
+			case <-c.closer:
+				// close済み
+			default:
 				close(c.closer)
 			}
 		}()
