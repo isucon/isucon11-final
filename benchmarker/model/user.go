@@ -139,14 +139,12 @@ func (s *Student) WaitNewUnreadAnnouncement(ctx context.Context) <-chan struct{}
 func (s *Student) waitAddAnnouncement() <-chan struct{} {
 	ch := make(chan struct{})
 	// MEMO: このgoroutineはWaitNewUnreadAnnouncementがctx.Done()で抜けた場合放置される
-	s.rmu.RLock()
 	go func() {
 		s.addAnnouncementCond.L.Lock()
 		s.addAnnouncementCond.Wait()
 		s.addAnnouncementCond.L.Unlock()
 		close(ch)
 	}()
-	s.rmu.RUnlock()
 	return ch
 }
 
