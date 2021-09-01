@@ -32,6 +32,7 @@ const (
 	waitReadClassAnnouncementTimeout = 5 * time.Second
 	// loadRequestTime はLoadシナリオ内でリクエストを送り続ける時間(Load自体のTimeoutより早めに終わらせる)
 	loadRequestTime = 60 * time.Second
+	courseCapacity  = 50
 )
 
 func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) error {
@@ -724,7 +725,7 @@ L:
 	}
 	step.AddScore(score.AddCourse)
 
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, courseCapacity)
 	s.AddCourse(course)
 	s.emptyCourseManager.AddEmptyCourse(course)
 	s.cPubSub.Publish(course)
