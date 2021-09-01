@@ -395,9 +395,15 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			// 未読お知らせがない or 未読をすべて読み終えたら
 			// 少しwaitして1ページ目から見直す
-			if res.UnreadCount == 0 || res.UnreadCount == readCount {
+			if res.UnreadCount == readCount {
 				nextPathParam = ""
-				<-timer // TODO: 未読お知らせが追加されたらエスパーで待ち解消する
+				if !student.HasUnreadAnnouncement() {
+					// waitはお知らせ追加したらエスパーで即解消する
+					select {
+					case <-timer:
+					case <-student.WaitNewUnreadAnnouncement(ctx):
+					}
+				}
 			}
 
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
