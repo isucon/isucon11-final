@@ -34,16 +34,15 @@ type CourseParam struct {
 
 type Course struct {
 	*CourseParam
-	ID                   string
-	teacher              *Teacher
-	registeredStudents   map[string]*Student
-	reservations         int
+	ID                 string
+	teacher            *Teacher
+	registeredStudents map[string]*Student
+	reservations       int
 	capacity           int // 登録学生上限
-	classes              []*Class
-	isRegistrationClosed bool
-	closer               chan struct{}
-	once                 sync.Once
-	rmu                  sync.RWMutex
+	classes            []*Class
+	closer             chan struct{}
+	once               sync.Once
+	rmu                sync.RWMutex
 }
 
 type SearchCourseParam struct {
@@ -82,9 +81,6 @@ func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc) <-chan str
 		case <-c.closer:
 		case <-ctx.Done():
 		}
-		c.rmu.Lock()
-		c.isRegistrationClosed = true
-		c.rmu.Unlock()
 		cancel()
 	}()
 	return ctx.Done()
@@ -124,7 +120,12 @@ func (c *Course) ReserveIfAvailable() ReservationResult {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	if c.isRegistrationClosed || len(c.registeredStudents)+c.reservations >= c.capacity {
+	select {
+	case <-c.closer:
+		return NotAvailable
+	default:
+	}
+	if len(c.registeredStudents)+c.reservations >= c.capacity {
 		return NotAvailable
 	}
 
@@ -143,7 +144,6 @@ func (c *Course) CommitReservation(s *Student) {
 	// >=にしてもいいけどロックとってるので多分不必要
 	if len(c.registeredStudents) == c.capacity {
 		close(c.closer)
-		c.isRegistrationClosed = true
 	}
 }
 
