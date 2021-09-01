@@ -157,7 +157,9 @@ func (c *Course) StartTimer(duration time.Duration) {
 	c.once.Do(func() {
 		go func() {
 			<-time.After(duration)
-			close(c.closer)
+			if _, open := <-c.closer; open {
+				close(c.closer)
+			}
 		}()
 	})
 }
