@@ -11,7 +11,6 @@ import { getDbInfo } from "./db";
 const SqlDirectory = "../sql/";
 // const AssignmentsDirectory = "../assignments/";
 const SessionName = "isucholar_nodejs";
-// const MysqlErrNumDuplicateEntry = 1062;
 
 const UserType = {
   Student: "student",
@@ -23,8 +22,46 @@ interface User extends RowDataPacket {
   id: string;
   code: string;
   name: string;
-  hashed_password: Buffer;
+  hashedPassword: Buffer;
   type: UserType;
+}
+
+const CourseType = {
+  LiberalArts: "liberal-arts",
+  MajorSubjects: "major-subjects",
+} as const;
+type CourseType = typeof CourseType[keyof typeof CourseType];
+
+const DayOfWeek = {
+  Sunday: "sunday",
+  Monday: "monday",
+  Tuesday: "tuesday",
+  Wednesday: "wednesday",
+  Thursday: "thursday",
+  Friday: "friday",
+  Saturday: "saturday",
+} as const;
+type DayOfWeek = typeof DayOfWeek[keyof typeof DayOfWeek];
+
+const CourseStatus = {
+  StatusRegistration: "registration",
+  StatusInProgress: "in-progress",
+  StatusClosed: "closed",
+} as const;
+type CourseStatus = typeof CourseStatus[keyof typeof CourseStatus];
+
+interface Course extends RowDataPacket {
+  id: string;
+  code: string;
+  type: CourseType;
+  name: string;
+  description: string;
+  credit: number;
+  period: number;
+  dayOfWeek: DayOfWeek;
+  teacherId: string;
+  keywords: string;
+  status: CourseStatus;
 }
 
 const pool = mysql.createPool(getDbInfo(false));
@@ -156,7 +193,7 @@ app.post(
       if (
         !(await bcrypt.compare(
           request.password,
-          user.hashed_password.toString()
+          user.hashedPassword.toString()
         ))
       ) {
         return res.status(401).send("Code or Password is wrong.");
@@ -221,6 +258,64 @@ usersApi.get("/me", async (req, res) => {
     return res.status(200).json(response);
   } catch (err) {
     console.log(err);
+    return res.status(500).send();
+  } finally {
+    db.release();
+  }
+});
+
+interface GetRegisteredCourseResponseContent {
+  id: string;
+  name: string;
+  teacher: string;
+  period: number;
+  day_of_week: DayOfWeek;
+}
+
+// GetRegisteredCourses 履修中の科目一覧取得
+usersApi.get("/me/courses", async (req, res) => {
+  let userInfo: SessionUserInfo;
+  try {
+    userInfo = getUserInfo(req.session);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send();
+  }
+
+  const db = await pool.getConnection();
+  try {
+    const query =
+      "SELECT `courses`.*" +
+      " FROM `courses`" +
+      " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
+      " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?";
+    const [courses] = await db.query<Course[]>(query, [
+      CourseStatus.StatusClosed,
+      userInfo.userId,
+    ]);
+
+    // 履修科目が0件の時は空配列を返却
+    const response: GetRegisteredCourseResponseContent[] = [];
+    for (const course of courses) {
+      const [[teacher]] = await db.query<User[]>(
+        "SELECT * FROM `users` WHERE `id` = ?",
+        [course.teacherId]
+      );
+      if (!teacher) {
+        throw new Error();
+      }
+      response.push({
+        id: course.id,
+        name: course.name,
+        teacher: teacher.name,
+        period: course.period,
+        day_of_week: course.dayOfWeek,
+      });
+    }
+
+    return res.status(200).json(response);
+  } catch (err) {
+    console.error(err);
     return res.status(500).send();
   } finally {
     db.release();
