@@ -605,6 +605,10 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 		return err
 	}
 
+	if err := pas.prepareCheckGetCourseDetailAbnormal(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1028,6 +1032,21 @@ func (pas *prepareAbnormalScenario) prepareCheckRegisterCoursesAbnormal(ctx cont
 		!isSameIgnoringOrder(eres.NotRegistrableStatus, []string{inProgressCourse.ID, closedCourse.ID}) ||
 		!isSameIgnoringOrder(eres.ScheduleConflict, []string{conflictedCourse1.ID, conflictedCourse2.ID, conflictedCourse3.ID}) {
 		return errInvalidErrorResponce
+	}
+
+	return nil
+}
+
+func (pas *prepareAbnormalScenario) prepareCheckGetCourseDetailAbnormal(ctx context.Context) error {
+	errGetUnknownCourseDetail := failure.NewError(fails.ErrApplication, fmt.Errorf("存在しない科目の詳細取得に成功しました"))
+
+	// 存在しない科目IDでの科目詳細取得
+	hres, _, err := GetCourseDetailAction(ctx, pas.Student.Agent, uuid.NewRandom().String())
+	if err == nil {
+		return errGetUnknownCourseDetail
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
+		return err
 	}
 
 	return nil
