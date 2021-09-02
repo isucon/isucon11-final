@@ -8,14 +8,14 @@
   become: true
   roles:
     - common
-    - langs.go
-    - langs.rust
 
 - name: "contestant roles"
   hosts: [contestant, standalone]
   tags: [contestant, standalone]
   become: true
   roles:
+    - langs.go
+    - langs.rust
     - langs.nodejs
     - contestant
 

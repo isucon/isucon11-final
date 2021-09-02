@@ -20,7 +20,9 @@ type NotificationOptions = {
 }
 
 function showNotification(title: string, body: string) {
-  const options: NotificationOptions = {}
+  const options: NotificationOptions = {
+    icon: '/image/hero_logo_green.png',
+  }
   if (body) {
     options.body = body
   }

@@ -157,17 +157,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	// searchAPIを叩くユーザ
-	userData, err := s.studentPool.newUserData()
-	if err != nil {
-		return
-	}
-	student := model.NewStudent(userData, s.BaseURL)
-
-	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
-	if err != nil {
-		step.AddError(failure.NewError(fails.ErrCritical, err))
-		return
-	}
+	student := students[0]
 
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
