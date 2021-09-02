@@ -541,11 +541,11 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 	)
 
 	// チェックで使用する学生ユーザ
-	userDataForStudent, err := s.studentPool.newUserData()
+	userData, err := s.studentPool.newUserData()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	student := model.NewStudent(userDataForStudent, s.BaseURL, prepareCourseRegisterLimit)
+	student := model.NewStudent(userData, s.BaseURL, prepareCourseRegisterLimit)
 	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 	if err != nil {
 		return err
@@ -573,15 +573,15 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	// ログインの異常系チェック用ユーザ
-	userDataForNotLoggedInCheck, err := s.studentPool.newUserData()
+	userData, err = s.studentPool.newUserData()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	studentForNotLoggedInCheck := model.NewStudent(userDataForNotLoggedInCheck, s.BaseURL, prepareCourseRegisterLimit)
+	studentForCheckLoginAbnormal := model.NewStudent(userData, s.BaseURL, prepareCourseRegisterLimit)
 
 	// ログインの異常系チェック
-	// 渡したユーザは副作用としてログインされるので、これ以降未ログイン状態のチェックには使えない
-	if err := pas.prepareCheckLoginAbnormal(ctx, studentForNotLoggedInCheck); err != nil {
+	// 渡したユーザは副作用としてログインされる
+	if err := pas.prepareCheckLoginAbnormal(ctx, studentForCheckLoginAbnormal); err != nil {
 		return err
 	}
 
