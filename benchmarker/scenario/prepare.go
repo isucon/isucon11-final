@@ -637,6 +637,14 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 		return err
 	}
 
+	if err := pas.prepareCheckGetAnnouncementDetailAbnormal(ctx); err != nil {
+		return err
+	}
+
+	if err := pas.prepareCheckSendAnnouncementAbnormal(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1448,6 +1456,95 @@ func (pas *prepareAbnormalScenario) prepareCheckDownloadSubmissionsAbnormal(ctx 
 		return errDownloadSubmissionsForUnknownClass
 	}
 	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pas *prepareAbnormalScenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context) error {
+	const (
+		prepareCourseCapacity = 50
+	)
+
+	errGetClassesForUnknownCourse := failure.NewError(fails.ErrApplication, fmt.Errorf("存在しないお知らせの詳細取得に成功しました"))
+	errGetClassesForNotRegisteredCourse := failure.NewError(fails.ErrApplication, fmt.Errorf("履修していない科目のお知らせ詳細取得に成功しました"))
+
+	// ======== サンプルデータの生成 ========
+
+	// pas.Student が履修していない科目
+	courseParam := generate.CourseParam(1, 0, pas.Teacher)
+	_, addCourseRes, err := AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+
+	// notRegisteredCourse の講義
+	classParam := generate.ClassParam(notRegisteredCourse, 1)
+	_, addClassRes, err := AddClassAction(ctx, pas.Teacher.Agent, notRegisteredCourse, classParam)
+	if err != nil {
+		return err
+	}
+	class := model.NewClass(addClassRes.ClassID, classParam)
+
+	// notRegisteredCourse に紐づくお知らせ
+	announcement := generate.Announcement(notRegisteredCourse, class)
+	_, announcementRes, err := SendAnnouncementAction(ctx, pas.Teacher.Agent, announcement)
+	if err != nil {
+		return err
+	}
+	announcement.ID = announcementRes.ID
+
+	// ======== 検証 ========
+
+	// 存在しないお知らせIDでのお知らせ詳細取得
+	hres, _, err := GetAnnouncementDetailAction(ctx, pas.Student.Agent, uuid.NewRandom().String())
+	if err == nil {
+		return errGetClassesForUnknownCourse
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
+		return err
+	}
+
+	// 履修していない科目に紐づくお知らせIDでのお知らせ詳細取得
+	hres, _, err = GetAnnouncementDetailAction(ctx, pas.Student.Agent, announcement.ID)
+	if err == nil {
+		return errGetClassesForNotRegisteredCourse
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pas *prepareAbnormalScenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) error {
+	const (
+		prepareCourseCapacity = 50
+	)
+
+	errSendAnnouncementForUnknownCourse := failure.NewError(fails.ErrApplication, fmt.Errorf("存在しない科目に対するお知らせの追加に成功しました"))
+
+	// ======== サンプルデータの生成 ========
+
+	// 存在しない科目
+	courseParam := generate.CourseParam(1, 0, pas.Teacher)
+	notRegisteredCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), pas.Teacher, prepareCourseCapacity)
+
+	// 存在しない講義
+	classParam := generate.ClassParam(notRegisteredCourse, 1)
+	class := model.NewClass(uuid.NewRandom().String(), classParam)
+
+	// ======== 検証 ========
+
+	// 存在しない科目IDでのお知らせ追加
+	announcement := generate.Announcement(notRegisteredCourse, class)
+	hres, _, err := SendAnnouncementAction(ctx, pas.Teacher.Agent, announcement)
+	if err == nil {
+		return errSendAnnouncementForUnknownCourse
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
