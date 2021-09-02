@@ -1,7 +1,11 @@
 <template>
   <div class="h-screen items-center">
-    <div class="py-10 px-8 bg-white shadow-lg w-1/3">
-      <h1 class="text-center text-2xl mb-6">ISUCHOLAR ログイン</h1>
+    <div class="py-10 px-8 bg-white shadow-lg lg:w-1/3">
+      <img
+        src="/image/hero_logo_green.svg"
+        alt="login logo"
+        class="w-96 mx-auto"
+      />
       <form
         class="grid grid-cols-3 place-content-center gap-y-2"
         @submit.prevent="onSubmitLogin"
@@ -21,6 +25,7 @@
           label="パスワード"
           type="password"
           placeholder="********"
+          autocomplete="current-password"
         />
 
         <Button type="submit" color="primary" class="mt-4 col-start-2"

@@ -109,7 +109,6 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		prepareTeacherCount        = 2
 		prepareStudentCount        = 2
 		prepareCourseCount         = 20
-		prepareCourseRegisterLimit = 20
 		prepareClassCountPerCourse = 5
 		prepareCourseCapacity      = 50
 	)
@@ -131,7 +130,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		if err != nil {
 			return err
 		}
-		students = append(students, model.NewStudent(userData, s.BaseURL, prepareCourseRegisterLimit))
+		students = append(students, model.NewStudent(userData, s.BaseURL))
 	}
 
 	courses := make([]*model.Course, 0, prepareCourseCount)
@@ -157,7 +156,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		param := generate.CourseParam(teacher, generate.WithPeriod(i%6), generate.WithDayOfWeek((i/6)+1))
+		param := generate.CourseParam((i/6)+1, i%6, teacher)
 		_, res, err := AddCourseAction(ctx, teacher.Agent, param)
 		if err != nil {
 			step.AddError(err)
@@ -536,16 +535,12 @@ func (s *Scenario) newPrepareAbnormalScenario(student *model.Student, teacher *m
 }
 
 func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.BenchmarkStep) error {
-	const (
-		prepareCourseRegisterLimit = 20
-	)
-
 	// チェックで使用する学生ユーザ
 	userData, err := s.studentPool.newUserData()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	student := model.NewStudent(userData, s.BaseURL, prepareCourseRegisterLimit)
+	student := model.NewStudent(userData, s.BaseURL)
 	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 	if err != nil {
 		return err
@@ -577,7 +572,7 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	studentForCheckLoginAbnormal := model.NewStudent(userData, s.BaseURL, prepareCourseRegisterLimit)
+	studentForCheckLoginAbnormal := model.NewStudent(userData, s.BaseURL)
 
 	// ログインの異常系チェック
 	// 渡したユーザは副作用としてログインされる
@@ -666,7 +661,7 @@ func (pas *prepareAbnormalScenario) prepareCheckAuthenticationAbnormal(ctx conte
 	// ======== サンプルデータの生成 ========
 
 	// 適当な科目
-	courseParam := generate.CourseParam(pas.Teacher, generate.WithDayOfWeek(1), generate.WithPeriod(0))
+	courseParam := generate.CourseParam(1, 0, pas.Teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -734,7 +729,7 @@ func (pas *prepareAbnormalScenario) prepareCheckAuthenticationAbnormal(ctx conte
 		return err
 	}
 
-	courseParam = generate.CourseParam(pas.Teacher)
+	courseParam = generate.CourseParam(2, 0, pas.Teacher)
 	hres, _, err = AddCourseAction(ctx, agent, courseParam)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
@@ -820,7 +815,7 @@ func (pas *prepareAbnormalScenario) prepareCheckAdminAuthorizationAbnormal(ctx c
 	// ======== サンプルデータの生成 ========
 
 	// 適当な科目
-	courseParam := generate.CourseParam(pas.Teacher, generate.WithDayOfWeek(1), generate.WithPeriod(0))
+	courseParam := generate.CourseParam(1, 0, pas.Teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -849,7 +844,7 @@ func (pas *prepareAbnormalScenario) prepareCheckAdminAuthorizationAbnormal(ctx c
 
 	// ======== 検証 ========
 
-	courseParam = generate.CourseParam(pas.Teacher)
+	courseParam = generate.CourseParam(2, 0, pas.Teacher)
 	hres, _, err := AddCourseAction(ctx, pas.Student.Agent, courseParam)
 	if err := checkAuthorization(hres, err); err != nil {
 		return err
