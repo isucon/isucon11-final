@@ -23,6 +23,7 @@
         :type="type"
         :placeholder="placeholder"
         :value="value"
+        :autocomplete="autocomplete"
         :min="min"
         :max="max"
         @input="$emit('input', $event.target.value)"
@@ -58,6 +59,10 @@ export default Vue.extend({
     value: {
       type: String,
       default: '',
+    },
+    autocomplete: {
+      type: String,
+      default: 'on',
     },
     min: {
       type: [String, Number],

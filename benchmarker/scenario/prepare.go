@@ -21,6 +21,7 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
+
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 
 	"github.com/isucon/isucandar"
@@ -106,7 +107,6 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		prepareTeacherCount        = 2
 		prepareStudentCount        = 2
 		prepareCourseCount         = 20
-		prepareCourseRegisterLimit = 20
 		prepareClassCountPerCourse = 5
 		prepareCourseCapacity      = 50
 	)
@@ -128,7 +128,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		if err != nil {
 			return err
 		}
-		students = append(students, model.NewStudent(userData, s.BaseURL, prepareCourseRegisterLimit))
+		students = append(students, model.NewStudent(userData, s.BaseURL))
 	}
 
 	courses := make([]*model.Course, 0, prepareCourseCount)
@@ -154,7 +154,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		param := generate.CourseParam(teacher, generate.WithPeriod(i%6), generate.WithDayOfWeek((i/6)+1))
+		param := generate.CourseParam((i/6)+1, i%6, teacher)
 		_, res, err := AddCourseAction(ctx, teacher, param)
 		if err != nil {
 			step.AddError(err)
