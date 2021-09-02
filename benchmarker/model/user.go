@@ -221,7 +221,10 @@ func (s *Student) TotalCredit() int {
 
 type Teacher struct {
 	*UserAccount
-	Agent *agent.Agent
+	Agent      *agent.Agent
+	IsLoggedIn bool
+
+	mu sync.Mutex
 }
 
 const teacherUserAgent = "isucholar-agent-teacher/1.0.0"
@@ -234,4 +237,16 @@ func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
 		UserAccount: userData,
 		Agent:       a,
 	}
+}
+
+func (t *Teacher) LoginOnce(f func(teacher *Teacher)) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.IsLoggedIn {
+		return true
+	}
+	f(t)
+
+	return t.IsLoggedIn
 }
