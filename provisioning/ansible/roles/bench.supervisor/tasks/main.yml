@@ -4,21 +4,6 @@
     path: /tmp/isucon11-portal
     state: directory
 
-- name: "roles/bench.supervisor/tasks/main: Deploy isucon/isucon11-portal"
-  unarchive:
-    src: /dev/shm/files-generated/isucon11-portal.tar
-    dest: /tmp/isucon11-portal/
-    owner: isucon
-    group: isucon
-
-- name: "roles/bench.supervisor/tasks/main: Build isuxportal-supervisor"
-  become_user: isucon
-  args:
-    chdir: /tmp/isucon11-portal/supervisor
-  environment:
-    PATH: "/home/isucon/.cargo/bin:{{ ansible_env.PATH }}"
-  shell: cargo build --release --bin isuxportal-supervisor
-
 - name: "roles/bench.supervisor/tasks/main: Mkdir /home/isucon/bin"
   file:
     state: directory
@@ -31,7 +16,7 @@
   become_user: root
   copy:
     remote_src: yes
-    src: /tmp/isucon11-portal/supervisor/target/release/isuxportal-supervisor
+    src: /dev/shm/files-generated/isuxportal-supervisor
     dest: /home/isucon/bin/
     owner: isucon
     group: isucon

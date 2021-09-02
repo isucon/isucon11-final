@@ -1,6 +1,6 @@
 default: generate
 
-files-generated:  files-generated/REVISION files-generated/isucon11-final.tar files-generated/benchmarker
+files-generated:  files-generated/REVISION files-generated/isucon11-final.tar files-generated/benchmarker files-generated/isuxportal-supervisor
 
 files-generated/REVISION: $(wildcard ../../**/*)
 	mkdir -p files-generated/
@@ -15,6 +15,10 @@ files-generated/benchmarker: $(wildcard ../../benchmarker/**/*) $(wildcard ../..
 	mkdir -p files-generated/
 	cd ../../benchmarker && make ./bin/benchmarker_linux_amd64
 	cp ../../benchmarker/bin/benchmarker_linux_amd64 files-generated/benchmarker
+
+files-generated/isuxportal-supervisor:
+	mkdir -p files-generated/
+	aws s3 cp s3://isucon11-artifacts/supervisor/isuxportal-supervisor-ubuntu2004-amd64 files-generated/isuxportal-supervisor
 
 generate: output target/contestant.json target/bench.json target/standalone.json
 
