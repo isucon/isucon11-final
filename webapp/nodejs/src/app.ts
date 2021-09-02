@@ -322,4 +322,147 @@ usersApi.get("/me/courses", async (req, res) => {
   }
 });
 
+interface RegisterCourseRequestContent {
+  id: string;
+}
+
+function isValidRegisterCourseRequestContent(
+  body: RegisterCourseRequestContent[]
+): body is RegisterCourseRequestContent[] {
+  return (
+    Array.isArray(body) &&
+    body.every((data) => {
+      return typeof data === "object" && typeof data.id === "string";
+    })
+  );
+}
+
+interface RegisterCoursesErrorResponse {
+  course_not_found: string[];
+  not_registrable_status: string[];
+  schedule_conflict: string[];
+}
+
+usersApi.put(
+  "/me/courses",
+  async (
+    req: express.Request<
+      Record<string, never>,
+      unknown,
+      RegisterCourseRequestContent[]
+    >,
+    res
+  ) => {
+    let userInfo: SessionUserInfo;
+    try {
+      userInfo = getUserInfo(req.session);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    }
+
+    const request = req.body;
+    if (!isValidRegisterCourseRequestContent(request)) {
+      return res.status(400).send("Invalid format.");
+    }
+    request.sort((a, b) => {
+      if (a.id < b.id) {
+        return -1;
+      }
+      if (a.id > b.id) {
+        return 1;
+      }
+      return 0;
+    });
+
+    const db = await pool.getConnection();
+    try {
+      await db.beginTransaction();
+
+      const errors: RegisterCoursesErrorResponse = {
+        course_not_found: [],
+        not_registrable_status: [],
+        schedule_conflict: [],
+      };
+      const newlyAdded: Course[] = [];
+      for (const courseReq of request) {
+        const [[course]] = await db.query<Course[]>(
+          "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE",
+          [courseReq.id]
+        );
+        if (!course) {
+          errors.course_not_found.push(courseReq.id);
+          continue;
+        }
+
+        if (course.status !== CourseStatus.StatusRegistration) {
+          errors.not_registrable_status.push(course.id);
+          continue;
+        }
+
+        // MEMO: すでに履修登録済みの科目は無視する
+        const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
+          "SELECT COUNT(*) AS `cnt` FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+          [course.id, userInfo.userId]
+        );
+        if (cnt > 0) {
+          continue;
+        }
+
+        newlyAdded.push(course);
+      }
+
+      // MEMO: スケジュールの重複バリデーション
+      const query =
+        "SELECT `courses`.*" +
+        " FROM `courses`" +
+        " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
+        " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?";
+      const [alreadyRegistered] = await db.query<Course[]>(query, [
+        CourseStatus.StatusClosed,
+        userInfo.userId,
+      ]);
+
+      alreadyRegistered.push(...newlyAdded);
+      for (const course1 of newlyAdded) {
+        for (const course2 of alreadyRegistered) {
+          if (
+            course1.id !== course2.id &&
+            course1.period === course2.period &&
+            course1.dayOfWeek === course2.dayOfWeek
+          ) {
+            errors.schedule_conflict.push(course1.id);
+            break;
+          }
+        }
+      }
+
+      if (
+        errors.course_not_found.length > 0 ||
+        errors.not_registrable_status.length > 0 ||
+        errors.schedule_conflict.length > 0
+      ) {
+        await db.rollback();
+        return res.status(400).json(errors);
+      }
+
+      for (const course of newlyAdded) {
+        await db.query(
+          "INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)",
+          [course.id, userInfo.userId]
+        );
+      }
+
+      await db.commit();
+
+      return res.status(200).send();
+    } catch (err) {
+      await db.rollback();
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
