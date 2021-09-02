@@ -1,40 +1,38 @@
 <template>
   <div>
-    <div class="w-8/12">
-      <Card>
-        <div class="flex-1 flex-col">
-          <div class="flex flex-row items-center mb-4">
-            <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
-            <div
-              class="border border-gray-400 pl-1 pr-1 mr-4 cursor-pointer"
-              :class="unreadFilterClasses"
-              @click="toggleUnreadFilter"
+    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
+      <div class="flex-1 flex-col">
+        <div class="flex flex-row items-center mb-4">
+          <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
+          <div
+            class="border border-gray-400 pl-1 pr-1 mr-4 cursor-pointer"
+            :class="unreadFilterClasses"
+            @click="toggleUnreadFilter"
+          >
+            <span class="text-sm">未読</span>
+            <span
+              class="bg-primary-800 text-white font-bold text-sm pl-1 pr-1"
+              >{{ numOfUnreads }}</span
             >
-              <span class="text-sm">未読</span>
-              <span
-                class="bg-primary-800 text-white font-bold text-sm pl-1 pr-1"
-                >{{ numOfUnreads }}</span
-              >
-            </div>
-            <TextField
-              id="input-course-name"
-              v-model="courseName"
-              class=""
-              label=""
-              type="text"
-              placeholder="科目名で絞り込み"
-              @input="filterAnnouncements"
-            />
           </div>
-          <AnnouncementList
-            :announcements="announcements"
-            :link="link"
-            @movePage="paginate"
-            @open="openAnnouncement"
-            @close="closeAnnouncement"
+          <TextField
+            id="input-course-name"
+            v-model="courseName"
+            class=""
+            label=""
+            type="text"
+            placeholder="科目名で絞り込み"
+            @input="filterAnnouncements"
           />
         </div>
-      </Card>
+        <AnnouncementList
+          :announcements="announcements"
+          :link="link"
+          @movePage="paginate"
+          @open="openAnnouncement"
+          @close="closeAnnouncement"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -48,7 +46,6 @@ import {
   GetAnnouncementResponse,
 } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
-import Card from '~/components/common/Card.vue'
 import TextField from '~/components/common/TextField.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
@@ -66,11 +63,10 @@ type AnnounceListData = AsyncAnnounceData & {
 }
 
 export default Vue.extend({
-  watchQuery: true,
   key(route) {
     return route.fullPath
   },
-  components: { Card, TextField, AnnouncementList },
+  components: { TextField, AnnouncementList },
   middleware: 'is_student',
   async asyncData(ctx: Context): Promise<AsyncAnnounceData> {
     const { $axios, query } = ctx
@@ -113,6 +109,7 @@ export default Vue.extend({
         : ['bg-white', 'text-black']
     },
   },
+  watchQuery: true,
   created() {
     this.announcements = this.innerAnnouncements
   },

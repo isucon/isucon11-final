@@ -7,7 +7,7 @@
       flex-wrap
       bg-primary-500
       p-6
-      shadow-lg
+      shadow
     "
   >
     <div class="flex-no-shrink text-white">
