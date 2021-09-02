@@ -682,15 +682,15 @@ func (s *Scenario) addCourseLoad(ctx context.Context, step *isucandar.BenchmarkS
 		return
 	}
 
-	isLogin := teacher.LoginAtOnce(func(teacher *model.Teacher) {
+	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
 		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 		if err != nil {
 			step.AddError(err)
 			return
 		}
-		teacher.IsLogin = true
+		teacher.IsLoggedIn = true
 	})
-	if !isLogin {
+	if !isLoggedIn {
 		// ログインに失敗したらコース追加中断
 		return
 	}

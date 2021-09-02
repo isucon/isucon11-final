@@ -220,8 +220,8 @@ func (s *Student) TotalCredit() int {
 
 type Teacher struct {
 	*UserAccount
-	Agent   *agent.Agent
-	IsLogin bool
+	Agent      *agent.Agent
+	IsLoggedIn bool
 
 	mu sync.Mutex
 }
@@ -238,14 +238,14 @@ func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
 	}
 }
 
-func (t *Teacher) LoginAtOnce(f func(teacher *Teacher)) bool {
+func (t *Teacher) LoginOnce(f func(teacher *Teacher)) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if t.IsLogin {
+	if t.IsLoggedIn {
 		return true
 	}
 	f(t)
 
-	return t.IsLogin
+	return t.IsLoggedIn
 }
