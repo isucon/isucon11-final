@@ -22,7 +22,8 @@ type Student struct {
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
-	announcementCond      *sync.Cond
+	readAnnouncementCond  *sync.Cond
+	addAnnouncementCond   *sync.Cond
 	rmu                   sync.RWMutex
 
 	registeredSchedule [7][6]*Course // 空きコマ管理[DayOfWeek:7][Period:6]
@@ -51,7 +52,8 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		registeredSchedule: [7][6]*Course{},
 		scheduleMutex:      sync.RWMutex{},
 	}
-	s.announcementCond = sync.NewCond(&s.rmu)
+	s.readAnnouncementCond = sync.NewCond(&s.rmu)
+	s.addAnnouncementCond = sync.NewCond(&s.rmu)
 	return s
 }
 
@@ -75,6 +77,7 @@ func (s *Student) AddAnnouncement(announcement *Announcement) {
 
 	s.announcements = append(s.announcements, &AnnouncementStatus{announcement, true})
 	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
+	s.addAnnouncementCond.Broadcast()
 }
 
 func (s *Student) GetAnnouncement(id string) *AnnouncementStatus {
@@ -100,11 +103,47 @@ func (s *Student) ReadAnnouncement(id string) {
 	defer s.rmu.Unlock()
 
 	s.announcements[s.announcementIndexByID[id]].Unread = false
-	s.announcementCond.Broadcast()
+	s.readAnnouncementCond.Broadcast()
 }
 
 func (s *Student) isUnreadAnnouncement(id string) bool {
 	return s.announcements[s.announcementIndexByID[id]].Unread
+}
+
+func (s *Student) HasUnreadAnnouncement() bool {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	for _, anc := range s.announcements {
+		if anc.Unread {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Student) WaitNewUnreadAnnouncement(ctx context.Context) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-s.waitAddAnnouncement():
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (s *Student) waitAddAnnouncement() <-chan struct{} {
+	ch := make(chan struct{})
+	// MEMO: このgoroutineはWaitNewUnreadAnnouncementがctx.Done()で抜けた場合放置される
+	go func() {
+		s.addAnnouncementCond.L.Lock()
+		s.addAnnouncementCond.Wait()
+		s.addAnnouncementCond.L.Unlock()
+		close(ch)
+	}()
+	return ch
 }
 
 func (s *Student) WaitReadAnnouncement(ctx context.Context, id string) <-chan struct{} {
@@ -128,11 +167,11 @@ func (s *Student) waitReadAnnouncement(id string) <-chan struct{} {
 	s.rmu.RLock()
 	if s.isUnreadAnnouncement(id) {
 		go func() {
-			s.announcementCond.L.Lock()
+			s.readAnnouncementCond.L.Lock()
 			for s.isUnreadAnnouncement(id) {
-				s.announcementCond.Wait()
+				s.readAnnouncementCond.Wait()
 			}
-			s.announcementCond.L.Unlock()
+			s.readAnnouncementCond.L.Unlock()
 			close(ch)
 		}()
 	} else {

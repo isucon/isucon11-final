@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -90,12 +91,26 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	DebugLogger.Printf("========STATS_DATA=========")
 	for k, v := range s.debugData.ints {
+		if len(v) == 0 {
+			continue
+		}
+
 		var sum int64
 		for _, t := range v {
 			sum += t
 		}
 		avg := int64(float64(sum) / float64(len(v)))
-		DebugLogger.Printf("%s: avg %d", k, avg)
+
+		sorted := make([]int64, len(v))
+		copy(sorted, v)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i] < sorted[j]
+		})
+
+		tile50 := sorted[int(float64(len(sorted))*0.5)]
+		tile90 := sorted[int(float64(len(sorted))*0.9)]
+		tile99 := sorted[int(float64(len(sorted))*0.99)]
+		DebugLogger.Printf("%s: avg %d, 50tile %d, 90tile %d, 99tile %d", k, avg, tile50, tile90, tile99)
 	}
 
 	return nil
@@ -297,11 +312,13 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
+			timer := time.After(50 * time.Millisecond)
 
 			if s.isNoRequestTime(ctx) {
 				return
 			}
 
+			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
@@ -309,15 +326,21 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				time.Sleep(1 * time.Millisecond)
 				continue
 			}
+			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
+
 			if err := verifyAnnouncements(&res, student); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.GetAnnouncementList)
 			}
 
+			// このページで未読お知らせを読んだカウント（ページングするかどうかの判定用）
+			var readCount int
 			for _, ans := range res.Announcements {
 
 				if ans.Unread {
+					readCount++
+
 					announcementStatus := student.GetAnnouncement(ans.ID)
 					if announcementStatus == nil {
 						// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
@@ -329,12 +352,14 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 						return
 					}
 
+					startGetAnnouncementDetail := time.Now()
 					// お知らせの詳細を取得する
 					_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
 					if err != nil {
 						step.AddError(err)
 						continue // 次の未読おしらせの確認へ
 					}
+					s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
 					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
 						step.AddError(err)
@@ -347,18 +372,25 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
-			// TODO: 現状: ページングで最後のページまで確認したら最初のページに戻る
-			// TODO: 理想1: 未読お知らせを早く確認するため以降のページに未読が存在しないなら最初に戻る
-			// TODO: 理想2: 10ページぐらい最低ページングする。10ページ目末尾のお知らせ以降に未読があればさらにページングする。無いならしない。
 			// MEMO: Student.Announcementsはwebapp内のお知らせの順番(createdAt)と完全同期できていない
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
-			// 未読お知らせがないのなら少しwaitして1ページ目から見直す
-			if res.UnreadCount == 0 {
+			// 未読お知らせがない or 未読をすべて読み終えていたら
+			// DoSにならないように少しwaitして1ページ目から見直す
+			if res.UnreadCount == readCount {
 				nextPathParam = ""
-				time.Sleep(200 * time.Millisecond)
+				if !student.HasUnreadAnnouncement() {
+					select {
+					case <-time.After(200 * time.Millisecond):
+					case <-student.WaitNewUnreadAnnouncement(ctx):
+						// waitはお知らせ追加したらエスパーで即解消する
+					}
+				}
 			}
+
+			// 50msより短い間隔で一覧取得をしない
+			<-timer
 
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 			select {
@@ -699,6 +731,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 		go func() {
 			defer wg.Done()
 
+			waitStartTime := time.Now()
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 			select {
 			case <-time.After(endTimeDuration):
@@ -709,6 +742,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			case <-student.WaitReadAnnouncement(ctx, announcementID):
 				// 学生sが課題お知らせを読むまで待つ
 			}
+			s.debugData.AddInt("waitReadAnnouncement", time.Since(waitStartTime).Milliseconds())
 
 			// selectでのwaitは複数該当だとランダムなのでここでも判定
 			if s.isNoRequestTime(ctx) {
