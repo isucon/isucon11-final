@@ -58,7 +58,7 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		return failure.NewError(fails.ErrCritical, err)
 	}
 
-	err = s.prepareAbnormal(ctx, step)
+	err = s.prepareAbnormal(ctx)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
@@ -531,7 +531,7 @@ func prepareCheckAnnouncementDetailContent(expected *model.AnnouncementStatus, a
 	return nil
 }
 
-func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.BenchmarkStep) error {
+func (s *Scenario) prepareAbnormal(ctx context.Context) error {
 	// TODO: 並列化
 
 	// 認証チェック
