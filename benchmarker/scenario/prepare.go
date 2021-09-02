@@ -441,6 +441,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return len(errors.All()) > 0
 	}
 
+	// 生徒の用意
 	students := make([]*model.Student, prepareCheckAnnouncementListStudentCount)
 	for i := 0; i < prepareCheckAnnouncementListStudentCount; i++ {
 		student, err := s.getLoggedInStudent(ctx)
@@ -454,6 +455,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
 
+	// 教師の用意
 	teachers := make([]*model.Teacher, prepareCheckAnnouncementListTeacherCount)
 	for i := 0; i < prepareCheckAnnouncementListTeacherCount; i++ {
 		teacher, err := s.getLoggedInTeacher(ctx)
@@ -467,6 +469,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
 
+	// コース登録
 	var mu sync.Mutex
 	courses := make([]*model.Course, 0, prepareCheckAnnouncementListCourseCount)
 	w, err := worker.NewWorker(func(ctx context.Context, i int) {
@@ -517,13 +520,15 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
 
-	// クラス追加、おしらせ追加をするたびにおしらせリストを確認する
+	// クラス追加、おしらせ追加をする
+	// そのたびにおしらせリストを確認する
 	// 既読にはしない
 	for classPart := 0; classPart < prepareCheckAnnouncementListClassCountPerCourse; classPart++ {
 		for j := 0; j < prepareCheckAnnouncementListCourseCount; j++ {
 			course := courses[j]
 			teacher := course.Teacher()
 
+			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
@@ -540,12 +545,11 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 				step.AddError(err)
 				return err
 			}
-
 			announcement.ID = ancRes.ID
 			course.BroadCastAnnouncement(announcement)
 
+			// 生徒ごとにおしらせリストの確認
 			courseStudents := course.Students()
-
 			p := parallel.NewParallel(ctx, int32(len(courseStudents)))
 			for _, student := range courseStudents {
 				student := student
