@@ -157,9 +157,13 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	// searchAPIを叩くユーザ
-	student := students[0]
+	userData, err := s.studentPool.newUserData()
+	if err != nil {
+		return
+	}
+	student := model.NewStudent(userData, s.BaseURL)
 
-	_, err := LoginAction(ctx, student.Agent, student.UserAccount)
+	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 	if err != nil {
 		step.AddError(failure.NewError(fails.ErrCritical, err))
 		return
