@@ -634,10 +634,16 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 		return
 	}
 
-	_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
-	if err != nil {
-		AdminLogger.Printf("teacherのログインに失敗しました")
-		step.AddError(failure.NewError(fails.ErrCritical, err))
+	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
+		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		teacher.IsLoggedIn = true
+	})
+	if !isLoggedIn {
+		// ログインに失敗したらコース追加中断
 		return
 	}
 
