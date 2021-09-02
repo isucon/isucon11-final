@@ -367,7 +367,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				return
 			}
 
-			err = validateUserGrade(&expected, &res, len(students))
+			err = validateUserGrade(&expected, &res)
 			if err != nil {
 				step.AddError(err)
 				return
