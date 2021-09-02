@@ -339,6 +339,12 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 }
 
 func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
+	// 不正な param.DayOfWeek は空文字列として送信してprepareの異常系チェックに使用する
+	var dayOfWeek api.DayOfWeek
+	if 0 <= param.DayOfWeek && param.DayOfWeek < len(api.DayOfWeekTable) {
+		dayOfWeek = api.DayOfWeekTable[param.DayOfWeek]
+	}
+
 	req := api.AddCourseRequest{
 		Code:        param.Code,
 		Type:        api.CourseType(param.Type),
@@ -346,7 +352,7 @@ func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.Cours
 		Description: param.Description,
 		Credit:      param.Credit,
 		Period:      param.Period + 1,
-		DayOfWeek:   api.DayOfWeekTable[param.DayOfWeek],
+		DayOfWeek:   dayOfWeek,
 		Keywords:    param.Keywords,
 	}
 	res := api.AddCourseResponse{}
