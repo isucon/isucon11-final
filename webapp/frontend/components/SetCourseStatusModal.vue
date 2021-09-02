@@ -68,7 +68,7 @@ type SubmitFormData = {
 
 const statusOptions = [
   {
-    text: '履修登録受付中',
+    text: '履修登録中',
     value: 'registration',
   },
   {
@@ -76,7 +76,7 @@ const statusOptions = [
     value: 'in-progress',
   },
   {
-    text: '閉講済み',
+    text: '閉講',
     value: 'closed',
   },
 ]
