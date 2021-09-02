@@ -413,9 +413,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
-			// 50msより短い間隔で一覧取得をしない
-			<-timer
-
 			// 未読お知らせがない or 未読をすべて読み終えていたら
 			// DoSにならないように少しwaitして1ページ目から見直す
 			if res.UnreadCount == readCount {
@@ -428,6 +425,9 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					}
 				}
 			}
+
+			// 50msより短い間隔で一覧取得をしない
+			<-timer
 
 			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
 			select {
