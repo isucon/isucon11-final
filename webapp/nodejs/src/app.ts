@@ -127,15 +127,9 @@ async function isLoggedIn(
   next();
 }
 
-interface SessionUserInfo {
-  userId: string;
-  userName: string;
-  isAdmin: boolean;
-}
-
 function getUserInfo(
   session?: CookieSessionInterfaces.CookieSessionObject | null
-): SessionUserInfo {
+): [string, string, boolean] {
   if (!session) {
     throw new Error();
   }
@@ -148,11 +142,7 @@ function getUserInfo(
   if (!("isAdmin" in session)) {
     throw new Error("failed to get isAdmin from session");
   }
-  return {
-    userId: session["userID"],
-    userName: session["userName"],
-    isAdmin: session["isAdmin"],
-  };
+  return [session["userID"], session["userName"], session["isAdmin"]];
 }
 
 interface LoginRequest {
@@ -232,9 +222,11 @@ interface GetMeResponse {
 }
 
 usersApi.get("/me", async (req, res) => {
-  let userInfo: SessionUserInfo;
+  let userId: string;
+  let userName: string;
+  let isAdmin: boolean;
   try {
-    userInfo = getUserInfo(req.session);
+    [userId, userName, isAdmin] = getUserInfo(req.session);
   } catch (err) {
     console.error(err);
     return res.status(500).send();
@@ -244,7 +236,7 @@ usersApi.get("/me", async (req, res) => {
   try {
     const [[{ code }]] = await db.query<({ code: string } & RowDataPacket)[]>(
       "SELECT `code` FROM `users` WHERE `id` = ?",
-      [userInfo.userId]
+      [userId]
     );
     if (!code) {
       throw new Error();
@@ -252,8 +244,8 @@ usersApi.get("/me", async (req, res) => {
 
     const response: GetMeResponse = {
       code,
-      name: userInfo.userName,
-      is_admin: userInfo.isAdmin,
+      name: userName,
+      is_admin: isAdmin,
     };
     return res.status(200).json(response);
   } catch (err) {
@@ -274,9 +266,9 @@ interface GetRegisteredCourseResponseContent {
 
 // GetRegisteredCourses 履修中の科目一覧取得
 usersApi.get("/me/courses", async (req, res) => {
-  let userInfo: SessionUserInfo;
+  let userId: string;
   try {
-    userInfo = getUserInfo(req.session);
+    [userId] = getUserInfo(req.session);
   } catch (err) {
     console.error(err);
     return res.status(500).send();
@@ -291,7 +283,7 @@ usersApi.get("/me/courses", async (req, res) => {
       " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?";
     const [courses] = await db.query<Course[]>(query, [
       CourseStatus.StatusClosed,
-      userInfo.userId,
+      userId,
     ]);
 
     // 履修科目が0件の時は空配列を返却
@@ -353,9 +345,9 @@ usersApi.put(
     >,
     res
   ) => {
-    let userInfo: SessionUserInfo;
+    let userId: string;
     try {
-      userInfo = getUserInfo(req.session);
+      [userId] = getUserInfo(req.session);
     } catch (err) {
       console.error(err);
       return res.status(500).send();
@@ -403,7 +395,7 @@ usersApi.put(
         // MEMO: すでに履修登録済みの科目は無視する
         const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
           "SELECT COUNT(*) AS `cnt` FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
-          [course.id, userInfo.userId]
+          [course.id, userId]
         );
         if (cnt > 0) {
           continue;
@@ -420,7 +412,7 @@ usersApi.put(
         " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?";
       const [alreadyRegistered] = await db.query<Course[]>(query, [
         CourseStatus.StatusClosed,
-        userInfo.userId,
+        userId,
       ]);
 
       alreadyRegistered.push(...newlyAdded);
@@ -449,7 +441,7 @@ usersApi.put(
       for (const course of newlyAdded) {
         await db.query(
           "INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)",
-          [course.id, userInfo.userId]
+          [course.id, userId]
         );
       }
 
