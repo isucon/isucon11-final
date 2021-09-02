@@ -18,10 +18,6 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
-const (
-	validateAnnouncementsRate = 1.0
-)
-
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	if s.NoLoad {
 		return nil
@@ -53,7 +49,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			defer wg.Done()
 
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			var responseUnreadCount int // responseに含まれるunread_count
 			actualAnnouncements := map[string]api.AnnouncementResponse{}
@@ -153,7 +149,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Course が見つかりました"))
 
 	students := s.ActiveStudents()
-	expectCourses := s.Courses()
+	expectCourses := s.CourseManager.ExposeCoursesForValidation()
 
 	if len(students) == 0 || len(expectCourses) == 0 {
 		return
@@ -169,7 +165,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	var actuals []*api.GetCourseDetailResponse
-	// 空検索パラメータで全部ページング → コースをすべて集める
+	// 空検索パラメータで全部ページング → 科目をすべて集める
 	nextPathParam := "/api/syllabus"
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
@@ -238,7 +234,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 		user := user
 		p.Do(func(ctx context.Context) {
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			expected := calculateGradeRes(user, users)
 

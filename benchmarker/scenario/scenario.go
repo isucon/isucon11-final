@@ -8,9 +8,9 @@ import (
 
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/pubsub"
+
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
-	"github.com/isucon/isucon11-final/benchmarker/scenario/util"
 )
 
 var (
@@ -21,11 +21,10 @@ var (
 
 type Scenario struct {
 	Config
+	CourseManager *model.CourseManager
 
 	sPubSub            *pubsub.PubSub
 	cPubSub            *pubsub.PubSub
-	courses            map[string]*model.Course
-	emptyCourseManager *util.CourseManager
 	faculties          []*model.Teacher
 	studentPool        *userPool
 	activeStudents     []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
@@ -33,7 +32,7 @@ type Scenario struct {
 	loadRequestEndTime time.Time
 	debugData          *DebugData
 
-	mu sync.RWMutex
+	rmu sync.RWMutex
 }
 
 type Config struct {
@@ -59,16 +58,15 @@ func NewScenario(config *Config) (*Scenario, error) {
 	}
 
 	return &Scenario{
-		Config: *config,
+		Config:        *config,
+		CourseManager: model.NewCourseManager(),
 
-		sPubSub:            pubsub.NewPubSub(),
-		cPubSub:            pubsub.NewPubSub(),
-		courses:            map[string]*model.Course{},
-		emptyCourseManager: util.NewCourseManager(),
-		faculties:          faculties,
-		studentPool:        NewUserPool(studentsData),
-		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
-		debugData:          NewDebugData(config.IsDebug),
+		sPubSub:        pubsub.NewPubSub(),
+		cPubSub:        pubsub.NewPubSub(),
+		faculties:      faculties,
+		studentPool:    NewUserPool(studentsData),
+		activeStudents: make([]*model.Student, 0, initialStudentsCount),
+		debugData:      NewDebugData(config.IsDebug),
 	}, nil
 }
 
@@ -77,50 +75,28 @@ func (s *Scenario) Language() string {
 }
 
 func (s *Scenario) ActiveStudents() []*model.Student {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
 
 	return s.activeStudents
 }
 
 func (s *Scenario) AddActiveStudent(student *model.Student) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
 
 	s.activeStudents = append(s.activeStudents, student)
 }
 func (s *Scenario) ActiveStudentCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
 
 	return len(s.activeStudents)
 }
 
-func (s *Scenario) AddCourse(course *model.Course) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.courses[course.ID] = course
-}
-
-func (s *Scenario) GetCourse(id string) (*model.Course, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	course, exists := s.courses[id]
-	return course, exists
-}
-
-func (s *Scenario) Courses() map[string]*model.Course {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return s.courses
-}
-
 func (s *Scenario) GetRandomTeacher() *model.Teacher {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
 	return s.faculties[rand.Intn(len(s.faculties))]
 }
