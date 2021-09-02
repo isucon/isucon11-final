@@ -8,6 +8,18 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
+type ReservationResult int
+
+const (
+	Succeeded ReservationResult = iota
+	NotAvailable
+)
+
+const (
+	// ClassCountPerCourse は科目あたりのクラス数 -> used in model/course.go
+	ClassCountPerCourse = 5
+)
+
 type CourseParam struct {
 	Code        string
 	Type        string
@@ -25,15 +37,13 @@ type Course struct {
 	ID                 string
 	teacher            *Teacher
 	registeredStudents map[string]*Student
+	reservations       int
+	capacity           int // 登録学生上限
 	classes            []*Class
-	registeredLimit    int // 登録学生上限
+	closer             chan struct{}
+	isZeroReservation  chan struct{}
+	once               sync.Once
 	rmu                sync.RWMutex
-
-	// コース登録を締切る際に参照
-	registrationCloser   chan struct{} // 登録が締め切られるとcloseする
-	tempRegCount         int
-	tempRegZeroCountCond *sync.Cond
-	timerOnce            sync.Once
 }
 
 type SearchCourseParam struct {
@@ -45,21 +55,18 @@ type SearchCourseParam struct {
 	Keywords  []string
 }
 
-func NewCourse(param *CourseParam, id string, teacher *Teacher) *Course {
-	c := &Course{
+func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *Course {
+	return &Course{
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
-		registeredStudents: make(map[string]*Student, 0),
-		registeredLimit:    50, // 引数で渡す？
+		registeredStudents: make(map[string]*Student, capacity),
+		capacity:           capacity,
+		classes:            make([]*Class, 0, ClassCountPerCourse),
+		closer:             make(chan struct{}, 0),
+		isZeroReservation:  make(chan struct{}, 0),
 		rmu:                sync.RWMutex{},
-
-		registrationCloser: make(chan struct{}, 0),
-		tempRegCount:       0,
-		timerOnce:          sync.Once{},
 	}
-	c.tempRegZeroCountCond = sync.NewCond(&c.rmu)
-	return c
 }
 
 func (c *Course) AddClass(class *Class) {
@@ -69,44 +76,16 @@ func (c *Course) AddClass(class *Class) {
 	c.classes = append(c.classes, class)
 }
 
-// WaitPreparedCourse はコースに学生が追加されなくなるか、ctx.Done()になるのを待つ
-func (c *Course) WaitPreparedCourse(ctx context.Context) <-chan struct{} {
-	ch := make(chan struct{}, 0)
+func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc) <-chan struct{} {
 	go func() {
-		// 内部的な履修締切（時間 or 人数）までwaitする
 		select {
+		case <-c.closer:
 		case <-ctx.Done():
-			close(ch)
-			return
-		case <-c.registrationCloser:
 		}
-
-		// 全員の仮登録が完了する(=仮登録者が0になる)のを待つ
-		// webapp側に登録完了してないのにベンチがコース処理を始めると不整合がでるため
-		select {
-		case <-ctx.Done():
-			close(ch)
-			return
-		case <-c.waitTempRegCountIsZero():
-		}
-
-		close(ch)
+		<-c.isZeroReservation
+		cancel()
 	}()
-	return ch
-}
-
-func (c *Course) waitTempRegCountIsZero() <-chan struct{} {
-	ch := make(chan struct{}, 0)
-	// MEMO: このgoroutineはWaitPreparedCourseがctx.Done()で抜けた場合放置される
-	go func() {
-		c.tempRegZeroCountCond.L.Lock()
-		for c.tempRegCount > 0 {
-			c.tempRegZeroCountCond.Wait()
-		}
-		c.tempRegZeroCountCond.L.Unlock()
-		close(ch)
-	}()
-	return ch
+	return ctx.Done()
 }
 
 func (c *Course) Teacher() *Teacher {
@@ -138,46 +117,79 @@ func (c *Course) Classes() []*Class {
 	return cs
 }
 
-func (c *Course) BroadCastAnnouncement(a *Announcement) {
-	c.rmu.Lock()
-	defer c.rmu.Unlock()
-
-	for _, s := range c.registeredStudents {
-		s.AddAnnouncement(a)
-	}
-}
-
-// TempRegisterIfRegistrable は履修受付中なら仮登録者を1人増やす
-func (c *Course) TempRegisterIfRegistrable() bool {
+// ReserveIfAvailable は履修受付中なら1枠確保する
+func (c *Course) ReserveIfAvailable() ReservationResult {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
 	select {
-	case _, _ = <-c.registrationCloser:
-		// close済み
-		return false
+	case <-c.closer:
+		return NotAvailable
 	default:
 	}
-
-	// 履修closeしていない場合は仮登録する
-	c.tempRegCount++ // コース仮登録者+1
-	if len(c.registeredStudents)+c.tempRegCount >= c.registeredLimit {
-		// 本登録 + 仮登録が上限以上ならcloseする
-		close(c.registrationCloser)
+	if len(c.registeredStudents)+c.reservations >= c.capacity {
+		return NotAvailable
 	}
 
-	return true
+	c.reservations++
+
+	return Succeeded
 }
 
-func (c *Course) SuccessRegistration(student *Student) {
+func (c *Course) CommitReservation(s *Student) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	c.registeredStudents[student.Code] = student
-	c.tempRegCount--
-	if c.tempRegCount <= 0 {
-		c.tempRegZeroCountCond.Broadcast()
+	c.registeredStudents[s.Code] = s
+	c.reservations--
+
+	// 満員が確定した時、履修を締め切る
+	if len(c.registeredStudents) == c.capacity {
+		select {
+		case <-c.closer:
+			// close済み
+		default:
+			close(c.closer)
+		}
 	}
+	// 仮登録数がゼロですでに履修が締め切られているなら、仮登録の待ちを閉じる
+	if c.reservations == 0 {
+		select {
+		case <-c.closer:
+			close(c.isZeroReservation)
+		default:
+		}
+	}
+}
+
+func (c *Course) RollbackReservation() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+	c.reservations--
+	// 仮登録数がゼロですでに履修が締め切られているなら、仮登録の待ちを閉じる
+	if c.reservations == 0 {
+		select {
+		case <-c.closer:
+			close(c.isZeroReservation)
+		default:
+		}
+	}
+}
+
+func (c *Course) StartTimer(duration time.Duration) {
+	c.once.Do(func() {
+		go func() {
+			time.Sleep(duration)
+			c.rmu.Lock()
+			defer c.rmu.Unlock()
+			select {
+			case <-c.closer:
+				// close済み
+			default:
+				close(c.closer)
+			}
+		}()
+	})
 }
 
 // for prepare
@@ -188,32 +200,13 @@ func (c *Course) AddStudent(student *Student) {
 	c.registeredStudents[student.Code] = student
 }
 
-func (c *Course) FailRegistration() {
+func (c *Course) BroadCastAnnouncement(a *Announcement) {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
 
-	c.tempRegCount--
-	if c.tempRegCount <= 0 {
-		c.tempRegZeroCountCond.Broadcast()
+	for _, s := range c.registeredStudents {
+		s.AddAnnouncement(a)
 	}
-}
-
-func (c *Course) SetClosingAfterSecAtOnce(duration time.Duration) {
-	c.timerOnce.Do(func() {
-		go func() {
-			time.Sleep(duration)
-
-			c.rmu.Lock()
-			defer c.rmu.Unlock()
-
-			select {
-			case _, _ = <-c.registrationCloser:
-				// close済み
-			default:
-				close(c.registrationCloser)
-			}
-		}()
-	})
 }
 
 func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {

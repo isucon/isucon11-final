@@ -217,6 +217,7 @@ func main() {
 		BaseURL: baseURL,
 		UseTLS:  useTLS,
 		NoLoad:  noLoad,
+		IsDebug: isDebug,
 	}
 
 	s, err := scenario.NewScenario(config)

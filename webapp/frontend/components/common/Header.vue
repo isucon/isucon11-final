@@ -7,12 +7,17 @@
       flex-wrap
       bg-primary-500
       p-6
-      shadow-lg
+      shadow
     "
   >
     <div class="flex-no-shrink text-white">
       <span class="text-xl tracking-tight">
-        <NuxtLink to="/">ISUCHOLAR</NuxtLink>
+        <NuxtLink to="/"
+          ><img
+            src="/image/header_logo_white.svg"
+            alt="isucholar logo"
+            class="h-12"
+        /></NuxtLink>
       </span>
     </div>
 

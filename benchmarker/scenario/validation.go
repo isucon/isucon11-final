@@ -11,15 +11,12 @@ import (
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
+
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
 	"github.com/isucon/isucon11-final/benchmarker/util"
-)
-
-const (
-	validateAnnouncementsRate = 1.0
 )
 
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
@@ -53,7 +50,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			defer wg.Done()
 
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			var responseUnreadCount int // responseに含まれるunread_count
 			actualAnnouncements := map[string]api.AnnouncementResponse{}
@@ -153,7 +150,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Course が見つかりました"))
 
 	students := s.ActiveStudents()
-	expectCourses := s.Courses()
+	expectCourses := s.CourseManager.ExposeCoursesForValidation()
 
 	if len(students) == 0 || len(expectCourses) == 0 {
 		return
@@ -169,7 +166,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	var actuals []*api.GetCourseDetailResponse
-	// 空検索パラメータで全部ページング → コースをすべて集める
+	// 空検索パラメータで全部ページング → 科目をすべて集める
 	nextPathParam := "/api/syllabus"
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
@@ -238,7 +235,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 		user := user
 		p.Do(func(ctx context.Context) {
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			expected := calculateGradeRes(user, users)
 
@@ -248,7 +245,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 				return
 			}
 
-			err = validateUserGrade(&expected, &res, len(users))
+			err = validateUserGrade(&expected, &res)
 			if err != nil {
 				step.AddError(err)
 				return
@@ -261,13 +258,13 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	return
 }
 
-func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, studentCount int) error {
+func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
 	if len(expected.CourseResults) != len(actual.CourseResults) {
 		AdminLogger.Println("courseResult len. expected: ", len(expected.CourseResults), "actual: ", len(actual.CourseResults))
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません"))
 	}
 
-	err := validateSummary(&expected.Summary, &actual.Summary, studentCount)
+	err := validateSummary(&expected.Summary, &actual.Summary)
 	if err != nil {
 		return err
 	}
@@ -288,37 +285,35 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, s
 	return nil
 }
 
-func validateSummary(expected *model.Summary, actual *api.Summary, studentCount int) error {
+func validateSummary(expected *model.Summary, actual *api.Summary) error {
 	if expected.Credits != actual.Credits {
 		AdminLogger.Println("credits. expected: ", expected.Credits, "actual: ", actual.Credits)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
 	}
 
-	// これは適当
-	acceptableGpaError := 0.5
-	if math.Abs(expected.GPA-actual.GPA) > acceptableGpaError {
+	if math.Abs(expected.GPA-actual.GPA) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpa. expected: ", expected.GPA, "actual: ", actual.GPA)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません"))
 	}
 
-	if math.Abs(expected.GpaAvg-actual.GpaAvg) > acceptableGpaError/float64(studentCount) {
+	if math.Abs(expected.GpaAvg-actual.GpaAvg) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpaavg. expected: ", expected.GpaAvg, "actual: ", actual.GpaAvg)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaAvgが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_avgが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMax-actual.GpaMax) > acceptableGpaError {
+	if math.Abs(expected.GpaMax-actual.GpaMax) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpamax. expected: ", expected.GpaMax, "actual: ", actual.GpaMax)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMaxが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_maxが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMin-actual.GpaMin) > acceptableGpaError {
+	if math.Abs(expected.GpaMin-actual.GpaMin) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpamin. expected: ", expected.GpaMin, "actual: ", actual.GpaMin)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMinが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_minが一致しません"))
 	}
 
-	if math.Abs(expected.GpaTScore-actual.GpaTScore) > acceptableGpaError {
+	if math.Abs(expected.GpaTScore-actual.GpaTScore) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpatscore. expected: ", expected.GpaTScore, "actual: ", actual.GpaTScore)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaTScoreが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_t_scoreが一致しません"))
 	}
 
 	return nil
@@ -350,16 +345,12 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
 	}
 
-	// これは適当
-	acceptableGpaError := 0.5
-
-	// 決め打ちで5にした
-	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > acceptableGpaError/5 {
+	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > validateTotalScoreErrorTolerance {
 		AdminLogger.Println("TotalScoreAvg. expected: ", expected.TotalScoreAvg, "actual: ", actual.TotalScoreAvg)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
 	}
 
-	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > acceptableGpaError {
+	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > validateTotalScoreErrorTolerance {
 		AdminLogger.Println("TotalScoreTScore. expected: ", expected.TotalScoreTScore, "actual: ", actual.TotalScoreTScore)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
 	}
