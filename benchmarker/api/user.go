@@ -67,9 +67,9 @@ type RegisterCourseRequestContent struct {
 }
 
 type RegisterCoursesErrorResponse struct {
-	CourseNotFound       []string    `json:"course_not_found,omitempty"`
-	NotRegistrableStatus []uuid.UUID `json:"not_registrable_status,omitempty"`
-	ScheduleConflict     []uuid.UUID `json:"schedule_conflict,omitempty"`
+	CourseNotFound       []string `json:"course_not_found"`
+	NotRegistrableStatus []string `json:"not_registrable_status"`
+	ScheduleConflict     []string `json:"schedule_conflict"`
 }
 
 func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCourseRequestContent) (*http.Response, error) {

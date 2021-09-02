@@ -187,24 +187,35 @@ func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (
 	return hres, res, nil
 }
 
-func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, error) {
+func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, api.RegisterCoursesErrorResponse, error) {
 	req := make([]api.RegisterCourseRequestContent, 0, len(courses))
 	for _, c := range courses {
 		req = append(req, api.RegisterCourseRequestContent{ID: c.ID})
 	}
 
+	eres := api.RegisterCoursesErrorResponse{}
 	hres, err := api.RegisterCourses(ctx, agent, req)
 	if err != nil {
-		return hres, failure.NewError(fails.ErrHTTP, err)
+		return hres, eres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return hres, err
+		// 400のときはエラー内容が返ってくるのでレスポンスをデコードする
+		if hres.StatusCode == http.StatusBadRequest {
+			decodeErr := json.NewDecoder(hres.Body).Decode(&eres)
+			if decodeErr != nil {
+				return hres, eres, failure.NewError(fails.ErrHTTP, decodeErr)
+			}
+
+			return hres, eres, err
+		}
+
+		return hres, eres, err
 	}
 
-	return hres, nil
+	return hres, eres, nil
 }
 
 func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.GetAnnouncementsResponse, error) {

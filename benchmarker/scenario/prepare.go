@@ -21,6 +21,8 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
+
+	"github.com/pborman/uuid"
 )
 
 const (
@@ -207,7 +209,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		_, err = TakeCoursesAction(ctx, student.Agent, courses)
+		_, _, err = TakeCoursesAction(ctx, student.Agent, courses)
 		if err != nil {
 			step.AddError(err)
 			return
@@ -599,6 +601,10 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 		return err
 	}
 
+	if err := pas.prepareCheckRegisterCoursesAbnormal(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -720,7 +726,7 @@ func (pas *prepareAbnormalScenario) prepareCheckAuthenticationAbnormal(ctx conte
 		return err
 	}
 
-	hres, err = TakeCoursesAction(ctx, agent, []*model.Course{course})
+	hres, _, err = TakeCoursesAction(ctx, agent, []*model.Course{course})
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
@@ -893,6 +899,135 @@ func (pas *prepareAbnormalScenario) prepareCheckAdminAuthorizationAbnormal(ctx c
 	hres, _, err = SendAnnouncementAction(ctx, pas.Student.Agent, announcement)
 	if err := checkAuthorization(hres, err); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (pas *prepareAbnormalScenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) error {
+	const (
+		prepareCourseCapacity = 50
+	)
+
+	errInvalidCourseRegistration := failure.NewError(fails.ErrApplication, fmt.Errorf("履修登録できないはずの科目の履修に成功しました"))
+	errInvalidErrorResponce := errInvalidResponse("履修登録失敗時のレスポンスが期待する内容と一致しません")
+
+	// ======== サンプルデータの生成 ========
+
+	// ステータスが registration の科目
+	courseParam := generate.CourseParam(1, 0, pas.Teacher)
+	_, addCourseRes, err := AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	registrationCourse := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+
+	// ステータスが in-progress の科目
+	courseParam = generate.CourseParam(1, 1, pas.Teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+	_, err = SetCourseStatusInProgressAction(ctx, pas.Teacher.Agent, inProgressCourse.ID)
+	if err != nil {
+		return err
+	}
+
+	// ステータスが closed の科目
+	courseParam = generate.CourseParam(1, 2, pas.Teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	closedCourse := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+	_, err = SetCourseStatusClosedAction(ctx, pas.Teacher.Agent, closedCourse.ID)
+	if err != nil {
+		return err
+	}
+
+	// pas.Student が履修登録済みの科目
+	courseParam = generate.CourseParam(2, 0, pas.Teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	alreadyRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+	_, _, err = TakeCoursesAction(ctx, pas.Student.Agent, []*model.Course{alreadyRegisteredCourse})
+	if err != nil {
+		return err
+	}
+
+	// alreadyRegisteredCourse と時間割がコンフリクトする科目
+	courseParam = generate.CourseParam(2, 0, pas.Teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	conflictedCourse1 := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+
+	// 時間割がコンフリクトする2つの科目
+	courseParam = generate.CourseParam(2, 1, pas.Teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	conflictedCourse2 := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+
+	courseParam = generate.CourseParam(2, 1, pas.Teacher)
+	_, addCourseRes, err = AddCourseAction(ctx, pas.Teacher.Agent, courseParam)
+	if err != nil {
+		return err
+	}
+	conflictedCourse3 := model.NewCourse(courseParam, addCourseRes.ID, pas.Teacher, prepareCourseCapacity)
+
+	// 存在しない科目
+	courseParam = generate.CourseParam(3, 0, pas.Teacher)
+	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), pas.Teacher, prepareCourseCapacity)
+
+	// ======== 検証 ========
+
+	courses := []*model.Course{
+		registrationCourse,
+		inProgressCourse,
+		closedCourse,
+		alreadyRegisteredCourse,
+		conflictedCourse1,
+		conflictedCourse2,
+		conflictedCourse3,
+		unknownCourse,
+	}
+	hres, eres, err := TakeCoursesAction(ctx, pas.Student.Agent, courses)
+	if err == nil {
+		return errInvalidCourseRegistration
+	}
+	err = verifyStatusCode(hres, []int{http.StatusBadRequest})
+	if err != nil {
+		return err
+	}
+
+	// 順序を無視して一致するならtrue
+	isSameIgnoringOrder := func(s1, s2 []string) bool {
+		if len(s1) != len(s2) {
+			return false
+		}
+
+		sort.Slice(s1, func(i, j int) bool { return s1[i] < s1[j] })
+		sort.Slice(s2, func(i, j int) bool { return s2[i] < s2[j] })
+
+		for i := 0; i < len(s1); i++ {
+			if s1[i] != s2[i] {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	if !isSameIgnoringOrder(eres.CourseNotFound, []string{unknownCourse.ID}) ||
+		!isSameIgnoringOrder(eres.NotRegistrableStatus, []string{inProgressCourse.ID, closedCourse.ID}) ||
+		!isSameIgnoringOrder(eres.ScheduleConflict, []string{conflictedCourse1.ID, conflictedCourse2.ID, conflictedCourse3.ID}) {
+		return errInvalidErrorResponce
 	}
 
 	return nil
