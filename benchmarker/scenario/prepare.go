@@ -58,6 +58,11 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		return failure.NewError(fails.ErrCritical, err)
 	}
 
+	err = s.prepareAnnouncementsList(ctx, step)
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
+
 	err = s.prepareAbnormal(ctx, step)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
@@ -416,6 +421,155 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}
 	w.Process(ctx)
 	w.Wait()
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	return nil
+}
+
+func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar.BenchmarkStep) error {
+	const (
+		prepareCheckAnnouncementListStudentCount        = 2
+		prepareCheckAnnouncementListTeacherCount        = 2
+		prepareCheckAnnouncementListCourseCount         = 5
+		prepareCheckAnnouncementListClassCountPerCourse = 5
+	)
+	errors := step.Result().Errors
+	hasErrors := func() bool {
+		errors.Wait()
+		return len(errors.All()) > 0
+	}
+
+	students := make([]*model.Student, prepareCheckAnnouncementListStudentCount)
+	for i := 0; i < prepareCheckAnnouncementListStudentCount; i++ {
+		student, err := s.getLoggedInStudent(ctx)
+		if err != nil {
+			return err
+		}
+		students[i] = student
+	}
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	teachers := make([]*model.Teacher, prepareCheckAnnouncementListTeacherCount)
+	for i := 0; i < prepareCheckAnnouncementListTeacherCount; i++ {
+		teacher, err := s.getLoggedInTeacher(ctx)
+		if err != nil {
+			return err
+		}
+		teachers[i] = teacher
+	}
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	var mu sync.Mutex
+	courses := make([]*model.Course, 0, prepareCheckAnnouncementListCourseCount)
+	w, err := worker.NewWorker(func(ctx context.Context, i int) {
+		teacher := teachers[i%len(teachers)]
+		param := generate.CourseParam((i/6)+1, i%6, teacher)
+		_, res, err := AddCourseAction(ctx, teacher.Agent, param)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity)
+		mu.Lock()
+		courses = append(courses, course)
+		mu.Unlock()
+	}, worker.WithLoopCount(prepareCheckAnnouncementListCourseCount))
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
+	w.Process(ctx)
+	w.Wait()
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	// コース登録
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		student := students[i]
+		_, _, err := TakeCoursesAction(ctx, student.Agent, courses)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		for _, course := range courses {
+			student.AddCourse(course)
+			course.AddStudent(student)
+		}
+	}, worker.WithLoopCount(prepareCheckAnnouncementListStudentCount))
+	if err != nil {
+		step.AddError(err)
+		return err
+	}
+	w.Process(ctx)
+	w.Wait()
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	// クラス追加、おしらせ追加をするたびにおしらせリストを確認する
+	// 既読にはしない
+	for classPart := 0; classPart < prepareCheckAnnouncementListClassCountPerCourse; classPart++ {
+		for j := 0; j < prepareCheckAnnouncementListCourseCount; j++ {
+			course := courses[j]
+			teacher := course.Teacher()
+
+			classParam := generate.ClassParam(course, uint8(classPart+1))
+			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+			if err != nil {
+				step.AddError(err)
+				return err
+			}
+			class := model.NewClass(classRes.ClassID, classParam)
+			course.AddClass(class)
+
+			// お知らせ追加
+			announcement := generate.Announcement(course, class)
+			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			if err != nil {
+				step.AddError(err)
+				return err
+			}
+
+			announcement.ID = ancRes.ID
+			course.BroadCastAnnouncement(announcement)
+
+			courseStudents := course.Students()
+
+			p := parallel.NewParallel(ctx, int32(len(courseStudents)))
+			for _, student := range courseStudents {
+				student := student
+				err := p.Do(func(ctx context.Context) {
+					expected := student.Announcements()
+
+					// createdAtが新しい方が先頭に来るようにソート
+					sort.Slice(expected, func(i, j int) bool {
+						return expected[i].Announcement.CreatedAt > expected[j].Announcement.CreatedAt
+					})
+					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, len(expected))
+					if err != nil {
+						step.AddError(err)
+						return
+					}
+				})
+				if err != nil {
+					return err
+				}
+			}
+			p.Wait()
+		}
+	}
+
 	if hasErrors() {
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
