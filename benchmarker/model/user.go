@@ -17,8 +17,7 @@ type UserAccount struct {
 
 type Student struct {
 	*UserAccount
-	RegisteringCourseLimit int
-	Agent                  *agent.Agent
+	Agent *agent.Agent
 
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
@@ -35,15 +34,14 @@ type AnnouncementStatus struct {
 	Unread       bool
 }
 
-func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student {
+func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	a, _ := agent.NewAgent()
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
 	s := &Student{
-		UserAccount:            userData,
-		RegisteringCourseLimit: regLimit,
-		Agent:                  a,
+		UserAccount: userData,
+		Agent:       a,
 
 		registeredCourses:     make([]*Course, 0, 20),
 		announcements:         make([]*AnnouncementStatus, 0, 100),
@@ -151,17 +149,12 @@ func (s *Student) RegisteringCount() int {
 	return s.registeringCount
 }
 
-func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
+func (s *Student) LockSchedule() {
 	s.scheduleMutex.Lock()
-	defer s.scheduleMutex.Unlock()
-
-	s.registeredSchedule[dayOfWeek][period] = nil
-	s.registeringCount--
 }
 
-// ScheduleMutex はstudent内で完結しない同期処理を行う際に利用
-func (s *Student) ScheduleMutex() *sync.RWMutex {
-	return &s.scheduleMutex
+func (s *Student) UnlockSchedule() {
+	s.scheduleMutex.Unlock()
 }
 
 // IsEmptyTimeSlots でコマを参照する場合は別途scheduleMutexで(R)Lockすること
@@ -173,6 +166,14 @@ func (s *Student) IsEmptyTimeSlots(dayOfWeek, period int) bool {
 func (s *Student) FillTimeslot(course *Course) {
 	s.registeredSchedule[course.DayOfWeek][course.Period] = course
 	s.registeringCount++
+}
+
+func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
+	s.scheduleMutex.Lock()
+	defer s.scheduleMutex.Unlock()
+
+	s.registeredSchedule[dayOfWeek][period] = nil
+	s.registeringCount--
 }
 
 func (s *Student) Courses() []*Course {
@@ -220,7 +221,10 @@ func (s *Student) TotalCredit() int {
 
 type Teacher struct {
 	*UserAccount
-	Agent *agent.Agent
+	Agent      *agent.Agent
+	IsLoggedIn bool
+
+	mu sync.Mutex
 }
 
 const teacherUserAgent = "isucholar-agent-teacher/1.0.0"
@@ -233,4 +237,16 @@ func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
 		UserAccount: userData,
 		Agent:       a,
 	}
+}
+
+func (t *Teacher) LoginOnce(f func(teacher *Teacher)) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.IsLoggedIn {
+		return true
+	}
+	f(t)
+
+	return t.IsLoggedIn
 }

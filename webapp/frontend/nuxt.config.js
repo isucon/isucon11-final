@@ -13,11 +13,11 @@ const config = {
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { hid: 'description', name: 'description', content: '' },
     ],
-    link: [{ rel: 'icon', color: 'image/x-icon', href: '/favicon.ico' }],
+    link: [{ rel: 'icon', color: 'image/svg+xml', href: '/favicon.svg' }],
   },
 
   // Global CSS: https://go.nuxtjs.dev/config-css
-  css: ['assets/style.css'],
+  css: ['@/assets/css/style.css'],
 
   // Plugins to run before rendering page: https://go.nuxtjs.dev/config-plugins
   plugins: ['~/plugins/axios'],

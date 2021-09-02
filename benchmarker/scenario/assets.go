@@ -2,17 +2,19 @@
 package scenario
 var (
 	resourcesHash = map[string]string{ 
-		"": "55920142e0aadbaa284119f0c7ed599c",
-		"/200.html": "55920142e0aadbaa284119f0c7ed599c",
+		"": "a6b916cd8476a3f58456120208f0ea2f",
+		"/200.html": "a6b916cd8476a3f58456120208f0ea2f",
 		"/README.md": "5034cfd9edf3fa7d7d23589ecb2488f9",
-		"/_nuxt/app.js": "01953a7ce55bf6d483410a5a731c05b7",
-		"/_nuxt/css/app.css": "6a87a69ff9cf5a965c951869d31b5282",
+		"/_nuxt/app.js": "0b6d5ecae7395a9f3338e935a410d973",
+		"/_nuxt/css/app.css": "04e54fdff8492ae309cfe8fdae7b3e67",
 		"/_nuxt/runtime.js": "c51ffc86f28b62f78d641758e2dab72e",
-		"/announce": "55920142e0aadbaa284119f0c7ed599c",
-		"/favicon.ico": "ddf2e14a825fc1fff4b1d5f0cb48acda",
-		"/grade": "55920142e0aadbaa284119f0c7ed599c",
-		"/mypage": "55920142e0aadbaa284119f0c7ed599c",
-		"/register": "55920142e0aadbaa284119f0c7ed599c",
-		"/teacherpage": "55920142e0aadbaa284119f0c7ed599c",
+		"/announce": "a6b916cd8476a3f58456120208f0ea2f",
+		"/favicon.svg": "a49af4b8531d4eeb41c99b801feadc99",
+		"/grade": "a6b916cd8476a3f58456120208f0ea2f",
+		"/image/header_logo_white.svg": "b2699bb5ef9e1ce5d2bd12959a1803ae",
+		"/image/hero_logo_green.svg": "0a51c43632204a1bdb7d39df58ef978d",
+		"/mypage": "a6b916cd8476a3f58456120208f0ea2f",
+		"/register": "a6b916cd8476a3f58456120208f0ea2f",
+		"/teacherpage": "a6b916cd8476a3f58456120208f0ea2f",
 	}
 )
