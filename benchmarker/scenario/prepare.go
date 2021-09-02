@@ -138,10 +138,16 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	// 教師のログインとコース登録をするワーカー
 	w, err := worker.NewWorker(func(ctx context.Context, i int) {
 		teacher := teachers[i%len(teachers)]
-		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
-		if err != nil {
-			AdminLogger.Printf("teacherのログインに失敗しました")
-			step.AddError(failure.NewError(fails.ErrCritical, err))
+		isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
+			_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
+			if err != nil {
+				AdminLogger.Printf("teacherのログインに失敗しました")
+				step.AddError(failure.NewError(fails.ErrCritical, err))
+				return
+			}
+			teacher.IsLoggedIn = true
+		})
+		if !isLoggedIn {
 			return
 		}
 
@@ -548,9 +554,15 @@ func (s *Scenario) prepareAbnormal(ctx context.Context, step *isucandar.Benchmar
 
 	// チェックで使用する講師ユーザ
 	teacher := s.GetRandomTeacher()
-	_, err = LoginAction(ctx, teacher.Agent, teacher.UserAccount)
-	if err != nil {
-		return err
+	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
+		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
+		if err != nil {
+			return
+		}
+		teacher.IsLoggedIn = true
+	})
+	if !isLoggedIn {
+		return failure.NewError(fails.ErrApplication, fmt.Errorf("teacherのログインに失敗しました"))
 	}
 
 	pas := s.newPrepareAbnormalScenario(student, teacher)
