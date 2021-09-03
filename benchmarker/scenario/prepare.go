@@ -293,7 +293,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			p := parallel.NewParallel(ctx, prepareStudentCount)
 			for _, student := range courseStudents {
 				student := student
-				p.Do(func(ctx context.Context) {
+				err := p.Do(func(ctx context.Context) {
 					if classPart == checkAnnouncementDetailPart {
 						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, announcement.ID)
 						if err != nil {
@@ -320,6 +320,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 					submissionSummary := model.NewSubmission(fileName, submissionData)
 					class.AddSubmission(student.Code, submissionSummary)
 				})
+				if err != nil {
+					panic(fmt.Errorf("unreachable! %w", err))
+				}
 			}
 			p.Wait()
 
@@ -559,7 +562,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 					}
 				})
 				if err != nil {
-					return err
+					panic(fmt.Errorf("unreachable! %w", err))
 				}
 			}
 			p.Wait()

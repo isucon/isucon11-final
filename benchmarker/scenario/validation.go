@@ -227,7 +227,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			i++
 		}
 		user := user
-		p.Do(func(ctx context.Context) {
+		err := p.Do(func(ctx context.Context) {
 			// 1〜5秒ランダムに待つ
 			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
@@ -245,6 +245,9 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 				return
 			}
 		})
+		if err != nil {
+			panic(fmt.Errorf("unreachable! %w", err))
+		}
 	}
 
 	p.Wait()
