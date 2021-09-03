@@ -33,13 +33,11 @@ func GetMe(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 type DayOfWeek string
 
 var DayOfWeekTable = []DayOfWeek{
-	"sunday",
 	"monday",
 	"tuesday",
 	"wednesday",
 	"thursday",
 	"friday",
-	"saturday",
 }
 
 type GetRegisteredCourseResponseContent struct {

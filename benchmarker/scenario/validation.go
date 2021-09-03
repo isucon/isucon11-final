@@ -195,7 +195,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			!AssertEqual("course Teacher", expect.Teacher().Name, actual.Teacher) ||
 			// webappは1-6, benchは0-5
 			!AssertEqual("course Period", uint8(expect.Period+1), actual.Period) ||
-			// webappはMonday..., benchは0-6
+			// webappはMonday..., benchは0-4
 			!AssertEqual("course DayOfWeek", api.DayOfWeekTable[expect.DayOfWeek], actual.DayOfWeek) ||
 			!AssertEqual("course Keywords", expect.Keywords, actual.Keywords) ||
 			!AssertEqual("course Description", expect.Description, actual.Description) {

@@ -50,7 +50,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	arr := generate.ShuffledInts(initialCourseCount)
 	for i := 0; i < initialCourseCount; i++ {
 		timeslot := arr[i] % 30
-		dayOfWeek := timeslot/6 + 1
+		dayOfWeek := timeslot / 6
 		period := timeslot % 6
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
