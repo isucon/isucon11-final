@@ -123,6 +123,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 func (s *Scenario) isNoRequestTime(ctx context.Context) bool {
 	return time.Now().After(s.loadRequestEndTime) || ctx.Err() != nil
 }
+
 // isNoRetryTime はリクエストのリトライができない期間かどうか
 func (s *Scenario) isNoRetryTime(ctx context.Context) bool {
 	retryableTime := s.loadRequestEndTime.Add(5 * time.Second)
@@ -301,13 +302,13 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				continue
 			}
 
-			// 冪等なので登録済みの科目にもう一回登録して成功すれば200が返ってくる
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest := false
 		L:
 			if s.isNoRetryTime(ctx) {
 				return
 			}
-			isExtendRequest := false
-
+			// 冪等なので登録済みの科目にもう一回登録して成功すれば200が返ってくる
 			_, _, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
 			if err != nil {
 				step.AddError(err)
@@ -511,12 +512,13 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			timer := time.After(1 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
+
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest := false
 		L:
 			if s.isNoRetryTime(ctx) {
 				return
 			}
-			isExtendRequest := false
-
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				var urlError *url.Error
@@ -543,12 +545,13 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			}
 
 			announcement := generate.Announcement(course, class)
+
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest = false
 		ancLoop:
 			if s.isNoRetryTime(ctx) {
 				return
 			}
-			isExtendRequest = false
-
 			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				var urlError *url.Error
@@ -748,12 +751,12 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 		return
 	}
 
+	// 60秒以降のリトライリクエストかどうか
+	isExtendRequest := false
 L:
 	if s.isNoRetryTime(ctx) {
 		return
 	}
-	isExtendRequest := false
-
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		var urlError *url.Error
@@ -826,12 +829,12 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				return
 			}
 
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest := false
 		L:
 			if s.isNoRetryTime(ctx) {
 				return
 			}
-			isExtendRequest := false
-
 			_, err = SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
 			var urlError *url.Error
 			if errors.As(err, &urlError) && urlError.Timeout() {
