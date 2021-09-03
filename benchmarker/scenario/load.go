@@ -128,8 +128,8 @@ func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucand
 	s.finishCoursePubSub.Subscribe(ctx, func(mes interface{}) {
 		count, ok := mes.(int)
 		if !ok {
-			AdminLogger.Println("finishCoursePubSub に int以外が飛んできました")
-			return
+			// unreachable
+			panic("finishCoursePubSub に int以外が飛んできました")
 		}
 
 		for i := 0; i < count; i++ {
@@ -153,8 +153,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		var student *model.Student
 		var ok bool
 		if student, ok = mes.(*model.Student); !ok {
-			AdminLogger.Println("sPubSub に *model.Student以外が飛んできました")
-			return
+			// unreachable
+			panic("sPubSub に *model.Student以外が飛んできました")
 		}
 
 		// 同時実行可能数を制限する際には注意
@@ -432,8 +432,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		var course *model.Course
 		var ok bool
 		if course, ok = mes.(*model.Course); !ok {
-			AdminLogger.Println("cPubSub に *model.Course以外が飛んできました")
-			return
+			// unreachable
+			panic("cPubSub に *model.Course以外が飛んできました")
 		}
 		loadCourseWorker.Do(s.courseScenario(course, step))
 	})
