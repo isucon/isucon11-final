@@ -94,7 +94,7 @@ type InitializeResponse struct {
 	Language string `json:"language"`
 }
 
-// Initialize 初期化エンドポイント
+// Initialize POST /initialize 初期化エンドポイント
 func (h *handlers) Initialize(c echo.Context) error {
 	dbForInit, _ := GetDB(true)
 
@@ -253,7 +253,7 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// Login ログイン
+// Login POST /login ログイン
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
@@ -300,6 +300,7 @@ func (h *handlers) Login(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// Logout POST /logout ログアウト
 func (h *handlers) Logout(c echo.Context) error {
 	sess, err := session.Get(SessionName, c)
 	if err != nil {
@@ -326,6 +327,7 @@ type GetMeResponse struct {
 	IsAdmin bool   `json:"is_admin"`
 }
 
+// GetMe GET /api/users/me 自身の情報を取得
 func (h *handlers) GetMe(c echo.Context) error {
 	userID, userName, isAdmin, err := getUserInfo(c)
 	if err != nil {
@@ -354,7 +356,7 @@ type GetRegisteredCourseResponseContent struct {
 	DayOfWeek DayOfWeek `json:"day_of_week"`
 }
 
-// GetRegisteredCourses 履修中の科目一覧取得
+// GetRegisteredCourses GET /api/users/me/courses 履修中の科目一覧取得
 func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -403,6 +405,7 @@ type RegisterCoursesErrorResponse struct {
 	ScheduleConflict     []string `json:"schedule_conflict,omitempty"`
 }
 
+// RegisterCourses PUT /api/users/me/courses 履修登録
 func (h *handlers) RegisterCourses(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -539,6 +542,7 @@ type ClassScore struct {
 	Submitters int    `json:"submitters"` // 提出した生徒数
 }
 
+// GetGrades GET /api/users/me/grades 成績取得
 func (h *handlers) GetGrades(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -680,7 +684,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// SearchCourses 科目検索
+// SearchCourses GET /api/syllabus 科目検索
 func (h *handlers) SearchCourses(c echo.Context) error {
 	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
@@ -807,7 +811,7 @@ type GetCourseDetailResponse struct {
 	Teacher     string       `json:"teacher" db:"teacher"`
 }
 
-// GetCourseDetail 科目詳細の取得
+// GetCourseDetail GET /api/syllabus/:courseID 科目詳細の取得
 func (h *handlers) GetCourseDetail(c echo.Context) error {
 	courseID := c.Param("courseID")
 
@@ -841,7 +845,7 @@ type AddCourseResponse struct {
 	ID string `json:"id"`
 }
 
-// AddCourse 新規科目登録
+// AddCourse POST /api/courses 新規科目登録
 func (h *handlers) AddCourse(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -899,7 +903,7 @@ type SetCourseStatusRequest struct {
 	Status CourseStatus `json:"status"`
 }
 
-// SetCourseStatus 科目のステータスを変更
+// SetCourseStatus PUT /api/courses/:courseID/status 科目のステータスを変更
 func (h *handlers) SetCourseStatus(c echo.Context) error {
 	courseID := c.Param("courseID")
 
@@ -942,7 +946,7 @@ type GetClassResponse struct {
 	Submitted        bool   `json:"submitted"`
 }
 
-// GetClasses 科目に紐づくクラス一覧の取得
+// GetClasses GET /api/courses/:courseID/classes 科目に紐づく講義一覧の取得
 func (h *handlers) GetClasses(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -989,7 +993,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// SubmitAssignment 課題ファイルのアップロード
+// SubmitAssignment POST /api/courses/:courseID/classes/:classID/assignments 課題の提出
 func (h *handlers) SubmitAssignment(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -1074,6 +1078,7 @@ type Score struct {
 	Score    int    `json:"score"`
 }
 
+// RegisterScores PUT /api/courses/:courseID/classes/:classID/assignments/scores 成績登録
 func (h *handlers) RegisterScores(c echo.Context) error {
 	classID := c.Param("classID")
 
@@ -1122,7 +1127,7 @@ type Submission struct {
 	FileName string `db:"file_name"`
 }
 
-// DownloadSubmittedAssignments 提出済みの課題ファイルをzip形式で一括ダウンロード
+// DownloadSubmittedAssignments GET /api/courses/:courseID/classes/:classID/assignments/export 提出済みの課題ファイルをzip形式で一括ダウンロード
 func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	classID := c.Param("classID")
 
@@ -1203,7 +1208,7 @@ type AddClassResponse struct {
 	ClassID string `json:"class_id"`
 }
 
-// AddClass 新規クラス(&課題)追加
+// AddClass POST /api/courses/:courseID/classes 新規クラス(&課題)追加
 func (h *handlers) AddClass(c echo.Context) error {
 	courseID := c.Param("courseID")
 
@@ -1277,7 +1282,7 @@ type AnnouncementResponse struct {
 	CreatedAt  int64  `json:"created_at"`
 }
 
-// GetAnnouncementList お知らせ一覧取得
+// GetAnnouncementList GET /api/announcements お知らせ一覧取得
 func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -1396,6 +1401,7 @@ type GetAnnouncementDetailResponse struct {
 	CreatedAt  int64  `json:"created_at"`
 }
 
+// GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
 func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -1455,7 +1461,7 @@ type AddAnnouncementResponse struct {
 	ID string `json:"id"`
 }
 
-// AddAnnouncement 新規お知らせ追加
+// AddAnnouncement POST /api/announcements 新規お知らせ追加
 func (h *handlers) AddAnnouncement(c echo.Context) error {
 	var req AddAnnouncementRequest
 	if err := c.Bind(&req); err != nil {
