@@ -40,6 +40,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	studentLoadWorker := s.createStudentLoadWorker(ctx, step) // Gradeの確認から始まるシナリオとAnnouncementsの確認から始まるシナリオの二種類を担うgoroutineがアクティブ学生ごとに起動している
 	courseLoadWorker := s.createLoadCourseWorker(ctx, step)   // 登録された科目につき一つのgoroutineが起動している
 
+	// コース履修が完了した際のカウントアップをするPubSubを設定する
+	s.setFinishCourseCountPubSub(ctx, step)
+
 	// LoadWorkerに初期負荷を追加
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 	wg := sync.WaitGroup{}
@@ -121,6 +124,24 @@ func (s *Scenario) isNoRequestTime(ctx context.Context) bool {
 	return time.Now().After(s.loadRequestEndTime) || ctx.Err() != nil
 }
 
+func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucandar.BenchmarkStep) {
+	s.finishCoursePubSub.Subscribe(ctx, func(mes interface{}) {
+		count, ok := mes.(int)
+		if !ok {
+			// unreachable
+			panic("finishCoursePubSub に int以外が飛んできました")
+		}
+
+		for i := 0; i < count; i++ {
+			step.AddScore(score.FinishCoursesStudents)
+			result := atomic.AddInt64(&s.finishCourseStudentsCount, 1)
+			if result%StudentCapacityPerCourse == 0 {
+				s.addActiveStudentLoads(ctx, step, 1)
+			}
+		}
+	})
+}
+
 // アクティブ学生の負荷をかけ続けるLoadWorker(parallel.Parallel)を作成
 func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.BenchmarkStep) *parallel.Parallel {
 	// アクティブ学生は以下の2つのタスクを行い続ける
@@ -132,8 +153,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		var student *model.Student
 		var ok bool
 		if student, ok = mes.(*model.Student); !ok {
-			AdminLogger.Println("sPubSub に *model.Student以外が飛んできました")
-			return
+			// unreachable
+			panic("sPubSub に *model.Student以外が飛んできました")
 		}
 
 		// 同時実行可能数を制限する際には注意
@@ -411,8 +432,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		var course *model.Course
 		var ok bool
 		if course, ok = mes.(*model.Course); !ok {
-			AdminLogger.Println("cPubSub に *model.Course以外が飛んできました")
-			return
+			// unreachable
+			panic("cPubSub に *model.Course以外が飛んできました")
 		}
 		loadCourseWorker.Do(s.courseScenario(course, step))
 	})
@@ -587,7 +608,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		step.AddScore(score.FinishCourses)
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
-		s.addActiveStudentLoads(ctx, step, 1)
+		s.finishCoursePubSub.Publish(len(course.Students()))
 	}
 }
 

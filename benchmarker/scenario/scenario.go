@@ -33,6 +33,9 @@ type Scenario struct {
 	debugData          *DebugData
 
 	rmu sync.RWMutex
+
+	finishCoursePubSub        *pubsub.PubSub
+	finishCourseStudentsCount int64
 }
 
 type Config struct {
@@ -61,12 +64,13 @@ func NewScenario(config *Config) (*Scenario, error) {
 		Config:        *config,
 		CourseManager: model.NewCourseManager(),
 
-		sPubSub:        pubsub.NewPubSub(),
-		cPubSub:        pubsub.NewPubSub(),
-		faculties:      faculties,
-		studentPool:    NewUserPool(studentsData),
-		activeStudents: make([]*model.Student, 0, initialStudentsCount),
-		debugData:      NewDebugData(config.IsDebug),
+		sPubSub:            pubsub.NewPubSub(),
+		cPubSub:            pubsub.NewPubSub(),
+		faculties:          faculties,
+		studentPool:        NewUserPool(studentsData),
+		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
+		debugData:          NewDebugData(config.IsDebug),
+		finishCoursePubSub: pubsub.NewPubSub(),
 	}, nil
 }
 
