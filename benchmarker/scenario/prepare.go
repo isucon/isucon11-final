@@ -445,7 +445,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	courses := make([]*model.Course, 0, prepareCheckAnnouncementListCourseCount)
 	w, err := worker.NewWorker(func(ctx context.Context, i int) {
 		teacher := teachers[i%len(teachers)]
-		param := generate.CourseParam((i/6)+1, i%6, teacher)
+		param := generate.CourseParam(i/6, i%6, teacher)
 		_, res, err := AddCourseAction(ctx, teacher.Agent, param)
 		if err != nil {
 			step.AddError(err)
