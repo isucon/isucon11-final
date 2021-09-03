@@ -26,7 +26,8 @@
     "types": [
       "@nuxt/types",
       "@nuxtjs/axios",
-      "@types/node"
+      "@types/node",
+      "./types/axios.d.ts",
     ]
   },
   "exclude": [

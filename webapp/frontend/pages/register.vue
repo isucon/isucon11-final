@@ -117,10 +117,8 @@ export default Vue.extend({
   middleware: 'is_student',
   async asyncData(ctx: Context) {
     try {
-      const registeredCourses = await ctx.$axios.$get<Course[]>(
-        `/api/users/me/courses`
-      )
-      return { registeredCourses }
+      const res = await ctx.$axios.get<Course[]>(`/api/users/me/courses`)
+      return { registeredCourses: res.data }
     } catch (e) {
       console.error(e)
       notify('履修登録済み科目の取得に失敗しました')
