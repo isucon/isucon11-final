@@ -7,62 +7,18 @@ import morgan from "morgan";
 import mysql, { RowDataPacket } from "mysql2/promise";
 
 import { getDbInfo } from "./db";
+import {
+  averageFloat,
+  averageInt,
+  max,
+  min,
+  tScoreFloat,
+  tScoreInt,
+} from "./util";
 
 const SqlDirectory = "../sql/";
 // const AssignmentsDirectory = "../assignments/";
 const SessionName = "isucholar_nodejs";
-
-const UserType = {
-  Student: "student",
-  Teacher: "teacher",
-} as const;
-type UserType = typeof UserType[keyof typeof UserType];
-
-interface User extends RowDataPacket {
-  id: string;
-  code: string;
-  name: string;
-  hashedPassword: Buffer;
-  type: UserType;
-}
-
-const CourseType = {
-  LiberalArts: "liberal-arts",
-  MajorSubjects: "major-subjects",
-} as const;
-type CourseType = typeof CourseType[keyof typeof CourseType];
-
-const DayOfWeek = {
-  Sunday: "sunday",
-  Monday: "monday",
-  Tuesday: "tuesday",
-  Wednesday: "wednesday",
-  Thursday: "thursday",
-  Friday: "friday",
-  Saturday: "saturday",
-} as const;
-type DayOfWeek = typeof DayOfWeek[keyof typeof DayOfWeek];
-
-const CourseStatus = {
-  StatusRegistration: "registration",
-  StatusInProgress: "in-progress",
-  StatusClosed: "closed",
-} as const;
-type CourseStatus = typeof CourseStatus[keyof typeof CourseStatus];
-
-interface Course extends RowDataPacket {
-  id: string;
-  code: string;
-  type: CourseType;
-  name: string;
-  description: string;
-  credit: number;
-  period: number;
-  dayOfWeek: DayOfWeek;
-  teacherId: string;
-  keywords: string;
-  status: CourseStatus;
-}
 
 const pool = mysql.createPool(getDbInfo(false));
 
@@ -88,7 +44,7 @@ interface InitializeResponse {
   language: string;
 }
 
-// Initialize 初期化エンドポイント
+// POST /initialize 初期化エンドポイント
 app.post("/initialize", async (_, res) => {
   const dbForInit = await mysql.createConnection(getDbInfo(true));
   try {
@@ -109,7 +65,7 @@ app.post("/initialize", async (_, res) => {
   return res.status(200).json(response);
 });
 
-// IsLoggedIn ログイン確認用middleware
+// ログイン確認用middleware
 async function isLoggedIn(
   req: express.Request,
   res: express.Response,
@@ -126,6 +82,9 @@ async function isLoggedIn(
   }
   next();
 }
+
+// admin確認用middleware
+// TODO
 
 function getUserInfo(
   session?: CookieSessionInterfaces.CookieSessionObject | null
@@ -145,6 +104,56 @@ function getUserInfo(
   return [session["userID"], session["userName"], session["isAdmin"]];
 }
 
+const UserType = {
+  Student: "student",
+  Teacher: "teacher",
+} as const;
+type UserType = typeof UserType[keyof typeof UserType];
+
+interface User extends RowDataPacket {
+  id: string;
+  code: string;
+  name: string;
+  hashedPassword: Buffer;
+  type: UserType;
+}
+
+const CourseType = {
+  LiberalArts: "liberal-arts",
+  MajorSubjects: "major-subjects",
+} as const;
+type CourseType = typeof CourseType[keyof typeof CourseType];
+
+const DayOfWeek = {
+  Monday: "monday",
+  Tuesday: "tuesday",
+  Wednesday: "wednesday",
+  Thursday: "thursday",
+  Friday: "friday",
+} as const;
+type DayOfWeek = typeof DayOfWeek[keyof typeof DayOfWeek];
+
+const CourseStatus = {
+  StatusRegistration: "registration",
+  StatusInProgress: "in-progress",
+  StatusClosed: "closed",
+} as const;
+type CourseStatus = typeof CourseStatus[keyof typeof CourseStatus];
+
+interface Course extends RowDataPacket {
+  id: string;
+  code: string;
+  type: CourseType;
+  name: string;
+  description: string;
+  credit: number;
+  period: number;
+  dayOfWeek: DayOfWeek;
+  teacherId: string;
+  keywords: string;
+  status: CourseStatus;
+}
+
 interface LoginRequest {
   code: string;
   password: string;
@@ -158,7 +167,7 @@ function isValidLoginRequest(body: LoginRequest): body is LoginRequest {
   );
 }
 
-// Login ログイン
+// POST /login ログイン
 app.post(
   "/login",
   async (
@@ -210,6 +219,7 @@ app.post(
   }
 );
 
+// POST /logout ログアウト
 app.post("/logout", (req, res) => {
   req.session = null;
   return res.status(200).send();
@@ -221,6 +231,7 @@ interface GetMeResponse {
   is_admin: boolean;
 }
 
+// GET /api/users/me 自身の情報を取得
 usersApi.get("/me", async (req, res) => {
   let userId: string;
   let userName: string;
@@ -264,7 +275,7 @@ interface GetRegisteredCourseResponseContent {
   day_of_week: DayOfWeek;
 }
 
-// GetRegisteredCourses 履修中の科目一覧取得
+// GET /api/users/me/courses 履修中の科目一覧取得
 usersApi.get("/me/courses", async (req, res) => {
   let userId: string;
   try {
@@ -276,15 +287,13 @@ usersApi.get("/me/courses", async (req, res) => {
 
   const db = await pool.getConnection();
   try {
-    const query =
+    const [courses] = await db.query<Course[]>(
       "SELECT `courses`.*" +
-      " FROM `courses`" +
-      " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
-      " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?";
-    const [courses] = await db.query<Course[]>(query, [
-      CourseStatus.StatusClosed,
-      userId,
-    ]);
+        " FROM `courses`" +
+        " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
+        " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?",
+      [CourseStatus.StatusClosed, userId]
+    );
 
     // 履修科目が0件の時は空配列を返却
     const response: GetRegisteredCourseResponseContent[] = [];
@@ -335,6 +344,7 @@ interface RegisterCoursesErrorResponse {
   schedule_conflict: string[];
 }
 
+// PUT /api/users/me/courses 履修登録
 usersApi.put(
   "/me/courses",
   async (
@@ -405,15 +415,13 @@ usersApi.put(
       }
 
       // MEMO: スケジュールの重複バリデーション
-      const query =
+      const [alreadyRegistered] = await db.query<Course[]>(
         "SELECT `courses`.*" +
-        " FROM `courses`" +
-        " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
-        " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?";
-      const [alreadyRegistered] = await db.query<Course[]>(query, [
-        CourseStatus.StatusClosed,
-        userId,
-      ]);
+          " FROM `courses`" +
+          " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
+          " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?",
+        [CourseStatus.StatusClosed, userId]
+      );
 
       alreadyRegistered.push(...newlyAdded);
       for (const course1 of newlyAdded) {
@@ -456,5 +464,194 @@ usersApi.put(
     }
   }
 );
+
+interface Class extends RowDataPacket {
+  id: string;
+  course_id: string;
+  part: number;
+  title: string;
+  description: string;
+  submission_closed: number;
+}
+
+interface GetGradeResponse {
+  summary: Summary;
+  courses: CourseResult[];
+}
+
+interface Summary {
+  credits: number;
+  gpa: number;
+  gpa_t_score: number; // 偏差値
+  gpa_avg: number; // 平均値
+  gpa_max: number; // 最大値
+  gpa_min: number; // 最小値
+}
+
+interface CourseResult {
+  name: string;
+  code: string;
+  total_score: number;
+  total_score_t_score: number; // 偏差値
+  total_score_avg: number; // 平均値
+  total_score_max: number; // 最大値
+  total_score_min: number; // 最小値
+  class_scores: ClassScore[];
+}
+
+interface ClassScore {
+  class_id: string;
+  title: string;
+  part: number;
+  score: number | null;
+  submitters: number; // 提出した生徒数
+}
+
+// GET /api/users/me/grades 成績取得
+usersApi.get("/me/grades", async (req, res) => {
+  let userId: string;
+  try {
+    [userId] = getUserInfo(req.session);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send();
+  }
+
+  const db = await pool.getConnection();
+  try {
+    // 履修している科目一覧取得
+    const [registeredCourses] = await db.query<Course[]>(
+      "SELECT `courses`.*" +
+        " FROM `registrations`" +
+        " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+        " WHERE `user_id` = ?",
+      [userId]
+    );
+
+    // 科目毎の成績計算処理
+    const courseResults: CourseResult[] = [];
+    let myGPA = 0.0;
+    let myCredits = 0;
+    for (const course of registeredCourses) {
+      // 講義一覧の取得
+      const [classes] = await db.query<Class[]>(
+        "SELECT *" +
+          " FROM `classes`" +
+          " WHERE `course_id` = ?" +
+          " ORDER BY `part` DESC",
+        [course.id]
+      );
+
+      // 講義毎の成績計算処理
+      const classScores: ClassScore[] = [];
+      let myTotalScore = 0;
+      for (const cls of classes) {
+        const [[{ submissionsCount }]] = await db.query<
+          ({ submissionsCount: number } & RowDataPacket)[]
+        >(
+          "SELECT COUNT(*) AS `submissionsCount` FROM `submissions` WHERE `class_id` = ?",
+          [cls.id]
+        );
+
+        const [[{ myScore }]] = await db.query<
+          ({ score: number } & RowDataPacket)[]
+        >(
+          "SELECT `submissions`.`score` FROM `submissions` WHERE `user_id` = ? AND `class_id` = ?",
+          [userId, cls.id]
+        );
+        if (typeof myScore !== "number") {
+          classScores.push({
+            class_id: cls.id,
+            part: cls.part,
+            title: cls.title,
+            score: null,
+            submitters: submissionsCount,
+          });
+        } else {
+          myTotalScore += myScore;
+          classScores.push({
+            class_id: cls.id,
+            part: cls.part,
+            title: cls.title,
+            score: myScore,
+            submitters: submissionsCount,
+          });
+        }
+      }
+
+      // この科目を受講している学生のTotalScore一覧を取得
+      const [rows] = await db.query<
+        ({ total_score: number } & RowDataPacket)[]
+      >(
+        "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
+          " FROM `users`" +
+          " JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+          " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+          " LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
+          " LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
+          " WHERE `courses`.`id` = ?" +
+          " GROUP BY `users`.`id`",
+        [course.id]
+      );
+      const totals = rows.map((row) => row.total_score);
+      courseResults.push({
+        name: course.name,
+        code: course.code,
+        total_score: myTotalScore,
+        total_score_t_score: tScoreInt(myTotalScore, totals),
+        total_score_avg: averageInt(totals, 0),
+        total_score_max: max(totals, 0),
+        total_score_min: min(totals, 0),
+        class_scores: classScores,
+      });
+
+      // 自分のGPA計算
+      myGPA += myTotalScore * course.credit;
+      myCredits += course.Credit;
+    }
+    if (myCredits > 0) {
+      myGPA = myGPA / 100 / myCredits;
+    }
+
+    // GPAの統計値
+    // 一つでも科目を履修している学生のGPA一覧
+    const [rows] = await db.query<({ gpa: number } & RowDataPacket)[]>(
+      "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
+        " FROM `users`" +
+        " JOIN (" +
+        "     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`" +
+        "     FROM `users`" +
+        "     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+        "     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+        "     GROUP BY `users`.`id`" +
+        " ) AS `credits` ON `credits`.`user_id` = `users`.`id`" +
+        " JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+        " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+        " LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
+        " LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
+        " WHERE `users`.`type` = ?" +
+        " GROUP BY `users`.`id`",
+      [UserType.Student]
+    );
+    const gpas = rows.map((row) => row.gpa);
+
+    const response: GetGradeResponse = {
+      summary: {
+        credits: myCredits,
+        gpa: myGPA,
+        gpa_t_score: tScoreFloat(myGPA, gpas),
+        gpa_avg: averageFloat(gpas, 0),
+        gpa_max: max(gpas, 0),
+        gpa_min: min(gpas, 0),
+      },
+      courses: courseResults,
+    };
+    return res.status(200).json(response);
+  } catch (err) {
+    return res.status(500).send();
+  } finally {
+    db.release();
+  }
+});
 
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
