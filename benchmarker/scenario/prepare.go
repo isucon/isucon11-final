@@ -75,6 +75,9 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	}
 
 	AdminLogger.Printf("Language: %s", s.Language())
+
+	step.Result().Score.Reset()
+	s.Reset()
 	return nil
 }
 
