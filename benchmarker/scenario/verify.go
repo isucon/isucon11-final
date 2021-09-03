@@ -358,18 +358,18 @@ func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[s
 
 	// リストの中身の検証
 	for _, actual := range res.Announcements {
-		expectStatus := expectList[actual.ID]
-		if expectStatus == nil {
+		expectStatus, ok := expectList[actual.ID]
+		if !ok {
 			// webappでは認識されているが、ベンチではまだ認識されていないお知らせ（お知らせ登録がリトライ中の場合発生）
 			// load中には検証できないのでskip
 			continue
 		}
 
 		if !AssertEqual("announcement list course id", expectStatus.Announcement.CourseID, actual.CourseID) {
-			return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
+			return errInvalidResponse("お知らせの科目IDが期待する値と一致しません")
 		}
 		if !AssertEqual("announcement list course name", expectStatus.Announcement.CourseName, actual.CourseName) {
-			return errInvalidResponse("お知らせの講義名が期待する値と一致しません")
+			return errInvalidResponse("お知らせの科目名が期待する値と一致しません")
 		}
 		if !AssertEqual("announcement list title", expectStatus.Announcement.Title, actual.Title) {
 			return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
