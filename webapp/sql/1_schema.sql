@@ -20,16 +20,16 @@ CREATE TABLE `users`
 CREATE TABLE `courses`
 (
     `id`          CHAR(36) PRIMARY KEY,
-    `code`        VARCHAR(255) UNIQUE                                                                 NOT NULL,
-    `type`        ENUM ('liberal-arts', 'major-subjects')                                             NOT NULL,
-    `name`        VARCHAR(255)                                                                        NOT NULL,
-    `description` TEXT                                                                                NOT NULL,
-    `credit`      TINYINT UNSIGNED                                                                    NOT NULL,
-    `period`      TINYINT UNSIGNED                                                                    NOT NULL,
-    `day_of_week` ENUM ('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday') NOT NULL,
-    `teacher_id`  CHAR(36)                                                                            NOT NULL,
-    `keywords`    TEXT                                                                                NOT NULL,
-    `status`      ENUM ('registration', 'in-progress', 'closed')                                      NOT NULL DEFAULT 'registration',
+    `code`        VARCHAR(255) UNIQUE                                           NOT NULL,
+    `type`        ENUM ('liberal-arts', 'major-subjects')                       NOT NULL,
+    `name`        VARCHAR(255)                                                  NOT NULL,
+    `description` TEXT                                                          NOT NULL,
+    `credit`      TINYINT UNSIGNED                                              NOT NULL,
+    `period`      TINYINT UNSIGNED                                              NOT NULL,
+    `day_of_week` ENUM ('monday', 'tuesday', 'wednesday', 'thursday', 'friday') NOT NULL,
+    `teacher_id`  CHAR(36)                                                      NOT NULL,
+    `keywords`    TEXT                                                          NOT NULL,
+    `status`      ENUM ('registration', 'in-progress', 'closed')                NOT NULL DEFAULT 'registration',
     CONSTRAINT FK_courses_teacher_id FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`)
 );
 

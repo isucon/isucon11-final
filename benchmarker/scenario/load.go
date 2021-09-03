@@ -40,6 +40,9 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	studentLoadWorker := s.createStudentLoadWorker(ctx, step) // Gradeの確認から始まるシナリオとAnnouncementsの確認から始まるシナリオの二種類を担うgoroutineがアクティブ学生ごとに起動している
 	courseLoadWorker := s.createLoadCourseWorker(ctx, step)   // 登録された科目につき一つのgoroutineが起動している
 
+	// コース履修が完了した際のカウントアップをするPubSubを設定する
+	s.setFinishCourseCountPubSub(ctx, step)
+
 	// LoadWorkerに初期負荷を追加
 	// (負荷追加はScenarioのPubSub経由で行われるので引数にLoadWorkerは不要)
 	wg := sync.WaitGroup{}
@@ -47,7 +50,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	arr := generate.ShuffledInts(initialCourseCount)
 	for i := 0; i < initialCourseCount; i++ {
 		timeslot := arr[i] % 30
-		dayOfWeek := timeslot/6 + 1
+		dayOfWeek := timeslot / 6
 		period := timeslot % 6
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
@@ -121,6 +124,24 @@ func (s *Scenario) isNoRequestTime(ctx context.Context) bool {
 	return time.Now().After(s.loadRequestEndTime) || ctx.Err() != nil
 }
 
+func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucandar.BenchmarkStep) {
+	s.finishCoursePubSub.Subscribe(ctx, func(mes interface{}) {
+		count, ok := mes.(int)
+		if !ok {
+			// unreachable
+			panic("finishCoursePubSub に int以外が飛んできました")
+		}
+
+		for i := 0; i < count; i++ {
+			step.AddScore(score.FinishCoursesStudents)
+			result := atomic.AddInt64(&s.finishCourseStudentsCount, 1)
+			if result%StudentCapacityPerCourse == 0 {
+				s.addActiveStudentLoads(ctx, step, 1)
+			}
+		}
+	})
+}
+
 // アクティブ学生の負荷をかけ続けるLoadWorker(parallel.Parallel)を作成
 func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.BenchmarkStep) *parallel.Parallel {
 	// アクティブ学生は以下の2つのタスクを行い続ける
@@ -132,8 +153,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		var student *model.Student
 		var ok bool
 		if student, ok = mes.(*model.Student); !ok {
-			AdminLogger.Println("sPubSub に *model.Student以外が飛んできました")
-			return
+			// unreachable
+			panic("sPubSub に *model.Student以外が飛んできました")
 		}
 
 		// 同時実行可能数を制限する際には注意
@@ -280,7 +301,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, _, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
 			if err != nil {
 				step.AddError(err)
-				if err, ok := err.(*url.Error); ok && err.Timeout() {
+				var urlError *url.Error
+				if errors.As(err, &urlError) && urlError.Timeout() {
 					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
 					// timeout したらもう一回リクエストする
 					time.Sleep(100 * time.Millisecond)
@@ -318,6 +340,8 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				return
 			}
 
+			expectAnnouncementList := student.AnnouncementsMap()
+
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
@@ -328,47 +352,54 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
-			if err := verifyAnnouncements(&res, student); err != nil {
+			if err := verifyAnnouncementsList(&res, expectAnnouncementList); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.GetAnnouncementList)
 			}
 
-			// このページで未読お知らせを読んだカウント（ページングするかどうかの判定用）
-			var readCount int
+			// このページに存在する未読お知らせ数（ページングするかどうかの判定用）
+			var unreadCount int
 			for _, ans := range res.Announcements {
-
 				if ans.Unread {
-					readCount++
-
-					announcementStatus := student.GetAnnouncement(ans.ID)
-					if announcementStatus == nil {
-						// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
-						// load中には検証できないのでskip
-						continue
-					}
-
-					if s.isNoRequestTime(ctx) {
-						return
-					}
-
-					startGetAnnouncementDetail := time.Now()
-					// お知らせの詳細を取得する
-					_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
-					if err != nil {
-						step.AddError(err)
-						continue // 次の未読おしらせの確認へ
-					}
-					s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
-
-					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
-						step.AddError(err)
-					} else {
-						step.AddScore(score.GetAnnouncementsDetail)
-					}
-
-					student.ReadAnnouncement(ans.ID)
+					unreadCount++
 				}
+
+				announcementStatus := student.GetAnnouncement(ans.ID)
+				if announcementStatus == nil {
+					// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
+					// load中には検証できないので既読化しない
+					continue
+				}
+				// 前にタイムアウトになってしまっていた場合、もしくはまだ見ていないお知らせの場合詳細を見に行く
+				if !(announcementStatus.Dirty || ans.Unread) {
+					continue
+				}
+
+				if s.isNoRequestTime(ctx) {
+					return
+				}
+
+				startGetAnnouncementDetail := time.Now()
+				// お知らせの詳細を取得する
+				_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+				if err != nil {
+					var urlError *url.Error
+					if errors.As(err, &urlError) && urlError.Timeout() {
+						student.MarkAnnouncementReadDirty(ans.ID)
+					}
+					step.AddError(err)
+					continue // 次の未読おしらせの確認へ
+				}
+				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
+
+				if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
+					step.AddError(err)
+				} else {
+					step.AddScore(score.GetAnnouncementsDetail)
+				}
+
+				student.ReadAnnouncement(ans.ID)
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
@@ -376,9 +407,9 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
-			// 未読お知らせがない or 未読をすべて読み終えていたら
+			// 以降のページに未読お知らせがない（このページの未読数とレスポンスの未読数が一致）
 			// DoSにならないように少しwaitして1ページ目から見直す
-			if res.UnreadCount == readCount {
+			if res.UnreadCount == unreadCount {
 				nextPathParam = ""
 				if !student.HasUnreadAnnouncement() {
 					select {
@@ -411,8 +442,8 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 		var course *model.Course
 		var ok bool
 		if course, ok = mes.(*model.Course); !ok {
-			AdminLogger.Println("cPubSub に *model.Course以外が飛んできました")
-			return
+			// unreachable
+			panic("cPubSub に *model.Course以外が飛んできました")
 		}
 		loadCourseWorker.Do(s.courseScenario(course, step))
 	})
@@ -587,7 +618,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		step.AddScore(score.FinishCourses)
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
-		s.addActiveStudentLoads(ctx, step, 1)
+		s.finishCoursePubSub.Publish(len(course.Students()))
 	}
 }
 

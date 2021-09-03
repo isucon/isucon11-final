@@ -33,6 +33,9 @@ type Scenario struct {
 	debugData          *DebugData
 
 	rmu sync.RWMutex
+
+	finishCoursePubSub        *pubsub.PubSub
+	finishCourseStudentsCount int64
 }
 
 type Config struct {
@@ -61,12 +64,13 @@ func NewScenario(config *Config) (*Scenario, error) {
 		Config:        *config,
 		CourseManager: model.NewCourseManager(),
 
-		sPubSub:        pubsub.NewPubSub(),
-		cPubSub:        pubsub.NewPubSub(),
-		faculties:      faculties,
-		studentPool:    NewUserPool(studentsData),
-		activeStudents: make([]*model.Student, 0, initialStudentsCount),
-		debugData:      NewDebugData(config.IsDebug),
+		sPubSub:            pubsub.NewPubSub(),
+		cPubSub:            pubsub.NewPubSub(),
+		faculties:          faculties,
+		studentPool:        NewUserPool(studentsData),
+		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
+		debugData:          NewDebugData(config.IsDebug),
+		finishCoursePubSub: pubsub.NewPubSub(),
 	}, nil
 }
 
@@ -99,4 +103,33 @@ func (s *Scenario) GetRandomTeacher() *model.Teacher {
 	defer s.rmu.RUnlock()
 
 	return s.faculties[rand.Intn(len(s.faculties))]
+}
+
+func (s *Scenario) Reset() {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	studentsData, err := generate.LoadStudentsData()
+	if err != nil {
+		panic(err)
+	}
+	facultiesData, err := generate.LoadFacultiesData()
+	if err != nil {
+		panic(err)
+	}
+
+	faculties := make([]*model.Teacher, len(facultiesData))
+	for i, f := range facultiesData {
+		faculties[i] = model.NewTeacher(f, s.Config.BaseURL)
+	}
+
+	s.CourseManager = model.NewCourseManager()
+	s.sPubSub = pubsub.NewPubSub()
+	s.cPubSub = pubsub.NewPubSub()
+	s.faculties = faculties
+	s.studentPool = NewUserPool(studentsData)
+	s.activeStudents = make([]*model.Student, 0, initialStudentsCount)
+	s.debugData = NewDebugData(s.Config.IsDebug)
+	s.finishCoursePubSub = pubsub.NewPubSub()
+	s.finishCourseStudentsCount = 0
 }

@@ -26,12 +26,13 @@ type Student struct {
 	addAnnouncementCond   *sync.Cond
 	rmu                   sync.RWMutex
 
-	registeredSchedule [7][6]*Course // 空きコマ管理[DayOfWeek:7][Period:6]
+	registeredSchedule [5][6]*Course // 空きコマ管理[DayOfWeek:5][Period:6]
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
+	Dirty        bool // リクエストを送ったがタイムアウトになってしまったため、webapp側で既読になったかが定かではないことを表す
 	Unread       bool
 }
 
@@ -49,7 +50,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
 
-		registeredSchedule: [7][6]*Course{},
+		registeredSchedule: [5][6]*Course{},
 		scheduleMutex:      sync.RWMutex{},
 	}
 	s.readAnnouncementCond = sync.NewCond(&s.rmu)
@@ -71,11 +72,42 @@ func (s *Student) Announcements() []*AnnouncementStatus {
 	return s.announcements
 }
 
+func (s *Student) AnnouncementsMap() map[string]*AnnouncementStatus {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	result := make(map[string]*AnnouncementStatus, len(s.announcements))
+	for _, announcement := range s.announcements {
+		tmp := *announcement
+		result[announcement.Announcement.ID] = &tmp
+	}
+	return result
+}
+
+func (s *Student) ExpectUnreadRange() (min, max int) {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	for _, a := range s.announcements {
+		if a.Unread {
+			if !a.Dirty {
+				min++
+			}
+			max++
+		}
+	}
+	return
+}
+
 func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.announcements = append(s.announcements, &AnnouncementStatus{announcement, true})
+	s.announcements = append(s.announcements, &AnnouncementStatus{
+		Announcement: announcement,
+		Dirty:        false,
+		Unread:       true,
+	})
 	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
 	s.addAnnouncementCond.Broadcast()
 }
@@ -98,10 +130,18 @@ func (s *Student) AnnouncementCount() int {
 	return len(s.announcements)
 }
 
+func (s *Student) MarkAnnouncementReadDirty(id string) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.announcements[s.announcementIndexByID[id]].Dirty = true
+}
+
 func (s *Student) ReadAnnouncement(id string) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
+	s.announcements[s.announcementIndexByID[id]].Dirty = false
 	s.announcements[s.announcementIndexByID[id]].Unread = false
 	s.readAnnouncementCond.Broadcast()
 }
@@ -225,7 +265,7 @@ func (s *Student) Courses() []*Course {
 	return res
 }
 
-func (s *Student) RegisteredSchedule() [7][6]*Course {
+func (s *Student) RegisteredSchedule() [5][6]*Course {
 	s.scheduleMutex.RLock()
 	defer s.scheduleMutex.RUnlock()
 
