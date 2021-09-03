@@ -112,18 +112,13 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			}
 
 			// actualの重複確認
-			var existCreatedAt []int64
+			existCreatedAt := make(map[int64]struct{}, len(actualAnnouncements))
 			for _, a := range actualAnnouncements {
-				if a.Unread {
-					actualUnreadCount++
+				if _, ok := existCreatedAt[a.CreatedAt]; ok {
+					step.AddError(errDuplicated)
+					return
 				}
-				for _, e := range existCreatedAt {
-					if a.CreatedAt == e {
-						step.AddError(errDuplicated)
-						return
-					}
-				}
-				existCreatedAt = append(existCreatedAt, a.CreatedAt)
+				existCreatedAt[a.CreatedAt] = struct{}{}
 			}
 
 			expectAnnouncements := student.Announcements()
