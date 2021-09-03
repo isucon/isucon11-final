@@ -23,14 +23,15 @@ type Scenario struct {
 	Config
 	CourseManager *model.CourseManager
 
-	sPubSub            *pubsub.PubSub
-	cPubSub            *pubsub.PubSub
-	faculties          []*model.Teacher
-	studentPool        *userPool
-	activeStudents     []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
-	language           string
-	loadRequestEndTime time.Time
-	debugData          *DebugData
+	sPubSub             *pubsub.PubSub
+	cPubSub             *pubsub.PubSub
+	faculties           []*model.Teacher
+	studentPool         *userPool
+	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
+	activeStudentsCount int64
+	language            string
+	loadRequestEndTime  time.Time
+	debugData           *DebugData
 
 	rmu sync.RWMutex
 
