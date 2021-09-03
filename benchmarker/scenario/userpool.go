@@ -60,10 +60,3 @@ func (p *userPool) newUserData() (*model.UserAccount, error) {
 	p.index++
 	return &d, nil
 }
-
-func (p *userPool) reset() {
-	p.rmu.Lock()
-	defer p.rmu.Unlock()
-
-	p.index = 0
-}
