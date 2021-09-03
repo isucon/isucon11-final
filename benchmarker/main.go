@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"runtime"
@@ -124,8 +125,10 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 			reason = "スコアが0点以下でした"
 		}
 	}
+	bairitu := math.Round((float64(s.ActiveStudentCount()/10) * 100) / 100)
+	finalScore := int64(float64(resultScore) * bairitu)
 
-	scenario.ContestantLogger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
+	scenario.ContestantLogger.Printf("score: %d[(%d - %d) * %f] : %s", finalScore, raw, deducted, bairitu, reason)
 	scenario.ContestantLogger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
 	// 競技者には最終的なScoreTagの統計のみ見せる
@@ -149,7 +152,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		},
 		Finished: finish,
 		Passed:   passed,
-		Score:    resultScore, // TODO: 加点 - 減点
+		Score:    finalScore, // TODO: 加点 - 減点
 		ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
 			Raw:       raw,      // TODO: 加点
 			Deduction: deducted, // TODO: 減点
