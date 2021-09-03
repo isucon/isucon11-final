@@ -72,7 +72,7 @@ export default Vue.extend({
       }
     },
     submissionDisabled(): boolean {
-      return this.classinfo.submitted || this.classinfo.submissionClosed
+      return this.classinfo.submissionClosed
     },
   },
   methods: {
