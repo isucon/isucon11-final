@@ -938,7 +938,7 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 
 func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) error {
 	errInvalidRegistration := failure.NewError(fails.ErrApplication, fmt.Errorf("履修登録できないはずの科目の履修に成功しました"))
-	errInvalidErrorResponce := errInvalidResponse("履修登録失敗時のレスポンスが期待する内容と一致しません")
+	errInvalidErrorResponse := errInvalidResponse("履修登録失敗時のレスポンスが期待する内容と一致しません")
 
 	// ======== 検証用データの準備 ========
 
@@ -1067,7 +1067,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if !isSameIgnoringOrder(eres.CourseNotFound, []string{unknownCourse.ID}) ||
 		!isSameIgnoringOrder(eres.NotRegistrableStatus, []string{inProgressCourse.ID, closedCourse.ID}) ||
 		!isSameIgnoringOrder(eres.ScheduleConflict, []string{conflictedCourse1.ID, conflictedCourse2.ID, conflictedCourse3.ID}) {
-		return errInvalidErrorResponce
+		return errInvalidErrorResponse
 	}
 
 	return nil
