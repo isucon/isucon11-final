@@ -26,3 +26,11 @@ func assertEqual(expected interface{}, actual interface{}) bool {
 
 	return false
 }
+
+func AssertInRange(msg string, expectMin, expectMax, actual int) bool {
+	r := expectMin <= actual && actual <= expectMax
+	if !r {
+		AdminLogger.Printf("%s: expected: %d ~ %d / actual: %d", msg, expectMin, expectMax, actual)
+	}
+	return r
+}

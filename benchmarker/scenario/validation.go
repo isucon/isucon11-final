@@ -36,6 +36,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errTimeout := failure.NewError(fails.ErrCritical, fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
 	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
+	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
 
@@ -52,7 +53,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// 1〜5秒ランダムに待つ
 			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
-			var responseUnreadCount int // responseに含まれるunread_count
+			// responseに含まれるunread_count
+			var responseUnreadCounts []int
 			actualAnnouncements := map[string]api.AnnouncementResponse{}
 			lastCreatedAt := int64(math.MaxInt64)
 
@@ -65,10 +67,9 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				// UnreadCount は各ページのレスポンスですべて同じ値が返ってくるはず
-				if next == "" {
-					responseUnreadCount = res.UnreadCount
-				} else if responseUnreadCount != res.UnreadCount {
+				// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
+				responseUnreadCounts = append(responseUnreadCounts, res.UnreadCount)
+				if responseUnreadCounts[0] != res.UnreadCount {
 					step.AddError(errNotMatchUnreadCount)
 					return
 				}
@@ -104,7 +105,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					actualUnreadCount++
 				}
 			}
-			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCount) {
+			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
 				step.AddError(errNotMatchUnreadCount)
 				return
 			}
@@ -120,12 +121,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				// ベンチ内データが既読の場合のみUnreadの検証を行う
+				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-				if !expectStatus.Unread {
+				if !expectStatus.Dirty {
 					if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
-						AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
-						step.AddError(errNotMatchOver)
+						AdminLogger.Printf("unread mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
+						step.AddError(errNotMatch)
 						return
 					}
 				}
@@ -135,10 +136,22 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
 					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
 					!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
-					AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
-					step.AddError(errNotMatchOver)
+					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
+					step.AddError(errNotMatch)
 					return
 				}
+			}
+
+			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
+				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
+				step.AddError(errNotMatchOver)
+				return
+			}
+
+			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
+			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
+				step.AddError(errNotMatchUnreadCount)
+				return
 			}
 		}()
 	}
