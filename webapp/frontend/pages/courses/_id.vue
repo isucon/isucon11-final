@@ -39,7 +39,6 @@ import { Context } from '@nuxt/types'
 import {
   Course,
   Announcement,
-  AnnouncementResponse,
   GetAnnouncementResponse,
   ClassInfo,
 } from '~/types/courses'
@@ -66,33 +65,32 @@ export default Vue.extend({
   middleware: 'is_student',
   async asyncData(ctx: Context): Promise<CourseData> {
     const { params, query, $axios } = ctx
-    console.log(params)
     const [course, classes, announcementResult] = await Promise.all([
-      $axios.$get(`/api/syllabus/${params.id}`),
-      $axios.$get(`/api/courses/${params.id}/classes`),
-      $axios.get(`/api/announcements`, {
+      $axios.get<Course>(`/api/syllabus/${params.id}`),
+      $axios.get<ClassInfo[]>(`/api/courses/${params.id}/classes`),
+      $axios.get<GetAnnouncementResponse>(`/api/announcements`, {
         params: { ...query, courseId: params.id },
       }),
     ])
     const responseBody: GetAnnouncementResponse = announcementResult.data
     const link = announcementResult.headers.link
-    const announcements: Announcement[] = Object.values(
-      responseBody.announcements
-    ).map((item: AnnouncementResponse) => {
-      const announce: Announcement = {
-        id: item.id,
-        courseId: item.courseId,
-        courseName: item.courseName,
-        title: item.title,
-        unread: item.unread,
-        createdAt: new Date(item.createdAt * 1000).toLocaleString(),
+    const announcements = Object.values(responseBody.announcements).map(
+      (item) => {
+        const announce: Announcement = {
+          id: item.id,
+          courseId: item.courseId,
+          courseName: item.courseName,
+          title: item.title,
+          unread: item.unread,
+          createdAt: new Date(item.createdAt * 1000).toLocaleString(),
+        }
+        return announce
       }
-      return announce
-    })
+    )
     return {
-      course,
+      course: course.data,
       announcements,
-      classes,
+      classes: classes.data,
       link,
     }
   },
@@ -106,9 +104,10 @@ export default Vue.extend({
       announcement: Announcement
     ) {
       try {
-        const announcementDetail: Announcement = await this.$axios.$get(
+        const res = await this.$axios.get<Announcement>(
           `/api/announcements/${announcement.id}`
         )
+        const announcementDetail = res.data
         const target = this.announcements.find(
           (item) => item.id === announcement.id
         )

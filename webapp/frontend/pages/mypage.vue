@@ -132,10 +132,8 @@ export default Vue.extend({
     ctx: Context
   ): Promise<{ registeredCourses: MinimalCourse[] }> {
     try {
-      const registeredCourses = await ctx.$axios.$get<MinimalCourse[]>(
-        `/api/users/me/courses`
-      )
-      return { registeredCourses }
+      const res = await ctx.$axios.get<MinimalCourse[]>(`/api/users/me/courses`)
+      return { registeredCourses: res.data }
     } catch (e) {
       console.error(e)
     }

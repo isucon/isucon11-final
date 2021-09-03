@@ -119,9 +119,10 @@ export default Vue.extend({
       announcement: Announcement
     ) {
       try {
-        const announcementDetail: Announcement = await this.$axios.$get(
+        const res = await this.$axios.get<Announcement>(
           `/api/announcements/${announcement.id}`
         )
+        const announcementDetail = res.data
         const target = this.innerAnnouncements.find(
           (item) => item.id === announcement.id
         )
