@@ -125,7 +125,8 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 			reason = "スコアが0点以下でした"
 		}
 	}
-	bairitu := math.Round((float64(s.ActiveStudentCount()/10) * 100) / 100)
+	bairitu := math.Pow(float64(s.ActiveStudentCount()), 2) / 100
+	//bairitu := math.Round(((s.ActiveStudentCount()/10) * 100) / 100)
 	finalScore := int64(float64(resultScore) * bairitu)
 
 	scenario.ContestantLogger.Printf("score: %d[(%d - %d) * %f] : %s", finalScore, raw, deducted, bairitu, reason)
