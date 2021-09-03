@@ -187,24 +187,35 @@ func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (
 	return hres, res, nil
 }
 
-func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, error) {
+func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, api.RegisterCoursesErrorResponse, error) {
 	req := make([]api.RegisterCourseRequestContent, 0, len(courses))
 	for _, c := range courses {
 		req = append(req, api.RegisterCourseRequestContent{ID: c.ID})
 	}
 
+	eres := api.RegisterCoursesErrorResponse{}
 	hres, err := api.RegisterCourses(ctx, agent, req)
 	if err != nil {
-		return hres, failure.NewError(fails.ErrHTTP, err)
+		return hres, eres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return hres, err
+		// 400のときはエラー内容が返ってくるのでレスポンスをデコードする
+		if hres.StatusCode == http.StatusBadRequest {
+			decodeErr := json.NewDecoder(hres.Body).Decode(&eres)
+			if decodeErr != nil {
+				return hres, eres, failure.NewError(fails.ErrHTTP, decodeErr)
+			}
+
+			return hres, eres, err
+		}
+
+		return hres, eres, err
 	}
 
-	return hres, nil
+	return hres, eres, nil
 }
 
 func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.GetAnnouncementsResponse, error) {
@@ -328,6 +339,12 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 }
 
 func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
+	// 不正な param.DayOfWeek は空文字列として送信してprepareの異常系チェックに使用する
+	var dayOfWeek api.DayOfWeek
+	if 0 <= param.DayOfWeek && param.DayOfWeek < len(api.DayOfWeekTable) {
+		dayOfWeek = api.DayOfWeekTable[param.DayOfWeek]
+	}
+
 	req := api.AddCourseRequest{
 		Code:        param.Code,
 		Type:        api.CourseType(param.Type),
@@ -335,7 +352,7 @@ func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.Cours
 		Description: param.Description,
 		Credit:      param.Credit,
 		Period:      param.Period + 1,
-		DayOfWeek:   api.DayOfWeekTable[param.DayOfWeek],
+		DayOfWeek:   dayOfWeek,
 		Keywords:    param.Keywords,
 	}
 	res := api.AddCourseResponse{}

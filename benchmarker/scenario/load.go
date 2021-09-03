@@ -298,7 +298,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// 冪等なので登録済みの科目にもう一回登録して成功すれば200が返ってくる
 		L:
-			_, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
+			_, _, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
 			if err != nil {
 				step.AddError(err)
 				if err, ok := err.(*url.Error); ok && err.Timeout() {
