@@ -326,7 +326,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					}
 				}
 			} else {
-				if isExtendRequest {
+				if !isExtendRequest {
 					step.AddScore(score.RegisterCourses)
 				}
 				for _, c := range temporaryReservedCourses {
@@ -533,7 +533,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 					continue
 				}
 			} else {
-				if isExtendRequest {
+				if !isExtendRequest {
 					step.AddScore(score.AddClass)
 				}
 			}
@@ -567,7 +567,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				}
 			} else {
 				announcement.ID = ancRes.ID
-				if isExtendRequest {
+				if !isExtendRequest {
 					step.AddScore(score.AddAnnouncement)
 				}
 			}
