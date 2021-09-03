@@ -215,16 +215,14 @@ const (
 type DayOfWeek string
 
 const (
-	Sunday    DayOfWeek = "sunday"
 	Monday    DayOfWeek = "monday"
 	Tuesday   DayOfWeek = "tuesday"
 	Wednesday DayOfWeek = "wednesday"
 	Thursday  DayOfWeek = "thursday"
 	Friday    DayOfWeek = "friday"
-	Saturday  DayOfWeek = "saturday"
 )
 
-var daysOfWeek = []DayOfWeek{Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday}
+var daysOfWeek = []DayOfWeek{Monday, Tuesday, Wednesday, Thursday, Friday}
 
 type CourseStatus string
 
