@@ -1,8 +1,5 @@
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
-('4bcb995b-a9a7-4f39-8f33-79bc9d285728','isuT','isucon(教員)','$2a$04$Jww9mv/QdUHk8nVUMeBPpOMoAgxn3Nr6FQ4ZrJBqBNirWYuwedCYq','teacher'),
-('bab74ad1-374f-4022-a26e-07721f1633e0','isucon','isucon(学生)','$2a$04$RjAX36UvGAbyBQG2i0qpZeN5rpSnr9eZOM69RShXGg8yKRQ8iXPIW','student');
-INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
-('d5912bbe-5201-40cf-bf42-1cacd6759a2f','T00000','古賀 優希','$2a$04$s.68y12gA5u9l7/cZA01KOx5KE9JkfmgW9wes8yoQExOXp2ktj7qW','teacher'),
+('4bcb995b-a9a7-4f39-8f33-79bc9d285728','T00000','isucon(教員)','$2a$04$Jww9mv/QdUHk8nVUMeBPpOMoAgxn3Nr6FQ4ZrJBqBNirWYuwedCYq','teacher'),
 ('c6482e64-b532-44dd-92ef-f027b5c066c7','T00001','山口 陽輝','$2a$04$11HvLZoso2fGl8nnm4Wv3.KnwJ30DmhNqHuthYri7Hv2.oWZ3De9i','teacher'),
 ('50261242-df34-479e-9065-9439769f1343','T00002','加藤 駿','$2a$04$2SRGQjwcmZH/Jh7DwWUzkeLSEK7B8b4s8ahRx/HyGRA1hsrHALbOS','teacher'),
 ('8eef895f-9f6d-4af2-bc20-1040fb523402','T00003','獅子吼 加奈子','$2a$04$moxiDsNEEVkj71CePbWkBeU9L2nUJCG/pLFqMaBglnwxIJSkYPmMK','teacher'),
@@ -53,7 +50,7 @@ INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('35bf49e3-3386-46a0-b71b-26141d3c04a9','T00048','佐々木 翼','$2a$04$no8cAUZ7LqZBfdwbTiUxKO9nKUgOPTuXVuI14pc4rg8MwB0P4QXdy','teacher'),
 ('f21a7e7a-7580-457c-a873-767c99cea88e','T00049','佐藤 大樹','$2a$04$d2416wzVHmyw1oDzeOHbzOZZ0riC7RjG43.ENQGrQhFgT8s8WN8c6','teacher');
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
-('fd742ce6-918a-4c8b-984b-d511d8c3934a','S00000','小笠原 華子','$2a$04$aIOy6VQSW362331as0A26OkgyQb576eB8xayi7bUNoaCNtMk4TRYK','student'),
+('bab74ad1-374f-4022-a26e-07721f1633e0','S00000','isucon(学生)','$2a$04$RjAX36UvGAbyBQG2i0qpZeN5rpSnr9eZOM69RShXGg8yKRQ8iXPIW','student'),
 ('a10bb7bf-dc7c-4de1-bf39-9efa49c0f37e','S00001','佐々木 翠','$2a$04$xs2Ki5q5i4Jv3VSqaCxyyuitSZELSUO2RTjf/PHO.Y4yk/NYwuLA.','student'),
 ('b2d64bcf-8b95-4345-9ba3-b0a1e7d5dd87','S00002','井上 一郎','$2a$04$5TScW.USIdTiihpoa8ZEj.tpvKwDzAscIdBBG1mcSt5z2bx4UdId6','student'),
 ('76d14aca-2426-4ac4-9e0c-a8fa9b3bd22b','S00003','安藤 蘭','$2a$04$HsDP1mSXAhBLZm9W.VX4UeS2N7lM5m06lF1m2fcqPYzx/auv2HtMS','student'),

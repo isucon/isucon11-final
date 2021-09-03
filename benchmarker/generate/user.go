@@ -17,7 +17,7 @@ func LoadStudentsData() ([]*model.UserAccount, error) {
 	return loadUserAccountData(studentFile)
 }
 
-func LoadFacultiesData() ([]*model.UserAccount, error) {
+func LoadTeachersData() ([]*model.UserAccount, error) {
 	return loadUserAccountData(teacherFile)
 }
 

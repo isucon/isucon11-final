@@ -3,67 +3,93 @@ package scenario
 import (
 	"fmt"
 	"math/rand"
+	"net/url"
 	"sync"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 )
 
 type userPool struct {
-	dataset []*model.UserAccount
-	index   int
-	done    bool // sampleUserを排出したかどうかのフラグ
+	studentAccounts  []*model.UserAccount
+	teachers         []*model.Teacher
+	index            int
+	useSampleStudent bool // sampleStudentを排出したかどうかのフラグ
+	teacherCount     int  // sampleTeacherの排出に使うカウント
+	sampleTeacher    *model.Teacher
+	baseURL          *url.URL
 
 	rmu sync.RWMutex
 }
 
 var (
-	sampleTeacherID   = "isuT"
-	sampleTeacherName = "isucon"
-	sampleTeacherPass = "isucon"
-
-	sampleStudentID   = "isucon"
-	sampleStudentName = "isucon"
+	sampleStudentID   = "S00000"
+	sampleStudentName = "isucon(学生)"
 	sampleStudentPass = "isucon"
+
+	sampleTeacherID   = "T00000"
+	sampleTeacherName = "isucon(教員)"
+	sampleTeacherPass = "isucon"
 )
 
-func NewUserPool(dataSet []*model.UserAccount) *userPool {
+func NewUserPool(studentAccounts []*model.UserAccount, teacherAccounts []*model.UserAccount, baseURL *url.URL) *userPool {
 	// shuffle studentDataSet order by Fisher–Yates shuffle
-	for i := len(dataSet) - 1; i >= 0; i-- {
+	for i := len(studentAccounts) - 1; i >= 0; i-- {
 		j := rand.Intn(i + 1)
-		dataSet[i], dataSet[j] = dataSet[j], dataSet[i]
+		studentAccounts[i], studentAccounts[j] = studentAccounts[j], studentAccounts[i]
+	}
+
+	sampleTeacher := model.NewTeacher(&model.UserAccount{
+		Code:        sampleTeacherID,
+		Name:        sampleTeacherName,
+		RawPassword: sampleTeacherPass,
+	}, baseURL)
+
+	teachers := make([]*model.Teacher, len(teacherAccounts))
+	for i, account := range teacherAccounts {
+		teachers[i] = model.NewTeacher(account, baseURL)
 	}
 
 	return &userPool{
-		dataset: dataSet,
-		index:   0,
-		rmu:     sync.RWMutex{},
+		studentAccounts: studentAccounts,
+		teachers:        teachers,
+		index:           0,
+		sampleTeacher:   sampleTeacher,
+		baseURL:         baseURL,
+		rmu:             sync.RWMutex{},
 	}
 }
 
-func (p *userPool) newUserData() (*model.UserAccount, error) {
+func (p *userPool) newStudent() (*model.Student, error) {
 	p.rmu.Lock()
 	defer p.rmu.Unlock()
 
-	if !p.done {
-		p.done = true
-		return &model.UserAccount{
+	if !p.useSampleStudent {
+		p.useSampleStudent = true
+		return model.NewStudent(&model.UserAccount{
 			Code:        sampleStudentID,
 			Name:        sampleStudentName,
 			RawPassword: sampleStudentPass,
-		}, nil
+		}, p.baseURL), nil
 	}
 
-	if p.index >= len(p.dataset) {
+	if p.index >= len(p.studentAccounts) {
 		return nil, fmt.Errorf("student data has been out of stock")
 	}
-	d := *p.dataset[p.index]
+	student := model.NewStudent(p.studentAccounts[p.index], p.baseURL)
 	p.index++
-	return &d, nil
+	return student, nil
 }
 
-func (p *userPool) reset() {
+func (p *userPool) randomTeacher() *model.Teacher {
 	p.rmu.Lock()
 	defer p.rmu.Unlock()
 
-	p.index = 0
+	// 定期的にsampleTeacherを使う
+	if p.teacherCount%20 == 0 {
+		p.teacherCount++
+		return p.sampleTeacher
+	}
+
+	p.teacherCount++
+	return p.teachers[rand.Intn(len(p.teachers))]
 }
