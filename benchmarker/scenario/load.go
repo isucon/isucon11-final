@@ -511,10 +511,6 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 
 			// 50msより短い間隔で一覧取得をしない
 			<-timer
-
-			if s.isNoRequestTime(ctx) {
-				return
-			}
 		}
 	}
 }
