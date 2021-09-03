@@ -104,3 +104,32 @@ func (s *Scenario) GetRandomTeacher() *model.Teacher {
 
 	return s.faculties[rand.Intn(len(s.faculties))]
 }
+
+func (s *Scenario) Reset() {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	studentsData, err := generate.LoadStudentsData()
+	if err != nil {
+		panic(err)
+	}
+	facultiesData, err := generate.LoadFacultiesData()
+	if err != nil {
+		panic(err)
+	}
+
+	faculties := make([]*model.Teacher, len(facultiesData))
+	for i, f := range facultiesData {
+		faculties[i] = model.NewTeacher(f, s.Config.BaseURL)
+	}
+
+	s.CourseManager = model.NewCourseManager()
+	s.sPubSub = pubsub.NewPubSub()
+	s.cPubSub = pubsub.NewPubSub()
+	s.faculties = faculties
+	s.studentPool = NewUserPool(studentsData)
+	s.activeStudents = make([]*model.Student, 0, initialStudentsCount)
+	s.debugData = NewDebugData(s.Config.IsDebug)
+	s.finishCoursePubSub = pubsub.NewPubSub()
+	s.finishCourseStudentsCount = 0
+}
