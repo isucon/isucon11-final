@@ -32,6 +32,7 @@ type Student struct {
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
+	Dirty        bool // リクエストを送ったがタイムアウトになってしまったため、webapp側で既読になったかが定かではないことを表す
 	Unread       bool
 }
 
@@ -83,11 +84,30 @@ func (s *Student) AnnouncementsMap() map[string]*AnnouncementStatus {
 	return result
 }
 
+func (s *Student) ExpectUnreadRange() (min, max int) {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	for _, a := range s.announcements {
+		if a.Unread {
+			if !a.Dirty {
+				min++
+			}
+			max++
+		}
+	}
+	return
+}
+
 func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.announcements = append(s.announcements, &AnnouncementStatus{announcement, true})
+	s.announcements = append(s.announcements, &AnnouncementStatus{
+		Announcement: announcement,
+		Dirty:        false,
+		Unread:       true,
+	})
 	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
 	s.addAnnouncementCond.Broadcast()
 }
@@ -110,10 +130,18 @@ func (s *Student) AnnouncementCount() int {
 	return len(s.announcements)
 }
 
+func (s *Student) MarkAnnouncementReadDirty(id string) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.announcements[s.announcementIndexByID[id]].Dirty = true
+}
+
 func (s *Student) ReadAnnouncement(id string) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
+	s.announcements[s.announcementIndexByID[id]].Dirty = false
 	s.announcements[s.announcementIndexByID[id]].Unread = false
 	s.readAnnouncementCond.Broadcast()
 }

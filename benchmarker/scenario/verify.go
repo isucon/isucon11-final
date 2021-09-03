@@ -349,9 +349,9 @@ func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announceme
 		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
 	}
 
-	// ベンチ内データが既読の場合のみUnreadの検証を行う
+	// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-	if !announcementStatus.Unread {
+	if !announcementStatus.Dirty {
 		if !AssertEqual("announce unread", announcementStatus.Unread, res.Unread) {
 			return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
 		}
@@ -362,7 +362,6 @@ func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announceme
 
 // お知らせ一覧の中身の検証
 func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[string]*model.AnnouncementStatus) error {
-
 	// リストの中身の検証
 	for _, actual := range res.Announcements {
 		expectStatus, ok := expectList[actual.ID]
@@ -385,9 +384,9 @@ func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[s
 			return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
 		}
 
-		// ベンチ内データが既読の場合のみ検証を行う
+		// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 		// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-		if !expectStatus.Unread {
+		if !expectStatus.Dirty {
 			if !AssertEqual("announce unread", expectStatus.Unread, actual.Unread) {
 				return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
 			}
