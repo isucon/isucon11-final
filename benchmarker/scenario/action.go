@@ -28,18 +28,25 @@ const (
 	RequestDuration = 100
 )
 
-func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, error) {
+func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.InitializeResponse, error) {
+	res := api.InitializeResponse{}
 	hres, err := api.Initialize(ctx, agent)
 	if err != nil {
-		return hres, err
+		return hres, res, err
 	}
+	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return hres, err
+		return hres, res, err
 	}
 
-	return hres, nil
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
 }
 
 func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.UserAccount) (*http.Response, error) {

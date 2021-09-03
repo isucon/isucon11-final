@@ -52,6 +52,13 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
+func verifyInitialize(res api.InitializeResponse) error {
+	if res.Language == "" {
+		return errInvalidResponse("initialize のレスポンスに利用言語が設定されていません")
+	}
+	return nil
+}
+
 func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, expectedAdminFlag bool) error {
 	if res.Code != expectedUserAccount.Code {
 		return errInvalidResponse("学籍番号が期待する値と一致しません")

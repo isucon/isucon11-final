@@ -47,11 +47,16 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	a.Name = "benchmarker-initializer"
 
 	ContestantLogger.Printf("start Initialize")
-	_, err = InitializeAction(ctx, a)
+	_, res, err := InitializeAction(ctx, a)
 	if err != nil {
 		ContestantLogger.Printf("initializeが失敗しました")
 		return failure.NewError(fails.ErrCritical, err)
 	}
+	err = verifyInitialize(res)
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
+	s.language = res.Language
 
 	err = s.prepareNormal(ctx, step)
 	if err != nil {
@@ -63,47 +68,13 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		return failure.NewError(fails.ErrCritical, err)
 	}
 
-	_, err = InitializeAction(ctx, a)
+	_, _, err = InitializeAction(ctx, a)
 	if err != nil {
 		ContestantLogger.Printf("initializeが失敗しました")
 		return failure.NewError(fails.ErrCritical, err)
 	}
-	return nil
-}
 
-func (s *Scenario) prepareCheck(parent context.Context, step *isucandar.BenchmarkStep) error {
-	initializeAgent, err := agent.NewAgent(
-		agent.WithNoCache(),
-		agent.WithNoCookie(),
-		agent.WithTimeout(20*time.Second),
-		agent.WithBaseURL(s.BaseURL.String()),
-	)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithCancel(parent)
-	defer cancel()
-
-	_, err = InitializeAction(ctx, initializeAgent)
-	if err != nil {
-		return err
-	}
-
-	//studentAgent, err := agent.NewAgent(agent.WithTimeout(prepareTimeout))
-	//if err != nil {
-	//	return err
-	//}
-	//student := s.prepareNewStudent()
-	//student.Agent = studentAgent
-	//
-	//teacherAgent, err := agent.NewAgent(agent.WithTimeout(prepareTimeout))
-	//if err != nil {
-	//	return err
-	//}
-	//teacher := s.prepareNewTeacher()
-	//teacher.Agent = teacherAgent
-
+	AdminLogger.Printf("Language: %s", s.Language())
 	return nil
 }
 
