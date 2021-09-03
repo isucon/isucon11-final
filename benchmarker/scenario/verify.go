@@ -170,19 +170,17 @@ func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expe
 	return nil
 }
 
-func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expectedSchedule [7][6]*model.Course) error {
+func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expectedSchedule [5][6]*model.Course) error {
 	// DayOfWeekの逆引きテーブル（string -> int）
 	dayOfWeekIndexTable := map[api.DayOfWeek]int{
-		"sunday":    0,
-		"monday":    1,
-		"tuesday":   2,
-		"wednesday": 3,
-		"thursday":  4,
-		"friday":    5,
-		"saturday":  6,
+		"monday":    0,
+		"tuesday":   1,
+		"wednesday": 2,
+		"thursday":  3,
+		"friday":    4,
 	}
 
-	actualSchedule := [7][6]*api.GetRegisteredCourseResponseContent{}
+	actualSchedule := [5][6]*api.GetRegisteredCourseResponseContent{}
 	for _, resContent := range res {
 		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
 		if !ok {
@@ -202,7 +200,7 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expe
 	// 科目の終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
 	// ただし、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降削除されず、また履修登録は直列であるため、レスポンスに存在する科目は必ずベンチにも存在することを期待する。
 	// したがって、レスポンスに含まれる科目はベンチにある科目(registeredSchedule)の部分集合であることを確認すれば十分である。
-	for d := 0; d < 7; d++ {
+	for d := 0; d < 5; d++ {
 		for p := 0; p < 6; p++ {
 			if actualSchedule[d][p] != nil {
 				if expectedSchedule[d][p] != nil {

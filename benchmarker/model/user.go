@@ -26,7 +26,7 @@ type Student struct {
 	addAnnouncementCond   *sync.Cond
 	rmu                   sync.RWMutex
 
-	registeredSchedule [7][6]*Course // 空きコマ管理[DayOfWeek:7][Period:6]
+	registeredSchedule [5][6]*Course // 空きコマ管理[DayOfWeek:5][Period:6]
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
 }
@@ -49,7 +49,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
 
-		registeredSchedule: [7][6]*Course{},
+		registeredSchedule: [5][6]*Course{},
 		scheduleMutex:      sync.RWMutex{},
 	}
 	s.readAnnouncementCond = sync.NewCond(&s.rmu)
@@ -225,7 +225,7 @@ func (s *Student) Courses() []*Course {
 	return res
 }
 
-func (s *Student) RegisteredSchedule() [7][6]*Course {
+func (s *Student) RegisteredSchedule() [5][6]*Course {
 	s.scheduleMutex.RLock()
 	defer s.scheduleMutex.RUnlock()
 

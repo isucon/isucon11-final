@@ -165,7 +165,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		param := generate.CourseParam((i/6)+1, i%6, teacher)
+		param := generate.CourseParam(i/6, i%6, teacher)
 		_, res, err := AddCourseAction(ctx, teacher.Agent, param)
 		if err != nil {
 			step.AddError(err)
@@ -644,7 +644,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	}
 
 	// 適当な科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -712,7 +712,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 		return err
 	}
 
-	courseParam = generate.CourseParam(1, 1, teacher)
+	courseParam = generate.CourseParam(0, 1, teacher)
 	hres, _, err = AddCourseAction(ctx, agent, courseParam)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
@@ -806,7 +806,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 	}
 
 	// 適当な科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -835,7 +835,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 
 	// ======== 検証 ========
 
-	courseParam = generate.CourseParam(1, 1, teacher)
+	courseParam = generate.CourseParam(0, 1, teacher)
 	hres, _, err := AddCourseAction(ctx, student.Agent, courseParam)
 	if err := checkAuthorization(hres, err); err != nil {
 		return err
@@ -955,7 +955,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	}
 
 	// ステータスが registration の科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -963,7 +963,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	registrationCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
 
 	// ステータスが in-progress の科目
-	courseParam = generate.CourseParam(1, 1, teacher)
+	courseParam = generate.CourseParam(0, 1, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -975,7 +975,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	}
 
 	// ステータスが closed の科目
-	courseParam = generate.CourseParam(1, 2, teacher)
+	courseParam = generate.CourseParam(0, 2, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -987,7 +987,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	}
 
 	// student が履修登録済みの科目
-	courseParam = generate.CourseParam(2, 0, teacher)
+	courseParam = generate.CourseParam(1, 0, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -999,7 +999,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	}
 
 	// alreadyRegisteredCourse と時間割がコンフリクトする科目
-	courseParam = generate.CourseParam(2, 0, teacher)
+	courseParam = generate.CourseParam(1, 0, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1007,14 +1007,14 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	conflictedCourse1 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
 
 	// 時間割がコンフリクトする2つの科目
-	courseParam = generate.CourseParam(2, 1, teacher)
+	courseParam = generate.CourseParam(1, 1, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
 	}
 	conflictedCourse2 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
 
-	courseParam = generate.CourseParam(2, 1, teacher)
+	courseParam = generate.CourseParam(1, 1, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1022,7 +1022,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	conflictedCourse3 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
 
 	// 存在しない科目
-	courseParam = generate.CourseParam(3, 0, teacher)
+	courseParam = generate.CourseParam(2, 0, teacher)
 	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
 
 	// ======== 検証 ========
@@ -1111,7 +1111,7 @@ func (s *Scenario) prepareCheckAddCourseAbnormal(ctx context.Context) error {
 	}
 
 	// 適当な科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1121,7 +1121,7 @@ func (s *Scenario) prepareCheckAddCourseAbnormal(ctx context.Context) error {
 	// ======== 検証 ========
 
 	// Type が不正な科目の追加
-	courseParam = generate.CourseParam(1, 1, teacher)
+	courseParam = generate.CourseParam(0, 1, teacher)
 	courseParam.Type = "invalid-type"
 	hres, _, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err == nil {
@@ -1144,7 +1144,7 @@ func (s *Scenario) prepareCheckAddCourseAbnormal(ctx context.Context) error {
 
 	// コンフリクトする科目の追加
 	// Code を同じにし、少なくとも Period を変えることで course とコンフリクトさせる
-	courseParam = generate.CourseParam(1, (course.Period+1)%6, teacher)
+	courseParam = generate.CourseParam(0, 2, teacher)
 	courseParam.Code = course.Code
 	hres, _, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err == nil {
@@ -1220,7 +1220,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 	}
 
 	// 適当な科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1236,7 +1236,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 	class := model.NewClass(addClassRes.ClassID, classParam)
 
 	// 存在しない科目
-	courseParam = generate.CourseParam(1, 1, teacher)
+	courseParam = generate.CourseParam(0, 1, teacher)
 	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
 
 	// ======== 検証 ========
@@ -1287,7 +1287,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	}
 
 	// student が履修登録済みで、in-progressの科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1303,7 +1303,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	}
 
 	// student が履修登録済みで、in-progressではない科目
-	courseParam = generate.CourseParam(1, 1, teacher)
+	courseParam = generate.CourseParam(0, 1, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1315,7 +1315,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	}
 
 	// student が履修していない、in-progressの科目
-	courseParam = generate.CourseParam(1, 2, teacher)
+	courseParam = generate.CourseParam(0, 2, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1436,7 +1436,7 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 	}
 
 	// 適当な科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1493,7 +1493,7 @@ func (s *Scenario) prepareCheckDownloadSubmissionsAbnormal(ctx context.Context) 
 	}
 
 	// 適当な科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
@@ -1526,7 +1526,7 @@ func (s *Scenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) err
 	}
 
 	// 存在しない科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	notRegisteredCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
 
 	// 存在しない講義
@@ -1567,7 +1567,7 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 	}
 
 	// student が履修していない科目
-	courseParam := generate.CourseParam(1, 0, teacher)
+	courseParam := generate.CourseParam(0, 0, teacher)
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
