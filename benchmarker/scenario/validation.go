@@ -36,6 +36,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errTimeout := failure.NewError(fails.ErrCritical, fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
 	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
+	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
 
@@ -109,12 +110,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
-			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
-				step.AddError(errNotMatchUnreadCount)
-				return
-			}
-
 			expectAnnouncements := student.Announcements()
 			for _, expectStatus := range expectAnnouncements {
 				expect := expectStatus.Announcement
@@ -131,7 +126,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				if !expectStatus.Dirty {
 					if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
 						AdminLogger.Printf("unread mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
-						step.AddError(errNotMatchOver)
+						step.AddError(errNotMatch)
 						return
 					}
 				}
@@ -141,10 +136,22 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
 					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
 					!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
-					AdminLogger.Printf("extra announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
-					step.AddError(errNotMatchOver)
+					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
+					step.AddError(errNotMatch)
 					return
 				}
+			}
+
+			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
+				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
+				step.AddError(errNotMatchOver)
+				return
+			}
+
+			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
+			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
+				step.AddError(errNotMatchUnreadCount)
+				return
 			}
 		}()
 	}
