@@ -124,6 +124,12 @@ func (s *Scenario) isNoRequestTime(ctx context.Context) bool {
 	return time.Now().After(s.loadRequestEndTime) || ctx.Err() != nil
 }
 
+// isNoRetryTime はリクエストのリトライができない期間かどうか
+func (s *Scenario) isNoRetryTime(ctx context.Context) bool {
+	retryableTime := s.loadRequestEndTime.Add(5 * time.Second)
+	return time.Now().After(retryableTime) || ctx.Err() != nil
+}
+
 func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucandar.BenchmarkStep) {
 	s.finishCoursePubSub.Subscribe(ctx, func(mes interface{}) {
 		count, ok := mes.(int)
@@ -296,8 +302,13 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				continue
 			}
 
-			// 冪等なので登録済みの科目にもう一回登録して成功すれば200が返ってくる
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest := false
 		L:
+			if s.isNoRetryTime(ctx) {
+				return
+			}
+			// 冪等なので登録済みの科目にもう一回登録して成功すれば200が返ってくる
 			_, _, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
 			if err != nil {
 				step.AddError(err)
@@ -306,6 +317,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
 					// timeout したらもう一回リクエストする
 					time.Sleep(100 * time.Millisecond)
+					isExtendRequest = s.isNoRequestTime(ctx)
 					goto L
 				} else {
 					// 失敗時に科目の仮登録をロールバック
@@ -315,7 +327,9 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					}
 				}
 			} else {
-				step.AddScore(score.RegisterCourses)
+				if !isExtendRequest {
+					step.AddScore(score.RegisterCourses)
+				}
 				for _, c := range temporaryReservedCourses {
 					c.CommitReservation(student)
 					student.AddCourse(c)
@@ -508,13 +522,20 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			timer := time.After(1 * time.Millisecond)
 
 			classParam := generate.ClassParam(course, uint8(i+1))
+
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest := false
 		L:
+			if s.isNoRetryTime(ctx) {
+				return
+			}
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトしました。教師はリトライを試みます。")
 					time.Sleep(100 * time.Millisecond)
+					isExtendRequest = s.isNoRequestTime(ctx)
 					goto L
 				} else {
 					step.AddError(err)
@@ -522,7 +543,9 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 					continue
 				}
 			} else {
-				step.AddScore(score.AddClass)
+				if !isExtendRequest {
+					step.AddScore(score.AddClass)
+				}
 			}
 			class := model.NewClass(classRes.ClassID, classParam)
 			course.AddClass(class)
@@ -532,13 +555,20 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			}
 
 			announcement := generate.Announcement(course, class)
+
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest = false
 		ancLoop:
+			if s.isNoRetryTime(ctx) {
+				return
+			}
 			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
 					ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトしました。教師はリトライを試みます。")
 					time.Sleep(100 * time.Millisecond)
+					isExtendRequest = s.isNoRequestTime(ctx)
 					goto ancLoop
 				} else {
 					step.AddError(err)
@@ -547,7 +577,9 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				}
 			} else {
 				announcement.ID = ancRes.ID
-				step.AddScore(score.AddAnnouncement)
+				if !isExtendRequest {
+					step.AddScore(score.AddAnnouncement)
+				}
 			}
 			course.BroadCastAnnouncement(announcement)
 
@@ -728,7 +760,12 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 		return
 	}
 
+	// 60秒以降のリトライリクエストかどうか
+	isExtendRequest := false
 L:
+	if s.isNoRetryTime(ctx) {
+		return
+	}
 	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		var urlError *url.Error
@@ -736,6 +773,7 @@ L:
 			// timeout したらもう一回リクエストする
 			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教師はリトライを試みます。")
 			time.Sleep(100 * time.Millisecond)
+			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
@@ -743,7 +781,9 @@ L:
 			return
 		}
 	}
-	step.AddScore(score.AddCourse)
+	if !isExtendRequest {
+		step.AddScore(score.AddCourse)
+	}
 
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, StudentCapacityPerCourse)
 	s.CourseManager.AddNewCourse(course)
@@ -798,18 +838,26 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				return
 			}
 
+			// 60秒以降のリトライリクエストかどうか
+			isExtendRequest := false
 		L:
+			if s.isNoRetryTime(ctx) {
+				return
+			}
 			_, err = SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
 			var urlError *url.Error
 			if errors.As(err, &urlError) && urlError.Timeout() {
 				ContestantLogger.Printf("課題提出(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。学生はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
 				goto L
 			}
 			if err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.SubmitAssignment)
+				if !isExtendRequest {
+					step.AddScore(score.SubmitAssignment)
+				}
 				submission := model.NewSubmission(fileName, submissionData)
 				class.AddSubmission(student.Code, submission)
 			}
