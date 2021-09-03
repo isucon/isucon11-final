@@ -71,6 +71,18 @@ func (s *Student) Announcements() []*AnnouncementStatus {
 	return s.announcements
 }
 
+func (s *Student) AnnouncementsMap() map[string]*AnnouncementStatus {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	result := make(map[string]*AnnouncementStatus, len(s.announcements))
+	for _, announcement := range s.announcements {
+		tmp := *announcement
+		result[announcement.Announcement.ID] = &tmp
+	}
+	return result
+}
+
 func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()

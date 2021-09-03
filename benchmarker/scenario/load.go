@@ -298,7 +298,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// 冪等なので登録済みの科目にもう一回登録して成功すれば200が返ってくる
 		L:
-			_, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
+			_, _, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
 			if err != nil {
 				step.AddError(err)
 				if err, ok := err.(*url.Error); ok && err.Timeout() {
@@ -339,6 +339,8 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				return
 			}
 
+			expectAnnouncementList := student.AnnouncementsMap()
+
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
@@ -349,23 +351,23 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
-			if err := verifyAnnouncements(&res, student); err != nil {
+			if err := verifyAnnouncementsList(&res, expectAnnouncementList); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.GetAnnouncementList)
 			}
 
-			// このページで未読お知らせを読んだカウント（ページングするかどうかの判定用）
-			var readCount int
+			// このページに存在する未読お知らせ数（ページングするかどうかの判定用）
+			var unreadCount int
 			for _, ans := range res.Announcements {
 
 				if ans.Unread {
-					readCount++
+					unreadCount++
 
 					announcementStatus := student.GetAnnouncement(ans.ID)
 					if announcementStatus == nil {
 						// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
-						// load中には検証できないのでskip
+						// load中には検証できないので既読化しない
 						continue
 					}
 
@@ -397,9 +399,9 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
 			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
-			// 未読お知らせがない or 未読をすべて読み終えていたら
+			// 以降のページに未読お知らせがない（このページの未読数とレスポンスの未読数が一致）
 			// DoSにならないように少しwaitして1ページ目から見直す
-			if res.UnreadCount == readCount {
+			if res.UnreadCount == unreadCount {
 				nextPathParam = ""
 				if !student.HasUnreadAnnouncement() {
 					select {
