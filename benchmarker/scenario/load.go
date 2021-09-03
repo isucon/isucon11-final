@@ -205,13 +205,17 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			for i := 0; i < remainingRegistrationCapacity; i++ {
 				var checkTargetID string
 				var nextPathParam string // 次にアクセスする検索一覧のページ
+				var param *model.SearchCourseParam
 				// 履修希望科目1つあたり searchCountPerRegistration 回の科目検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
 					if s.isNoRequestTime(ctx) {
 						return
 					}
 
-					param := generate.SearchCourseParam()
+					if nextPathParam == "" { // 2ページ目以降は同じパラメータで
+						param = generate.SearchCourseParam()
+					}
+
 					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
