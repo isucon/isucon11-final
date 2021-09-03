@@ -566,7 +566,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	myGPA := 0.0
 	myCredits := 0
 	for _, course := range registeredCourses {
-		// クラス一覧の取得
+		// 講義一覧の取得
 		var classes []Class
 		query = "SELECT *" +
 			" FROM `classes`" +
@@ -577,7 +577,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		// クラス毎の成績計算処理
+		// 講義毎の成績計算処理
 		classScores := make([]ClassScore, 0, len(classes))
 		var myTotalScore int
 		for _, class := range classes {
@@ -1208,7 +1208,7 @@ type AddClassResponse struct {
 	ClassID string `json:"class_id"`
 }
 
-// AddClass POST /api/courses/:courseID/classes 新規クラス(&課題)追加
+// AddClass POST /api/courses/:courseID/classes 新規講義(&課題)追加
 func (h *handlers) AddClass(c echo.Context) error {
 	courseID := c.Param("courseID")
 
