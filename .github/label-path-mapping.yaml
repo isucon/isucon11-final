@@ -8,13 +8,11 @@ infrastructure:
   - provisioning/**/*
 documentation:
   - docs/**/*
-# transplant:
-#   - webapp/nodejs/**/*
-#   - webapp/perl/**/*
-#   - webapp/php/**/*
-#   - webapp/python/**/*
-#   - webapp/ruby/**/*
-#   - webapp/rust/**/*
+transplant:
+  - webapp/nodejs/**/*
+  - webapp/php/**/*
+  - webapp/ruby/**/*
+  - webapp/rust/**/*
 # initial-data:
 #   - extra/initial-data/**/*
 #   - bench/random/**/*
