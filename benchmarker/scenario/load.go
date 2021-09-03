@@ -133,6 +133,7 @@ func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucand
 		}
 
 		for i := 0; i < count; i++ {
+			step.AddScore(score.FinishCoursesStudents)
 			result := atomic.AddInt64(&s.finishCourseStudentsCount, 1)
 			if result%StudentCapacityPerCourse == 0 {
 				s.addActiveStudentLoads(ctx, step, 1)
