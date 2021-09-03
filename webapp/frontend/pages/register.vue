@@ -4,7 +4,7 @@
       <div class="flex-1 flex-col">
         <h1 class="text-2xl">履修登録</h1>
         <div class="flex mt-2 mb-6 gap-2">
-          <Button @click="onClickSearchCourse()">科目検索</Button>
+          <Button @click="onClickSearchCourse">科目検索</Button>
           <Button color="primary" @click="onClickConfirm">内容の確定</Button>
         </div>
         <Calendar :period-count="periodCount">
