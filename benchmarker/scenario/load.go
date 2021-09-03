@@ -208,10 +208,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			}
 
 			registerStart := time.Now()
-
-			// remainingRegistrationCapacity * searchCountPerRegistration 回 検索を行う
-			// remainingRegistrationCapacity 分のシラバス確認を行う
-			for i := 0; i < remainingRegistrationCapacity; i++ {
+			{
 				var checkTargetID string
 				var nextPathParam string // 次にアクセスする検索一覧のページ
 				// 履修希望科目1つあたり searchCountPerRegistration 回の科目検索を行う
