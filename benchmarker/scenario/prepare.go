@@ -65,6 +65,9 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		ContestantLogger.Printf("initializeが失敗しました")
 		return failure.NewError(fails.ErrCritical, err)
 	}
+
+	step.Result().Score.Reset()
+	s.Reset()
 	return nil
 }
 
