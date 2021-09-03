@@ -17,11 +17,11 @@ type userPool struct {
 }
 
 var (
-	sampleTeacherID   = "isuT"
+	sampleTeacherID   = "T00000"
 	sampleTeacherName = "isucon"
 	sampleTeacherPass = "isucon"
 
-	sampleStudentID   = "isucon"
+	sampleStudentID   = "S00000"
 	sampleStudentName = "isucon"
 	sampleStudentPass = "isucon"
 )
