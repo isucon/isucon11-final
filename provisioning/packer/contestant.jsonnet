@@ -8,7 +8,7 @@ base {
     {
       type: 'shell',
       inline: [
-        'sudo sh -c "echo GRUB_CMDLINE_LINUX=\"mem=4G\" > /etc/default/grub.d/99-isucon.cfg"',
+        'sudo sh -c "echo GRUB_CMDLINE_LINUX=\"mem=2G\" > /etc/default/grub.d/99-isucon.cfg"',
         'sudo update-grub',
       ],
     },
