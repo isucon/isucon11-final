@@ -361,49 +361,36 @@ func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announceme
 }
 
 // お知らせ一覧の中身の検証
-// TODO: ヘルパ関数作ってverifyAnnouncementとまとめても良いかも
-func verifyAnnouncementsContent(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
-	if res.CourseID != announcementStatus.Announcement.CourseID {
-		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
-	}
+func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[string]*model.AnnouncementStatus) error {
 
-	if res.CourseName != announcementStatus.Announcement.CourseName {
-		return errInvalidResponse("お知らせの講義名が期待する値と一致しません")
-	}
-
-	if res.Title != announcementStatus.Announcement.Title {
-		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
-	}
-
-	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
-		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
-	}
-
-	// ベンチ内データが既読の場合のみUnreadの検証を行う
-	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-	if !announcementStatus.Unread {
-		if !AssertEqual("announce unread", announcementStatus.Unread, res.Unread) {
-			return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
-		}
-	}
-
-	return nil
-}
-
-func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) error {
 	// リストの中身の検証
-	// MEMO: ランダムで数件チェックにしてもいいかも
-	// MEMO: unreadだけ返すとハックできそう
-	for _, announcement := range res.Announcements {
-		announcementStatus := student.GetAnnouncement(announcement.ID)
-		if announcementStatus == nil {
-			// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
+	for _, actual := range res.Announcements {
+		expectStatus, ok := expectList[actual.ID]
+		if !ok {
+			// webappでは認識されているが、ベンチではまだ認識されていないお知らせ（お知らせ登録がリトライ中の場合発生）
 			// load中には検証できないのでskip
 			continue
 		}
 
-		if err := verifyAnnouncementsContent(&announcement, announcementStatus); err != nil {
-			return err
+		if !AssertEqual("announcement list course id", expectStatus.Announcement.CourseID, actual.CourseID) {
+			return errInvalidResponse("お知らせの科目IDが期待する値と一致しません")
+		}
+		if !AssertEqual("announcement list course name", expectStatus.Announcement.CourseName, actual.CourseName) {
+			return errInvalidResponse("お知らせの科目名が期待する値と一致しません")
+		}
+		if !AssertEqual("announcement list title", expectStatus.Announcement.Title, actual.Title) {
+			return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
+		}
+		if !AssertEqual("announcement create_at", expectStatus.Announcement.CreatedAt, actual.CreatedAt) {
+			return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
+		}
+
+		// ベンチ内データが既読の場合のみ検証を行う
+		// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+		if !expectStatus.Unread {
+			if !AssertEqual("announce unread", expectStatus.Unread, actual.Unread) {
+				return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
+			}
 		}
 	}
 
@@ -414,7 +401,7 @@ func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Stude
 		}
 	}
 
-	// MEMO: res.UnreadCountはload中には検証できなさそう
+	// MEMO: res.UnreadCountはload中には検証できない
 
 	return nil
 }
