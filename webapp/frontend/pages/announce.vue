@@ -4,17 +4,11 @@
       <div class="flex-1 flex-col">
         <div class="flex flex-row items-center mb-4">
           <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
-          <div
-            class="border border-gray-400 pl-1 pr-1 mr-4 cursor-pointer"
-            :class="unreadFilterClasses"
-            @click="toggleUnreadFilter"
+          <span class="bg-primary-500 text-white text-sm py-1 px-2 rounded-sm"
+            ><fa-icon icon="bell" class="mr-0.5" /><span>{{
+              numOfUnreads
+            }}</span></span
           >
-            <span class="text-sm">未読</span>
-            <span
-              class="bg-primary-800 text-white font-bold text-sm pl-1 pr-1"
-              >{{ numOfUnreads }}</span
-            >
-          </div>
           <TextField
             id="input-course-name"
             v-model="courseName"
@@ -24,6 +18,24 @@
             placeholder="科目名で絞り込み"
             @input="filterAnnouncements"
           />
+        </div>
+        <div class="flex items-center">
+          <input
+            type="checkbox"
+            class="
+              appearance-none
+              rounded
+              border-gray-200
+              focus:outline-none
+              focus:shadow-none
+              focus:ring-0
+              focus:ring-offset-0
+              m-2
+              checked:bg-primary-500 checked:border-transparent
+            "
+            @change="toggleUnreadFilter"
+          />
+          <span>未読のみ</span>
         </div>
         <AnnouncementList
           :announcements="announcements"
@@ -101,13 +113,6 @@ export default Vue.extend({
       showUnreads: false,
       link: '',
     }
-  },
-  computed: {
-    unreadFilterClasses(): string[] {
-      return this.showUnreads
-        ? ['bg-primary-500', 'text-white']
-        : ['bg-white', 'text-black']
-    },
   },
   watchQuery: true,
   created() {
