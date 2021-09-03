@@ -144,7 +144,7 @@ func SearchCourseParam() *model.SearchCourseParam {
 		Credit:    0,
 		Teacher:   "",
 		Period:    -1, // 0-5, -1で指定なし
-		DayOfWeek: -1, // 0-6, -1で指定なし
+		DayOfWeek: -1, // 0-4, -1で指定なし
 		Keywords:  []string{},
 	}
 }

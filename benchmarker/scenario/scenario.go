@@ -1,7 +1,6 @@
 package scenario
 
 import (
-	"math/rand"
 	"net/url"
 	"sync"
 	"time"
@@ -25,8 +24,7 @@ type Scenario struct {
 
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
-	faculties           []*model.Teacher
-	studentPool         *userPool
+	userPool            *userPool
 	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
 	activeStudentsCount int64
 	language            string
@@ -51,14 +49,9 @@ func NewScenario(config *Config) (*Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
-	facultiesData, err := generate.LoadFacultiesData()
+	teachersData, err := generate.LoadTeachersData()
 	if err != nil {
 		return nil, err
-	}
-
-	faculties := make([]*model.Teacher, len(facultiesData))
-	for i, f := range facultiesData {
-		faculties[i] = model.NewTeacher(f, config.BaseURL)
 	}
 
 	return &Scenario{
@@ -67,8 +60,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
-		faculties:          faculties,
-		studentPool:        NewUserPool(studentsData),
+		userPool:           NewUserPool(studentsData, teachersData, config.BaseURL),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 		debugData:          NewDebugData(config.IsDebug),
 		finishCoursePubSub: pubsub.NewPubSub(),
@@ -99,9 +91,25 @@ func (s *Scenario) ActiveStudentCount() int {
 	return len(s.activeStudents)
 }
 
-func (s *Scenario) GetRandomTeacher() *model.Teacher {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
+func (s *Scenario) Reset() {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
 
-	return s.faculties[rand.Intn(len(s.faculties))]
+	studentsData, err := generate.LoadStudentsData()
+	if err != nil {
+		panic(err)
+	}
+	teachersData, err := generate.LoadTeachersData()
+	if err != nil {
+		panic(err)
+	}
+
+	s.CourseManager = model.NewCourseManager()
+	s.sPubSub = pubsub.NewPubSub()
+	s.cPubSub = pubsub.NewPubSub()
+	s.userPool = NewUserPool(studentsData, teachersData, s.BaseURL)
+	s.activeStudents = make([]*model.Student, 0, initialStudentsCount)
+	s.debugData = NewDebugData(s.Config.IsDebug)
+	s.finishCoursePubSub = pubsub.NewPubSub()
+	s.finishCourseStudentsCount = 0
 }

@@ -50,7 +50,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	arr := generate.ShuffledInts(initialCourseCount)
 	for i := 0; i < initialCourseCount; i++ {
 		timeslot := arr[i] % 30
-		dayOfWeek := timeslot/6 + 1
+		dayOfWeek := timeslot / 6
 		period := timeslot % 6
 		go func() {
 			defer DebugLogger.Printf("[debug] initial Courses added")
@@ -305,10 +305,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// 冪等なので登録済みの科目にもう一回登録して成功すれば200が返ってくる
 		L:
-			_, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
+			_, _, err = TakeCoursesAction(ctx, student.Agent, temporaryReservedCourses)
 			if err != nil {
 				step.AddError(err)
-				if err, ok := err.(*url.Error); ok && err.Timeout() {
+				var urlError *url.Error
+				if errors.As(err, &urlError) && urlError.Timeout() {
 					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
 					// timeout したらもう一回リクエストする
 					time.Sleep(100 * time.Millisecond)
@@ -367,38 +368,45 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			// このページに存在する未読お知らせ数（ページングするかどうかの判定用）
 			var unreadCount int
 			for _, ans := range res.Announcements {
-
 				if ans.Unread {
 					unreadCount++
-
-					announcementStatus := student.GetAnnouncement(ans.ID)
-					if announcementStatus == nil {
-						// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
-						// load中には検証できないので既読化しない
-						continue
-					}
-
-					if s.isNoRequestTime(ctx) {
-						return
-					}
-
-					startGetAnnouncementDetail := time.Now()
-					// お知らせの詳細を取得する
-					_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
-					if err != nil {
-						step.AddError(err)
-						continue // 次の未読おしらせの確認へ
-					}
-					s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
-
-					if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
-						step.AddError(err)
-					} else {
-						step.AddScore(score.GetAnnouncementsDetail)
-					}
-
-					student.ReadAnnouncement(ans.ID)
 				}
+
+				announcementStatus := student.GetAnnouncement(ans.ID)
+				if announcementStatus == nil {
+					// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
+					// load中には検証できないので既読化しない
+					continue
+				}
+				// 前にタイムアウトになってしまっていた場合、もしくはまだ見ていないお知らせの場合詳細を見に行く
+				if !(announcementStatus.Dirty || ans.Unread) {
+					continue
+				}
+
+				if s.isNoRequestTime(ctx) {
+					return
+				}
+
+				startGetAnnouncementDetail := time.Now()
+				// お知らせの詳細を取得する
+				_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+				if err != nil {
+					var urlError *url.Error
+					if errors.As(err, &urlError) && urlError.Timeout() {
+						student.MarkAnnouncementReadDirty(ans.ID)
+					}
+					step.AddError(err)
+					continue // 次の未読おしらせの確認へ
+				}
+				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
+
+				if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
+					step.AddError(err)
+				} else {
+					step.AddScore(score.GetAnnouncementsDetail)
+				}
+
+				student.ReadAnnouncement(ans.ID)
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
@@ -705,11 +713,10 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 		go func() {
 			defer wg.Done()
 
-			userData, err := s.studentPool.newUserData()
+			student, err := s.userPool.newStudent()
 			if err != nil {
 				return
 			}
-			student := model.NewStudent(userData, s.BaseURL)
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -717,13 +724,13 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			hres, resources, err := AccessTopPageAction(ctx, student.Agent)
 			if err != nil {
-				AdminLogger.Printf("学生 %vがログイン画面にアクセスできませんでした", userData.Name)
+				AdminLogger.Printf("学生 %vがログイン画面にアクセスできませんでした", student.Name)
 				step.AddError(err)
 				return
 			}
 			errs := verifyPageResource(hres, resources)
 			if len(errs) != 0 {
-				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", student.Name)
 				for _, err := range errs {
 					step.AddError(err)
 				}
@@ -736,7 +743,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
-				AdminLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vのログインが失敗しました", student.Name)
 				step.AddError(err)
 				return
 			}
@@ -747,11 +754,11 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, res, err := GetMeAction(ctx, student.Agent)
 			if err != nil {
-				AdminLogger.Printf("学生 %vのユーザ情報取得に失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vのユーザ情報取得に失敗しました", student.Name)
 				step.AddError(err)
 				return
 			}
-			if err := verifyMe(&res, userData, false); err != nil {
+			if err := verifyMe(&res, student.UserAccount, false); err != nil {
 				step.AddError(err)
 				return
 			}
@@ -765,7 +772,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 // CourseManagerと整合性を取るためdayOfWeekとPeriodを前回から引き継ぐ必要がある（初回を除く）
 func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, step *isucandar.BenchmarkStep) {
-	teacher := s.GetRandomTeacher()
+	teacher := s.userPool.randomTeacher()
 	courseParam := generate.CourseParam(dayOfWeek, period, teacher)
 
 	if s.isNoRequestTime(ctx) {
