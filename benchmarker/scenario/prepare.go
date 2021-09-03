@@ -71,7 +71,7 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		return failure.NewError(fails.ErrCritical, err)
 	}
 
-	AdminLogger.Printf("Language: %s\n", s.Language())
+	AdminLogger.Printf("Language: %s", s.Language())
 	return nil
 }
 
