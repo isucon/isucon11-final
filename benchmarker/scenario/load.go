@@ -621,11 +621,10 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 		go func() {
 			defer wg.Done()
 
-			userData, err := s.studentPool.newUserData()
+			student, err := s.userPool.newStudent()
 			if err != nil {
 				return
 			}
-			student := model.NewStudent(userData, s.BaseURL)
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -633,13 +632,13 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			hres, resources, err := AccessTopPageAction(ctx, student.Agent)
 			if err != nil {
-				AdminLogger.Printf("学生 %vがログイン画面にアクセスできませんでした", userData.Name)
+				AdminLogger.Printf("学生 %vがログイン画面にアクセスできませんでした", student.Name)
 				step.AddError(err)
 				return
 			}
 			errs := verifyPageResource(hres, resources)
 			if len(errs) != 0 {
-				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", student.Name)
 				for _, err := range errs {
 					step.AddError(err)
 				}
@@ -652,7 +651,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 			if err != nil {
-				AdminLogger.Printf("学生 %vのログインが失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vのログインが失敗しました", student.Name)
 				step.AddError(err)
 				return
 			}
@@ -663,11 +662,11 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			_, res, err := GetMeAction(ctx, student.Agent)
 			if err != nil {
-				AdminLogger.Printf("学生 %vのユーザ情報取得に失敗しました", userData.Name)
+				AdminLogger.Printf("学生 %vのユーザ情報取得に失敗しました", student.Name)
 				step.AddError(err)
 				return
 			}
-			if err := verifyMe(&res, userData, false); err != nil {
+			if err := verifyMe(&res, student.UserAccount, false); err != nil {
 				step.AddError(err)
 				return
 			}
@@ -682,7 +681,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 // CourseManagerと整合性を取るためdayOfWeekとPeriodを前回から引き継ぐ必要がある（初回を除く）
 func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, step *isucandar.BenchmarkStep) {
-	teacher := s.GetRandomTeacher()
+	teacher := s.userPool.randomTeacher()
 	courseParam := generate.CourseParam(dayOfWeek, period, teacher)
 
 	if s.isNoRequestTime(ctx) {

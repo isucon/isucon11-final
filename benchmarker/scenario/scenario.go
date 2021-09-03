@@ -1,7 +1,6 @@
 package scenario
 
 import (
-	"math/rand"
 	"net/url"
 	"sync"
 	"time"
@@ -25,8 +24,7 @@ type Scenario struct {
 
 	sPubSub            *pubsub.PubSub
 	cPubSub            *pubsub.PubSub
-	teachers           []*model.Teacher
-	studentPool        *userPool
+	userPool           *userPool
 	activeStudents     []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
 	language           string
 	loadRequestEndTime time.Time
@@ -55,19 +53,13 @@ func NewScenario(config *Config) (*Scenario, error) {
 		return nil, err
 	}
 
-	teachers := make([]*model.Teacher, len(teachersData))
-	for i, f := range teachersData {
-		teachers[i] = model.NewTeacher(f, config.BaseURL)
-	}
-
 	return &Scenario{
 		Config:        *config,
 		CourseManager: model.NewCourseManager(),
 
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
-		teachers:           teachers,
-		studentPool:        NewUserPool(studentsData),
+		userPool:           NewUserPool(studentsData, teachersData, config.BaseURL),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 		debugData:          NewDebugData(config.IsDebug),
 		finishCoursePubSub: pubsub.NewPubSub(),
@@ -98,13 +90,6 @@ func (s *Scenario) ActiveStudentCount() int {
 	return len(s.activeStudents)
 }
 
-func (s *Scenario) GetRandomTeacher() *model.Teacher {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	return s.teachers[rand.Intn(len(s.teachers))]
-}
-
 func (s *Scenario) Reset() {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
@@ -118,16 +103,10 @@ func (s *Scenario) Reset() {
 		panic(err)
 	}
 
-	teachers := make([]*model.Teacher, len(teachersData))
-	for i, f := range teachersData {
-		teachers[i] = model.NewTeacher(f, s.Config.BaseURL)
-	}
-
 	s.CourseManager = model.NewCourseManager()
 	s.sPubSub = pubsub.NewPubSub()
 	s.cPubSub = pubsub.NewPubSub()
-	s.teachers = teachers
-	s.studentPool = NewUserPool(studentsData)
+	s.userPool = NewUserPool(studentsData, teachersData, s.BaseURL)
 	s.activeStudents = make([]*model.Student, 0, initialStudentsCount)
 	s.debugData = NewDebugData(s.Config.IsDebug)
 	s.finishCoursePubSub = pubsub.NewPubSub()

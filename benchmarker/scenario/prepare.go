@@ -98,16 +98,16 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	teachers := make([]*model.Teacher, 0, prepareTeacherCount)
 	// TODO: ランダムなので同じ教師が入る可能性がある
 	for i := 0; i < prepareTeacherCount; i++ {
-		teachers = append(teachers, s.GetRandomTeacher())
+		teachers = append(teachers, s.userPool.randomTeacher())
 	}
 
 	students := make([]*model.Student, 0, prepareStudentCount)
 	for i := 0; i < prepareStudentCount; i++ {
-		userData, err := s.studentPool.newUserData()
+		student, err := s.userPool.newStudent()
 		if err != nil {
 			return err
 		}
-		students = append(students, model.NewStudent(userData, s.BaseURL))
+		students = append(students, student)
 	}
 
 	courses := make([]*model.Course, 0, prepareCourseCount)
@@ -858,11 +858,10 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 	// ======== 検証用データの準備 ========
 
 	// 検証で使用する学生ユーザ（未ログイン状態）
-	userData, err := s.studentPool.newUserData()
+	student, err := s.userPool.newStudent()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	student := model.NewStudent(userData, s.BaseURL)
 
 	// ======== 検証 ========
 
@@ -1588,11 +1587,10 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 }
 
 func (s *Scenario) getLoggedInStudent(ctx context.Context) (*model.Student, error) {
-	userData, err := s.studentPool.newUserData()
+	student, err := s.userPool.newStudent()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	student := model.NewStudent(userData, s.BaseURL)
 	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 	if err != nil {
 		return nil, err
@@ -1602,7 +1600,7 @@ func (s *Scenario) getLoggedInStudent(ctx context.Context) (*model.Student, erro
 }
 
 func (s *Scenario) getLoggedInTeacher(ctx context.Context) (*model.Teacher, error) {
-	teacher := s.GetRandomTeacher()
+	teacher := s.userPool.randomTeacher()
 	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
 		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 		if err != nil {
