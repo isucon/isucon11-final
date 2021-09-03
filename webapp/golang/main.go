@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
@@ -25,9 +26,10 @@ import (
 )
 
 const (
-	SQLDirectory         = "../sql/"
-	AssignmentsDirectory = "../assignments/"
-	SessionName          = "isucholar_go"
+	SQLDirectory              = "../sql/"
+	AssignmentsDirectory      = "../assignments/"
+	SessionName               = "isucholar_go"
+	mysqlErrNumDuplicateEntry = 1062
 )
 
 type handlers struct {
@@ -867,21 +869,22 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var course Course
-	if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `code` = ?", req.Code); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == nil {
-		if req.Type != course.Type || req.Name != course.Name || req.Description != course.Description || req.Credit != int(course.Credit) || req.Period != int(course.Period) || req.DayOfWeek != course.DayOfWeek || req.Keywords != course.Keywords {
-			return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
-		}
-		return c.JSON(http.StatusCreated, AddCourseResponse{ID: course.ID})
-	}
-
 	courseID := uuid.New()
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
+		_ = tx.Rollback()
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			var course Course
+			if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `code` = ?", req.Code); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if req.Type != course.Type || req.Name != course.Name || req.Description != course.Description || req.Credit != int(course.Credit) || req.Period != int(course.Period) || req.DayOfWeek != course.DayOfWeek || req.Keywords != course.Keywords {
+				return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
+			}
+			return c.JSON(http.StatusCreated, AddCourseResponse{ID: course.ID})
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1227,20 +1230,21 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var class Class
-	if err := tx.Get(&class, "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == nil {
-		if req.Title != class.Title || req.Description != class.Description {
-			return echo.NewHTTPError(http.StatusConflict, "A class with the same part already exists.")
-		}
-		return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
-	}
-
 	classID := uuid.New()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
+		_ = tx.Rollback()
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			var class Class
+			if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if req.Title != class.Title || req.Description != class.Description {
+				return echo.NewHTTPError(http.StatusConflict, "A class with the same part already exists.")
+			}
+			return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1443,6 +1447,14 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	})
 }
 
+type Announcement struct {
+	ID        string    `db:"id"`
+	CourseID  string    `db:"course_id"`
+	Title     string    `db:"title"`
+	Message   string    `db:"message"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
 type AddAnnouncementRequest struct {
 	CourseID  string `json:"course_id"`
 	Title     string `json:"title"`
@@ -1477,18 +1489,22 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var existingAnnouncementID string
-	if err := tx.Get(&existingAnnouncementID, "SELECT `id` FROM `announcements` WHERE `course_id` = ? AND `title` = ? AND `message` = ? AND `created_at` = ?", req.CourseID, req.Title, req.Message, req.CreatedAt); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == nil {
-		return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: existingAnnouncementID})
-	}
-
 	announcementID := uuid.New()
 	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
 		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
+		_ = tx.Rollback()
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			var announcement Announcement
+			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?", req.CourseID, req.CreatedAt); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if announcement.CourseID != req.CourseID || announcement.Title != req.Title || announcement.Message != req.Message {
+				return echo.NewHTTPError(http.StatusConflict, "An announcement with the same course_id and created_at already exists.")
+			}
+			return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcement.ID})
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
