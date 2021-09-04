@@ -46,7 +46,7 @@ func TestCalc_RawScore(t *testing.T) {
 				"fractionCount": td.fractionCount,
 			}
 
-			_, rawScore, _ := Calc(scoreTable, 0, 0)
+			_, rawScore, _, _ := Calc(scoreTable, 0, 0)
 			if rawScore != td.expectScore {
 				t.Errorf("expect:%d, but actual:%d", td.expectScore, rawScore)
 			}
@@ -79,7 +79,7 @@ func TestCalc_DeductScore(t *testing.T) {
 		t.Run(title, func(t *testing.T) {
 			scoreTable := map[score.ScoreTag]int64{}
 
-			_, _, deductCount := Calc(scoreTable, td.deductCount, td.timeoutCount)
+			_, _, deductCount, _ := Calc(scoreTable, td.deductCount, td.timeoutCount)
 			if deductCount != td.expectScore {
 				t.Errorf("expect:%d, but actual:%d", td.expectScore, deductCount)
 			}
