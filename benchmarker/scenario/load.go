@@ -253,6 +253,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
 					if err != nil {
 						step.AddError(err)
+						<-timer
 						continue
 					}
 					expected, exists := s.CourseManager.GetCourseByID(res.ID.String())
