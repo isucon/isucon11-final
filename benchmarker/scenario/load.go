@@ -211,13 +211,17 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			{
 				var checkTargetID string
 				var nextPathParam string // 次にアクセスする検索一覧のページ
+				var param *model.SearchCourseParam
 				// 履修希望科目1つあたり searchCountPerRegistration 回の科目検索を行う
 				for searchCount := 0; searchCount < searchCountPerRegistration; searchCount++ {
 					if s.isNoRequestTime(ctx) {
 						return
 					}
 
-					param := generate.SearchCourseParam()
+					if nextPathParam == "" { // 2ページ目以降は同じパラメータで
+						param = generate.SearchCourseParam()
+					}
+
 					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
@@ -239,32 +243,32 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					_, nextPathParam = parseLinkHeader(hres)
 				}
 
-				// 検索で得た科目のシラバスを確認する
-				if checkTargetID == "" {
-					continue
-				}
-
 				if s.isNoRequestTime(ctx) {
 					return
 				}
 
-				_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
-				if err != nil {
-					step.AddError(err)
-					<-timer
-					continue
-				}
-				expected, exists := s.CourseManager.GetCourseByID(res.ID.String())
-				// ベンチ側の登録がまだの場合は検証スキップ
-				if exists {
-					if err := verifyCourseDetail(&res, expected); err != nil {
+				// 検索で得た科目のシラバスを確認する
+				// TODO: 検索は何らかが必ずヒットするようにする
+				if checkTargetID != "" {
+					_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
+					if err != nil {
 						step.AddError(err)
-					} else {
-						step.AddScore(score.GetCourseDetail)
+						<-timer
+						continue
 					}
-				} else {
-					step.AddScore(score.GetCourseDetailVerifySkipped)
+					expected, exists := s.CourseManager.GetCourseByID(res.ID.String())
+					// ベンチ側の登録がまだの場合は検証スキップ
+					if exists {
+						if err := verifyCourseDetail(&res, expected); err != nil {
+							step.AddError(err)
+						} else {
+							step.AddScore(score.GetCourseDetail)
+						}
+					} else {
+						step.AddScore(score.GetCourseDetailVerifySkipped)
+					}
 				}
+
 			}
 
 			// ----------------------------------------
@@ -289,7 +293,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// ----------------------------------------
 
 			// 仮登録
-			// TODO: 1度も検索成功してなかったら登録しない
 
 			temporaryReservedCourses := s.CourseManager.ReserveCoursesForStudent(student, remainingRegistrationCapacity)
 

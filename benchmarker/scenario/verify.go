@@ -225,24 +225,24 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expe
 }
 
 func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
-	if param.Type != "" && res.Type != api.CourseType(param.Type) {
+	if param.Type != "" && !AssertEqual("course type", api.CourseType(param.Type), res.Type) {
 		return errInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています")
 	}
 
-	if param.Credit != 0 && res.Credit != uint8(param.Credit) {
+	if param.Credit != 0 && !AssertEqual("course credit", uint8(param.Credit), res.Credit) {
 		return errInvalidResponse("科目検索結果に検索条件の単位数と一致しない科目が含まれています")
 	}
 
-	if param.Teacher != "" && res.Teacher != param.Teacher {
+	if param.Teacher != "" && !AssertEqual("course teacher", param.Teacher, res.Teacher) {
 		return errInvalidResponse("科目検索結果に検索条件の講師と一致しない科目が含まれています")
 	}
 
 	// resは1-6, paramは0-5
-	if param.Period != -1 && res.Period != uint8(param.Period+1) {
+	if param.Period != -1 && !AssertEqual("course period", uint8(param.Period+1), res.Period) {
 		return errInvalidResponse("科目検索結果に検索条件の時限と一致しない科目が含まれています")
 	}
 
-	if param.DayOfWeek != -1 && res.DayOfWeek != api.DayOfWeekTable[param.DayOfWeek] {
+	if param.DayOfWeek != -1 && !AssertEqual("course DoW", api.DayOfWeekTable[param.DayOfWeek], res.DayOfWeek) {
 		return errInvalidResponse("科目検索結果に検索条件の曜日と一致しない科目が含まれています")
 	}
 
@@ -261,6 +261,7 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 	}
 
 	if !isNameHit && !isKeywordsHit {
+		AdminLogger.Printf("name / keyword not match: expect: %v, acutual: %s", param.Keywords, res.Keywords)
 		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
 	}
 
