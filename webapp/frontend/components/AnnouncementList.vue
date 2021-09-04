@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="mb-6">
+    <div class="flex flex-col gap-4">
       <AnnouncementCard
         v-for="announcement in announcements"
         :key="announcement.id"
@@ -9,7 +9,7 @@
         @close="$emit('close', $event)"
       />
     </div>
-    <div class="flex justify-center">
+    <div class="flex justify-center mt-4">
       <Pagination
         :prev-disabled="!Boolean(parsedLink.prev)"
         :next-disabled="!Boolean(parsedLink.next)"

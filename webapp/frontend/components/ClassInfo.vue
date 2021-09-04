@@ -1,23 +1,21 @@
 <template>
   <div>
-    <div class="mt-2">
-      <Card>
-        <div class="mb-8 flex flex-col justify-between leading-normal">
-          <p class="text-2xl text-primary-500 font-bold flex items-center">
-            {{ classTitle }}
-          </p>
-          <p class="text-black text-base mb-4">{{ classinfo.description }}</p>
-          <div class="flex flex-row items-center">
-            <Button :disabled="submissionDisabled" @click="openModal">
-              課題を提出する
-            </Button>
-            <div class="text-neutral-300 text-sm ml-4">
-              締め切り：{{ submissionStatus }}
-            </div>
+    <Card>
+      <div class="flex flex-col justify-between leading-normal">
+        <p class="text-2xl text-primary-500 font-bold flex items-center">
+          {{ classTitle }}
+        </p>
+        <p class="text-black text-base mb-4">{{ classinfo.description }}</p>
+        <div class="flex flex-row items-center">
+          <Button :disabled="submissionDisabled" @click="openModal">
+            課題を提出する
+          </Button>
+          <div class="text-neutral-300 text-sm ml-4">
+            {{ submissionStatus }}
           </div>
         </div>
-      </Card>
-    </div>
+      </div>
+    </Card>
     <SubmitModal
       :is-shown="showModal"
       :course-name="course.name"

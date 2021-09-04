@@ -19,13 +19,7 @@
             />
           </template>
           <template slot="classworks">
-            <ClassInfoCard
-              v-for="(cls, index) in classes"
-              :key="cls.id"
-              :course="course"
-              :classinfo="cls"
-              @submitted="submissionComplete(index)"
-            />
+            <ClassList :course="course" :classes="classes" />
           </template>
         </tabs>
       </div>
@@ -44,7 +38,7 @@ import {
 } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
 import AnnouncementList from '~/components/AnnouncementList.vue'
-import ClassInfoCard from '~/components/ClassInfo.vue'
+import ClassList from '~/components/ClassList.vue'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 
 type CourseData = {
@@ -60,7 +54,7 @@ export default Vue.extend({
   },
   components: {
     AnnouncementList,
-    ClassInfoCard,
+    ClassList,
   },
   middleware: 'is_student',
   async asyncData(ctx: Context): Promise<CourseData> {
@@ -127,9 +121,6 @@ export default Vue.extend({
     },
     paginate(query: URLSearchParams) {
       this.$router.push({ query: urlSearchParamsToObject(query) })
-    },
-    submissionComplete(classIdx: number) {
-      this.classes[classIdx].submitted = true
     },
   },
 })

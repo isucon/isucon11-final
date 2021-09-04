@@ -3,15 +3,14 @@
     <div class="flex flex-col justify-between leading-normal">
       <a
         href="#"
-        class="p-4 block bg-white no-underline text-black"
+        class="block bg-white no-underline text-black"
         @click.prevent="toggle"
       >
         <slot name="header" />
         <div v-show="isOpen" class="p-2"><slot /></div>
-        <span v-show="!isOpen" class="text-primary-500"
-          >&#9660; 詳細を見る</span
-        >
-        <span v-show="isOpen" class="text-primary-500">&#9650; 閉じる</span>
+        <div class="mt-4 text-primary-500">
+          {{ isOpen ? '閉じる' : '詳細を見る' }}
+        </div>
       </a>
     </div>
   </Card>

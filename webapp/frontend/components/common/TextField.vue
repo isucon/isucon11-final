@@ -18,7 +18,7 @@
           px-4
           text-gray-700
           leading-tight
-          focus:outline-none focus:bg-white focus:border-purple-500
+          focus:outline-none focus:border-primary-500 focus:ring-0
         "
         :type="type"
         :placeholder="placeholder"
