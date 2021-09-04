@@ -1,6 +1,6 @@
 <template>
   <div class="h-screen items-center">
-    <div class="py-10 px-8 bg-white shadow-lg lg:w-1/3">
+    <div class="py-10 px-8 bg-white shadow-lg xl:w-1/3">
       <img
         src="/image/hero_logo_green.svg"
         alt="login logo"
@@ -17,6 +17,9 @@
           label="学籍番号"
           type="text"
           placeholder="学籍番号"
+          :required="true"
+          :invalid="loginError"
+          invalid-text="学籍番号またはパスワードに間違いがあります。"
         />
         <TextInput
           id="login-password"
@@ -26,6 +29,9 @@
           type="password"
           placeholder="********"
           autocomplete="current-password"
+          :required="true"
+          :invalid="loginError"
+          invalid-text="学籍番号またはパスワードに間違いがあります。"
         />
 
         <Button type="submit" color="primary" class="mt-4 col-start-2"
@@ -73,6 +79,7 @@ export default Vue.extend({
     return {
       code: '',
       password: '',
+      loginError: false,
     }
   },
   methods: {
@@ -90,6 +97,7 @@ export default Vue.extend({
           return this.$router.push('/mypage')
         }
       } catch (e) {
+        this.loginError = true
         notify('学籍番号またはパスワードが誤っています')
       }
     },
