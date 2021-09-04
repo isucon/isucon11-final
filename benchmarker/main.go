@@ -267,7 +267,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				scenario.AdminLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
-				sendResult(s, step.Result(), false, count%5 == 0)
+				sendResult(s, step.Result(), false, true)
 			case <-ctx.Done():
 				ticker.Stop()
 				return nil

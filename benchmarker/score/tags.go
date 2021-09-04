@@ -24,6 +24,7 @@ const (
 	RegisterScore                score.ScoreTag = "_15.RegisterScore"
 	AddAnnouncement              score.ScoreTag = "_16.AddAnnouncement"
 	GetAnnouncementsDetail       score.ScoreTag = "_17.GetAnnouncementDetail"
+	RegisterCourseByStudent      score.ScoreTag = "_18.RegisterCourseByStudent"
 
 	StartCourseOver50 score.ScoreTag = "!01.StartCourseOver50"
 )
@@ -50,6 +51,7 @@ var Tags = []score.ScoreTag{
 	RegisterScore,
 	AddAnnouncement,
 	GetAnnouncementsDetail,
+	RegisterCourseByStudent,
 
 	StartCourseOver50,
 }

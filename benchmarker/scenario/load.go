@@ -346,6 +346,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.RegisterCourses)
 				}
 				for _, c := range temporaryReservedCourses {
+					step.AddScore()
 					c.CommitReservation(student)
 					student.AddCourse(c)
 					c.StartTimer(waitCourseFullTimeout)
