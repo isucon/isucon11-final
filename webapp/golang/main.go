@@ -444,7 +444,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 			continue
 		}
 
-		// MEMO: すでに履修登録済みの科目は無視する
+		// すでに履修登録済みの科目は無視する
 		var count int
 		if err := tx.Get(&count, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID); err != nil {
 			c.Logger().Error(err)
@@ -457,7 +457,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		newlyAdded = append(newlyAdded, course)
 	}
 
-	// MEMO: スケジュールの重複バリデーション
 	var alreadyRegistered []Course
 	query := "SELECT `courses`.*" +
 		" FROM `courses`" +
@@ -690,7 +689,6 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 	var condition string
 	var args []interface{}
 
-	// MEMO: 検索条件はtype, credit, teacher, period, day_of_weekの完全一致とname, keywordsの部分一致
 	// 無効な検索条件はエラーを返さず無視して良い
 
 	if courseType := c.QueryParam("type"); courseType != "" {
@@ -740,7 +738,6 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 
 	condition += " ORDER BY `courses`.`code`"
 
-	// MEMO: ページングの初期実装はページ番号形式
 	var page int
 	if c.QueryParam("page") == "" {
 		page = 1
@@ -963,7 +960,6 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
-	// MEMO: N+1にしても良い
 	var classes []ClassWithSubmitted
 	query := "SELECT `classes`.*, `submissions`.`user_id` IS NOT NULL AS `submitted`" +
 		" FROM `classes`" +
@@ -1308,7 +1304,6 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		" LIMIT ? OFFSET ?"
 	args = append(args, userID, userID)
 
-	// MEMO: ページングの初期実装はページ番号形式
 	var page int
 	if c.QueryParam("page") == "" {
 		page = 1
