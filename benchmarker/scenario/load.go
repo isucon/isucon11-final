@@ -566,7 +566,11 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 
 		// 履修締め切りを待つ
 		_ctx, cancel := context.WithDeadline(ctx, s.loadRequestEndTime)
-		<-course.Wait(_ctx, cancel)
+		<-course.Wait(_ctx, cancel, func() {
+			// 科目を追加
+			s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
+			s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
+		})
 
 		if s.isNoRequestTime(ctx) {
 			return
@@ -574,9 +578,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 
 		// 履修登録を締め切ったので候補から取り除く
 		s.CourseManager.RemoveRegistrationClosedCourse(course)
-		// 科目を追加
-		s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
-		s.addCourseLoad(ctx, course.DayOfWeek, course.Period, step)
 
 		teacher := course.Teacher()
 		// 科目ステータスをin-progressにする

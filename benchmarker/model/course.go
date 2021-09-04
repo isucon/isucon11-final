@@ -76,10 +76,12 @@ func (c *Course) AddClass(class *Class) {
 	c.classes = append(c.classes, class)
 }
 
-func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc) <-chan struct{} {
+func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc, addCourseFunc func()) <-chan struct{} {
 	go func() {
 		select {
 		case <-c.closer:
+			// 科目の履修を締め切ったときに、次の科目を追加する
+			addCourseFunc()
 		case <-ctx.Done():
 		}
 		<-c.isZeroReservation
