@@ -157,7 +157,7 @@ export default Vue.extend({
           )
           .then((response) => {
             const link = document.createElement('a')
-            link.href = window.URL.createObjectURL(response)
+            link.href = window.URL.createObjectURL(response.data)
             link.download = `${this.classId}.zip`
             link.click()
 
