@@ -163,6 +163,13 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			panic("sPubSub に *model.Student以外が飛んできました")
 		}
 
+		s.AddActiveStudent(student)
+		activeCount := atomic.AddInt64(&s.activeStudentsCount, 1)
+
+		if activeCount%AnnouncePagingStudentInterval == 0 {
+			studentLoadWorker.Do(s.readAnnouncementPagingScenario(student, step))
+		}
+
 		// 同時実行可能数を制限する際には注意
 		// 成績確認 + (空きがあれば履修登録)
 		studentLoadWorker.Do(s.registrationScenario(student, step))
@@ -369,7 +376,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
 				step.AddError(err)
-				time.Sleep(1 * time.Millisecond)
+				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
@@ -435,7 +442,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				nextPathParam = ""
 				if !student.HasUnreadAnnouncement() {
 					select {
-					case <-time.After(200 * time.Millisecond):
+					case <-time.After(400 * time.Millisecond):
 					case <-student.WaitNewUnreadAnnouncement(ctx):
 						// waitはお知らせ追加したらエスパーで即解消する
 					}
@@ -453,6 +460,79 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				return
 			default:
 			}
+		}
+	}
+}
+
+func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
+	return func(ctx context.Context) {
+		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
+		for ctx.Err() == nil {
+			timer := time.After(50 * time.Millisecond)
+
+			if s.isNoRequestTime(ctx) {
+				return
+			}
+
+			expectAnnounceList := student.AnnouncementsMap()
+
+			startGetAnnouncementList := time.Now()
+			// 学生はお知らせを確認し続ける
+			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
+			if err != nil {
+				step.AddError(err)
+				<-timer
+				continue
+			}
+			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
+
+			if err := verifyAnnouncementsList(&res, expectAnnounceList); err != nil {
+				step.AddError(err)
+			} else {
+				step.AddScore(score.GetAnnouncementList)
+			}
+
+			// このページ内で既読のおしらせを集める
+			var readAnnouncementsID []string
+			for _, ans := range res.Announcements {
+				if !ans.Unread {
+					readAnnouncementsID = append(readAnnouncementsID, ans.ID)
+				}
+			}
+
+			if s.isNoRequestTime(ctx) {
+				return
+			}
+
+			// 既読おしらせが存在したら1つだけ確認する
+			if len(readAnnouncementsID) > 0 {
+				targetID := readAnnouncementsID[rand.Intn(len(readAnnouncementsID))]
+
+				expectStatus := student.GetAnnouncement(targetID)
+				if expectStatus == nil {
+					// unreachable
+					// ベンチは認識していないお知らせを既読化することはない
+					panic("read unknown announcement")
+				}
+
+				_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
+				if err != nil {
+					step.AddError(err)
+					<-timer
+					continue
+				}
+
+				if err := verifyAnnouncementDetail(&res, expectStatus); err != nil {
+					step.AddError(err)
+				} else {
+					step.AddScore(score.GetAnnouncementsDetail)
+				}
+			}
+
+			_, nextPathParam = parseLinkHeader(hres)
+
+			// 50msより短い間隔で一覧取得をしない
+			<-timer
 		}
 	}
 }
@@ -719,7 +799,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			s.AddActiveStudent(student)
 			s.sPubSub.Publish(student)
 			step.AddScore(score.ActiveStudents)
 		}()
