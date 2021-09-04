@@ -63,6 +63,11 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		return failure.NewError(fails.ErrCritical, err)
 	}
 
+	err = s.prepareAnnouncementsList(ctx, step)
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
+	}
+
 	err = s.prepareAbnormal(ctx)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
@@ -98,16 +103,16 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	teachers := make([]*model.Teacher, 0, prepareTeacherCount)
 	// TODO: ランダムなので同じ教師が入る可能性がある
 	for i := 0; i < prepareTeacherCount; i++ {
-		teachers = append(teachers, s.GetRandomTeacher())
+		teachers = append(teachers, s.userPool.randomTeacher())
 	}
 
 	students := make([]*model.Student, 0, prepareStudentCount)
 	for i := 0; i < prepareStudentCount; i++ {
-		userData, err := s.studentPool.newUserData()
+		student, err := s.userPool.newStudent()
 		if err != nil {
 			return err
 		}
-		students = append(students, model.NewStudent(userData, s.BaseURL))
+		students = append(students, student)
 	}
 
 	courses := make([]*model.Course, 0, prepareCourseCount)
@@ -152,8 +157,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}, worker.WithLoopCount(prepareCourseCount))
 
 	if err != nil {
-		step.AddError(err)
-		return err
+		panic(fmt.Errorf("unreachable! %w", err))
 	}
 
 	w.Process(ctx)
@@ -195,8 +199,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		}
 	}, worker.WithLoopCount(prepareStudentCount))
 	if err != nil {
-		step.AddError(err)
-		return err
+		panic(fmt.Errorf("unreachable! %w", err))
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -215,8 +218,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		}
 	}, worker.WithLoopCount(prepareCourseCount))
 	if err != nil {
-		step.AddError(err)
-		return err
+		panic(fmt.Errorf("unreachable! %w", err))
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -265,7 +267,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			p := parallel.NewParallel(ctx, prepareStudentCount)
 			for _, student := range courseStudents {
 				student := student
-				p.Do(func(ctx context.Context) {
+				err := p.Do(func(ctx context.Context) {
 					if classPart == checkAnnouncementDetailPart {
 						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, announcement.ID)
 						if err != nil {
@@ -292,6 +294,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 					submissionSummary := model.NewSubmission(fileName, submissionData)
 					class.AddSubmission(student.Code, submissionSummary)
 				})
+				if err != nil {
+					panic(fmt.Errorf("unreachable! %w", err))
+				}
 			}
 			p.Wait()
 
@@ -329,8 +334,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			}
 		}, worker.WithLoopCount(prepareCourseCount))
 		if err != nil {
-			step.AddError(err)
-			return err
+			panic(fmt.Errorf("unreachable! %w", err))
 		}
 		w.Process(ctx)
 		w.Wait()
@@ -351,8 +355,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			}
 		}, worker.WithLoopCount(prepareStudentCount))
 		if err != nil {
-			step.AddError(err)
-			return err
+			panic(fmt.Errorf("unreachable! %w", err))
 		}
 		w.Process(ctx)
 		w.Wait()
@@ -385,11 +388,161 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 	}, worker.WithLoopCount(prepareStudentCount))
 	if err != nil {
-		step.AddError(err)
-		return err
+		panic(fmt.Errorf("unreachable! %w", err))
 	}
 	w.Process(ctx)
 	w.Wait()
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	return nil
+}
+
+func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar.BenchmarkStep) error {
+	const (
+		prepareCheckAnnouncementListStudentCount        = 2
+		prepareCheckAnnouncementListTeacherCount        = 2
+		prepareCheckAnnouncementListCourseCount         = 5
+		prepareCheckAnnouncementListClassCountPerCourse = 5
+	)
+	errors := step.Result().Errors
+	hasErrors := func() bool {
+		errors.Wait()
+		return len(errors.All()) > 0
+	}
+
+	// 生徒の用意
+	students := make([]*model.Student, prepareCheckAnnouncementListStudentCount)
+	for i := 0; i < prepareCheckAnnouncementListStudentCount; i++ {
+		student, err := s.getLoggedInStudent(ctx)
+		if err != nil {
+			return err
+		}
+		students[i] = student
+	}
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	// 教師の用意
+	teachers := make([]*model.Teacher, prepareCheckAnnouncementListTeacherCount)
+	for i := 0; i < prepareCheckAnnouncementListTeacherCount; i++ {
+		teacher, err := s.getLoggedInTeacher(ctx)
+		if err != nil {
+			return err
+		}
+		teachers[i] = teacher
+	}
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	// コース登録
+	var mu sync.Mutex
+	courses := make([]*model.Course, 0, prepareCheckAnnouncementListCourseCount)
+	w, err := worker.NewWorker(func(ctx context.Context, i int) {
+		teacher := teachers[i%len(teachers)]
+		param := generate.CourseParam(i/6, i%6, teacher)
+		_, res, err := AddCourseAction(ctx, teacher.Agent, param)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity)
+		mu.Lock()
+		courses = append(courses, course)
+		mu.Unlock()
+	}, worker.WithLoopCount(prepareCheckAnnouncementListCourseCount))
+	if err != nil {
+		panic(fmt.Errorf("unreachable! %w", err))
+	}
+	w.Process(ctx)
+	w.Wait()
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	// コース登録
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		student := students[i]
+		_, _, err := TakeCoursesAction(ctx, student.Agent, courses)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		for _, course := range courses {
+			student.AddCourse(course)
+			course.AddStudent(student)
+		}
+	}, worker.WithLoopCount(prepareCheckAnnouncementListStudentCount))
+	if err != nil {
+		panic(fmt.Errorf("unreachable! %w", err))
+	}
+	w.Process(ctx)
+	w.Wait()
+
+	if hasErrors() {
+		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+	}
+
+	// クラス追加、おしらせ追加をする
+	// そのたびにおしらせリストを確認する
+	// 既読にはしない
+	for classPart := 0; classPart < prepareCheckAnnouncementListClassCountPerCourse; classPart++ {
+		for j := 0; j < prepareCheckAnnouncementListCourseCount; j++ {
+			course := courses[j]
+			teacher := course.Teacher()
+
+			// クラス追加
+			classParam := generate.ClassParam(course, uint8(classPart+1))
+			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+			if err != nil {
+				step.AddError(err)
+				return err
+			}
+			class := model.NewClass(classRes.ClassID, classParam)
+			course.AddClass(class)
+
+			// お知らせ追加
+			announcement := generate.Announcement(course, class)
+			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			if err != nil {
+				step.AddError(err)
+				return err
+			}
+			announcement.ID = ancRes.ID
+			course.BroadCastAnnouncement(announcement)
+
+			// 生徒ごとにおしらせリストの確認
+			courseStudents := course.Students()
+			p := parallel.NewParallel(ctx, int32(len(courseStudents)))
+			for _, student := range courseStudents {
+				student := student
+				err := p.Do(func(ctx context.Context) {
+					expected := student.Announcements()
+
+					// createdAtが新しい方が先頭に来るようにソート
+					sort.Slice(expected, func(i, j int) bool {
+						return expected[i].Announcement.CreatedAt > expected[j].Announcement.CreatedAt
+					})
+					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, len(expected))
+					if err != nil {
+						step.AddError(err)
+						return
+					}
+				})
+				if err != nil {
+					panic(fmt.Errorf("unreachable! %w", err))
+				}
+			}
+			p.Wait()
+		}
+	}
+
 	if hasErrors() {
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
@@ -858,11 +1011,10 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 	// ======== 検証用データの準備 ========
 
 	// 検証で使用する学生ユーザ（未ログイン状態）
-	userData, err := s.studentPool.newUserData()
+	student, err := s.userPool.newStudent()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	student := model.NewStudent(userData, s.BaseURL)
 
 	// ======== 検証 ========
 
@@ -1588,11 +1740,10 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 }
 
 func (s *Scenario) getLoggedInStudent(ctx context.Context) (*model.Student, error) {
-	userData, err := s.studentPool.newUserData()
+	student, err := s.userPool.newStudent()
 	if err != nil {
 		panic("unreachable! studentPool is empty")
 	}
-	student := model.NewStudent(userData, s.BaseURL)
 	_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 	if err != nil {
 		return nil, err
@@ -1602,7 +1753,7 @@ func (s *Scenario) getLoggedInStudent(ctx context.Context) (*model.Student, erro
 }
 
 func (s *Scenario) getLoggedInTeacher(ctx context.Context) (*model.Teacher, error) {
-	teacher := s.GetRandomTeacher()
+	teacher := s.userPool.randomTeacher()
 	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
 		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 		if err != nil {

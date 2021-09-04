@@ -4,14 +4,7 @@
       <button
         v-for="(tab, index) in tabs"
         :key="tab.id"
-        class="
-          py-4
-          px-6
-          block
-          hover:text-primary-500
-          focus:outline-none
-          border-b-4
-        "
+        class="p-4 block hover:text-primary-500 focus:outline-none border-b-4"
         :class="tabClasses(index)"
         @click="activate(index)"
       >

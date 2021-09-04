@@ -125,22 +125,31 @@ export default Vue.extend({
   },
   methods: {
     async loadCourses() {
-      const user: User = await this.$axios.$get(`/api/users/me`)
-      const courses: Course[] = await this.$axios.$get(
-        `/api/syllabus?teacher=${user.name}`
-      )
-      this.courses = courses
+      try {
+        const resUser = await this.$axios.get<User>(`/api/users/me`)
+        const user = resUser.data
+        const resCourses = await this.$axios.get<Course[]>(
+          `/api/syllabus?teacher=${user.name}`
+        )
+        this.courses = resCourses.data
+      } catch (e) {
+        notify('科目の読み込みに失敗しました')
+      }
     },
     async loadClasses() {
-      const classes: ClassInfo[] = await this.$axios.$get(
-        `/api/courses/${this.courseId}/classes`
-      )
-      this.classes = classes
+      try {
+        const res = await this.$axios.get<ClassInfo[]>(
+          `/api/courses/${this.courseId}/classes`
+        )
+        this.classes = res.data
+      } catch (e) {
+        notify('講義の読み込みに失敗しました')
+      }
     },
     async submit() {
       try {
         await this.$axios
-          .$get(
+          .get(
             `/api/courses/${this.courseId}/classes/${this.classId}/assignments/export`,
             {
               responseType: 'blob',

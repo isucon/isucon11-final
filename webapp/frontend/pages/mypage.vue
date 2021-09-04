@@ -31,35 +31,8 @@
           </template>
         </section>
 
-        <section class="mt-10">
-          <h1 class="text-2xl">成績照会</h1>
-
-          <p class="py-2">今期の成績は成績照会ページで確認してください</p>
-
-          <div class="py-4">
-            <NuxtLink to="/grade">
-              <Button>成績照会</Button>
-            </NuxtLink>
-          </div>
-        </section>
-
-        <section class="mt-10">
-          <h1 class="text-2xl">時間割</h1>
-
-          <div class="py-2">
-            <h2 class="text-xl">履修登録</h2>
-            <p>履修登録ページから履修登録を行ってください。</p>
-          </div>
-
-          <div class="py-4">
-            <NuxtLink to="/register">
-              <Button color="primary">履修登録</Button>
-            </NuxtLink>
-          </div>
-        </section>
-
         <section>
-          <h2 class="text-lg">2021年度前期</h2>
+          <h2 class="text-lg mt-4">2021年度前期</h2>
           <Calendar>
             <template v-for="(periodCourses, p) in courses">
               <template v-for="(course, w) in periodCourses">
@@ -132,10 +105,8 @@ export default Vue.extend({
     ctx: Context
   ): Promise<{ registeredCourses: MinimalCourse[] }> {
     try {
-      const registeredCourses = await ctx.$axios.$get<MinimalCourse[]>(
-        `/api/users/me/courses`
-      )
-      return { registeredCourses }
+      const res = await ctx.$axios.get<MinimalCourse[]>(`/api/users/me/courses`)
+      return { registeredCourses: res.data }
     } catch (e) {
       console.error(e)
     }

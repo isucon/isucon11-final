@@ -1,7 +1,6 @@
 package scenario
 
 import (
-	"math/rand"
 	"net/url"
 	"sync"
 	"time"
@@ -25,8 +24,7 @@ type Scenario struct {
 
 	sPubSub            *pubsub.PubSub
 	cPubSub            *pubsub.PubSub
-	faculties          []*model.Teacher
-	studentPool        *userPool
+	userPool           *userPool
 	activeStudents     []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
 	language           string
 	loadRequestEndTime time.Time
@@ -50,14 +48,9 @@ func NewScenario(config *Config) (*Scenario, error) {
 	if err != nil {
 		return nil, err
 	}
-	facultiesData, err := generate.LoadFacultiesData()
+	teachersData, err := generate.LoadTeachersData()
 	if err != nil {
 		return nil, err
-	}
-
-	faculties := make([]*model.Teacher, len(facultiesData))
-	for i, f := range facultiesData {
-		faculties[i] = model.NewTeacher(f, config.BaseURL)
 	}
 
 	return &Scenario{
@@ -66,8 +59,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
-		faculties:          faculties,
-		studentPool:        NewUserPool(studentsData),
+		userPool:           NewUserPool(studentsData, teachersData, config.BaseURL),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 		debugData:          NewDebugData(config.IsDebug),
 		finishCoursePubSub: pubsub.NewPubSub(),
@@ -98,13 +90,6 @@ func (s *Scenario) ActiveStudentCount() int {
 	return len(s.activeStudents)
 }
 
-func (s *Scenario) GetRandomTeacher() *model.Teacher {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	return s.faculties[rand.Intn(len(s.faculties))]
-}
-
 func (s *Scenario) Reset() {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
@@ -113,21 +98,15 @@ func (s *Scenario) Reset() {
 	if err != nil {
 		panic(err)
 	}
-	facultiesData, err := generate.LoadFacultiesData()
+	teachersData, err := generate.LoadTeachersData()
 	if err != nil {
 		panic(err)
-	}
-
-	faculties := make([]*model.Teacher, len(facultiesData))
-	for i, f := range facultiesData {
-		faculties[i] = model.NewTeacher(f, s.Config.BaseURL)
 	}
 
 	s.CourseManager = model.NewCourseManager()
 	s.sPubSub = pubsub.NewPubSub()
 	s.cPubSub = pubsub.NewPubSub()
-	s.faculties = faculties
-	s.studentPool = NewUserPool(studentsData)
+	s.userPool = NewUserPool(studentsData, teachersData, s.BaseURL)
 	s.activeStudents = make([]*model.Student, 0, initialStudentsCount)
 	s.debugData = NewDebugData(s.Config.IsDebug)
 	s.finishCoursePubSub = pubsub.NewPubSub()

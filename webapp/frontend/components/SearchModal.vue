@@ -21,7 +21,7 @@
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >科目</label
             >
-            <div class="flex flex-auto">
+            <div class="flex flex-auto gap-1">
               <TextField
                 id="params-teacher"
                 class="flex-1"
@@ -58,7 +58,7 @@
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >開講</label
             >
-            <div class="flex flex-auto">
+            <div class="flex flex-auto gap-1">
               <Select
                 id="params-day-of-week"
                 class="flex-1"
@@ -95,7 +95,7 @@
               />
             </div>
           </div>
-          <div class="flex justify-center">
+          <div class="flex justify-center gap-2">
             <Button type="button" class="mt-6 flex-grow-0" @click="onClickReset"
               >リセット
             </Button>

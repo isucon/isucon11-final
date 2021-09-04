@@ -3,8 +3,8 @@
     <div class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
         <h1 class="text-2xl">履修登録</h1>
-        <div class="mt-2 mb-6">
-          <Button class="mr-2" @click="onClickSearchCourse()">科目検索</Button>
+        <div class="flex mt-2 mb-6 gap-2">
+          <Button @click="onClickSearchCourse">科目検索</Button>
           <Button color="primary" @click="onClickConfirm">内容の確定</Button>
         </div>
         <Calendar :period-count="periodCount">
@@ -65,7 +65,24 @@
                       "
                       @click="onClickSearchCourse(course)"
                     >
-                      <fa-icon icon="pen" size="lg" class="text-primary-500" />
+                      <div
+                        class="
+                          relative
+                          h-full
+                          w-full
+                          opacity-0
+                          hover:opacity-70
+                          transition
+                          duration-500
+                          ease
+                        "
+                      >
+                        <fa-icon
+                          icon="pen"
+                          size="lg"
+                          class="absolute bottom-4 right-4 text-primary-500"
+                        />
+                      </div>
                     </button>
                   </template>
                 </template>
@@ -117,10 +134,8 @@ export default Vue.extend({
   middleware: 'is_student',
   async asyncData(ctx: Context) {
     try {
-      const registeredCourses = await ctx.$axios.$get<Course[]>(
-        `/api/users/me/courses`
-      )
-      return { registeredCourses }
+      const res = await ctx.$axios.get<Course[]>(`/api/users/me/courses`)
+      return { registeredCourses: res.data }
     } catch (e) {
       console.error(e)
       notify('履修登録済み科目の取得に失敗しました')
