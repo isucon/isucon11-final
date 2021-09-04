@@ -360,7 +360,7 @@ func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announceme
 }
 
 // お知らせ一覧の中身の検証
-func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[string]*model.AnnouncementStatus) error {
+func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[string]*model.AnnouncementStatus, verifyUnread bool) error {
 	// リストの中身の検証
 	for _, actual := range res.Announcements {
 		expectStatus, ok := expectList[actual.ID]
@@ -385,7 +385,7 @@ func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[s
 
 		// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 		// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-		if !expectStatus.Dirty {
+		if verifyUnread && !expectStatus.Dirty {
 			if !AssertEqual("announce unread", expectStatus.Unread, actual.Unread) {
 				return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
 			}
