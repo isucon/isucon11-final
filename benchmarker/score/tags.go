@@ -3,20 +3,9 @@ package score
 import "github.com/isucon/isucandar/score"
 
 const (
-	RegisterCourses        score.ScoreTag = "01.RegisterCourses"
-	GetRegisteredCourses   score.ScoreTag = "02.GetRegisteredCourses"
-	GetGrades              score.ScoreTag = "03.GetGrades"
-	SearchCourses          score.ScoreTag = "04.SearchCourses"
-	GetCourseDetail        score.ScoreTag = "05.GetCourseDetail"
-	AddCourse              score.ScoreTag = "06.AddCourse"
-	AddClass               score.ScoreTag = "07.AddClass"
-	GetClasses             score.ScoreTag = "08.GetClasses"
-	SubmitAssignment       score.ScoreTag = "09.SubmitAssignment"
-	DownloadSubmissions    score.ScoreTag = "10.DownloadSubmissions"
-	RegisterScore          score.ScoreTag = "11.RegisterScore"
-	AddAnnouncement        score.ScoreTag = "12.AddAnnouncement"
-	GetAnnouncementList    score.ScoreTag = "13.GetAnnouncementList"
-	GetAnnouncementsDetail score.ScoreTag = "14.GetAnnouncementDetail"
+	SubmitAssignment    score.ScoreTag = "01.SubmitAssignment"
+	GetGrades           score.ScoreTag = "02.GetGrades"
+	GetAnnouncementList score.ScoreTag = "03.GetAnnouncementList"
 
 	ActiveStudents               score.ScoreTag = "_01.ActiveStudents"
 	FinishCourses                score.ScoreTag = "_02.FinishCourses"
@@ -24,25 +13,25 @@ const (
 	GetCourseDetailVerifySkipped score.ScoreTag = "_04.GetCourseDetailVerifySkipped"
 	StartCourseUnder50           score.ScoreTag = "_05.StartCourseUnder50"
 	StartCourseFull              score.ScoreTag = "_06.StartCourseFull"
+	RegisterCourses              score.ScoreTag = "_07.RegisterCourses"
+	GetRegisteredCourses         score.ScoreTag = "_08.GetRegisteredCourses"
+	SearchCourses                score.ScoreTag = "_09.SearchCourses"
+	GetCourseDetail              score.ScoreTag = "_10.GetCourseDetail"
+	AddCourse                    score.ScoreTag = "_11.AddCourse"
+	AddClass                     score.ScoreTag = "_12.AddClass"
+	GetClasses                   score.ScoreTag = "_13.GetClasses"
+	DownloadSubmissions          score.ScoreTag = "_14.DownloadSubmissions"
+	RegisterScore                score.ScoreTag = "_15.RegisterScore"
+	AddAnnouncement              score.ScoreTag = "_16.AddAnnouncement"
+	GetAnnouncementsDetail       score.ScoreTag = "_17.GetAnnouncementDetail"
 
 	StartCourseOver50 score.ScoreTag = "!01.StartCourseOver50"
 )
 
 var Tags = []score.ScoreTag{
-	RegisterCourses,
-	GetRegisteredCourses,
-	GetGrades,
-	SearchCourses,
-	GetCourseDetail,
-	AddCourse,
-	AddClass,
-	GetClasses,
 	SubmitAssignment,
-	DownloadSubmissions,
-	RegisterScore,
-	AddAnnouncement,
+	GetGrades,
 	GetAnnouncementList,
-	GetAnnouncementsDetail,
 
 	ActiveStudents,
 	FinishCourses,
@@ -50,6 +39,17 @@ var Tags = []score.ScoreTag{
 	GetCourseDetailVerifySkipped,
 	StartCourseUnder50,
 	StartCourseFull,
+	RegisterCourses,
+	GetRegisteredCourses,
+	SearchCourses,
+	GetCourseDetail,
+	AddCourse,
+	AddClass,
+	GetClasses,
+	DownloadSubmissions,
+	RegisterScore,
+	AddAnnouncement,
+	GetAnnouncementsDetail,
 
 	StartCourseOver50,
 }
