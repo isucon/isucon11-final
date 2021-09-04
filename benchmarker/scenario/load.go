@@ -381,7 +381,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
-			if err := verifyAnnouncementsList(&res, expectAnnouncementList); err != nil {
+			if err := verifyAnnouncementsList(&res, expectAnnouncementList, true); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.GetAnnouncementList)
@@ -486,7 +486,8 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
-			if err := verifyAnnouncementsList(&res, expectAnnounceList); err != nil {
+			// 並列で走る既読にするシナリオが未読/既読状態を変更するので、こちらのシナリオでは未読/既読状態は検証しない
+			if err := verifyAnnouncementsList(&res, expectAnnounceList, false); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.GetAnnouncementList)
