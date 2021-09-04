@@ -163,9 +163,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	promTags.writeTag("timeout_count", strconv.Itoa(int(timeoutCount)))
 
 	promTags.writePromFile()
-	if finish {
-		promTags.commit()
-	}
+	promTags.commit()
 
 	// Reporter
 	err := reporter.Report(&isuxportalResources.BenchmarkResult{
