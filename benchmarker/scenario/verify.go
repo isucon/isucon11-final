@@ -261,7 +261,7 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 	}
 
 	if !isNameHit && !isKeywordsHit {
-		AdminLogger.Printf("keyword not match: expect: %v, acutual: %s", param.Keywords, res.Keywords)
+		AdminLogger.Printf("name / keyword not match: expect: %v, acutual: %s", param.Keywords, res.Keywords)
 		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
 	}
 
