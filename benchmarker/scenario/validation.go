@@ -146,6 +146,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
 				// FIXME: webappでお知らせが重複して追加される問題を直したらコメントを外す https://github.com/isucon/isucon11-final/pull/546
+				AdminLogger.Println("announcement len mismatch")
 				// step.AddError(errNotMatchOver)
 				// return
 			}
@@ -153,6 +154,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
 			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
 				// FIXME: webappでお知らせが重複して追加される問題を直したらコメントを外す https://github.com/isucon/isucon11-final/pull/546
+				AdminLogger.Println("response unread count mismatch")
 				// step.AddError(errNotMatchUnreadCount)
 				// return
 			}
