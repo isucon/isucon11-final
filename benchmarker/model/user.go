@@ -255,6 +255,7 @@ func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
 
 	s.registeredSchedule[dayOfWeek][period] = nil
 	s.registeringCount--
+	s.scheduleCond.Broadcast()
 }
 
 func (s *Student) Courses() []*Course {
