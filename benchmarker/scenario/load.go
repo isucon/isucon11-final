@@ -183,11 +183,16 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 	return func(ctx context.Context) {
 		for ctx.Err() == nil {
 
+			// gradeは1000msごとの間隔 または TimeSlotの空きが発生したらリクエストを送る
+			select {
+			case <-time.After(1000 * time.Millisecond):
+			case <-student.WaitReleaseTimeslot(ctx, registerCourseLimitPerStudent):
+			}
+
 			if s.isNoRequestTime(ctx) {
 				return
 			}
 
-			timer := time.After(50 * time.Millisecond)
 			// 学生は成績を確認し続ける
 			expected := collectVerifyGradesData(student)
 			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
@@ -210,7 +215,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			if remainingRegistrationCapacity == 0 {
 				// gradeのループは最低50ms間隔とする
 				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
-				<-timer
 				continue
 			}
 
@@ -232,12 +236,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
-						<-timer
 						continue
 					}
 					if err := verifySearchCourseResults(res, param); err != nil {
 						step.AddError(err)
-						<-timer
 						continue
 					}
 					step.AddScore(score.SearchCourses)
@@ -260,7 +262,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
 					if err != nil {
 						step.AddError(err)
-						<-timer
 						continue
 					}
 					expected, exists := s.CourseManager.GetCourseByID(res.ID.String())
@@ -288,7 +289,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-timer
 				continue
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
@@ -312,7 +312,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// ベンチ内で仮登録できた科目があればAPIに登録処理を投げる
 			if len(temporaryReservedCourses) == 0 {
 				DebugLogger.Printf("[履修スキップ（空き科目不足)] code: %v, name: %v", student.Code, student.Name)
-				<-timer
 				continue
 			}
 
@@ -353,7 +352,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			s.debugData.AddInt("registrationTime", time.Since(registerStart).Milliseconds())
 			DebugLogger.Printf("[履修完了] code: %v, time: %d ms, register count: %d", student.Code, time.Since(registerStart).Milliseconds(), len(temporaryReservedCourses))
-			<-timer
 		}
 		// TODO: できれば登録に失敗した科目を抜いて再度登録する
 	}

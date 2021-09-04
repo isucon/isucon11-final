@@ -22,13 +22,14 @@ type Student struct {
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
-	readAnnouncementCond  *sync.Cond
-	addAnnouncementCond   *sync.Cond
+	readAnnouncementCond  *sync.Cond // おしらせの既読を監視するCond
+	addAnnouncementCond   *sync.Cond // おしらせの追加を監視するCond
 	rmu                   sync.RWMutex
 
 	registeredSchedule [5][6]*Course // 空きコマ管理[DayOfWeek:5][Period:6]
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
+	scheduleCond       *sync.Cond // スケジュールの空きを監視するCond
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
@@ -55,6 +56,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	}
 	s.readAnnouncementCond = sync.NewCond(&s.rmu)
 	s.addAnnouncementCond = sync.NewCond(&s.rmu)
+	s.scheduleCond = sync.NewCond(&s.scheduleMutex)
 	return s
 }
 
@@ -270,6 +272,34 @@ func (s *Student) RegisteredSchedule() [5][6]*Course {
 	defer s.scheduleMutex.RUnlock()
 
 	return s.registeredSchedule
+}
+
+func (s *Student) WaitReleaseTimeslot(ctx context.Context, registerCourseLimit int) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			close(ch)
+			return
+		case <-s.waitReleaseTimeslot(registerCourseLimit):
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (s *Student) waitReleaseTimeslot(registerCourseLimit int) <-chan struct{} {
+	ch := make(chan struct{})
+	// MEMO: このgoroutineはWaitReleaseTimeslotがctx.Done()で抜けた場合放置される
+	go func() {
+		s.readAnnouncementCond.L.Lock()
+		for s.RegisteringCount() < registerCourseLimit {
+			s.readAnnouncementCond.Wait()
+		}
+		s.readAnnouncementCond.L.Unlock()
+		close(ch)
+	}()
+	return ch
 }
 
 func (s *Student) GPA() float64 {
