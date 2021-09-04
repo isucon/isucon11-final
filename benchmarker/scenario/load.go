@@ -354,7 +354,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
 			if err != nil {
 				step.AddError(err)
-				time.Sleep(1 * time.Millisecond)
+				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
@@ -420,7 +420,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				nextPathParam = ""
 				if !student.HasUnreadAnnouncement() {
 					select {
-					case <-time.After(200 * time.Millisecond):
+					case <-time.After(400 * time.Millisecond):
 					case <-student.WaitNewUnreadAnnouncement(ctx):
 						// waitはお知らせ追加したらエスパーで即解消する
 					}
