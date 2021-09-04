@@ -1,3 +1,5 @@
+#![allow(clippy::float_cmp)]
+
 // ----- int -----
 
 pub fn average_int(arr: &[i64], or: f64) -> f64 {
