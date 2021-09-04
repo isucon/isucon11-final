@@ -1,9 +1,9 @@
-name: packer
+name: CI-Packer
 
 on:
   push:
-    tags:
-      - "*"
+    branches:
+      - 'main'
 
 jobs:
   build-packer:
@@ -50,8 +50,6 @@ jobs:
           make files-generated
       # packer build
       - name: "make build (build-contestant, build-bench)"
-        env:
-          GIT_TAG: ${{ steps.get_source_tag.outputs.SOURCE_TAG }}
         run: |
           export PATH=${HOME}/work/_tool/isucon11-final:${PATH}
           make build
