@@ -185,7 +185,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// gradeは1000msごとの間隔 または TimeSlotの空きが発生したらリクエストを送る
 			select {
-			case <-time.After(1000 * time.Millisecond):
+			//case <-time.After(1000 * time.Millisecond):
 			case <-student.WaitReleaseTimeslot(ctx, registerCourseLimitPerStudent):
 			}
 
