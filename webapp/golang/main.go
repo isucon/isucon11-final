@@ -1496,7 +1496,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		_ = tx.Rollback()
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
 			var announcement Announcement
-			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?", req.CourseID, req.CreatedAt); err != nil {
+			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?", req.CourseID, createdAt); err != nil {
 				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
