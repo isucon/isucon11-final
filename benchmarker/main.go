@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -38,6 +39,7 @@ var (
 	targetAddress    string
 	profileFile      string
 	memProfileDir    string
+	promOut          string
 	useTLS           bool
 	exitStatusOnFail bool
 	noLoad           bool
@@ -62,6 +64,7 @@ func init() {
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
 	flag.StringVar(&memProfileDir, "mem-profile", "", "path of output heap profile at max memStats.sys allocated. ex: memprof")
+	flag.StringVar(&promOut, "prom-out", "", "prometheus text-file output path")
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
@@ -94,7 +97,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	passed := true
 	reason := "passed"
 	errors := result.Errors.All()
-	breakdown := result.Score.Breakdown()
+	scoreTable := result.Score.Breakdown()
 
 	deductionCount := int64(0)
 	timeoutCount := int64(0)
@@ -116,43 +119,65 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		reason = fmt.Sprintf("エラーの発生回数が%d回を超えました", errorFailThreshold)
 	}
 
-	resultScore, raw, deducted := score.Calc(breakdown, deductionCount, timeoutCount)
-	if resultScore <= 0 {
-		resultScore = 0
+	totalScore, rawScore, deductScore, rawBreakdown := score.Calc(scoreTable, deductionCount, timeoutCount)
+	if totalScore <= 0 {
+		totalScore = 0
 		if passed {
 			passed = false
 			reason = "スコアが0点以下でした"
 		}
 	}
 
-	scenario.ContestantLogger.Printf("score: %d(%d - %d) : %s", resultScore, raw, deducted, reason)
+	scenario.ContestantLogger.Printf("score: %d(%d - %d) : %s", totalScore, rawScore, deductScore, reason)
 	scenario.ContestantLogger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
 	// 競技者には最終的なScoreTagの統計のみ見せる
 	if finish {
 		tagFormat := fmt.Sprintf("tag: %%-%ds : %%d", score.MaxTagLengthForContestant)
 		for _, tag := range score.TagsForContestant {
-			scenario.ContestantLogger.Printf(tagFormat, tag, breakdown[tag])
+			scenario.ContestantLogger.Printf(tagFormat, tag, scoreTable[tag])
 		}
 	}
 
 	if writeScoreToAdminLogger {
 		tagFormat := fmt.Sprintf("tag: %%-%ds : %%d", score.MaxTagLength)
 		for _, tag := range score.Tags {
-			scenario.AdminLogger.Printf(tagFormat, tag, breakdown[tag])
+			scenario.AdminLogger.Printf(tagFormat, tag, scoreTable[tag])
 		}
 	}
 
+	// Prometheus metrics
+	var promTags PromTags
+	for _, tag := range score.Tags {
+		promTags.writeTag("score_tag", strconv.Itoa(int(scoreTable[tag])), "tag", string(tag))
+	}
+	for _, tag := range score.Tags {
+		if tagScore, ok := rawBreakdown[tag]; ok {
+			promTags.writeTag("score_raw_breakdown", strconv.Itoa(int(tagScore)), "tag", string(tag))
+		}
+	}
+	promTags.writeTag("score_total", strconv.Itoa(int(totalScore)))
+	promTags.writeTag("score_raw", strconv.Itoa(int(rawScore)))
+	promTags.writeTag("score_deduct", strconv.Itoa(int(deductScore)))
+	promTags.writeTag("deduction_count", strconv.Itoa(int(deductionCount)))
+	promTags.writeTag("timeout_count", strconv.Itoa(int(timeoutCount)))
+
+	promTags.writePromFile()
+	if finish {
+		promTags.commit()
+	}
+
+	// Reporter
 	err := reporter.Report(&isuxportalResources.BenchmarkResult{
 		SurveyResponse: &isuxportalResources.SurveyResponse{
 			Language: s.Language(),
 		},
 		Finished: finish,
 		Passed:   passed,
-		Score:    resultScore, // TODO: 加点 - 減点
+		Score:    totalScore, // TODO: 加点 - 減点
 		ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
-			Raw:       raw,      // TODO: 加点
-			Deduction: deducted, // TODO: 減点
+			Raw:       rawScore,    // TODO: 加点
+			Deduction: deductScore, // TODO: 減点
 		},
 		Execution: &isuxportalResources.BenchmarkResult_Execution{
 			Reason: reason,
