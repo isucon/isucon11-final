@@ -293,7 +293,7 @@ func (s *Student) waitReleaseTimeslot(registerCourseLimit int) <-chan struct{} {
 	// MEMO: このgoroutineはWaitReleaseTimeslotがctx.Done()で抜けた場合放置される
 	go func() {
 		s.scheduleCond.L.Lock()
-		for s.RegisteringCount() < registerCourseLimit {
+		for s.registeringCount >= registerCourseLimit {
 			s.scheduleCond.Wait()
 		}
 		s.scheduleCond.L.Unlock()
