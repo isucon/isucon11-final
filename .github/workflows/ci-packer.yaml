@@ -1,0 +1,52 @@
+name: CI-Packer
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build-packer:
+    name: packer build
+    runs-on: self-hosted
+    timeout-minutes: 60
+    env:
+      PACKER_LOG: '1'
+    defaults:
+      run:
+        working-directory: provisioning/packer
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Install some utils
+        env:
+          GO_JSONNET_VERSION: v0.17.0
+          PACKER_VERSION: 1.7.3
+        run: |
+          mkdir -p $HOME/work/_tool/isucon11-final/
+          curl -sL https://github.com/google/go-jsonnet/releases/download/${GO_JSONNET_VERSION}/go-jsonnet_${GO_JSONNET_VERSION#"v"}_Linux_x86_64.tar.gz -o /tmp/go-jsonnet.tar.gz \
+            && tar xvzf /tmp/go-jsonnet.tar.gz -C /tmp/ \
+            && mv /tmp/jsonnet* $HOME/work/_tool/isucon11-final/
+          curl -sL https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip -o /tmp/packer.zip \
+            && unzip -o /tmp/packer.zip -d $HOME/work/_tool/isucon11-final/
+      # packer に渡すファイルを生成
+      - run: make clean
+      - run: make clean-output
+      - run: |
+          export PATH=${HOME}/work/_tool/isucon11-final:${PATH}
+          make files-generated
+      # packer build
+      - name: "make build (build-contestant, build-bench)"
+        run: |
+          export PATH=${HOME}/work/_tool/isucon11-final:${PATH}
+          make build
