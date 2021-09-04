@@ -183,10 +183,12 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 	return func(ctx context.Context) {
 		for ctx.Err() == nil {
 
-			// gradeは1000msごとの間隔 または TimeSlotの空きが発生したらリクエストを送る
-			select {
-			//case <-time.After(1000 * time.Millisecond):
-			case <-student.WaitReleaseTimeslot(ctx, registerCourseLimitPerStudent):
+			if student.RegisteringCount() >= registerCourseLimitPerStudent {
+				// gradeは1000msごとの間隔 または TimeSlotの空きが発生したらリクエストを送る
+				select {
+				//case <-time.After(1000 * time.Millisecond):
+				case <-student.WaitReleaseTimeslot(ctx, registerCourseLimitPerStudent):
+				}
 			}
 
 			if s.isNoRequestTime(ctx) {
