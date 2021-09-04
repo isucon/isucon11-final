@@ -157,9 +157,19 @@ export default Vue.extend({
           this.params
         )
         notify('講義の登録が完了しました')
+
+        const params = {
+          title: `クラス追加: ${this.params.title}`,
+          message: `クラスが新しく追加されました: ${this.params.title}\n${this.params.description}`,
+          courseId: this.courseId,
+          createdAt: Math.floor(Date.now() / 1000), // ミリ秒を削除
+        }
+        await this.$axios.post(`/api/announcements`, params)
+
+        notify('講義の登録のお知らせ投稿が完了しました')
         this.close()
       } catch (e) {
-        notify('講義の登録に失敗しました')
+        notify('講義の登録またはお知らせ投稿に失敗しました')
         this.showAlert()
       }
     },
