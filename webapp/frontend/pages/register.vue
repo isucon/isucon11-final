@@ -15,7 +15,7 @@
                   <template v-if="course.id">
                     <a
                       :key="`link-${p}-${w}-${i}`"
-                      :href="`/syllabus/${course.id}`"
+                      :href="`/courses/${course.id}`"
                       target="_blank"
                       class="
                         flex-grow

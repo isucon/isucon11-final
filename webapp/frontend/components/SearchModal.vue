@@ -148,7 +148,7 @@
                   <td>{{ c.teacher }}</td>
                   <td>
                     <a
-                      :href="`/syllabus/${c.id}`"
+                      :href="`/courses/${c.id}`"
                       target="_blank"
                       class="text-primary-500"
                       >詳細を見る
@@ -278,7 +278,7 @@ export default Vue.extend({
     async onSubmitSearch(query?: Record<string, any>): Promise<void> {
       const params = this.filterParams(this.params)
       try {
-        const res = await this.$axios.get<SyllabusCourse[]>('/api/syllabus', {
+        const res = await this.$axios.get<SyllabusCourse[]>('/api/courses', {
           params: { ...params, ...query },
         })
         if (res.status === 200) {
