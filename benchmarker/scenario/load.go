@@ -185,9 +185,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			if student.RegisteringCount() >= registerCourseLimitPerStudent {
 				// gradeはTimeSlotの空きが発生したらリクエストを送る
-				select {
-				case <-student.WaitReleaseTimeslot(ctx, registerCourseLimitPerStudent):
-				}
+				_ctx, cancel := context.WithDeadline(ctx, s.loadRequestEndTime)
+				<-student.WaitReleaseTimeslot(_ctx, cancel, registerCourseLimitPerStudent)
 			}
 
 			// grade と search が早くなりすぎると科目登録が1つずつしか発生せずブレが発生する
@@ -456,15 +455,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			// 50msより短い間隔で一覧取得をしない
 			<-timer
-
-			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(endTimeDuration):
-				return
-			default:
-			}
 		}
 	}
 }

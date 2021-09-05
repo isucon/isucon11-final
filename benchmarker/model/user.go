@@ -275,18 +275,15 @@ func (s *Student) RegisteredSchedule() [5][6]*Course {
 	return s.registeredSchedule
 }
 
-func (s *Student) WaitReleaseTimeslot(ctx context.Context, registerCourseLimit int) <-chan struct{} {
-	ch := make(chan struct{})
+func (s *Student) WaitReleaseTimeslot(ctx context.Context, cancel context.CancelFunc, registerCourseLimit int) <-chan struct{} {
 	go func() {
 		select {
 		case <-ctx.Done():
-			close(ch)
-			return
 		case <-s.waitReleaseTimeslot(registerCourseLimit):
 		}
-		close(ch)
+		cancel()
 	}()
-	return ch
+	return ctx.Done()
 }
 
 func (s *Student) waitReleaseTimeslot(registerCourseLimit int) <-chan struct{} {
