@@ -36,9 +36,11 @@ app.set("etag", false);
 
 const api = express.Router();
 const usersApi = express.Router();
+const syllabusApi = express.Router();
 app.use("/api", api);
 api.use(isLoggedIn);
 api.use("/users", usersApi);
+api.use("/syllabus", syllabusApi);
 
 interface InitializeResponse {
   language: string;
@@ -652,6 +654,172 @@ usersApi.get("/me/grades", async (req, res) => {
   } finally {
     db.release();
   }
+});
+
+interface SearchCoursesQuery {
+  type: string;
+  credit: string;
+  teacher: string;
+  period: string;
+  day_of_week: string;
+  keywords: string;
+  status: string;
+  page: string;
+}
+
+// GET /api/syllabus 科目検索
+syllabusApi.get(
+  "",
+  async (
+    req: express.Request<
+      Record<string, never>,
+      unknown,
+      never,
+      SearchCoursesQuery
+    >,
+    res
+  ) => {
+    const query =
+      "SELECT `courses`.*, `users`.`name` AS `teacher`" +
+      " FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+      " WHERE 1=1";
+    let condition = "";
+    const args = [];
+
+    // 無効な検索条件はエラーを返さず無視して良い
+
+    if (req.query.type) {
+      condition += " AND `courses`.`type` = ?";
+      args.push(req.query.type);
+    }
+
+    if (req.query.credit) {
+      const credit = parseInt(req.query.credit, 10);
+      if (!isNaN(credit)) {
+        condition += " AND `courses`.`credit` = ?";
+        args.push(credit);
+      }
+    }
+
+    if (req.query.teacher) {
+      condition += " AND `users`.`name` = ?";
+      args.push(req.query.teacher);
+    }
+
+    if (req.query.period) {
+      const period = parseInt(req.query.period, 10);
+      if (!isNaN(period)) {
+        condition += " AND `courses`.`period` = ?";
+        args.push(period);
+      }
+    }
+
+    if (req.query.day_of_week) {
+      condition += " AND `courses`.`day_of_week` = ?";
+      args.push(req.query.day_of_week);
+    }
+
+    if (req.query.keywords) {
+      const arr = req.query.keywords.split(" ");
+      let nameCondition = "";
+      arr.forEach((keyword) => {
+        nameCondition += " AND `courses`.`name` LIKE ?";
+        args.push(`%${keyword}%`);
+      });
+      let keywordsCondition = "";
+      arr.forEach((keyword) => {
+        keywordsCondition += " AND `courses`.`name` LIKE ?";
+        args.push(`%${keyword}%`);
+      });
+      condition += ` AND ((1=1${nameCondition}) OR (1=1${keywordsCondition}))`;
+    }
+
+    if (req.query.status) {
+      condition += " AND `courses`.`status` = ?";
+      args.push(req.query.status);
+    }
+
+    condition += " ORDER BY `courses`.`code`";
+
+    let page: number;
+    if (req.query.page) {
+      page = parseInt(req.query.page, 10);
+      if (isNaN(page) || page <= 0) {
+        return res.status(400).send("Invalid page.");
+      }
+    } else {
+      page = 1;
+    }
+    const limit = 20;
+    const offset = limit * (page - 1);
+
+    // limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
+    condition += " LIMIT ? OFFSET ?";
+    args.push(limit + 1, offset);
+
+    const db = await pool.getConnection();
+    try {
+      // 結果が0件の時は空配列を返却
+      let [response] = await db.query<GetCourseDetailResponse[]>(
+        query + condition,
+        args
+      );
+
+      const links = [];
+      const linkUrl = new URL(
+        req.originalUrl,
+        `${req.protocol}://${req.hostname}`
+      );
+
+      const q = linkUrl.searchParams;
+      if (page > 1) {
+        q.set("page", `${page - 1}`);
+        links.push(`<${linkUrl.pathname}?${q}>; rel="prev"`);
+      }
+      if (response.length > limit) {
+        q.set("page", `${page + 1}`);
+        links.push(`<${linkUrl.pathname}?${q}>; rel="next"`);
+      }
+      if (links.length > 0) {
+        res.append("Link", links.join(","));
+      }
+
+      if (response.length == limit + 1) {
+        response = response.slice(0, response.length - 1);
+      }
+
+      return res.status(200).json(
+        response.map((r) => ({
+          ...r,
+          teacher_id: undefined,
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
+interface GetCourseDetailResponse extends RowDataPacket {
+  id: string;
+  code: string;
+  type: string;
+  name: string;
+  description: string;
+  credit: number;
+  period: number;
+  day_of_week: string;
+  teacher_id: string;
+  keywords: string;
+  status: CourseStatus;
+  teacher: string;
+}
+
+syllabusApi.get("/:courseId", async (req, res) => {
+  return res.status(200).send("hoge");
 });
 
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
