@@ -183,38 +183,38 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 	return func(ctx context.Context) {
 		for ctx.Err() == nil {
 
+			if student.RegisteringCount() >= registerCourseLimitPerStudent {
+				// gradeはTimeSlotの空きが発生したらリクエストを送る
+				_ctx, cancel := context.WithDeadline(ctx, s.loadRequestEndTime)
+				<-student.WaitReleaseTimeslot(_ctx, cancel, registerCourseLimitPerStudent)
+			}
+
+			// grade と search が早くなりすぎると科目登録が1つずつしか発生せずブレが発生する
+			timer := time.After(100 * time.Millisecond)
+
 			if s.isNoRequestTime(ctx) {
 				return
 			}
 
-			timer := time.After(50 * time.Millisecond)
-			// 学生は成績を確認し続ける
-			expected := collectVerifyGradesData(student)
-			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
-			if err != nil {
-				step.AddError(err)
-				time.Sleep(1 * time.Millisecond)
-				continue
-			}
-			err = verifyGrades(expected, &getGradeRes)
-			if err != nil {
-				step.AddError(err)
-			} else {
-				step.AddScore(score.GetGrades)
+			// 履修したコースが0なら成績確認をしない
+			if len(student.Courses()) != 0 {
+				// 成績確認
+				expected := collectVerifyGradesData(student)
+				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
+				if err != nil {
+					step.AddError(err)
+					time.Sleep(1 * time.Millisecond)
+					continue
+				}
+				err = verifyGrades(expected, &getGradeRes)
+				if err != nil {
+					step.AddError(err)
+				} else {
+					step.AddScore(score.GetGrades)
+				}
 			}
 
 			// ----------------------------------------
-
-			// Gradeが早くなった時、常にCapacityが0だとGradeを効率的に回せるようになって点数が高くなるという不正ができるかもしれない
-			remainingRegistrationCapacity := registerCourseLimitPerStudent - student.RegisteringCount()
-			if remainingRegistrationCapacity == 0 {
-				// gradeのループは最低50ms間隔とする
-				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
-				<-timer
-				continue
-			}
-
-			registerStart := time.Now()
 			{
 				var checkTargetID string
 				var nextPathParam string // 次にアクセスする検索一覧のページ
@@ -232,12 +232,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
-						<-timer
 						continue
 					}
 					if err := verifySearchCourseResults(res, param); err != nil {
 						step.AddError(err)
-						<-timer
 						continue
 					}
 					step.AddScore(score.SearchCourses)
@@ -260,7 +258,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
 					if err != nil {
 						step.AddError(err)
-						<-timer
 						continue
 					}
 					expected, exists := s.CourseManager.GetCourseByID(res.ID.String())
@@ -288,7 +285,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
-				<-timer
 				continue
 			}
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
@@ -299,8 +295,17 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ----------------------------------------
 
-			// 仮登録
+			// grade と search が早くなりすぎると科目登録が1つずつしか発生せずブレが発生する
+			// あまりにも早い場合はここでMAX100ms待つ
+			<-timer
 
+			// 仮登録
+			remainingRegistrationCapacity := registerCourseLimitPerStudent - student.RegisteringCount()
+			if remainingRegistrationCapacity == 0 {
+				// unreachable
+				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
+				continue
+			}
 			temporaryReservedCourses := s.CourseManager.ReserveCoursesForStudent(student, remainingRegistrationCapacity)
 
 			if s.isNoRequestTime(ctx) {
@@ -311,8 +316,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ベンチ内で仮登録できた科目があればAPIに登録処理を投げる
 			if len(temporaryReservedCourses) == 0 {
+				// unreachable
 				DebugLogger.Printf("[履修スキップ（空き科目不足)] code: %v, name: %v", student.Code, student.Name)
-				<-timer
 				continue
 			}
 
@@ -345,15 +350,14 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.RegisterCourses)
 				}
 				for _, c := range temporaryReservedCourses {
+					step.AddScore(score.RegisterCourseByStudent)
 					c.CommitReservation(student)
 					student.AddCourse(c)
 					c.StartTimer(waitCourseFullTimeout)
 				}
 			}
 
-			s.debugData.AddInt("registrationTime", time.Since(registerStart).Milliseconds())
-			DebugLogger.Printf("[履修完了] code: %v, time: %d ms, register count: %d", student.Code, time.Since(registerStart).Milliseconds(), len(temporaryReservedCourses))
-			<-timer
+			DebugLogger.Printf("[履修完了] code: %v, register count: %d", student.Code, len(temporaryReservedCourses))
 		}
 		// TODO: できれば登録に失敗した科目を抜いて再度登録する
 	}
@@ -451,15 +455,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			// 50msより短い間隔で一覧取得をしない
 			<-timer
-
-			endTimeDuration := s.loadRequestEndTime.Sub(time.Now())
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(endTimeDuration):
-				return
-			default:
-			}
 		}
 	}
 }
