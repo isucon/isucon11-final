@@ -116,7 +116,7 @@ interface User extends RowDataPacket {
   id: string;
   code: string;
   name: string;
-  hashedPassword: Buffer;
+  hashed_password: Buffer;
   type: UserType;
 }
 
@@ -150,8 +150,8 @@ interface Course extends RowDataPacket {
   description: string;
   credit: number;
   period: number;
-  dayOfWeek: DayOfWeek;
-  teacherId: string;
+  day_of_week: DayOfWeek;
+  teacher_id: string;
   keywords: string;
   status: CourseStatus;
 }
@@ -194,7 +194,7 @@ app.post(
       if (
         !(await bcrypt.compare(
           request.password,
-          user.hashedPassword.toString()
+          user.hashed_password.toString()
         ))
       ) {
         return res.status(401).send("Code or Password is wrong.");
@@ -262,7 +262,7 @@ usersApi.get("/me", async (req, res) => {
     };
     return res.status(200).json(response);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return res.status(500).send();
   } finally {
     db.release();
@@ -302,7 +302,7 @@ usersApi.get("/me/courses", async (req, res) => {
     for (const course of courses) {
       const [[teacher]] = await db.query<User[]>(
         "SELECT * FROM `users` WHERE `id` = ?",
-        [course.teacherId]
+        [course.teacher_id]
       );
       if (!teacher) {
         throw new Error();
@@ -312,7 +312,7 @@ usersApi.get("/me/courses", async (req, res) => {
         name: course.name,
         teacher: teacher.name,
         period: course.period,
-        day_of_week: course.dayOfWeek,
+        day_of_week: course.day_of_week,
       });
     }
 
@@ -404,7 +404,7 @@ usersApi.put(
           continue;
         }
 
-        // MEMO: すでに履修登録済みの科目は無視する
+        // すでに履修登録済みの科目は無視する
         const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
           "SELECT COUNT(*) AS `cnt` FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
           [course.id, userId]
@@ -416,7 +416,6 @@ usersApi.put(
         newlyAdded.push(course);
       }
 
-      // MEMO: スケジュールの重複バリデーション
       const [alreadyRegistered] = await db.query<Course[]>(
         "SELECT `courses`.*" +
           " FROM `courses`" +
@@ -431,7 +430,7 @@ usersApi.put(
           if (
             course1.id !== course2.id &&
             course1.period === course2.period &&
-            course1.dayOfWeek === course2.dayOfWeek
+            course1.day_of_week === course2.day_of_week
           ) {
             errors.schedule_conflict.push(course1.id);
             break;

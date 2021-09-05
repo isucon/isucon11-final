@@ -61,14 +61,7 @@ export function tScoreInt(v: number, arr: number[]): number {
 // ----- float -----
 
 function isAllEqualFloat(arr: number[]): boolean {
-  if (
-    arr.some((v) => {
-      return arr[0] !== v;
-    })
-  ) {
-    return false;
-  }
-  return true;
+  return arr.every((v) => arr[0] === v);
 }
 
 function sumFloat(arr: number[]): number {
