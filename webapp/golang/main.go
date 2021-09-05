@@ -1209,13 +1209,15 @@ type AddClassResponse struct {
 func (h *handlers) AddClass(c echo.Context) error {
 	courseID := c.Param("courseID")
 
-	var count int
-	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
+	var course Course
+	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
-	}
-	if count == 0 {
+	} else if err == sql.ErrNoRows {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+	}
+	if course.Status != StatusInProgress {
+		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in-progress.")
 	}
 
 	var req AddClassRequest
