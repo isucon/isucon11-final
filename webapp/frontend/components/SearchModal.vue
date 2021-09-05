@@ -9,33 +9,31 @@
           科目検索
         </h3>
         <form class="flex-1 flex-col" @submit.prevent="onSubmitSearch()">
-          <div class="flex items-center">
-            <TextField
-              id="params-keywords"
-              v-model="params.keywords"
-              label="キーワード"
-              type="text"
-              placeholder="キーワードを入力してください"
-            />
-          </div>
+          <TextField
+            id="params-keywords"
+            v-model="params.keywords"
+            label="キーワード"
+            type="text"
+            placeholder="キーワードを入力してください"
+          />
           <div class="flex mt-4 space-x-2">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >科目</label
             >
-            <div class="">
+            <div class="flex flex-auto gap-1">
               <TextField
                 id="params-teacher"
+                class="flex-1"
                 v-model="params.teacher"
                 label="担当教員"
                 label-direction="vertical"
                 type="text"
                 placeholder="教員名を入力"
               />
-            </div>
-            <div class="flex items-center">
               <TextField
                 id="params-credit"
+                class="flex-1"
                 v-model="params.credit"
                 label="単位数"
                 label-direction="vertical"
@@ -43,44 +41,61 @@
                 min="1"
                 placeholder="単位数を入力"
               />
+              <Select
+                id="params-type"
+                class="flex-1"
+                v-model="params.type"
+                label="科目種別"
+                :options="[
+                  { text: '一般教養', value: 'liberal-arts' },
+                  { text: '専門', value: 'major-subjects' },
+                ]"
+              />
             </div>
-            <Select
-              id="params-type"
-              v-model="params.type"
-              label="科目種別"
-              :options="[
-                { text: '一般教養', value: 'liberal-arts' },
-                { text: '専門', value: 'major-subjects' },
-              ]"
-            />
           </div>
           <div class="flex mt-4 space-x-2">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >開講</label
             >
-            <Select
-              id="params-day-of-week"
-              label="曜日"
-              :options="[
-                { text: '月曜', value: 'monday' },
-                { text: '火曜', value: 'tuesday' },
-                { text: '水曜', value: 'wednesday' },
-                { text: '木曜', value: 'thursday' },
-                { text: '金曜', value: 'friday' },
-              ]"
-              :selected="params.dayOfWeek || selected.dayOfWeek"
-              @change="params.dayOfWeek = $event"
-            />
-            <Select
-              id="params-period"
-              label="時限"
-              :options="periods"
-              :selected="params.period || selected.period"
-              @change="params.period = $event"
-            />
+            <div class="flex flex-auto gap-1">
+              <Select
+                id="params-day-of-week"
+                class="flex-1"
+                label="曜日"
+                :options="[
+                  { text: '月曜', value: 'monday' },
+                  { text: '火曜', value: 'tuesday' },
+                  { text: '水曜', value: 'wednesday' },
+                  { text: '木曜', value: 'thursday' },
+                  { text: '金曜', value: 'friday' },
+                ]"
+                :selected="params.dayOfWeek || selected.dayOfWeek"
+                @change="params.dayOfWeek = $event"
+              />
+              <Select
+                id="params-period"
+                class="flex-1"
+                label="時限"
+                :options="periods"
+                :selected="params.period || selected.period"
+                @change="params.period = $event"
+              />
+              <Select
+                id="params-period"
+                class="flex-1"
+                label="ステータス"
+                :options="[
+                  { text: '履修登録中', value: 'registration' },
+                  { text: '開講中', value: 'in-progress' },
+                  { text: '閉講', value: 'closed' },
+                ]"
+                :selected="params.status || selected.status"
+                @change="params.status = $event"
+              />
+            </div>
           </div>
-          <div class="flex justify-center">
+          <div class="flex justify-center gap-2">
             <Button type="button" class="mt-6 flex-grow-0" @click="onClickReset"
               >リセット
             </Button>
@@ -102,6 +117,7 @@
                 <th>科目種別</th>
                 <th>時間</th>
                 <th>単位数</th>
+                <th>ステータス</th>
                 <th>担当</th>
                 <th></th>
               </tr>
@@ -128,7 +144,8 @@
                   <td>{{ formatType(c.type) }}</td>
                   <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
                   <td>{{ c.credit }}</td>
-                  <td>椅子 昆</td>
+                  <td>{{ formatStatus(c.status) }}</td>
+                  <td>{{ c.teacher }}</td>
                   <td>
                     <a
                       :href="`/syllabus/${c.id}`"
@@ -170,13 +187,14 @@ import TextField from './common/TextField.vue'
 import Select from './common/Select.vue'
 import Button from '~/components/common/Button.vue'
 import {
-  Course,
+  CourseStatus,
   CourseType,
   DayOfWeek,
   SearchCourseRequest,
+  SyllabusCourse,
 } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
-import { formatPeriod, formatType } from '~/helpers/course_helper'
+import { formatPeriod, formatStatus, formatType } from '~/helpers/course_helper'
 import Pagination from '~/components/common/Pagination.vue'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { PeriodCount } from '~/constants/calendar'
@@ -188,8 +206,8 @@ type Selected = {
 }
 
 type DataType = {
-  courses: Course[]
-  checkedCourses: Course[]
+  courses: SyllabusCourse[]
+  checkedCourses: SyllabusCourse[]
   params: SearchCourseRequest
   link: Partial<Link>
 }
@@ -201,6 +219,7 @@ const initParams = {
   teacher: '',
   period: undefined,
   dayOfWeek: '',
+  status: '',
 }
 
 export default Vue.extend({
@@ -216,7 +235,7 @@ export default Vue.extend({
       default: () => ({ dayOfWeek: undefined, period: undefined }),
     },
     value: {
-      type: Array as PropType<Course[]>,
+      type: Array as PropType<SyllabusCourse[]>,
       default: () => [],
       required: true,
     },
@@ -246,6 +265,9 @@ export default Vue.extend({
     formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
       return formatPeriod(dayOfWeek, period)
     },
+    formatStatus(status: CourseStatus): string {
+      return formatStatus(status)
+    },
     isChecked(courseId: string): boolean {
       const course = this.checkedCourses.find((v) => v.id === courseId)
       return course !== undefined
@@ -256,7 +278,7 @@ export default Vue.extend({
     async onSubmitSearch(query?: Record<string, any>): Promise<void> {
       const params = this.filterParams(this.params)
       try {
-        const res = await this.$axios.get<Course[]>('/api/syllabus', {
+        const res = await this.$axios.get<SyllabusCourse[]>('/api/syllabus', {
           params: { ...params, ...query },
         })
         if (res.status === 200) {
@@ -274,7 +296,7 @@ export default Vue.extend({
         notify('検索結果を取得できませんでした')
       }
     },
-    onChangeCheckbox(course: Course): void {
+    onChangeCheckbox(course: SyllabusCourse): void {
       const c = this.checkedCourses.find((v) => v.id === course.id)
       if (c) {
         this.checkedCourses = this.checkedCourses.filter(

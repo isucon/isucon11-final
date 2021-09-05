@@ -17,43 +17,44 @@ type UserAccount struct {
 
 type Student struct {
 	*UserAccount
-	RegisteringCourseLimit int
-	Agent                  *agent.Agent
+	Agent *agent.Agent
 
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
-	announcementCond      *sync.Cond
+	readAnnouncementCond  *sync.Cond
+	addAnnouncementCond   *sync.Cond
 	rmu                   sync.RWMutex
 
-	registeredSchedule [7][6]*Course // 空きコマ管理[DayOfWeek:7][Period:6]
+	registeredSchedule [5][6]*Course // 空きコマ管理[DayOfWeek:5][Period:6]
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
+	Dirty        bool // リクエストを送ったがタイムアウトになってしまったため、webapp側で既読になったかが定かではないことを表す
 	Unread       bool
 }
 
-func NewStudent(userData *UserAccount, baseURL *url.URL, regLimit int) *Student {
+func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	a, _ := agent.NewAgent()
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
 	s := &Student{
-		UserAccount:            userData,
-		RegisteringCourseLimit: regLimit,
-		Agent:                  a,
+		UserAccount: userData,
+		Agent:       a,
 
 		registeredCourses:     make([]*Course, 0, 20),
 		announcements:         make([]*AnnouncementStatus, 0, 100),
 		announcementIndexByID: make(map[string]int, 100),
 		rmu:                   sync.RWMutex{},
 
-		registeredSchedule: [7][6]*Course{},
+		registeredSchedule: [5][6]*Course{},
 		scheduleMutex:      sync.RWMutex{},
 	}
-	s.announcementCond = sync.NewCond(&s.rmu)
+	s.readAnnouncementCond = sync.NewCond(&s.rmu)
+	s.addAnnouncementCond = sync.NewCond(&s.rmu)
 	return s
 }
 
@@ -71,12 +72,44 @@ func (s *Student) Announcements() []*AnnouncementStatus {
 	return s.announcements
 }
 
+func (s *Student) AnnouncementsMap() map[string]*AnnouncementStatus {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	result := make(map[string]*AnnouncementStatus, len(s.announcements))
+	for _, announcement := range s.announcements {
+		tmp := *announcement
+		result[announcement.Announcement.ID] = &tmp
+	}
+	return result
+}
+
+func (s *Student) ExpectUnreadRange() (min, max int) {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	for _, a := range s.announcements {
+		if a.Unread {
+			if !a.Dirty {
+				min++
+			}
+			max++
+		}
+	}
+	return
+}
+
 func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.announcements = append(s.announcements, &AnnouncementStatus{announcement, true})
+	s.announcements = append(s.announcements, &AnnouncementStatus{
+		Announcement: announcement,
+		Dirty:        false,
+		Unread:       true,
+	})
 	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
+	s.addAnnouncementCond.Broadcast()
 }
 
 func (s *Student) GetAnnouncement(id string) *AnnouncementStatus {
@@ -97,16 +130,60 @@ func (s *Student) AnnouncementCount() int {
 	return len(s.announcements)
 }
 
+func (s *Student) MarkAnnouncementReadDirty(id string) {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	s.announcements[s.announcementIndexByID[id]].Dirty = true
+}
+
 func (s *Student) ReadAnnouncement(id string) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
+	s.announcements[s.announcementIndexByID[id]].Dirty = false
 	s.announcements[s.announcementIndexByID[id]].Unread = false
-	s.announcementCond.Broadcast()
+	s.readAnnouncementCond.Broadcast()
 }
 
 func (s *Student) isUnreadAnnouncement(id string) bool {
 	return s.announcements[s.announcementIndexByID[id]].Unread
+}
+
+func (s *Student) HasUnreadAnnouncement() bool {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	for _, anc := range s.announcements {
+		if anc.Unread {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Student) WaitNewUnreadAnnouncement(ctx context.Context) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-s.waitAddAnnouncement():
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (s *Student) waitAddAnnouncement() <-chan struct{} {
+	ch := make(chan struct{})
+	// MEMO: このgoroutineはWaitNewUnreadAnnouncementがctx.Done()で抜けた場合放置される
+	go func() {
+		s.addAnnouncementCond.L.Lock()
+		s.addAnnouncementCond.Wait()
+		s.addAnnouncementCond.L.Unlock()
+		close(ch)
+	}()
+	return ch
 }
 
 func (s *Student) WaitReadAnnouncement(ctx context.Context, id string) <-chan struct{} {
@@ -130,11 +207,11 @@ func (s *Student) waitReadAnnouncement(id string) <-chan struct{} {
 	s.rmu.RLock()
 	if s.isUnreadAnnouncement(id) {
 		go func() {
-			s.announcementCond.L.Lock()
+			s.readAnnouncementCond.L.Lock()
 			for s.isUnreadAnnouncement(id) {
-				s.announcementCond.Wait()
+				s.readAnnouncementCond.Wait()
 			}
-			s.announcementCond.L.Unlock()
+			s.readAnnouncementCond.L.Unlock()
 			close(ch)
 		}()
 	} else {
@@ -151,17 +228,12 @@ func (s *Student) RegisteringCount() int {
 	return s.registeringCount
 }
 
-func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
+func (s *Student) LockSchedule() {
 	s.scheduleMutex.Lock()
-	defer s.scheduleMutex.Unlock()
-
-	s.registeredSchedule[dayOfWeek][period] = nil
-	s.registeringCount--
 }
 
-// ScheduleMutex はstudent内で完結しない同期処理を行う際に利用
-func (s *Student) ScheduleMutex() *sync.RWMutex {
-	return &s.scheduleMutex
+func (s *Student) UnlockSchedule() {
+	s.scheduleMutex.Unlock()
 }
 
 // IsEmptyTimeSlots でコマを参照する場合は別途scheduleMutexで(R)Lockすること
@@ -175,6 +247,14 @@ func (s *Student) FillTimeslot(course *Course) {
 	s.registeringCount++
 }
 
+func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
+	s.scheduleMutex.Lock()
+	defer s.scheduleMutex.Unlock()
+
+	s.registeredSchedule[dayOfWeek][period] = nil
+	s.registeringCount--
+}
+
 func (s *Student) Courses() []*Course {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
@@ -185,7 +265,7 @@ func (s *Student) Courses() []*Course {
 	return res
 }
 
-func (s *Student) RegisteredSchedule() [7][6]*Course {
+func (s *Student) RegisteredSchedule() [5][6]*Course {
 	s.scheduleMutex.RLock()
 	defer s.scheduleMutex.RUnlock()
 
@@ -220,7 +300,10 @@ func (s *Student) TotalCredit() int {
 
 type Teacher struct {
 	*UserAccount
-	Agent *agent.Agent
+	Agent      *agent.Agent
+	IsLoggedIn bool
+
+	mu sync.Mutex
 }
 
 const teacherUserAgent = "isucholar-agent-teacher/1.0.0"
@@ -233,4 +316,16 @@ func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
 		UserAccount: userData,
 		Agent:       a,
 	}
+}
+
+func (t *Teacher) LoginOnce(f func(teacher *Teacher)) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.IsLoggedIn {
+		return true
+	}
+	f(t)
+
+	return t.IsLoggedIn
 }

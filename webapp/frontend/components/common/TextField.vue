@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-auto" :class="wrapperClass">
+  <div class="flex" :class="wrapperClass">
     <div class="flex-shrink-0 mr-2" :class="labelClass">
       <label class="text-gray-500 font-bold text-right" :for="id">
         {{ label }}
@@ -18,11 +18,12 @@
           px-4
           text-gray-700
           leading-tight
-          focus:outline-none focus:bg-white focus:border-purple-500
+          focus:outline-none focus:border-primary-500 focus:ring-0
         "
         :type="type"
         :placeholder="placeholder"
         :value="value"
+        :autocomplete="autocomplete"
         :min="min"
         :max="max"
         @input="$emit('input', $event.target.value)"
@@ -58,6 +59,10 @@ export default Vue.extend({
     value: {
       type: String,
       default: '',
+    },
+    autocomplete: {
+      type: String,
+      default: 'on',
     },
     min: {
       type: [String, Number],

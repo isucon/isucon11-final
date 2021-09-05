@@ -13,11 +13,11 @@ const config = {
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { hid: 'description', name: 'description', content: '' },
     ],
-    link: [{ rel: 'icon', color: 'image/x-icon', href: '/favicon.ico' }],
+    link: [{ rel: 'icon', color: 'image/svg+xml', href: '/favicon.svg' }],
   },
 
   // Global CSS: https://go.nuxtjs.dev/config-css
-  css: ['assets/style.css'],
+  css: ['@/assets/css/style.css'],
 
   // Plugins to run before rendering page: https://go.nuxtjs.dev/config-plugins
   plugins: ['~/plugins/axios'],
@@ -55,16 +55,7 @@ const config = {
   ],
 
   // Modules: https://go.nuxtjs.dev/config-modules
-  modules: [
-    // https://go.nuxtjs.dev/axios
-    '@nuxtjs/axios',
-    'cookie-universal-nuxt',
-  ],
-
-  // Axios module configuration: https://go.nuxtjs.dev/config-axios
-  axios: {
-    baseURL: process.env.API_HOST || 'http://localhost:8080',
-  },
+  modules: ['@nuxtjs/proxy', 'cookie-universal-nuxt'],
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {
@@ -104,7 +95,6 @@ const config = {
 
 const isProd = process.env.NODE_ENV === 'production'
 if (!isProd) {
-  config.axios.proxy = true
   config.proxy = {
     '/api/': 'http://localhost:7000',
     '/login': 'http://localhost:7000',

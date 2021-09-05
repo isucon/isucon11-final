@@ -138,11 +138,16 @@ export default Vue.extend({
   },
   methods: {
     async loadCourses() {
-      const user: User = await this.$axios.$get(`/api/users/me`)
-      const courses: Course[] = await this.$axios.$get(
-        `/api/syllabus?teacher=${user.name}`
-      )
-      this.courses = courses
+      try {
+        const resUser = await this.$axios.get<User>(`/api/users/me`)
+        const user = resUser.data
+        const resCourses = await this.$axios.get<Course[]>(
+          `/api/syllabus?teacher=${user.name}`
+        )
+        this.courses = resCourses.data
+      } catch (e) {
+        notify('科目の読み込みに失敗しました')
+      }
     },
     async submit() {
       this.params.createdAt = Math.floor(new Date().getTime() / 1000)
@@ -152,9 +157,19 @@ export default Vue.extend({
           this.params
         )
         notify('講義の登録が完了しました')
+
+        const params = {
+          title: `クラス追加: ${this.params.title}`,
+          message: `クラスが新しく追加されました: ${this.params.title}\n${this.params.description}`,
+          courseId: this.courseId,
+          createdAt: Math.floor(Date.now() / 1000), // ミリ秒を削除
+        }
+        await this.$axios.post(`/api/announcements`, params)
+
+        notify('講義の登録のお知らせ投稿が完了しました')
         this.close()
       } catch (e) {
-        notify('講義の登録に失敗しました')
+        notify('講義の登録またはお知らせ投稿に失敗しました')
         this.showAlert()
       }
     },

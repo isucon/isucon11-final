@@ -1,7 +1,24 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg w-8/12">
+    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
+        <div
+          class="
+            bg-yellow-100
+            border border-yellow-400
+            text-yellow-700
+            px-4
+            py-3
+            rounded
+            relative
+            mb-4
+          "
+          role="alert"
+        >
+          <span class="block sm:inline"
+            >本ページは工事中であり、UIは将来的に刷新される予定です。</span
+          >
+        </div>
         <section>
           <h1 class="text-2xl">科目</h1>
           <div class="py-4">

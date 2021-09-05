@@ -68,7 +68,7 @@ type SubmitFormData = {
 
 const statusOptions = [
   {
-    text: '履修登録受付中',
+    text: '履修登録中',
     value: 'registration',
   },
   {
@@ -76,7 +76,7 @@ const statusOptions = [
     value: 'in-progress',
   },
   {
-    text: '閉講済み',
+    text: '閉講',
     value: 'closed',
   },
 ]
@@ -130,11 +130,16 @@ export default Vue.extend({
   },
   methods: {
     async loadCourses() {
-      const user: User = await this.$axios.$get(`/api/users/me`)
-      const courses: Course[] = await this.$axios.$get(
-        `/api/syllabus?teacher=${user.name}`
-      )
-      this.courses = courses
+      try {
+        const resUser = await this.$axios.get<User>(`/api/users/me`)
+        const user = resUser.data
+        const resCourses = await this.$axios.get<Course[]>(
+          `/api/syllabus?teacher=${user.name}`
+        )
+        this.courses = resCourses.data
+      } catch (e) {
+        notify('科目の読み込みに失敗しました')
+      }
     },
     async submit() {
       try {

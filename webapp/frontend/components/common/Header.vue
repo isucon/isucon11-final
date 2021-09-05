@@ -7,12 +7,17 @@
       flex-wrap
       bg-primary-500
       p-6
-      shadow-lg
+      shadow
     "
   >
     <div class="flex-no-shrink text-white">
       <span class="text-xl tracking-tight">
-        <NuxtLink to="/">ISUCHOLAR</NuxtLink>
+        <NuxtLink to="/"
+          ><img
+            src="/image/header_logo_white.svg"
+            alt="isucholar logo"
+            class="h-12"
+        /></NuxtLink>
       </span>
     </div>
 
@@ -87,11 +92,9 @@ export default Vue.extend({
   async fetch() {
     try {
       const res = await this.$axios.get('/api/users/me')
-      if (res.status > 199 && res.status < 300) {
-        const me = res.data
-        this.code = me.code
-        this.isAdmin = me.isAdmin
-      }
+      const me = res.data
+      this.code = me.code
+      this.isAdmin = me.isAdmin
     } catch (e) {
       if (
         axios.isAxiosError(e) &&
@@ -117,12 +120,10 @@ export default Vue.extend({
     },
     async onClickLogout(event: Event) {
       event.preventDefault()
-      const res = await this.$axios.post('/logout')
-      if (res.status > 199 && res.status < 300) {
-        this.code = ''
-        this.isAdmin = false
-        await this.$router.push('/')
-      }
+      await this.$axios.post('/logout')
+      this.code = ''
+      this.isAdmin = false
+      await this.$router.push('/')
     },
   },
 })

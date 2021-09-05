@@ -96,7 +96,7 @@ type InitializeResponse struct {
 	Language string `json:"language"`
 }
 
-// Initialize 初期化エンドポイント
+// Initialize POST /initialize 初期化エンドポイント
 func (h *handlers) Initialize(c echo.Context) error {
 	dbForInit, _ := GetDB(true)
 
@@ -217,16 +217,14 @@ const (
 type DayOfWeek string
 
 const (
-	Sunday    DayOfWeek = "sunday"
 	Monday    DayOfWeek = "monday"
 	Tuesday   DayOfWeek = "tuesday"
 	Wednesday DayOfWeek = "wednesday"
 	Thursday  DayOfWeek = "thursday"
 	Friday    DayOfWeek = "friday"
-	Saturday  DayOfWeek = "saturday"
 )
 
-var daysOfWeek = []DayOfWeek{Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday}
+var daysOfWeek = []DayOfWeek{Monday, Tuesday, Wednesday, Thursday, Friday}
 
 type CourseStatus string
 
@@ -255,7 +253,7 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-// Login ログイン
+// Login POST /login ログイン
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
@@ -302,6 +300,7 @@ func (h *handlers) Login(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// Logout POST /logout ログアウト
 func (h *handlers) Logout(c echo.Context) error {
 	sess, err := session.Get(SessionName, c)
 	if err != nil {
@@ -328,6 +327,7 @@ type GetMeResponse struct {
 	IsAdmin bool   `json:"is_admin"`
 }
 
+// GetMe GET /api/users/me 自身の情報を取得
 func (h *handlers) GetMe(c echo.Context) error {
 	userID, userName, isAdmin, err := getUserInfo(c)
 	if err != nil {
@@ -356,7 +356,7 @@ type GetRegisteredCourseResponseContent struct {
 	DayOfWeek DayOfWeek `json:"day_of_week"`
 }
 
-// GetRegisteredCourses 履修中の科目一覧取得
+// GetRegisteredCourses GET /api/users/me/courses 履修中の科目一覧取得
 func (h *handlers) GetRegisteredCourses(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -405,6 +405,7 @@ type RegisterCoursesErrorResponse struct {
 	ScheduleConflict     []string `json:"schedule_conflict,omitempty"`
 }
 
+// RegisterCourses PUT /api/users/me/courses 履修登録
 func (h *handlers) RegisterCourses(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -445,7 +446,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 			continue
 		}
 
-		// MEMO: すでに履修登録済みの科目は無視する
+		// すでに履修登録済みの科目は無視する
 		var count int
 		if err := tx.Get(&count, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", course.ID, userID); err != nil {
 			c.Logger().Error(err)
@@ -458,7 +459,6 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		newlyAdded = append(newlyAdded, course)
 	}
 
-	// MEMO: スケジュールの重複バリデーション
 	var alreadyRegistered []Course
 	query := "SELECT `courses`.*" +
 		" FROM `courses`" +
@@ -541,6 +541,7 @@ type ClassScore struct {
 	Submitters int    `json:"submitters"` // 提出した生徒数
 }
 
+// GetGrades GET /api/users/me/grades 成績取得
 func (h *handlers) GetGrades(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -564,7 +565,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	myGPA := 0.0
 	myCredits := 0
 	for _, course := range registeredCourses {
-		// クラス一覧の取得
+		// 講義一覧の取得
 		var classes []Class
 		query = "SELECT *" +
 			" FROM `classes`" +
@@ -575,7 +576,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		// クラス毎の成績計算処理
+		// 講義毎の成績計算処理
 		classScores := make([]ClassScore, 0, len(classes))
 		var myTotalScore int
 		for _, class := range classes {
@@ -682,7 +683,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// SearchCourses 科目検索
+// SearchCourses GET /api/syllabus 科目検索
 func (h *handlers) SearchCourses(c echo.Context) error {
 	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
@@ -690,7 +691,6 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 	var condition string
 	var args []interface{}
 
-	// MEMO: 検索条件はtype, credit, teacher, period, day_of_weekの完全一致とname, keywordsの部分一致
 	// 無効な検索条件はエラーを返さず無視して良い
 
 	if courseType := c.QueryParam("type"); courseType != "" {
@@ -740,7 +740,6 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 
 	condition += " ORDER BY `courses`.`code`"
 
-	// MEMO: ページングの初期実装はページ番号形式
 	var page int
 	if c.QueryParam("page") == "" {
 		page = 1
@@ -809,7 +808,7 @@ type GetCourseDetailResponse struct {
 	Teacher     string       `json:"teacher" db:"teacher"`
 }
 
-// GetCourseDetail 科目詳細の取得
+// GetCourseDetail GET /api/syllabus/:courseID 科目詳細の取得
 func (h *handlers) GetCourseDetail(c echo.Context) error {
 	courseID := c.Param("courseID")
 
@@ -843,7 +842,7 @@ type AddCourseResponse struct {
 	ID string `json:"id"`
 }
 
-// AddCourse 新規科目登録
+// AddCourse POST /api/courses 新規科目登録
 func (h *handlers) AddCourse(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -870,21 +869,22 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var course Course
-	if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `code` = ?", req.Code); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == nil {
-		if req.Type != course.Type || req.Name != course.Name || req.Description != course.Description || req.Credit != int(course.Credit) || req.Period != int(course.Period) || req.DayOfWeek != course.DayOfWeek || req.Keywords != course.Keywords {
-			return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
-		}
-		return c.JSON(http.StatusCreated, AddCourseResponse{ID: course.ID})
-	}
-
 	courseID := uuid.New()
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
+		_ = tx.Rollback()
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			var course Course
+			if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `code` = ?", req.Code); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if req.Type != course.Type || req.Name != course.Name || req.Description != course.Description || req.Credit != int(course.Credit) || req.Period != int(course.Period) || req.DayOfWeek != course.DayOfWeek || req.Keywords != course.Keywords {
+				return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
+			}
+			return c.JSON(http.StatusCreated, AddCourseResponse{ID: course.ID})
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -901,7 +901,7 @@ type SetCourseStatusRequest struct {
 	Status CourseStatus `json:"status"`
 }
 
-// SetCourseStatus 科目のステータスを変更
+// SetCourseStatus PUT /api/courses/:courseID/status 科目のステータスを変更
 func (h *handlers) SetCourseStatus(c echo.Context) error {
 	courseID := c.Param("courseID")
 
@@ -944,7 +944,7 @@ type GetClassResponse struct {
 	Submitted        bool   `json:"submitted"`
 }
 
-// GetClasses 科目に紐づくクラス一覧の取得
+// GetClasses GET /api/courses/:courseID/classes 科目に紐づく講義一覧の取得
 func (h *handlers) GetClasses(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -963,7 +963,6 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
-	// MEMO: N+1にしても良い
 	var classes []ClassWithSubmitted
 	query := "SELECT `classes`.*, `submissions`.`user_id` IS NOT NULL AS `submitted`" +
 		" FROM `classes`" +
@@ -991,7 +990,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// SubmitAssignment 課題ファイルのアップロード
+// SubmitAssignment POST /api/courses/:courseID/classes/:classID/assignments 課題の提出
 func (h *handlers) SubmitAssignment(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -1046,10 +1045,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 	defer file.Close()
 
-	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?)", userID, classID, header.Filename); err != nil {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
-			return echo.NewHTTPError(http.StatusBadRequest, "You have already submitted to this assignment.")
-		}
+	if _, err := tx.Exec("INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `file_name` = VALUES(`file_name`)", userID, classID, header.Filename); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1079,6 +1075,7 @@ type Score struct {
 	Score    int    `json:"score"`
 }
 
+// RegisterScores PUT /api/courses/:courseID/classes/:classID/assignments/scores 成績登録
 func (h *handlers) RegisterScores(c echo.Context) error {
 	classID := c.Param("classID")
 
@@ -1127,7 +1124,7 @@ type Submission struct {
 	FileName string `db:"file_name"`
 }
 
-// DownloadSubmittedAssignments 提出済みの課題ファイルをzip形式で一括ダウンロード
+// DownloadSubmittedAssignments GET /api/courses/:courseID/classes/:classID/assignments/export 提出済みの課題ファイルをzip形式で一括ダウンロード
 func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	classID := c.Param("classID")
 
@@ -1138,12 +1135,13 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var submissionClosed bool
-	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
-	} else if err != nil {
+	var classCount int
+	if err := tx.Get(&classCount, "SELECT COUNT(*) FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if classCount == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	}
 	var submissions []Submission
 	query := "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +
@@ -1208,18 +1206,9 @@ type AddClassResponse struct {
 	ClassID string `json:"class_id"`
 }
 
-// AddClass 新規クラス(&課題)追加
+// AddClass POST /api/courses/:courseID/classes 新規講義(&課題)追加
 func (h *handlers) AddClass(c echo.Context) error {
 	courseID := c.Param("courseID")
-
-	var count int
-	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if count == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
-	}
 
 	var req AddClassRequest
 	if err := c.Bind(&req); err != nil {
@@ -1233,20 +1222,32 @@ func (h *handlers) AddClass(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var class Class
-	if err := tx.Get(&class, "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil && err != sql.ErrNoRows {
+	var course Course
+	if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
-	} else if err == nil {
-		if req.Title != class.Title || req.Description != class.Description {
-			return echo.NewHTTPError(http.StatusConflict, "A class with the same part already exists.")
-		}
-		return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+	}
+	if course.Status != StatusInProgress {
+		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in-progress.")
 	}
 
 	classID := uuid.New()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
+		_ = tx.Rollback()
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			var class Class
+			if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if req.Title != class.Title || req.Description != class.Description {
+				return echo.NewHTTPError(http.StatusConflict, "A class with the same part already exists.")
+			}
+			return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1282,7 +1283,7 @@ type AnnouncementResponse struct {
 	CreatedAt  int64  `json:"created_at"`
 }
 
-// GetAnnouncementList お知らせ一覧取得
+// GetAnnouncementList GET /api/announcements お知らせ一覧取得
 func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -1292,7 +1293,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	var announcements []AnnouncementWithoutDetail
 	var args []interface{}
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
 		" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
@@ -1310,7 +1311,6 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		" LIMIT ? OFFSET ?"
 	args = append(args, userID, userID)
 
-	// MEMO: ページングの初期実装はページ番号形式
 	var page int
 	if c.QueryParam("page") == "" {
 		page = 1
@@ -1331,7 +1331,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	var unreadCount int
-	if err := h.DB.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND `deleted_at` IS NULL", userID); err != nil {
+	if err := h.DB.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`", userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1401,6 +1401,7 @@ type GetAnnouncementDetailResponse struct {
 	CreatedAt  int64  `json:"created_at"`
 }
 
+// GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
 func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
 	if err != nil {
@@ -1411,7 +1412,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	announcementID := c.Param("announcementID")
 
 	var announcement AnnouncementDetail
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, `unread_announcements`.`deleted_at` IS NULL AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`, `announcements`.`created_at`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
 		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
@@ -1433,7 +1434,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
 	}
 
-	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `deleted_at` = NOW() WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1449,6 +1450,14 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	})
 }
 
+type Announcement struct {
+	ID        string    `db:"id"`
+	CourseID  string    `db:"course_id"`
+	Title     string    `db:"title"`
+	Message   string    `db:"message"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
 type AddAnnouncementRequest struct {
 	CourseID  string `json:"course_id"`
 	Title     string `json:"title"`
@@ -1460,7 +1469,7 @@ type AddAnnouncementResponse struct {
 	ID string `json:"id"`
 }
 
-// AddAnnouncement 新規お知らせ追加
+// AddAnnouncement POST /api/announcements 新規お知らせ追加
 func (h *handlers) AddAnnouncement(c echo.Context) error {
 	var req AddAnnouncementRequest
 	if err := c.Bind(&req); err != nil {
@@ -1483,18 +1492,22 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var existingAnnouncementID string
-	if err := tx.Get(&existingAnnouncementID, "SELECT `id` FROM `announcements` WHERE `course_id` = ? AND `title` = ? AND `message` = ? AND `created_at` = ?", req.CourseID, req.Title, req.Message, req.CreatedAt); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == nil {
-		return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: existingAnnouncementID})
-	}
-
 	announcementID := uuid.New()
 	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
 		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
+		_ = tx.Rollback()
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			var announcement Announcement
+			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?", req.CourseID, createdAt); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if announcement.CourseID != req.CourseID || announcement.Title != req.Title || announcement.Message != req.Message {
+				return echo.NewHTTPError(http.StatusConflict, "An announcement with the same course_id and created_at already exists.")
+			}
+			return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcement.ID})
+		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}

@@ -11,15 +11,12 @@ import (
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
+
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
 	"github.com/isucon/isucon11-final/benchmarker/util"
-)
-
-const (
-	validateAnnouncementsRate = 1.0
 )
 
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
@@ -39,6 +36,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errTimeout := failure.NewError(fails.ErrCritical, fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
 	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
+	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
 
@@ -53,9 +51,10 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			defer wg.Done()
 
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
-			var responseUnreadCount int // responseに含まれるunread_count
+			// responseに含まれるunread_count
+			var responseUnreadCounts []int
 			actualAnnouncements := map[string]api.AnnouncementResponse{}
 			lastCreatedAt := int64(math.MaxInt64)
 
@@ -68,10 +67,9 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				// UnreadCount は各ページのレスポンスですべて同じ値が返ってくるはず
-				if next == "" {
-					responseUnreadCount = res.UnreadCount
-				} else if responseUnreadCount != res.UnreadCount {
+				// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
+				responseUnreadCounts = append(responseUnreadCounts, res.UnreadCount)
+				if responseUnreadCounts[0] != res.UnreadCount {
 					step.AddError(errNotMatchUnreadCount)
 					return
 				}
@@ -107,7 +105,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					actualUnreadCount++
 				}
 			}
-			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCount) {
+			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
 				step.AddError(errNotMatchUnreadCount)
 				return
 			}
@@ -123,12 +121,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				// ベンチ内データが既読の場合のみUnreadの検証を行う
+				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-				if !expectStatus.Unread {
+				if !expectStatus.Dirty {
 					if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
-						AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
-						step.AddError(errNotMatchOver)
+						AdminLogger.Printf("unread mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
+						step.AddError(errNotMatch)
 						return
 					}
 				}
@@ -138,10 +136,22 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
 					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
 					!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
-					AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
-					step.AddError(errNotMatchOver)
+					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
+					step.AddError(errNotMatch)
 					return
 				}
+			}
+
+			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
+				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
+				step.AddError(errNotMatchOver)
+				return
+			}
+
+			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
+			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
+				step.AddError(errNotMatchUnreadCount)
+				return
 			}
 		}()
 	}
@@ -153,7 +163,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Course が見つかりました"))
 
 	students := s.ActiveStudents()
-	expectCourses := s.Courses()
+	expectCourses := s.CourseManager.ExposeCoursesForValidation()
 
 	if len(students) == 0 || len(expectCourses) == 0 {
 		return
@@ -162,14 +172,8 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	// searchAPIを叩くユーザ
 	student := students[0]
 
-	_, err := LoginAction(ctx, student.Agent, student.UserAccount)
-	if err != nil {
-		step.AddError(failure.NewError(fails.ErrCritical, err))
-		return
-	}
-
 	var actuals []*api.GetCourseDetailResponse
-	// 空検索パラメータで全部ページング → コースをすべて集める
+	// 空検索パラメータで全部ページング → 科目をすべて集める
 	nextPathParam := "/api/syllabus"
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
@@ -204,7 +208,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			!AssertEqual("course Teacher", expect.Teacher().Name, actual.Teacher) ||
 			// webappは1-6, benchは0-5
 			!AssertEqual("course Period", uint8(expect.Period+1), actual.Period) ||
-			// webappはMonday..., benchは0-6
+			// webappはMonday..., benchは0-4
 			!AssertEqual("course DayOfWeek", api.DayOfWeekTable[expect.DayOfWeek], actual.DayOfWeek) ||
 			!AssertEqual("course Keywords", expect.Keywords, actual.Keywords) ||
 			!AssertEqual("course Description", expect.Description, actual.Description) {
@@ -236,23 +240,11 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			i++
 		}
 		user := user
-		p.Do(func(ctx context.Context) {
+		err := p.Do(func(ctx context.Context) {
 			// 1〜5秒ランダムに待つ
-			<-time.After(time.Duration(rand.Int63n(5)+1) * time.Second)
+			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
-			courses := user.Courses()
-			courseResults := make(map[string]*model.CourseResult, len(courses))
-			for _, course := range courses {
-				result := course.CalcCourseResultByStudentCode(user.Code)
-				if result == nil {
-					panic("unreachable! userCode:" + user.Code)
-				}
-
-				courseResults[course.Code] = result
-			}
-
-			summary := calculateSummary(users, user.Code)
-			expected := model.NewGradeRes(summary, courseResults)
+			expected := calculateGradeRes(user, users)
 
 			_, res, err := GetGradeAction(ctx, user.Agent)
 			if err != nil {
@@ -260,12 +252,15 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 				return
 			}
 
-			err = validateUserGrade(&expected, &res, len(users))
+			err = validateUserGrade(&expected, &res)
 			if err != nil {
 				step.AddError(err)
 				return
 			}
 		})
+		if err != nil {
+			panic(fmt.Errorf("unreachable! %w", err))
+		}
 	}
 
 	p.Wait()
@@ -273,13 +268,13 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	return
 }
 
-func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, studentCount int) error {
+func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
 	if len(expected.CourseResults) != len(actual.CourseResults) {
 		AdminLogger.Println("courseResult len. expected: ", len(expected.CourseResults), "actual: ", len(actual.CourseResults))
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません"))
 	}
 
-	err := validateSummary(&expected.Summary, &actual.Summary, studentCount)
+	err := validateSummary(&expected.Summary, &actual.Summary)
 	if err != nil {
 		return err
 	}
@@ -300,37 +295,35 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, s
 	return nil
 }
 
-func validateSummary(expected *model.Summary, actual *api.Summary, studentCount int) error {
+func validateSummary(expected *model.Summary, actual *api.Summary) error {
 	if expected.Credits != actual.Credits {
 		AdminLogger.Println("credits. expected: ", expected.Credits, "actual: ", actual.Credits)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
 	}
 
-	// これは適当
-	acceptableGpaError := 0.5
-	if math.Abs(expected.GPA-actual.GPA) > acceptableGpaError {
+	if math.Abs(expected.GPA-actual.GPA) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpa. expected: ", expected.GPA, "actual: ", actual.GPA)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません"))
 	}
 
-	if math.Abs(expected.GpaAvg-actual.GpaAvg) > acceptableGpaError/float64(studentCount) {
+	if math.Abs(expected.GpaAvg-actual.GpaAvg) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpaavg. expected: ", expected.GpaAvg, "actual: ", actual.GpaAvg)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaAvgが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_avgが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMax-actual.GpaMax) > acceptableGpaError {
+	if math.Abs(expected.GpaMax-actual.GpaMax) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpamax. expected: ", expected.GpaMax, "actual: ", actual.GpaMax)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMaxが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_maxが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMin-actual.GpaMin) > acceptableGpaError {
+	if math.Abs(expected.GpaMin-actual.GpaMin) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpamin. expected: ", expected.GpaMin, "actual: ", actual.GpaMin)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaMinが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_minが一致しません"))
 	}
 
-	if math.Abs(expected.GpaTScore-actual.GpaTScore) > acceptableGpaError {
+	if math.Abs(expected.GpaTScore-actual.GpaTScore) > validateGPAErrorTolerance {
 		AdminLogger.Println("gpatscore. expected: ", expected.GpaTScore, "actual: ", actual.GpaTScore)
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaTScoreが一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_t_scoreが一致しません"))
 	}
 
 	return nil
@@ -362,16 +355,12 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
 	}
 
-	// これは適当
-	acceptableGpaError := 0.5
-
-	// 決め打ちで5にした
-	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > acceptableGpaError/5 {
+	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > validateTotalScoreErrorTolerance {
 		AdminLogger.Println("TotalScoreAvg. expected: ", expected.TotalScoreAvg, "actual: ", actual.TotalScoreAvg)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
 	}
 
-	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > acceptableGpaError {
+	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > validateTotalScoreErrorTolerance {
 		AdminLogger.Println("TotalScoreTScore. expected: ", expected.TotalScoreTScore, "actual: ", actual.TotalScoreTScore)
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
 	}
@@ -416,11 +405,26 @@ func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) erro
 
 	if expected.SubmitterCount != actual.Submitters {
 		AdminLogger.Println("submitters. expected: ", expected.SubmitterCount, "actual: ", actual.Submitters)
-		// TODO: 課題提出もリトライをする
-		// return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題の提出者の数が一致しません"))
+		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題提出者の数が一致しません"))
 	}
 
 	return nil
+}
+
+func calculateGradeRes(student *model.Student, students map[string]*model.Student) model.GradeRes {
+	courses := student.Courses()
+	courseResults := make(map[string]*model.CourseResult, len(courses))
+	for _, course := range courses {
+		result := course.CalcCourseResultByStudentCode(student.Code)
+		if result == nil {
+			panic("unreachable! userCode:" + student.Code)
+		}
+
+		courseResults[course.Code] = result
+	}
+
+	summary := calculateSummary(students, student.Code)
+	return model.NewGradeRes(summary, courseResults)
 }
 
 // userCodeがstudentsの中にないとpanicしたり返り値が変な値になったりする

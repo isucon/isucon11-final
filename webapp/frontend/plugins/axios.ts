@@ -1,10 +1,12 @@
-import camelCaseKeys from 'camelcase-keys'
+import { Plugin } from '@nuxt/types'
+import Axios from 'axios'
 import snakecaseKeys from 'snakecase-keys'
+import camelCaseKeys from 'camelcase-keys'
 
-export default function ({ $axios }) {
-  $axios.onRequest((request) => {
+const axios: Plugin = (context, inject) => {
+  Axios.interceptors.request.use((request) => {
     if (request.data instanceof FormData) {
-      return
+      return request
     }
 
     if (request.params) {
@@ -13,18 +15,27 @@ export default function ({ $axios }) {
     if (request.data) {
       request.data = snakecaseKeys(request.data)
     }
+
+    return request
   })
 
-  $axios.onResponse((response) => {
+  Axios.interceptors.response.use((response) => {
     if (
       !response.headers['content-type'] ||
       !response.headers['content-type'].includes('application/json')
     ) {
-      return
+      return response
     }
 
     response.data = camelCaseKeys(response.data, {
       deep: true,
     })
+
+    return response
   })
+
+  context.$axios = Axios
+  inject('axios', Axios)
 }
+
+export default axios

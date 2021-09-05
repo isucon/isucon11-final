@@ -29,12 +29,6 @@ import (
 // param: http.Response, 検証用modelオブジェクト
 // return: error
 
-// TODO: 決め打ちではなく外から指定できるようにする
-const (
-	searchCourseVerifyRate = 0.2
-	assignmentsVerifyRate  = 0.2
-)
-
 func errInvalidStatusCode(res *http.Response, expected []int) error {
 	str := ""
 	for _, v := range expected {
@@ -56,6 +50,13 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 		}
 	}
 	return errInvalidStatusCode(res, allowedStatusCodes)
+}
+
+func verifyInitialize(res api.InitializeResponse) error {
+	if res.Language == "" {
+		return errInvalidResponse("initialize のレスポンスに利用言語が設定されていません")
+	}
+	return nil
 }
 
 func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, expectedAdminFlag bool) error {
@@ -176,19 +177,17 @@ func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expe
 	return nil
 }
 
-func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expectedSchedule [7][6]*model.Course) error {
+func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expectedSchedule [5][6]*model.Course) error {
 	// DayOfWeekの逆引きテーブル（string -> int）
 	dayOfWeekIndexTable := map[api.DayOfWeek]int{
-		"sunday":    0,
-		"monday":    1,
-		"tuesday":   2,
-		"wednesday": 3,
-		"thursday":  4,
-		"friday":    5,
-		"saturday":  6,
+		"monday":    0,
+		"tuesday":   1,
+		"wednesday": 2,
+		"thursday":  3,
+		"friday":    4,
 	}
 
-	actualSchedule := [7][6]*api.GetRegisteredCourseResponseContent{}
+	actualSchedule := [5][6]*api.GetRegisteredCourseResponseContent{}
 	for _, resContent := range res {
 		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
 		if !ok {
@@ -205,10 +204,10 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expe
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
 	}
 
-	// コースの終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
+	// 科目の終了処理は履修済み科目取得のリクエストと並列で走るため、ベンチに存在する科目(registeredSchedule)がレスポンスに存在しないことは許容する。
 	// ただし、registeredScheduleは履修済み科目取得のリクエスト直前に取得してそれ以降削除されず、また履修登録は直列であるため、レスポンスに存在する科目は必ずベンチにも存在することを期待する。
 	// したがって、レスポンスに含まれる科目はベンチにある科目(registeredSchedule)の部分集合であることを確認すれば十分である。
-	for d := 0; d < 7; d++ {
+	for d := 0; d < 5; d++ {
 		for p := 0; p < 6; p++ {
 			if actualSchedule[d][p] != nil {
 				if expectedSchedule[d][p] != nil {
@@ -226,24 +225,24 @@ func verifyRegisteredCourses(res []*api.GetRegisteredCourseResponseContent, expe
 }
 
 func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
-	if param.Type != "" && res.Type != api.CourseType(param.Type) {
+	if param.Type != "" && !AssertEqual("course type", api.CourseType(param.Type), res.Type) {
 		return errInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています")
 	}
 
-	if param.Credit != 0 && res.Credit != uint8(param.Credit) {
+	if param.Credit != 0 && !AssertEqual("course credit", uint8(param.Credit), res.Credit) {
 		return errInvalidResponse("科目検索結果に検索条件の単位数と一致しない科目が含まれています")
 	}
 
-	if param.Teacher != "" && res.Teacher != param.Teacher {
+	if param.Teacher != "" && !AssertEqual("course teacher", param.Teacher, res.Teacher) {
 		return errInvalidResponse("科目検索結果に検索条件の講師と一致しない科目が含まれています")
 	}
 
 	// resは1-6, paramは0-5
-	if param.Period != -1 && res.Period != uint8(param.Period+1) {
+	if param.Period != -1 && !AssertEqual("course period", uint8(param.Period+1), res.Period) {
 		return errInvalidResponse("科目検索結果に検索条件の時限と一致しない科目が含まれています")
 	}
 
-	if param.DayOfWeek != -1 && res.DayOfWeek != api.DayOfWeekTable[param.DayOfWeek] {
+	if param.DayOfWeek != -1 && !AssertEqual("course DoW", api.DayOfWeekTable[param.DayOfWeek], res.DayOfWeek) {
 		return errInvalidResponse("科目検索結果に検索条件の曜日と一致しない科目が含まれています")
 	}
 
@@ -262,6 +261,7 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 	}
 
 	if !isNameHit && !isKeywordsHit {
+		AdminLogger.Printf("name / keyword not match: expect: %v, acutual: %s", param.Keywords, res.Keywords)
 		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
 	}
 
@@ -327,7 +327,7 @@ func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Cou
 	return nil
 }
 
-func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
+func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announcementStatus *model.AnnouncementStatus) error {
 	if res.CourseID != announcementStatus.Announcement.CourseID {
 		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
 	}
@@ -348,9 +348,9 @@ func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus 
 		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
 	}
 
-	// ベンチ内データが既読の場合のみUnreadの検証を行う
+	// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-	if !announcementStatus.Unread {
+	if !announcementStatus.Dirty {
 		if !AssertEqual("announce unread", announcementStatus.Unread, res.Unread) {
 			return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
 		}
@@ -360,49 +360,35 @@ func verifyAnnouncementDetail(res *api.AnnouncementResponse, announcementStatus 
 }
 
 // お知らせ一覧の中身の検証
-// TODO: ヘルパ関数作ってverifyAnnouncementとまとめても良いかも
-func verifyAnnouncementsContent(res *api.AnnouncementResponse, announcementStatus *model.AnnouncementStatus) error {
-	if res.CourseID != announcementStatus.Announcement.CourseID {
-		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
-	}
-
-	if res.CourseName != announcementStatus.Announcement.CourseName {
-		return errInvalidResponse("お知らせの講義名が期待する値と一致しません")
-	}
-
-	if res.Title != announcementStatus.Announcement.Title {
-		return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
-	}
-
-	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
-		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
-	}
-
-	// ベンチ内データが既読の場合のみUnreadの検証を行う
-	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-	if !announcementStatus.Unread {
-		if !AssertEqual("announce unread", announcementStatus.Unread, res.Unread) {
-			return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
-		}
-	}
-
-	return nil
-}
-
-func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Student) error {
+func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[string]*model.AnnouncementStatus, verifyUnread bool) error {
 	// リストの中身の検証
-	// MEMO: ランダムで数件チェックにしてもいいかも
-	// MEMO: unreadだけ返すとハックできそう
-	for _, announcement := range res.Announcements {
-		announcementStatus := student.GetAnnouncement(announcement.ID)
-		if announcementStatus == nil {
-			// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
+	for _, actual := range res.Announcements {
+		expectStatus, ok := expectList[actual.ID]
+		if !ok {
+			// webappでは認識されているが、ベンチではまだ認識されていないお知らせ（お知らせ登録がリトライ中の場合発生）
 			// load中には検証できないのでskip
 			continue
 		}
 
-		if err := verifyAnnouncementsContent(&announcement, announcementStatus); err != nil {
-			return err
+		if !AssertEqual("announcement list course id", expectStatus.Announcement.CourseID, actual.CourseID) {
+			return errInvalidResponse("お知らせの科目IDが期待する値と一致しません")
+		}
+		if !AssertEqual("announcement list course name", expectStatus.Announcement.CourseName, actual.CourseName) {
+			return errInvalidResponse("お知らせの科目名が期待する値と一致しません")
+		}
+		if !AssertEqual("announcement list title", expectStatus.Announcement.Title, actual.Title) {
+			return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
+		}
+		if !AssertEqual("announcement create_at", expectStatus.Announcement.CreatedAt, actual.CreatedAt) {
+			return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
+		}
+
+		// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
+		// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+		if verifyUnread && !expectStatus.Dirty {
+			if !AssertEqual("announce unread", expectStatus.Unread, actual.Unread) {
+				return errInvalidResponse("お知らせの未読/既読状態が期待する値と一致しません")
+			}
 		}
 	}
 
@@ -413,7 +399,7 @@ func verifyAnnouncements(res *api.GetAnnouncementsResponse, student *model.Stude
 		}
 	}
 
-	// MEMO: res.UnreadCountはload中には検証できなさそう
+	// MEMO: res.UnreadCountはload中には検証できない
 
 	return nil
 }

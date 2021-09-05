@@ -1,38 +1,26 @@
 <template>
-  <div class="mt-7 flex-grow-0">
+  <div>
     <Accordion @open="$emit('open', $event)" @close="$emit('close', $event)">
       <template #header>
-        <div class="text-2xl text-primary-500 flex items-center mb-1">
-          <span class="font-light mr-2">
-            {{ announcement.courseName }}
-          </span>
-          <span class="font-bold">
+        <div class="text-xl text-primary-500 flex items-center justify-between">
+          <span>
             {{ announcement.title }}
           </span>
+          <span
+            v-if="announcement.unread"
+            class="ml-2 py-1 px-2 text-xs text-white rounded bg-primary-500"
+            >未読</span
+          >
         </div>
-        <div class="mb-4 flex items-center">
+        <div class="flex items-center">
           <fa-icon class="text-gray-500" :icon="['far', 'clock']" size="sm" />
           <span class="text-gray-500 text-sm mr-2">
             {{ announcement.createdAt }}
           </span>
-          <template v-if="announcement.unread">
-            <span
-              class="
-                pt-1
-                pl-2
-                pr-2
-                pb-1
-                text-xs text-white
-                rounded-sm
-                bg-primary-500
-              "
-              >未読</span
-            >
-          </template>
         </div>
       </template>
       <template #default>
-        <p class="text-black text-base break-all mb-4">
+        <p class="text-black text-base break-all">
           {{ announcement.message || '' }}
         </p>
       </template>

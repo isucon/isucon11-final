@@ -50,7 +50,7 @@ resource "aws_instance" "bench" {
 }
 
 resource "aws_instance" "bench-test" {
-  count = 1
+  count = 2
 
   #ami           = data.aws_ami.bench.id
   ami           = "ami-01208ab070571fa58"

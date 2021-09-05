@@ -28,18 +28,25 @@ const (
 	RequestDuration = 100
 )
 
-func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, error) {
+func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.InitializeResponse, error) {
+	res := api.InitializeResponse{}
 	hres, err := api.Initialize(ctx, agent)
 	if err != nil {
-		return hres, err
+		return hres, res, err
 	}
+	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return hres, err
+		return hres, res, err
 	}
 
-	return hres, nil
+	err = json.NewDecoder(hres.Body).Decode(&res)
+	if err != nil {
+		return hres, res, failure.NewError(fails.ErrHTTP, err)
+	}
+
+	return hres, res, nil
 }
 
 func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.UserAccount) (*http.Response, error) {
@@ -53,7 +60,7 @@ func LoginAction(ctx context.Context, agent *agent.Agent, useraccount *model.Use
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusBadRequest, http.StatusForbidden})
+	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
 		return hres, err
 	}
@@ -69,7 +76,7 @@ func GetMeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.G
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -90,7 +97,7 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -110,7 +117,7 @@ func GetRegisteredCoursesAction(ctx context.Context, agent *agent.Agent) (*http.
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, nil, err
 	}
@@ -152,7 +159,7 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 		defer hres.Body.Close()
 	}
 
-	err := verifyStatusCode(hres, []int{http.StatusOK})
+	err := verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, nil, err
 	}
@@ -174,7 +181,7 @@ func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -187,24 +194,35 @@ func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (
 	return hres, res, nil
 }
 
-func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, error) {
+func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model.Course) (*http.Response, api.RegisterCoursesErrorResponse, error) {
 	req := make([]api.RegisterCourseRequestContent, 0, len(courses))
 	for _, c := range courses {
 		req = append(req, api.RegisterCourseRequestContent{ID: c.ID})
 	}
 
+	eres := api.RegisterCoursesErrorResponse{}
 	hres, err := api.RegisterCourses(ctx, agent, req)
 	if err != nil {
-		return hres, failure.NewError(fails.ErrHTTP, err)
+		return hres, eres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK})
 	if err != nil {
-		return hres, err
+		// 400のときはエラー内容が返ってくるのでレスポンスをデコードする
+		if hres.StatusCode == http.StatusBadRequest {
+			decodeErr := json.NewDecoder(hres.Body).Decode(&eres)
+			if decodeErr != nil {
+				return hres, eres, failure.NewError(fails.ErrHTTP, decodeErr)
+			}
+
+			return hres, eres, err
+		}
+
+		return hres, eres, err
 	}
 
-	return hres, nil
+	return hres, eres, nil
 }
 
 func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.GetAnnouncementsResponse, error) {
@@ -218,7 +236,7 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -231,15 +249,15 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	return hres, res, nil
 }
 
-func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.AnnouncementResponse, error) {
-	res := api.AnnouncementResponse{}
+func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id string) (*http.Response, api.GetAnnouncementDetailResponse, error) {
+	res := api.GetAnnouncementDetailResponse{}
 	hres, err := api.GetAnnouncementDetail(ctx, agent, id)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -287,7 +305,7 @@ func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) 
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, res, err
 	}
@@ -327,7 +345,13 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	return hres, res, nil
 }
 
-func AddCourseAction(ctx context.Context, teacher *model.Teacher, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
+func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.CourseParam) (*http.Response, api.AddCourseResponse, error) {
+	// 不正な param.DayOfWeek は空文字列として送信してprepareの異常系チェックに使用する
+	var dayOfWeek api.DayOfWeek
+	if 0 <= param.DayOfWeek && param.DayOfWeek < len(api.DayOfWeekTable) {
+		dayOfWeek = api.DayOfWeekTable[param.DayOfWeek]
+	}
+
 	req := api.AddCourseRequest{
 		Code:        param.Code,
 		Type:        api.CourseType(param.Type),
@@ -335,11 +359,11 @@ func AddCourseAction(ctx context.Context, teacher *model.Teacher, param *model.C
 		Description: param.Description,
 		Credit:      param.Credit,
 		Period:      param.Period + 1,
-		DayOfWeek:   api.DayOfWeekTable[param.DayOfWeek],
+		DayOfWeek:   dayOfWeek,
 		Keywords:    param.Keywords,
 	}
 	res := api.AddCourseResponse{}
-	hres, err := api.AddCourse(ctx, teacher.Agent, req)
+	hres, err := api.AddCourse(ctx, agent, req)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
@@ -380,7 +404,7 @@ func DownloadSubmissionsAction(ctx context.Context, agent *agent.Agent, courseID
 	}
 	defer hres.Body.Close()
 
-	err = verifyStatusCode(hres, []int{http.StatusOK})
+	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
 	if err != nil {
 		return hres, nil, err
 	}

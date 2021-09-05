@@ -2,47 +2,39 @@ package generate
 
 import (
 	"bufio"
-	"os"
+	"bytes"
+	_ "embed"
 	"strings"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 )
 
 var (
-	studentFile = "./generate/data/student.tsv"
-	teacherFile = "./generate/data/teacher.tsv"
+	//go:embed data/student.tsv
+	studentsData []byte
+	//go:embed data/teacher.tsv
+	teachersData []byte
 )
 
 func LoadStudentsData() ([]*model.UserAccount, error) {
-	return loadUserAccountData(studentFile)
+	return loadUserAccountData(studentsData)
 }
 
-func LoadFacultiesData() ([]*model.UserAccount, error) {
-	return loadUserAccountData(teacherFile)
+func LoadTeachersData() ([]*model.UserAccount, error) {
+	return loadUserAccountData(teachersData)
 }
 
-func loadUserAccountData(path string) ([]*model.UserAccount, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
+func loadUserAccountData(data []byte) ([]*model.UserAccount, error) {
 	userDataSet := make([]*model.UserAccount, 0)
-	s := bufio.NewScanner(file)
-	for i := 0; s.Scan(); i++ {
+	s := bufio.NewScanner(bytes.NewReader(data))
+	for s.Scan() {
 		line := strings.Split(s.Text(), "\t")
-		code := line[0]
-		name := line[1]
-		rawPW := line[2]
-
 		account := &model.UserAccount{
-			Code:        code,
-			Name:        name,
-			RawPassword: rawPW,
+			Code:        line[0],
+			Name:        line[1],
+			RawPassword: line[2],
 		}
 		userDataSet = append(userDataSet, account)
 	}
-
 	return userDataSet, nil
 }
