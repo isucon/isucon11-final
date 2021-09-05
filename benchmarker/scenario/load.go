@@ -299,7 +299,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// grade と search が早くなりすぎると科目登録が1つずつしか発生せずブレが発生する
 			// あまりにも早い場合はここでMAX100ms待つ
 			<-timer
-			
+
 			// 仮登録
 			remainingRegistrationCapacity := registerCourseLimitPerStudent - student.RegisteringCount()
 			if remainingRegistrationCapacity == 0 {

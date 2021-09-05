@@ -58,6 +58,10 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	}
 	s.language = res.Language
 
+	if s.NoPrepare {
+		return nil
+	}
+
 	err = s.prepareNormal(ctx, step)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)

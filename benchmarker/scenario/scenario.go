@@ -38,10 +38,11 @@ type Scenario struct {
 }
 
 type Config struct {
-	BaseURL *url.URL
-	UseTLS  bool
-	NoLoad  bool
-	IsDebug bool
+	BaseURL   *url.URL
+	UseTLS    bool
+	NoLoad    bool
+	NoPrepare bool
+	IsDebug   bool
 }
 
 func NewScenario(config *Config) (*Scenario, error) {
