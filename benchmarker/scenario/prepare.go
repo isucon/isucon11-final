@@ -489,6 +489,14 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
 	}
 
+	// コースのステータスを更新する
+	for _, course := range courses {
+		_, err = SetCourseStatusInProgressAction(ctx, course.Teacher().Agent, course.ID)
+		if err != nil {
+			return err
+		}
+	}
+
 	// クラス追加、おしらせ追加をする
 	// そのたびにおしらせリストを確認する
 	// 既読にはしない
@@ -778,6 +786,12 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	}
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
 
+	// 科目のステータス更新
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+
 	// 課題提出が締め切られた講義
 	classParam := generate.ClassParam(course, 1)
 	_, addClassRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
@@ -939,6 +953,10 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 		return err
 	}
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		return err
+	}
 
 	// 課題提出が締め切られた講義
 	classParam := generate.ClassParam(course, 1)
@@ -1334,6 +1352,7 @@ func (s *Scenario) prepareCheckGetClassesAbnormal(ctx context.Context) error {
 }
 
 func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
+	errAddClassInvalidStatus := failure.NewError(fails.ErrApplication, fmt.Errorf("in-progress でない科目に講義の追加が成功しました"))
 	errAddClassForUnknownCourse := failure.NewError(fails.ErrApplication, fmt.Errorf("存在しない科目に対する講義の追加に成功しました"))
 	errAddConflictedClass := failure.NewError(fails.ErrApplication, fmt.Errorf("科目IDとパートが重複した講義の追加に成功しました"))
 
@@ -1353,29 +1372,49 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 	}
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
 
-	// course の講義
-	classParam := generate.ClassParam(course, 1)
-	_, addClassRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
-	if err != nil {
-		return err
-	}
-	class := model.NewClass(addClassRes.ClassID, classParam)
-
 	// 存在しない科目
 	courseParam = generate.CourseParam(0, 1, teacher)
 	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
 
 	// ======== 検証 ========
 
+	// 科目ステータスが registration での講義追加
+	classParam := generate.ClassParam(course, 1)
+	hres, _, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+	if err == nil {
+		return errAddClassInvalidStatus
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+		return err
+	}
+
 	// 存在しない科目IDでの講義追加
 	classParam = generate.ClassParam(unknownCourse, 1)
-	hres, _, err := AddClassAction(ctx, teacher.Agent, unknownCourse, classParam)
+	hres, _, err = AddClassAction(ctx, teacher.Agent, unknownCourse, classParam)
 	if err == nil {
 		return errAddClassForUnknownCourse
 	}
 	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
+
+	// ======== 検証用データの準備(2) ========
+
+	// 科目ステータスを in-progress に変更
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+
+	// course の講義を追加
+	classParam = generate.ClassParam(course, 1)
+	_, addClassRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+	if err != nil {
+		return err
+	}
+	class := model.NewClass(addClassRes.ClassID, classParam)
+
+	// ======== 検証 ========
 
 	// コンフリクトする講義の追加
 	// course と partを同じにし、少なくともタイトルを変えることでコンフリクトさせる。
@@ -1389,12 +1428,31 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 		return err
 	}
 
+	// ======== 検証用データの準備(3) ========
+
+	// 科目ステータスを closed に変更
+	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+
+	// ======== 検証 ========
+
+	// 科目ステータスが closed での講義追加
+	classParam = generate.ClassParam(course, 2)
+	hres, _, err = AddClassAction(ctx, teacher.Agent, course, classParam)
+	if err == nil {
+		return errAddClassInvalidStatus
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) error {
 	errSubmitAssignmentForUnknownClass := failure.NewError(fails.ErrApplication, fmt.Errorf("存在しない講義に対する課題提出に成功しました"))
-	errSubmitAssignmentForNotInProgressClass := failure.NewError(fails.ErrApplication, fmt.Errorf("ステータスがin-progressでない科目の講義に対する課題提出に成功しました"))
 	errSubmitAssignmentForNotRegisteredCourse := failure.NewError(fails.ErrApplication, fmt.Errorf("履修していない科目の講義に対する課題提出に成功しました"))
 	errSubmitAssignmentForSubmissionClosedClass := failure.NewError(fails.ErrApplication, fmt.Errorf("課題提出が締め切られた講義に対する課題提出に成功しました"))
 
@@ -1424,18 +1482,6 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 		return err
 	}
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, inProgressCourse.ID)
-	if err != nil {
-		return err
-	}
-
-	// student が履修登録済みで、in-progressではない科目
-	courseParam = generate.CourseParam(0, 1, teacher)
-	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
-	if err != nil {
-		return err
-	}
-	notInProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
-	_, _, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{notInProgressCourse})
 	if err != nil {
 		return err
 	}
@@ -1472,14 +1518,6 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	}
 	submissionNotClosedClass := model.NewClass(addClassRes.ClassID, classParam)
 
-	// notInProgressCourse の課題提出が締め切られていない講義
-	classParam = generate.ClassParam(notInProgressCourse, 1)
-	_, addClassRes, err = AddClassAction(ctx, teacher.Agent, notInProgressCourse, classParam)
-	if err != nil {
-		return err
-	}
-	submissionNotClosedClassOfNotInProgresCourse := model.NewClass(addClassRes.ClassID, classParam)
-
 	// notRegisteredCourse の課題提出が締め切られていない講義
 	classParam = generate.ClassParam(notRegisteredCourse, 1)
 	_, addClassRes, err = AddClassAction(ctx, teacher.Agent, notRegisteredCourse, classParam)
@@ -1505,15 +1543,6 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	hres, err = SubmitAssignmentAction(ctx, student.Agent, inProgressCourse.ID, uuid.NewRandom().String(), fileName, submissionData)
 	if err == nil {
 		return errSubmitAssignmentForUnknownClass
-	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
-		return err
-	}
-
-	// in-progressでない科目の講義への課題提出
-	hres, err = SubmitAssignmentAction(ctx, student.Agent, notInProgressCourse.ID, submissionNotClosedClassOfNotInProgresCourse.ID, fileName, submissionData)
-	if err == nil {
-		return errSubmitAssignmentForNotInProgressClass
 	}
 	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
 		return err
@@ -1568,6 +1597,10 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 		return err
 	}
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		return err
+	}
 
 	// 課題提出が締め切られていない講義
 	classParam := generate.ClassParam(course, 1)
@@ -1699,6 +1732,10 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 		return err
 	}
 	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, notRegisteredCourse.ID)
+	if err != nil {
+		return err
+	}
 
 	// notRegisteredCourse の講義
 	classParam := generate.ClassParam(notRegisteredCourse, 1)
