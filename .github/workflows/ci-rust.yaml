@@ -1,0 +1,39 @@
+name: CI for Rust backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # TODO: Add benchmarker/**/*
+      - webapp/rust/**/*
+      - .github/workflows/ci-rust.yaml
+  pull_request:
+    paths:
+      # TODO: Add benchmarker/**/*
+      - webapp/rust/**/*
+      - .github/workflows/ci-rust.yaml
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path webapp/rust/Cargo.toml -- --check
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --manifest-path webapp/rust/Cargo.toml
+
+  # TODO: Run benchmarker with -no-load
