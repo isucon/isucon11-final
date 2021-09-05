@@ -1135,12 +1135,13 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var submissionClosed bool
-	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
-	} else if err != nil {
+	var classCount int
+	if err := tx.Get(&classCount, "SELECT COUNT(*) FROM `classes` WHERE `id` = ? FOR UPDATE", classID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	}
+	if classCount == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
 	}
 	var submissions []Submission
 	query := "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +
