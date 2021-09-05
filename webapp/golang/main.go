@@ -1210,17 +1210,6 @@ type AddClassResponse struct {
 func (h *handlers) AddClass(c echo.Context) error {
 	courseID := c.Param("courseID")
 
-	var course Course
-	if err := h.DB.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
-	}
-	if course.Status != StatusInProgress {
-		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in-progress.")
-	}
-
 	var req AddClassRequest
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
@@ -1232,6 +1221,17 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
+
+	var course Course
+	if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+	}
+	if course.Status != StatusInProgress {
+		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in-progress.")
+	}
 
 	classID := uuid.New()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
