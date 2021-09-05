@@ -66,14 +66,11 @@ func main() {
 			usersAPI.PUT("/me/courses", h.RegisterCourses)
 			usersAPI.GET("/me/grades", h.GetGrades)
 		}
-		syllabusAPI := API.Group("/syllabus")
-		{
-			syllabusAPI.GET("", h.SearchCourses)
-			syllabusAPI.GET("/:courseID", h.GetCourseDetail)
-		}
 		coursesAPI := API.Group("/courses")
 		{
+			coursesAPI.GET("", h.SearchCourses)
 			coursesAPI.POST("", h.AddCourse, h.IsAdmin)
+			coursesAPI.GET("/:courseID", h.GetCourseDetail)
 			coursesAPI.PUT("/:courseID/status", h.SetCourseStatus, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
