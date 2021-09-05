@@ -1569,6 +1569,25 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	// TODO: 不正な課題ファイルの提出で弾かれることのチェック
 	// やるなら専用Action作らないといけないかも
 
+	// ======== 検証用データの準備(2) ========
+
+	// inProgressCourse のステータスを closed にする
+	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, inProgressCourse.ID)
+	if err != nil {
+		return err
+	}
+
+	// ======== 検証 ========
+
+	// 課題提出が締め切られていないが closed な科目への課題提出
+	hres, err = SubmitAssignmentAction(ctx, student.Agent, inProgressCourse.ID, submissionNotClosedClass.ID, fileName, submissionData)
+	if err == nil {
+		return errSubmitAssignmentForSubmissionClosedClass
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
