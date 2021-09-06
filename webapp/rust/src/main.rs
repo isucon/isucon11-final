@@ -66,17 +66,15 @@ async fn main() -> std::io::Result<()> {
             .route("/me/courses", web::put().to(register_courses))
             .route("/me/grades", web::get().to(get_grades));
 
-        let syllabus_api = web::scope("/syllabus")
-            .route("", web::get().to(search_courses))
-            .route("/{course_id}", web::get().to(get_course_detail));
-
         let courses_api = web::scope("/courses")
+            .route("", web::get().to(search_courses))
             .service(
                 web::resource("")
                     .guard(actix_web::guard::Post())
                     .wrap(isucholar::middleware::IsAdmin)
                     .to(add_course),
             )
+            .route("/{course_id}", web::get().to(get_course_detail))
             .service(
                 web::resource("/{course_id}/status")
                     .guard(actix_web::guard::Put())
@@ -133,7 +131,6 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/api")
                     .wrap(isucholar::middleware::IsLoggedIn)
                     .service(users_api)
-                    .service(syllabus_api)
                     .service(courses_api)
                     .service(announcements_api),
             )
@@ -862,7 +859,7 @@ struct SearchCoursesQuery {
     page: Option<String>,
 }
 
-// GET /api/syllabus 科目検索
+// GET /api/courses 科目検索
 async fn search_courses(
     pool: web::Data<sqlx::MySqlPool>,
     params: web::Query<SearchCoursesQuery>,
@@ -1005,7 +1002,7 @@ struct GetCourseDetailResponse {
     teacher: String,
 }
 
-// GET /api/syllabus/{course_id} 科目詳細の取得
+// GET /api/courses/{course_id} 科目詳細の取得
 async fn get_course_detail(
     pool: web::Data<sqlx::MySqlPool>,
     course_id: web::Path<(String,)>,
