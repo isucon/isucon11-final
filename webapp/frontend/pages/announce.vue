@@ -25,13 +25,15 @@
             class="
               appearance-none
               rounded
+              text-primary-500
               border-gray-200
               focus:outline-none
               focus:shadow-none
               focus:ring-0
               focus:ring-offset-0
-              m-2
-              checked:bg-primary-500 checked:border-transparent
+              focus:ring-primary-200
+              mr-2
+              my-2
             "
             @change="toggleUnreadFilter"
           />
