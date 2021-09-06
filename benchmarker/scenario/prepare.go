@@ -1459,6 +1459,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	errSubmitAssignmentForUnknownClass := failure.NewError(fails.ErrApplication, fmt.Errorf("存在しない講義に対する課題提出に成功しました"))
 	errSubmitAssignmentForNotRegisteredCourse := failure.NewError(fails.ErrApplication, fmt.Errorf("履修していない科目の講義に対する課題提出に成功しました"))
 	errSubmitAssignmentForSubmissionClosedClass := failure.NewError(fails.ErrApplication, fmt.Errorf("課題提出が締め切られた講義に対する課題提出に成功しました"))
+	errSubmitAssignmentForNotInProgressClass := failure.NewError(fails.ErrApplication, fmt.Errorf("ステータスがin-progressでない科目の講義に対する課題提出が成功しました"))
 
 	// ======== 検証用データの準備 ========
 
@@ -1572,6 +1573,25 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 
 	// TODO: 不正な課題ファイルの提出で弾かれることのチェック
 	// やるなら専用Action作らないといけないかも
+
+	// ======== 検証用データの準備(2) ========
+
+	// inProgressCourse のステータスを closed にする
+	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, inProgressCourse.ID)
+	if err != nil {
+		return err
+	}
+
+	// ======== 検証 ========
+
+	// 課題提出が締め切られていないが closed な科目への課題提出
+	hres, err = SubmitAssignmentAction(ctx, student.Agent, inProgressCourse.ID, submissionNotClosedClass.ID, fileName, submissionData)
+	if err == nil {
+		return errSubmitAssignmentForNotInProgressClass
+	}
+	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+		return err
+	}
 
 	return nil
 }
