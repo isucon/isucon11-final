@@ -680,7 +680,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// SearchCourses GET /api/syllabus 科目検索
+// SearchCourses GET /api/courses 科目検索
 func (h *handlers) SearchCourses(c echo.Context) error {
 	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
@@ -805,7 +805,7 @@ type GetCourseDetailResponse struct {
 	Teacher     string       `json:"teacher" db:"teacher"`
 }
 
-// GetCourseDetail GET /api/syllabus/:courseID 科目詳細の取得
+// GetCourseDetail GET /api/courses/:courseID 科目詳細の取得
 func (h *handlers) GetCourseDetail(c echo.Context) error {
 	courseID := c.Param("courseID")
 
