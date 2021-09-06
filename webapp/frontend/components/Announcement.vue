@@ -20,9 +20,16 @@
         </div>
       </template>
       <template #default>
-        <p class="text-black text-base break-all">
-          {{ announcement.message || '' }}
-        </p>
+        <template v-if="!announcement.hasError">
+          <p class="text-black text-base break-all">
+            {{ announcement.message || '' }}
+          </p>
+        </template>
+        <template v-else>
+          <p class="text-base break-all text-red-500 font-bold">
+            お知らせ詳細の取得に失敗しました。
+          </p>
+        </template>
       </template>
     </Accordion>
   </div>

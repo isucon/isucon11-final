@@ -39,13 +39,20 @@
           />
           <span>未読のみ</span>
         </div>
-        <AnnouncementList
-          :announcements="announcements"
-          :link="link"
-          @movePage="paginate"
-          @open="openAnnouncement"
-          @close="closeAnnouncement"
-        />
+        <template v-if="!hasError">
+          <AnnouncementList
+            :announcements="announcements"
+            :link="link"
+            @movePage="paginate"
+            @open="openAnnouncement"
+            @close="closeAnnouncement"
+          />
+        </template>
+        <template v-else>
+          <div class="flex justify-center text-xl">
+            お知らせを取得できませんでした。
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -74,6 +81,7 @@ type AnnounceListData = AsyncAnnounceData & {
   courseName: string
   announcements: Announcement[]
   showUnreads: boolean
+  hasError: boolean
 }
 
 export default Vue.extend({
@@ -82,28 +90,42 @@ export default Vue.extend({
   },
   components: { TextField, AnnouncementList },
   middleware: 'is_student',
-  async asyncData(ctx: Context): Promise<AsyncAnnounceData> {
+  async asyncData(ctx: Context) {
     const { $axios, query } = ctx
-    const response = await $axios.get('/api/announcements', { params: query })
-    const responseBody: GetAnnouncementResponse = response.data
-    const link = response.headers.link
-    const announcements = Object.values(responseBody.announcements).map(
-      (item: AnnouncementResponse): Announcement => {
-        return {
-          id: item.id,
-          courseId: item.courseId,
-          courseName: item.courseName,
-          title: item.title,
-          unread: item.unread,
-          createdAt: new Date(item.createdAt * 1000).toLocaleString(),
+
+    try {
+      const response = await $axios.get('/api/announcements', { params: query })
+      const responseBody: GetAnnouncementResponse = response.data
+      const link = response.headers.link
+      const announcements = Object.values(responseBody.announcements).map(
+        (item: AnnouncementResponse): Announcement => {
+          return {
+            id: item.id,
+            courseId: item.courseId,
+            courseName: item.courseName,
+            title: item.title,
+            unread: item.unread,
+            createdAt: new Date(item.createdAt * 1000).toLocaleString(),
+            hasError: false,
+          }
         }
+      )
+      const count = responseBody.unreadCount
+      return {
+        innerAnnouncements: announcements,
+        numOfUnreads: count,
+        link,
+        hasError: false,
       }
-    )
-    const count = responseBody.unreadCount
+    } catch (e) {
+      notify('お知らせ一覧の取得に失敗しました')
+    }
+
     return {
-      innerAnnouncements: announcements,
-      numOfUnreads: count,
-      link,
+      innerAnnouncements: [],
+      numOfUnreads: 0,
+      link: '',
+      hasError: true,
     }
   },
   data(): AnnounceListData {
@@ -114,6 +136,7 @@ export default Vue.extend({
       numOfUnreads: 0,
       showUnreads: false,
       link: '',
+      hasError: false,
     }
   },
   watchQuery: true,
@@ -142,7 +165,14 @@ export default Vue.extend({
         }
         event.done()
       } catch (e) {
-        notify('お知らせの取得に失敗しました')
+        const target = this.innerAnnouncements.find(
+          (item) => item.id === announcement.id
+        )
+        if (target) {
+          target.hasError = true
+        }
+        event.done()
+        notify('お知らせ詳細の取得に失敗しました')
       }
     },
     closeAnnouncement(event: { done: () => undefined }) {

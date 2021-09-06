@@ -56,6 +56,7 @@ export type Announcement = {
   unread: boolean
   createdAt: string
   message?: string
+  hasError?: boolean
 }
 
 export type AnnouncementResponse = {
