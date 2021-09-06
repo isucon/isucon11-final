@@ -60,7 +60,7 @@ export default Vue.extend({
   async asyncData(ctx: Context): Promise<CourseData> {
     const { params, query, $axios } = ctx
     const [course, classes, announcementResult] = await Promise.all([
-      $axios.get<Course>(`/api/syllabus/${params.id}`),
+      $axios.get<Course>(`/api/courses/${params.id}`),
       $axios.get<ClassInfo[]>(`/api/courses/${params.id}/classes`),
       $axios.get<GetAnnouncementResponse>(`/api/announcements`, {
         params: { ...query, courseId: params.id },

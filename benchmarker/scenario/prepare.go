@@ -693,7 +693,7 @@ func (s *Scenario) prepareAbnormal(ctx context.Context) error {
 		return err
 	}
 
-	// GET /api/syllabus/:courseID
+	// GET /api/courses/:courseID
 	if err := s.prepareCheckGetCourseDetailAbnormal(ctx); err != nil {
 		return err
 	}
