@@ -8,6 +8,7 @@ export function getDbInfo(batch: boolean): mysql.ConnectionOptions {
     password: process.env["MYSQL_PASS"] || "isucon",
     database: process.env["MYSQL_DATABASE"] ?? "isucholar",
     timezone: "+00:00",
+    decimalNumbers: true,
     multipleStatements: batch,
   };
 }

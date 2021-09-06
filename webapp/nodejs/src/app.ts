@@ -635,7 +635,7 @@ usersApi.get("/me/grades", async (req, res) => {
 
       // 自分のGPA計算
       myGPA += myTotalScore * course.credit;
-      myCredits += course.Credit;
+      myCredits += course.credit;
     }
     if (myCredits > 0) {
       myGPA = myGPA / 100 / myCredits;

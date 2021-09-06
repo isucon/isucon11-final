@@ -2,26 +2,14 @@ export function max(arr: number[], or: number): number {
   if (arr.length === 0) {
     return or;
   }
-  let max = Number.MIN_VALUE;
-  arr.forEach((v) => {
-    if (max < v) {
-      max = v;
-    }
-  });
-  return max;
+  return Math.max(...arr);
 }
 
 export function min(arr: number[], or: number): number {
   if (arr.length === 0) {
     return or;
   }
-  let min = Number.MAX_VALUE;
-  arr.forEach((v) => {
-    if (v < min) {
-      min = v;
-    }
-  });
-  return min;
+  return Math.min(...arr);
 }
 
 // ----- integer -----
