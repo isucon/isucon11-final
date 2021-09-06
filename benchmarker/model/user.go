@@ -7,6 +7,8 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
+
+	"github.com/isucon/isucon11-final/benchmarker/api"
 )
 
 type UserAccount struct {
@@ -306,12 +308,18 @@ func (s *Student) GPA() float64 {
 
 	tmp := 0
 	for _, course := range s.registeredCourses {
-		tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
+		if course.status == api.StatusClosed {
+			tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
+		}
 	}
 
 	gpt := float64(tmp) / 100.0
+	credits := s.TotalCredit()
 
-	return gpt / float64(s.TotalCredit())
+	if credits == 0 {
+		return 0
+	}
+	return gpt / float64(credits)
 }
 
 func (s *Student) TotalCredit() int {
@@ -320,7 +328,9 @@ func (s *Student) TotalCredit() int {
 
 	res := 0
 	for _, course := range s.registeredCourses {
-		res += course.Credit
+		if course.status == api.StatusClosed {
+			res += course.Credit
+		}
 	}
 
 	return res
