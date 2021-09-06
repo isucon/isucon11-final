@@ -37,12 +37,10 @@ app.set("etag", false);
 
 const api = express.Router();
 const usersApi = express.Router();
-const syllabusApi = express.Router();
 const coursesApi = express.Router();
 app.use("/api", api);
 api.use(isLoggedIn);
 api.use("/users", usersApi);
-api.use("/syllabus", syllabusApi);
 api.use("/courses", coursesApi);
 
 interface InitializeResponse {
@@ -696,8 +694,8 @@ interface SearchCoursesQuery {
   page: string;
 }
 
-// GET /api/syllabus 科目検索
-syllabusApi.get(
+// GET /api/courses 科目検索
+coursesApi.get(
   "",
   async (
     req: express.Request<
@@ -847,8 +845,8 @@ interface GetCourseDetailResponse extends RowDataPacket {
   teacher: string;
 }
 
-// GET /api/syllabus/:courseID 科目詳細の取得
-syllabusApi.get(
+// GET /api/courses/:courseID 科目詳細の取得
+coursesApi.get(
   "/:courseId",
   async (req: express.Request<{ courseId: string }>, res) => {
     const courseId = req.params.courseId;
