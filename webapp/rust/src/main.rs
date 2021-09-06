@@ -568,12 +568,12 @@ async fn register_courses(
     let mut errors = RegisterCoursesErrorResponse::default();
     let mut newly_added = Vec::new();
     for course_req in req {
-        let course: Option<Course> =
-            sqlx::query_as("SELECT * FROM `courses` WHERE `id` = ? FOR SHARE")
-                .bind(&course_req.id)
-                .fetch_optional(&mut tx)
-                .await
-                .map_err(SqlxError)?;
+        let course: Option<Course> = isucholar::db::fetch_optional_as(
+            sqlx::query_as("SELECT * FROM `courses` WHERE `id` = ? FOR SHARE").bind(&course_req.id),
+            &mut tx,
+        )
+        .await
+        .map_err(SqlxError)?;
         if course.is_none() {
             errors.course_not_found.push(course_req.id);
             continue;
@@ -586,12 +586,14 @@ async fn register_courses(
         }
 
         // すでに履修登録済みの科目は無視する
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+        let count: i64 = isucholar::db::fetch_one_scalar(
+            sqlx::query_scalar(
+                "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+            )
+            .bind(&course.id)
+            .bind(&user_id),
+            &mut tx,
         )
-        .bind(&course.id)
-        .bind(&user_id)
-        .fetch_one(&mut tx)
         .await
         .map_err(SqlxError)?;
         if count > 0 {
@@ -1072,11 +1074,12 @@ async fn add_course(
     if let Err(sqlx::Error::Database(ref db_error)) = result {
         if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
             if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
-                let course: Course = sqlx::query_as("SELECT * FROM `courses` WHERE `code` = ?")
-                    .bind(&req.code)
-                    .fetch_one(&mut tx)
-                    .await
-                    .map_err(SqlxError)?;
+                let course: Course = isucholar::db::fetch_one_as(
+                    sqlx::query_as("SELECT * FROM `courses` WHERE `code` = ?").bind(&req.code),
+                    &mut tx,
+                )
+                .await
+                .map_err(SqlxError)?;
                 if req.type_ != course.type_
                     || req.name != course.name
                     || req.description != course.description
@@ -1216,12 +1219,13 @@ async fn submit_assignment(
     let class_id = &path.class_id;
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
-    let status: Option<CourseStatus> =
+    let status: Option<CourseStatus> = isucholar::db::fetch_optional_scalar(
         sqlx::query_scalar("SELECT `status` FROM `courses` WHERE `id` = ? FOR SHARE")
-            .bind(course_id)
-            .fetch_optional(&mut tx)
-            .await
-            .map_err(SqlxError)?;
+            .bind(course_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if let Some(status) = status {
         if status != CourseStatus::InProgress {
             return Err(actix_web::error::ErrorBadRequest(
@@ -1232,12 +1236,14 @@ async fn submit_assignment(
         return Err(actix_web::error::ErrorBadRequest("No such course."));
     }
 
-    let registration_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM `registrations` WHERE `user_id` = ? AND `course_id` = ?",
+    let registration_count: i64 = isucholar::db::fetch_one_scalar(
+        sqlx::query_scalar(
+            "SELECT COUNT(*) FROM `registrations` WHERE `user_id` = ? AND `course_id` = ?",
+        )
+        .bind(&user_id)
+        .bind(course_id),
+        &mut tx,
     )
-    .bind(&user_id)
-    .bind(course_id)
-    .fetch_one(&mut tx)
     .await
     .map_err(SqlxError)?;
     if registration_count == 0 {
@@ -1246,12 +1252,13 @@ async fn submit_assignment(
         ));
     }
 
-    let submission_closed: Option<bool> =
+    let submission_closed: Option<bool> = isucholar::db::fetch_optional_scalar(
         sqlx::query_scalar("SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE")
-            .bind(class_id)
-            .fetch_optional(&mut tx)
-            .await
-            .map_err(SqlxError)?;
+            .bind(class_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if let Some(submission_closed) = submission_closed {
         if submission_closed {
             return Err(actix_web::error::ErrorBadRequest(
@@ -1322,12 +1329,13 @@ async fn register_scores(
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
 
-    let submission_closed: Option<bool> =
+    let submission_closed: Option<bool> = isucholar::db::fetch_optional_scalar(
         sqlx::query_scalar("SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE")
-            .bind(class_id)
-            .fetch_optional(&mut tx)
-            .await
-            .map_err(SqlxError)?;
+            .bind(class_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if let Some(submission_closed) = submission_closed {
         if !submission_closed {
             return Err(actix_web::error::ErrorBadRequest(
@@ -1369,12 +1377,13 @@ async fn download_submitted_assignments(
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
 
-    let class_count: i64 =
+    let class_count: i64 = isucholar::db::fetch_one_scalar(
         sqlx::query_scalar("SELECT COUNT(*) FROM `classes` WHERE `id` = ? FOR UPDATE")
-            .bind(class_id)
-            .fetch_one(&mut tx)
-            .await
-            .map_err(SqlxError)?;
+            .bind(class_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if class_count == 0 {
         return Err(actix_web::error::ErrorBadRequest("No such class."));
     }
@@ -1469,11 +1478,12 @@ async fn add_class(
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
 
-    let course: Option<Course> = sqlx::query_as("SELECT * FROM `courses` WHERE `id` = ? FOR SHARE")
-        .bind(course_id)
-        .fetch_optional(&mut tx)
-        .await
-        .map_err(SqlxError)?;
+    let course: Option<Course> = isucholar::db::fetch_optional_as(
+        sqlx::query_as("SELECT * FROM `courses` WHERE `id` = ? FOR SHARE").bind(course_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if course.is_none() {
         return Err(actix_web::error::ErrorNotFound("No such course."));
     }
@@ -1496,13 +1506,14 @@ async fn add_class(
     if let Err(sqlx::error::Error::Database(ref db_error)) = result {
         if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
             if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
-                let class: Class =
+                let class: Class = isucholar::db::fetch_one_as(
                     sqlx::query_as("SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?")
                         .bind(course_id)
-                        .bind(&req.part)
-                        .fetch_one(&mut tx)
-                        .await
-                        .map_err(SqlxError)?;
+                        .bind(&req.part),
+                    &mut tx,
+                )
+                .await
+                .map_err(SqlxError)?;
                 if req.title != class.title || req.description != class.description {
                     return Err(actix_web::error::ErrorConflict(
                         "A class with the same part already exists.",
@@ -1792,12 +1803,14 @@ async fn add_announcement(
     if let Err(sqlx::error::Error::Database(ref db_error)) = result {
         if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
             if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
-                let announcement: Announcement = sqlx::query_as(
-                    "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?",
+                let announcement: Announcement = isucholar::db::fetch_one_as(
+                    sqlx::query_as(
+                        "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?",
+                    )
+                    .bind(&req.course_id)
+                    .bind(&created_at),
+                    &mut tx,
                 )
-                .bind(&req.course_id)
-                .bind(&created_at)
-                .fetch_one(&mut tx)
                 .await
                 .map_err(SqlxError)?;
                 if announcement.course_id != req.course_id
