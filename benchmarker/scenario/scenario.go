@@ -22,14 +22,16 @@ type Scenario struct {
 	Config
 	CourseManager *model.CourseManager
 
-	sPubSub             *pubsub.PubSub
-	cPubSub             *pubsub.PubSub
-	userPool            *userPool
-	activeStudents      []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
-	activeStudentsCount int64
-	language            string
-	loadRequestEndTime  time.Time
-	debugData           *DebugData
+	sPubSub                  *pubsub.PubSub
+	cPubSub                  *pubsub.PubSub
+	userPool                 *userPool
+	activeStudents           []*model.Student // Poolから取り出された学生のうち、その後の検証を抜けてMyPageまでたどり着けた学生（goroutine数とイコール）
+	activeStudentsCount      int64
+	RegistarableStudentList  map[string]bool
+	RegistarableStudentCount int64
+	language                 string
+	loadRequestEndTime       time.Time
+	debugData                *DebugData
 
 	rmu sync.RWMutex
 
@@ -59,12 +61,14 @@ func NewScenario(config *Config) (*Scenario, error) {
 		Config:        *config,
 		CourseManager: model.NewCourseManager(),
 
-		sPubSub:            pubsub.NewPubSub(),
-		cPubSub:            pubsub.NewPubSub(),
-		userPool:           NewUserPool(studentsData, teachersData, config.BaseURL),
-		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
-		debugData:          NewDebugData(config.IsDebug),
-		finishCoursePubSub: pubsub.NewPubSub(),
+		sPubSub:                  pubsub.NewPubSub(),
+		cPubSub:                  pubsub.NewPubSub(),
+		userPool:                 NewUserPool(studentsData, teachersData, config.BaseURL),
+		activeStudents:           make([]*model.Student, 0, initialStudentsCount),
+		RegistarableStudentCount: initialStudentsCount,
+		RegistarableStudentList:  make(map[string]bool, 500),
+		debugData:                NewDebugData(config.IsDebug),
+		finishCoursePubSub:       pubsub.NewPubSub(),
 	}, nil
 }
 
@@ -85,6 +89,7 @@ func (s *Scenario) AddActiveStudent(student *model.Student) {
 
 	s.activeStudents = append(s.activeStudents, student)
 }
+
 func (s *Scenario) ActiveStudentCount() int {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()

@@ -357,6 +357,12 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 			}
 
+			if student.RegisteringCount() == registerCourseLimitPerStudent {
+				s.RegistarableStudentList[student.Code] = false
+				if atomic.AddInt64(&s.RegistarableStudentCount, -1) == 0 {
+					s.CourseManager.StartAllWaitingCourses()
+				}
+			}
 			DebugLogger.Printf("[履修完了] code: %v, register count: %d", student.Code, len(temporaryReservedCourses))
 		}
 		// TODO: できれば登録に失敗した科目を抜いて再度登録する
@@ -553,6 +559,10 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		defer func() {
 			for _, student := range course.Students() {
 				student.ReleaseTimeslot(course.DayOfWeek, course.Period)
+				if s.RegistarableStudentList[student.Code] == false {
+					s.RegistarableStudentList[student.Code] = true
+					atomic.AddInt64(&s.RegistarableStudentCount, 1)
+				}
 			}
 		}()
 

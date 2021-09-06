@@ -84,6 +84,16 @@ func (m *CourseManager) RemoveRegistrationClosedCourse(c *Course) {
 	}
 }
 
+func (m *CourseManager) StartAllWaitingCourses() {
+	m.waitingCourseList.Lock()
+	defer m.waitingCourseList.Unlock()
+	for _, v := range m.waitingCourseList.items {
+		if v.StudentCount() > 0 {
+			v.CloseReservation()
+		}
+	}
+}
+
 func (m *CourseManager) ExposeCoursesForValidation() map[string]*Course {
 	return m.courses
 }

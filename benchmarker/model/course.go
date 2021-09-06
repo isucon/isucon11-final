@@ -115,6 +115,13 @@ func (c *Course) Students() map[string]*Student {
 	return s
 }
 
+func (c *Course) StudentCount() int {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	return len(c.registeredStudents)
+}
+
 func (c *Course) Classes() []*Class {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()
@@ -192,6 +199,15 @@ func (c *Course) StartTimer(duration time.Duration) {
 	})
 }
 
+func (c *Course) CloseReservation() {
+	select {
+	case <-c.closer:
+		// close済み
+	default:
+		close(c.closer)
+	}
+}
+
 // for prepare
 func (c *Course) AddStudent(student *Student) {
 	c.rmu.Lock()
@@ -208,6 +224,8 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 		s.AddAnnouncement(a)
 	}
 }
+
+// 以降、成績関連
 
 func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 	c.rmu.RLock()
