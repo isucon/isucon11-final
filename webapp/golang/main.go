@@ -910,16 +910,18 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
 	}
 
-	result, err := h.DB.Exec("UPDATE `courses` SET `status` = ? WHERE `id` = ?", req.Status, courseID)
-	if err != nil {
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if num, err := result.RowsAffected(); err != nil {
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+	}
+
+	if _, err := h.DB.Exec("UPDATE `courses` SET `status` = ? WHERE `id` = ?", req.Status, courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
-	} else if num == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
 	return c.NoContent(http.StatusOK)
