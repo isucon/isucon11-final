@@ -712,7 +712,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				<-timer
 				continue
 			} else {
-
+				course.BroadCastAddScoreSignal()
 				step.AddScore(score.RegisterScore)
 			}
 
