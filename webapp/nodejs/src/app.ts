@@ -5,6 +5,7 @@ import session from "cookie-session";
 import express from "express";
 import morgan from "morgan";
 import mysql, { RowDataPacket } from "mysql2/promise";
+import { v4 as uuid } from "uuid";
 
 import { getDbInfo } from "./db";
 import {
@@ -37,10 +38,12 @@ app.set("etag", false);
 const api = express.Router();
 const usersApi = express.Router();
 const syllabusApi = express.Router();
+const coursesApi = express.Router();
 app.use("/api", api);
 api.use(isLoggedIn);
 api.use("/users", usersApi);
 api.use("/syllabus", syllabusApi);
+api.use("/courses", coursesApi);
 
 interface InitializeResponse {
   language: string;
@@ -56,6 +59,7 @@ app.post("/initialize", async (_, res) => {
       dbForInit.query(data.toString());
     }
   } catch (err) {
+    console.error(err);
     return res.status(500).send();
   } finally {
     await dbForInit.end();
@@ -86,7 +90,23 @@ async function isLoggedIn(
 }
 
 // admin確認用middleware
-// TODO
+async function isAdmin(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  if (!req.session) {
+    return res.status(500).send();
+  }
+  if (!("isAdmin" in req.session)) {
+    console.error("failed to get isAdmin from session");
+    return res.status(500).send();
+  }
+  if (!req.session["isAdmin"]) {
+    return res.status(403).send("You are not admin user.");
+  }
+  next();
+}
 
 function getUserInfo(
   session?: CookieSessionInterfaces.CookieSessionObject | null
@@ -135,6 +155,14 @@ const DayOfWeek = {
 } as const;
 type DayOfWeek = typeof DayOfWeek[keyof typeof DayOfWeek];
 
+const DaysOfWeek = [
+  DayOfWeek.Monday,
+  DayOfWeek.Tuesday,
+  DayOfWeek.Wednesday,
+  DayOfWeek.Thursday,
+  DayOfWeek.Friday,
+];
+
 const CourseStatus = {
   StatusRegistration: "registration",
   StatusInProgress: "in-progress",
@@ -178,7 +206,7 @@ app.post(
   ) => {
     const request = req.body;
     if (!isValidLoginRequest(request)) {
-      return res.status(400).send();
+      return res.status(400).send("Invalid format.");
     }
 
     const db = await pool.getConnection();
@@ -458,6 +486,7 @@ usersApi.put(
 
       return res.status(200).send();
     } catch (err) {
+      console.error(err);
       await db.rollback();
       return res.status(500).send();
     } finally {
@@ -649,6 +678,7 @@ usersApi.get("/me/grades", async (req, res) => {
     };
     return res.status(200).json(response);
   } catch (err) {
+    console.error(err);
     return res.status(500).send();
   } finally {
     db.release();
@@ -783,7 +813,7 @@ syllabusApi.get(
         res.append("Link", links.join(","));
       }
 
-      if (response.length == limit + 1) {
+      if (response.length === limit + 1) {
         response = response.slice(0, response.length - 1);
       }
 
@@ -843,6 +873,113 @@ syllabusApi.get(
     } finally {
       db.release();
     }
+  }
+);
+
+interface AddCourseRequest {
+  code: string;
+  type: CourseType;
+  name: string;
+  description: string;
+  credit: number;
+  period: number;
+  day_of_week: DayOfWeek;
+  keywords: string;
+}
+
+function isValidAddCourseRequest(
+  body: AddCourseRequest
+): body is AddCourseRequest {
+  return (
+    typeof body === "object" &&
+    typeof body.code === "string" &&
+    typeof body.type === "string" &&
+    typeof body.name === "string" &&
+    typeof body.description === "string" &&
+    typeof body.credit === "number" &&
+    typeof body.period === "number" &&
+    typeof body.day_of_week === "string" &&
+    typeof body.keywords === "string"
+  );
+}
+
+interface AddCourseResponse {
+  id: string;
+}
+
+// POST /api/courses 新規科目登録
+coursesApi.post(
+  "",
+  isAdmin,
+  async (
+    req: express.Request<Record<string, never>, unknown, AddCourseRequest>,
+    res
+  ) => {
+    let userId: string;
+    try {
+      [userId] = getUserInfo(req.session);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    }
+
+    const request = req.body;
+    if (!isValidAddCourseRequest(request)) {
+      return res.status(400).send("Invalid format.");
+    }
+
+    if (
+      request.type !== CourseType.LiberalArts &&
+      request.type !== CourseType.MajorSubjects
+    ) {
+      return res.status(400).send("Invalid course type.");
+    }
+    if (!DaysOfWeek.includes(request.day_of_week)) {
+      return res.status(400).send("Invalid day of week.");
+    }
+
+    const db = await pool.getConnection();
+    try {
+      await db.beginTransaction();
+
+      const courseId = uuid();
+      try {
+        db.query(
+          "INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          [
+            courseId,
+            request.code,
+            request.type,
+            request.name,
+            request.description,
+            request.credit,
+            request.period,
+            request.day_of_week,
+            userId,
+            request.keywords,
+          ]
+        );
+      } catch (err) {
+        await db.rollback();
+
+        // TODO
+
+        return res.status(500).send();
+      }
+
+      await db.commit();
+
+      const response: AddCourseResponse = { id: courseId };
+      return res.status(201).json(response);
+    } catch (err) {
+      console.error(err);
+      await db.rollback();
+      return res.send(500).send();
+    } finally {
+      db.release();
+    }
+
+    return res.status(200).send();
   }
 );
 
