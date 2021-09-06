@@ -240,10 +240,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	// 課題提出、ダウンロード、採点、成績確認
 	// workerはコースごと
 	checkAnnouncementDetailPart := rand.Intn(prepareClassCountPerCourse)
-	w, err = worker.NewWorker(func(ctx context.Context, i int) {
-		course := courses[i]
-		teacher := course.Teacher()
-		for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
+	for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
+		w, err = worker.NewWorker(func(ctx context.Context, i int) {
+			course := courses[i]
+			teacher := course.Teacher()
 			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
@@ -336,8 +336,38 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				step.AddError(err)
 				return
 			}
+		}, worker.WithLoopCount(prepareCourseCount))
+		if err != nil {
+			panic(fmt.Errorf("unreachable! %w", err))
 		}
+		w.Process(ctx)
+		w.Wait()
 
+		w, err = worker.NewWorker(func(ctx context.Context, i int) {
+			student := students[i]
+			expected := calculateGradeRes(student, studentByCode)
+			_, res, err := GetGradeAction(ctx, student.Agent)
+			if err != nil {
+				step.AddError(failure.NewError(fails.ErrCritical, err))
+				return
+			}
+
+			err = validateUserGrade(&expected, &res)
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+		}, worker.WithLoopCount(prepareStudentCount))
+		if err != nil {
+			panic(fmt.Errorf("unreachable! %w", err))
+		}
+		w.Process(ctx)
+		w.Wait()
+	}
+
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		course := courses[i]
+		teacher := course.Teacher()
 		_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
 		if err != nil {
 			step.AddError(err)
