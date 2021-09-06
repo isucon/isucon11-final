@@ -182,7 +182,7 @@ export default Vue.extend({
   middleware: 'is_student',
   async asyncData(ctx: Context): Promise<SyllabusData> {
     const id = ctx.params.id
-    const res = await ctx.$axios.get(`/api/syllabus/${id}`)
+    const res = await ctx.$axios.get(`/api/courses/${id}`)
     const course: SyllabusCourse = res.data
 
     return { course }

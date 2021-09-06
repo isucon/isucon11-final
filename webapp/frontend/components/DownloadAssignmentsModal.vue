@@ -129,7 +129,7 @@ export default Vue.extend({
         const resUser = await this.$axios.get<User>(`/api/users/me`)
         const user = resUser.data
         const resCourses = await this.$axios.get<Course[]>(
-          `/api/syllabus?teacher=${user.name}`
+          `/api/courses?teacher=${user.name}`
         )
         this.courses = resCourses.data
       } catch (e) {

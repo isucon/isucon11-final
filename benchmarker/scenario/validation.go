@@ -174,7 +174,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
-	nextPathParam := "/api/syllabus"
+	nextPathParam := "/api/courses"
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
