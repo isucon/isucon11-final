@@ -15,6 +15,7 @@ import (
 )
 
 type AddAnnouncementRequest struct {
+	ID        string `json:"id"`
 	CourseID  string `json:"course_id"`
 	Title     string `json:"title"`
 	Message   string `json:"message"`
