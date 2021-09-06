@@ -30,6 +30,8 @@ type Student struct {
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
 	scheduleCond       *sync.Cond // スケジュールの空きを監視するCond
+
+	addScoreChan chan struct{}
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
@@ -53,6 +55,8 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 
 		registeredSchedule: [5][6]*Course{},
 		scheduleMutex:      sync.RWMutex{},
+
+		addScoreChan: make(chan struct{}, 0),
 	}
 	s.readAnnouncementCond = sync.NewCond(&s.rmu)
 	s.addAnnouncementCond = sync.NewCond(&s.rmu)
@@ -221,6 +225,24 @@ func (s *Student) waitReadAnnouncement(id string) <-chan struct{} {
 	}
 	s.rmu.RUnlock()
 	return ch
+}
+
+func (s *Student) AddScoreSignal() {
+	select {
+	case s.addScoreChan <- struct{}{}:
+	default:
+	}
+}
+
+func (s *Student) WaitAddScoreSignal(ctx context.Context, cancel context.CancelFunc) <-chan struct{} {
+	go func() {
+		select {
+		case <-s.addScoreChan:
+		case <-ctx.Done():
+		}
+		cancel()
+	}()
+	return ctx.Done()
 }
 
 func (s *Student) RegisteringCount() int {

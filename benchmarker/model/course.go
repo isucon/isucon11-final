@@ -211,6 +211,15 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 	}
 }
 
+func (c *Course) BroadCastAddScoreSignal() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	for _, s := range c.registeredStudents {
+		s.AddScoreSignal()
+	}
+}
+
 func (c *Course) CollectSimpleClassScores(userCode string) []*SimpleClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()

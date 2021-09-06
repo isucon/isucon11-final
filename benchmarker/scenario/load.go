@@ -175,6 +175,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		studentLoadWorker.Do(s.registrationScenario(student, step))
 		// おしらせ確認 + 既読追加
 		studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
+
+		studentLoadWorker.Do(s.checkGradeScenario(student, step))
 	})
 	return studentLoadWorker
 }
@@ -194,24 +196,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			if s.isNoRequestTime(ctx) {
 				return
-			}
-
-			// 履修したコースが0なら成績確認をしない
-			if len(student.Courses()) != 0 {
-				// 成績確認
-				expected := collectVerifyGradesData(student)
-				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
-				if err != nil {
-					step.AddError(err)
-					time.Sleep(1 * time.Millisecond)
-					continue
-				}
-				err = verifyGrades(expected, &getGradeRes)
-				if err != nil {
-					step.AddError(err)
-				} else {
-					step.AddScore(score.GetGrades)
-				}
 			}
 
 			// ----------------------------------------
@@ -360,6 +344,35 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			DebugLogger.Printf("[履修完了] code: %v, register count: %d", student.Code, len(temporaryReservedCourses))
 		}
 		// TODO: できれば登録に失敗した科目を抜いて再度登録する
+	}
+}
+
+func (s *Scenario) checkGradeScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
+	return func(ctx context.Context) {
+		for ctx.Err() == nil {
+
+			_ctx, cancel := context.WithDeadline(ctx, s.loadRequestEndTime)
+			<-student.WaitAddScoreSignal(_ctx, cancel)
+
+			if s.isNoRequestTime(ctx) {
+				return
+			}
+
+			expected := collectVerifyGradesData(student)
+			_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
+			if err != nil {
+				step.AddError(err)
+				time.Sleep(1000 * time.Second)
+			} else {
+				err = verifyGrades(expected, &getGradeRes)
+				if err != nil {
+					step.AddError(err)
+					time.Sleep(1000 * time.Second)
+				} else {
+					step.AddScore(score.GetGrades)
+				}
+			}
+		}
 	}
 }
 
@@ -699,6 +712,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				<-timer
 				continue
 			} else {
+
 				step.AddScore(score.RegisterScore)
 			}
 
