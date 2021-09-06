@@ -1,5 +1,8 @@
+-- for browser check
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
-('4bcb995b-a9a7-4f39-8f33-79bc9d285728','T00000','isucon(教員)','$2a$04$Jww9mv/QdUHk8nVUMeBPpOMoAgxn3Nr6FQ4ZrJBqBNirWYuwedCYq','teacher'),
+('81c95a50-f81f-425b-8e9e-6f07d774eac1','T00000','isucon-teacher','$2a$04$nfgVNp2Zh0iVMYtMkKBYOuTjGs2Tt0TOaxl24bBkCU.glKau1aJVy','teacher'),
+('983350fe-ea3a-4828-ab7b-5c7934d1d309','S00000','isucon','$2a$04$lmKw6juHcAsKhRQJE599VuWoMdgBUQqC5b.18ZpTCB4Eig0moVhZG','student');
+INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('c6482e64-b532-44dd-92ef-f027b5c066c7','T00001','山口 陽輝','$2a$04$11HvLZoso2fGl8nnm4Wv3.KnwJ30DmhNqHuthYri7Hv2.oWZ3De9i','teacher'),
 ('50261242-df34-479e-9065-9439769f1343','T00002','加藤 駿','$2a$04$2SRGQjwcmZH/Jh7DwWUzkeLSEK7B8b4s8ahRx/HyGRA1hsrHALbOS','teacher'),
 ('8eef895f-9f6d-4af2-bc20-1040fb523402','T00003','獅子吼 加奈子','$2a$04$moxiDsNEEVkj71CePbWkBeU9L2nUJCG/pLFqMaBglnwxIJSkYPmMK','teacher'),
@@ -50,7 +53,6 @@ INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('35bf49e3-3386-46a0-b71b-26141d3c04a9','T00048','佐々木 翼','$2a$04$no8cAUZ7LqZBfdwbTiUxKO9nKUgOPTuXVuI14pc4rg8MwB0P4QXdy','teacher'),
 ('f21a7e7a-7580-457c-a873-767c99cea88e','T00049','佐藤 大樹','$2a$04$d2416wzVHmyw1oDzeOHbzOZZ0riC7RjG43.ENQGrQhFgT8s8WN8c6','teacher');
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
-('bab74ad1-374f-4022-a26e-07721f1633e0','S00000','isucon(学生)','$2a$04$RjAX36UvGAbyBQG2i0qpZeN5rpSnr9eZOM69RShXGg8yKRQ8iXPIW','student'),
 ('a10bb7bf-dc7c-4de1-bf39-9efa49c0f37e','S00001','佐々木 翠','$2a$04$xs2Ki5q5i4Jv3VSqaCxyyuitSZELSUO2RTjf/PHO.Y4yk/NYwuLA.','student'),
 ('b2d64bcf-8b95-4345-9ba3-b0a1e7d5dd87','S00002','井上 一郎','$2a$04$5TScW.USIdTiihpoa8ZEj.tpvKwDzAscIdBBG1mcSt5z2bx4UdId6','student'),
 ('76d14aca-2426-4ac4-9e0c-a8fa9b3bd22b','S00003','安藤 蘭','$2a$04$HsDP1mSXAhBLZm9W.VX4UeS2N7lM5m06lF1m2fcqPYzx/auv2HtMS','student'),
@@ -5050,3 +5052,70 @@ INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('e1259047-6678-4a06-956a-feb04e50d923','S04997','玉城 秀樹','$2a$04$NZYII2hb4.d04V3EaN7Tg.GUoAEXspa7WdqpyJ1V43TW/sHjJ0/Fq','student'),
 ('8cb6f16e-0549-4e14-83be-46d6e65086e8','S04998','金城 大輝','$2a$04$I2vnOp7jXXt1.HyDrVxKzOCO444tWJ34v.lQbAOSamsuC2xdUZLo6','student'),
 ('a44324dd-66a6-48af-9684-f29f61faefe5','S04999','宮里 拓','$2a$04$C0PMZ9VYIyznpKGOjtfIw.5cdUEdUHoSVj5Vy4idXVvt/l32DUAAe','student');
+
+-- 動作確認用
+INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
+('93a85eda-5576-429e-ab9b-dd1da14d72bf','T99999','isucon-teacher2','$2a$04$DM8mmWZ9vaCRS1ZCBCAMju3Fg2PAv9SvSq4UZss7XYGJQNSESQEZm','teacher'),
+('6eee1df5-a734-4eef-97f5-33fadf9def15','S99999','isucon1','$2a$04$E6TdLLp72D1l5EJcQ6qDn.AB/bdFh6gtVcgu0SUFS.3j.Vt5X9ch2','student'),
+('804bc9a1-4b18-4784-913a-f9765083d1f0','S99998','isucon2','$2a$04$abH7BE13odlVdw.rLLDvT.mWcTsvR.FXIm0.Pu0p2iiE4WvV6N51O','student'),
+('680a6610-7115-4b19-b149-e5bcb5250d9e','S99997','isucon3','$2a$04$6q3Lb.KYJLkkaWx34DMVy.1t2icsMbzW1eQvwFzXesHW3encgz/ru','student');
+
+
+INSERT INTO `courses` VALUES
+('b4f7ab13-8629-420a-a173-f166b0162b56','X00001','major-subjects','ISUCON演習第一','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'monday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON チューニングアップ ','in-progress'),
+('c22a43db-e9d9-4077-9bc8-99479ef86b41','X00002','major-subjects','ISUCON演習第二','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'tuesday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON チューニングアップ','in-progress'),
+('ae53eb49-0258-463f-be70-1b295d7df740','X00003','major-subjects','ISUCON演習第三','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'wednesday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON チューニングアップ','registration');
+
+INSERT INTO `registrations` VALUES
+('b4f7ab13-8629-420a-a173-f166b0162b56','6eee1df5-a734-4eef-97f5-33fadf9def15'),
+('b4f7ab13-8629-420a-a173-f166b0162b56','804bc9a1-4b18-4784-913a-f9765083d1f0'),
+('b4f7ab13-8629-420a-a173-f166b0162b56','680a6610-7115-4b19-b149-e5bcb5250d9e'),
+('c22a43db-e9d9-4077-9bc8-99479ef86b41','6eee1df5-a734-4eef-97f5-33fadf9def15');
+
+INSERT INTO `classes` VALUES
+('0d02abb9-d509-440b-b118-d5c712e6e4ce','b4f7ab13-8629-420a-a173-f166b0162b56',1,'第1回 ISUCON4 予選','本日はISUCON4 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。',0),
+('8b7e3ce4-0fb9-479b-878c-7f2a68d75aea','b4f7ab13-8629-420a-a173-f166b0162b56',5,'第5回 ISUCON7 予選','本日はISUCON7 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。',0),
+('8b84fa0d-e917-44fe-a0e6-ef0b70abada0','b4f7ab13-8629-420a-a173-f166b0162b56',3,'第3回 ISUCON5 予選','本日はISUCON5 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。',0),
+('b2e570bb-a742-4d93-a61d-ce23af6c468a','b4f7ab13-8629-420a-a173-f166b0162b56',2,'第2回 ISUCON4 本選','本日はISUCON4 本選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。',0),
+('cf180222-abae-4741-8cc8-756424c0d2cc','b4f7ab13-8629-420a-a173-f166b0162b56',4,'第4回 ISUCON6 予選','本日はISUCON6 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。',0);
+
+INSERT INTO `announcements` VALUES
+('012c1141-76ed-44cc-971b-7f12a85829a3','b4f7ab13-8629-420a-a173-f166b0162b56','クラス追加: ISUCON5 予選','クラスが新しく追加されました: ISUCON5 予選\n本日はISUCON5 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。','2021-09-01 09:53:00'),
+('0d2c9070-f93c-4b81-bc41-76d4323f9cc1','b4f7ab13-8629-420a-a173-f166b0162b56','クラス追加: ISUCON4 予選','クラスが新しく追加されました: ISUCON4 予選\n本日はISUCON4 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。','2021-09-01 09:51:00'),
+('78851d4b-5e2b-4391-a168-7026de4caa4c','c22a43db-e9d9-4077-9bc8-99479ef86b41','クラス追加: ISUCON7 予選','クラスが新しく追加されました: ISUCON7 予選\n本日はISUCON7 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。','2021-09-01 09:55:00'),
+('e1063339-2727-4e1a-a769-4d7b21083878','b4f7ab13-8629-420a-a173-f166b0162b56','クラス追加: ISUCON6 予選','クラスが新しく追加されました: ISUCON6 予選\n本日はISUCON6 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。','2021-09-01 09:54:00'),
+('f50e3beb-bc3d-4c56-bef1-df0ce341915a','b4f7ab13-8629-420a-a173-f166b0162b56','クラス追加: ISUCON4 本選','クラスが新しく追加されました: ISUCON4 本選\n本日はISUCON4 本選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。','2021-09-01 09:52:00');
+
+INSERT INTO `unread_announcements` VALUES
+('012c1141-76ed-44cc-971b-7f12a85829a3','6eee1df5-a734-4eef-97f5-33fadf9def15',true),
+('0d2c9070-f93c-4b81-bc41-76d4323f9cc1','6eee1df5-a734-4eef-97f5-33fadf9def15',true),
+('78851d4b-5e2b-4391-a168-7026de4caa4c','6eee1df5-a734-4eef-97f5-33fadf9def15',true),
+('e1063339-2727-4e1a-a769-4d7b21083878','6eee1df5-a734-4eef-97f5-33fadf9def15',true),
+('f50e3beb-bc3d-4c56-bef1-df0ce341915a','6eee1df5-a734-4eef-97f5-33fadf9def15',true),
+('012c1141-76ed-44cc-971b-7f12a85829a3','804bc9a1-4b18-4784-913a-f9765083d1f0',true),
+('0d2c9070-f93c-4b81-bc41-76d4323f9cc1','804bc9a1-4b18-4784-913a-f9765083d1f0',true),
+('78851d4b-5e2b-4391-a168-7026de4caa4c','804bc9a1-4b18-4784-913a-f9765083d1f0',true),
+('e1063339-2727-4e1a-a769-4d7b21083878','804bc9a1-4b18-4784-913a-f9765083d1f0',true),
+('f50e3beb-bc3d-4c56-bef1-df0ce341915a','804bc9a1-4b18-4784-913a-f9765083d1f0',true),
+('012c1141-76ed-44cc-971b-7f12a85829a3','680a6610-7115-4b19-b149-e5bcb5250d9e',true),
+('0d2c9070-f93c-4b81-bc41-76d4323f9cc1','680a6610-7115-4b19-b149-e5bcb5250d9e',true),
+('78851d4b-5e2b-4391-a168-7026de4caa4c','680a6610-7115-4b19-b149-e5bcb5250d9e',true),
+('e1063339-2727-4e1a-a769-4d7b21083878','680a6610-7115-4b19-b149-e5bcb5250d9e',true),
+('f50e3beb-bc3d-4c56-bef1-df0ce341915a','680a6610-7115-4b19-b149-e5bcb5250d9e',true);
+
+INSERT INTO `submissions` VALUES
+('6eee1df5-a734-4eef-97f5-33fadf9def15','0d02abb9-d509-440b-b118-d5c712e6e4ce','S99999_1st.pdf',72),
+('6eee1df5-a734-4eef-97f5-33fadf9def15','8b7e3ce4-0fb9-479b-878c-7f2a68d75aea','S99999_5th.pdf',60),
+('6eee1df5-a734-4eef-97f5-33fadf9def15','8b84fa0d-e917-44fe-a0e6-ef0b70abada0','S99999_3rd.pdf',88),
+('6eee1df5-a734-4eef-97f5-33fadf9def15','b2e570bb-a742-4d93-a61d-ce23af6c468a','S99999_2nd.pdf',65),
+('6eee1df5-a734-4eef-97f5-33fadf9def15','cf180222-abae-4741-8cc8-756424c0d2cc','S99999_4th.pdf',54),
+('804bc9a1-4b18-4784-913a-f9765083d1f0','0d02abb9-d509-440b-b118-d5c712e6e4ce','S99998_1st.pdf',12),
+('804bc9a1-4b18-4784-913a-f9765083d1f0','8b7e3ce4-0fb9-479b-878c-7f2a68d75aea','S99998_5th.pdf',16),
+('804bc9a1-4b18-4784-913a-f9765083d1f0','8b84fa0d-e917-44fe-a0e6-ef0b70abada0','S99998_3rd.pdf',26),
+('804bc9a1-4b18-4784-913a-f9765083d1f0','b2e570bb-a742-4d93-a61d-ce23af6c468a','S99998_2nd.pdf',8),
+('804bc9a1-4b18-4784-913a-f9765083d1f0','cf180222-abae-4741-8cc8-756424c0d2cc','S99998_4th.pdf',33),
+('680a6610-7115-4b19-b149-e5bcb5250d9e','0d02abb9-d509-440b-b118-d5c712e6e4ce','S99997_1st.pdf',90),
+('680a6610-7115-4b19-b149-e5bcb5250d9e','8b7e3ce4-0fb9-479b-878c-7f2a68d75aea','S99997_5th.pdf',100),
+('680a6610-7115-4b19-b149-e5bcb5250d9e','8b84fa0d-e917-44fe-a0e6-ef0b70abada0','S99997_3rd.pdf',73),
+('680a6610-7115-4b19-b149-e5bcb5250d9e','b2e570bb-a742-4d93-a61d-ce23af6c468a','S99997_2nd.pdf',82),
+('680a6610-7115-4b19-b149-e5bcb5250d9e','cf180222-abae-4741-8cc8-756424c0d2cc','S99997_4th.pdf',79);
