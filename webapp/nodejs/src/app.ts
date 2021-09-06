@@ -817,8 +817,33 @@ interface GetCourseDetailResponse extends RowDataPacket {
   teacher: string;
 }
 
-syllabusApi.get("/:courseId", async (req, res) => {
-  return res.status(200).send("hoge");
-});
+// GET /api/syllabus/:courseID 科目詳細の取得
+syllabusApi.get(
+  "/:courseId",
+  async (req: express.Request<{ courseId: string }>, res) => {
+    const courseId = req.params.courseId;
+
+    const db = await pool.getConnection();
+    try {
+      const [[response]] = await db.query<GetCourseDetailResponse[]>(
+        "SELECT `courses`.*, `users`.`name` AS `teacher`" +
+          " FROM `courses`" +
+          " JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+          " WHERE `courses`.`id` = ?",
+        [courseId]
+      );
+      if (!response) {
+        return res.status(404).send("No such course.");
+      }
+
+      return res.status(200).json({ ...response, teacher_id: undefined });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
 
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
