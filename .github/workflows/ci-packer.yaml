@@ -31,7 +31,6 @@ jobs:
       - name: Install some utils
         env:
           AWS_CLI_VERSION: 2.2.35 # https://github.com/aws/aws-cli/blob/v2/CHANGELOG.rst
-          DOCKERIZE_VERSION: v0.6.1
           GO_JSONNET_VERSION: v0.17.0
           PACKER_VERSION: 1.7.3
         run: |
@@ -39,8 +38,6 @@ jobs:
           curl -sL https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip -o /tmp/awscliv2.zip \
             && unzip -o /tmp/awscliv2.zip -d /tmp/ \
             && /tmp/aws/install --update -i $HOME/work/_tool/isucon11-final/aws-cli -b $HOME/work/_tool/isucon11-final
-          curl -sL https://github.com/jwilder/dockerize/releases/download/${DOCKERIZE_VERSION}/dockerize-alpine-linux-amd64-${DOCKERIZE_VERSION}.tar.gz -o /tmp/dockerize.tar.gz \
-            && tar xvzf /tmp/dockerize.tar.gz -C $HOME/work/_tool/isucon11-final/
           curl -sL https://github.com/google/go-jsonnet/releases/download/${GO_JSONNET_VERSION}/go-jsonnet_${GO_JSONNET_VERSION#"v"}_Linux_x86_64.tar.gz -o /tmp/go-jsonnet.tar.gz \
             && tar xvzf /tmp/go-jsonnet.tar.gz -C /tmp/ \
             && mv /tmp/jsonnet* $HOME/work/_tool/isucon11-final/
