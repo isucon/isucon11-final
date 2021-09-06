@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import session from "cookie-session";
 import express from "express";
 import morgan from "morgan";
-import mysql, { RowDataPacket } from "mysql2/promise";
+import mysql, { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { v4 as uuid } from "uuid";
 
 import { getDbInfo } from "./db";
@@ -976,8 +976,48 @@ coursesApi.post(
     } finally {
       db.release();
     }
+  }
+);
 
-    return res.status(200).send();
+interface SetCourseStatusRequest {
+  status: CourseStatus;
+}
+
+function isValidSetCourseStatusRequest(
+  body: SetCourseStatusRequest
+): body is SetCourseStatusRequest {
+  return typeof body === "object" && typeof body.status === "string";
+}
+
+// PUT /api/courses/:courseID/status 科目のステータスを変更
+coursesApi.put(
+  "/:courseId/status",
+  isAdmin,
+  async (req: express.Request<{ courseId: string }>, res) => {
+    const courseId = req.params.courseId;
+
+    const request = req.body;
+    if (!isValidSetCourseStatusRequest(request)) {
+      return res.status(400).send("Invalid format.");
+    }
+
+    const db = await pool.getConnection();
+    try {
+      const [result] = await db.query<ResultSetHeader>(
+        "UPDATE `courses` SET `status` = ? WHERE `id` = ?",
+        [request.status, courseId]
+      );
+      if (result.affectedRows === 0) {
+        return res.status(404).send("No such course.");
+      }
+
+      return res.status(200).send();
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
   }
 );
 
