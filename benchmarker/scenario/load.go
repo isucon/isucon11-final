@@ -476,7 +476,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
-			timer := time.After(50 * time.Millisecond)
+			timer := time.After(100 * time.Millisecond)
 
 			if s.isNoRequestTime(ctx) {
 				return
