@@ -76,17 +76,17 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 // そうでない場合は、SimpleCourseResult になる
 func collectVerifyGradesData(student *model.Student) map[string]interface{} {
 	courses := student.Courses()
-	simpleCourseResults := make(map[string]interface{}, len(courses))
+	courseResults := make(map[string]interface{}, len(courses))
 	for _, course := range courses {
 		if course.Status() == api.StatusClosed {
-			simpleCourseResults[course.Code] = course.CalcCourseResultByStudentCode(student.Code)
+			courseResults[course.Code] = course.CalcCourseResultByStudentCode(student.Code)
 		} else {
 			classScore := course.CollectSimpleClassScores(student.Code)
-			simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
+			courseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
 		}
 	}
 
-	return simpleCourseResults
+	return courseResults
 }
 
 func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse) error {
