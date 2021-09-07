@@ -39,6 +39,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
+	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複した内容の Announcement が見つかりました"))
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
@@ -108,6 +109,16 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
 				step.AddError(errNotMatchUnreadCount)
 				return
+			}
+
+			// actualの重複確認
+			existCreatedAt := make(map[int64]struct{}, len(actualAnnouncements))
+			for _, a := range actualAnnouncements {
+				if _, ok := existCreatedAt[a.CreatedAt]; ok {
+					step.AddError(errDuplicated)
+					return
+				}
+				existCreatedAt[a.CreatedAt] = struct{}{}
 			}
 
 			expectAnnouncements := student.Announcements()
