@@ -634,15 +634,17 @@ usersApi.get("/me/grades", async (req, res) => {
       });
 
       // 自分のGPA計算
-      myGPA += myTotalScore * course.credit;
-      myCredits += course.credit;
+      if (course.status === CourseStatus.StatusClosed) {
+        myGPA += myTotalScore * course.credit;
+        myCredits += course.credit;
+      }
     }
     if (myCredits > 0) {
       myGPA = myGPA / 100 / myCredits;
     }
 
     // GPAの統計値
-    // 一つでも科目を履修している学生のGPA一覧
+    // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
     const [rows] = await db.query<({ gpa: number } & RowDataPacket)[]>(
       "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
         " FROM `users`" +
@@ -650,16 +652,16 @@ usersApi.get("/me/grades", async (req, res) => {
         "     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`" +
         "     FROM `users`" +
         "     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-        "     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+        "     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
         "     GROUP BY `users`.`id`" +
         " ) AS `credits` ON `credits`.`user_id` = `users`.`id`" +
         " JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-        " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+        " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
         " LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
         " LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
         " WHERE `users`.`type` = ?" +
         " GROUP BY `users`.`id`",
-      [UserType.Student]
+      [CourseStatus.StatusClosed, CourseStatus.StatusClosed, UserType.Student]
     );
     const gpas = rows.map((row) => row.gpa);
 
@@ -1003,13 +1005,18 @@ coursesApi.put(
 
     const db = await pool.getConnection();
     try {
-      const [result] = await db.query<ResultSetHeader>(
+      const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
+        "SELECT COUNT(*) FROM `courses` WHERE `id` = ?",
+        [courseId]
+      );
+      if (cnt === 0) {
+        return res.status(404).send("No such course.");
+      }
+
+      await db.query<ResultSetHeader>(
         "UPDATE `courses` SET `status` = ? WHERE `id` = ?",
         [request.status, courseId]
       );
-      if (result.affectedRows === 0) {
-        return res.status(404).send("No such course.");
-      }
 
       return res.status(200).send();
     } catch (err) {
