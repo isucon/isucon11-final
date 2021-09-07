@@ -698,8 +698,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				step.AddError(err)
 				<-timer
 				continue
-			} else {
-				step.AddScore(score.RegisterScore)
 			}
 
 			classTimes[i] = time.Since(classStart).Milliseconds()
@@ -978,7 +976,12 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 		return nil, nil
 	}
 
+	// 60秒以降のリトライリクエストかどうか
+	isExtendRequest := false
 L:
+	if s.isNoRetryTime(ctx) {
+		return nil, nil
+	}
 	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
 	if err != nil {
 		var urlError *url.Error
@@ -986,6 +989,7 @@ L:
 			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
 			time.Sleep(100 * time.Millisecond)
+			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
 		} else if hres != nil && hres.StatusCode == http.StatusNoContent {
 			// すでにwebappに登録されていたら続ける
@@ -995,7 +999,9 @@ L:
 		}
 	}
 
-	step.AddScore(score.RegisterScore)
+	if !isExtendRequest {
+		step.AddScore(score.RegisterScore)
+	}
 
 	// POST成功したスコアをベンチ内に保存する
 	for _, scoreData := range scores {
