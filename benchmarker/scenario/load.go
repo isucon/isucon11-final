@@ -203,7 +203,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
-					time.Sleep(1 * time.Millisecond)
+					time.Sleep(1000 * time.Millisecond)
 					continue
 				}
 				err = verifyGrades(expected, &getGradeRes)
