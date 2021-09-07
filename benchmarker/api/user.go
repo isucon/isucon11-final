@@ -26,7 +26,6 @@ func GetMe(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
@@ -56,7 +55,6 @@ func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, 
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
