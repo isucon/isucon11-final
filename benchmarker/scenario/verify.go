@@ -178,7 +178,7 @@ func verifyClassScores(expected *model.SimpleClassScore, res *api.ClassScore) er
 }
 
 func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expected *model.Course) error {
-	if actual.ID.String() != expected.ID {
+	if actual.ID != expected.ID {
 		return errInvalidResponse("コースのIDが期待する値と一致しません")
 	}
 

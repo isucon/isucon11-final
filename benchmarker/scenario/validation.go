@@ -205,13 +205,13 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	for _, actual := range actuals {
-		expect, ok := expectCourses[actual.ID.String()]
+		expect, ok := expectCourses[actual.ID]
 		if !ok {
 			step.AddError(errNotMatch)
 			return
 		}
 
-		if !AssertEqual("course ID", expect.ID, actual.ID.String()) ||
+		if !AssertEqual("course ID", expect.ID, actual.ID) ||
 			!AssertEqual("course Code", expect.Code, actual.Code) ||
 			!AssertEqual("course Name", expect.Name, actual.Name) ||
 			!AssertEqual("course Type", api.CourseType(expect.Type), actual.Type) ||
