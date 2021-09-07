@@ -86,11 +86,11 @@ func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc, addCourseF
 			addCourseFunc()
 		case <-ctx.Done():
 		}
-		c.rmu.Lock()
+		c.zeroReservationCond.L.Lock()
 		for c.reservations > 0 {
 			c.zeroReservationCond.Wait()
 		}
-		c.rmu.Unlock()
+		c.zeroReservationCond.L.Unlock()
 		cancel()
 	}()
 	return ctx.Done()
