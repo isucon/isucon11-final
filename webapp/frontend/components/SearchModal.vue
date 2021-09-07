@@ -24,8 +24,8 @@
             <div class="flex flex-auto gap-1">
               <TextField
                 id="params-teacher"
-                class="flex-1"
                 v-model="params.teacher"
+                class="flex-1"
                 label="担当教員"
                 label-direction="vertical"
                 type="text"
@@ -33,8 +33,8 @@
               />
               <TextField
                 id="params-credit"
-                class="flex-1"
                 v-model="params.credit"
+                class="flex-1"
                 label="単位数"
                 label-direction="vertical"
                 type="number"
@@ -43,8 +43,8 @@
               />
               <Select
                 id="params-type"
-                class="flex-1"
                 v-model="params.type"
+                class="flex-1"
                 label="科目種別"
                 :options="[
                   { text: '一般教養', value: 'liberal-arts' },
@@ -148,7 +148,7 @@
                   <td>{{ c.teacher }}</td>
                   <td>
                     <a
-                      :href="`/courses/${c.id}`"
+                      :href="`/syllabus/${c.id}`"
                       target="_blank"
                       class="text-primary-500"
                       >詳細を見る
