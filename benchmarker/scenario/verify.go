@@ -287,6 +287,10 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
 	}
 
+	if param.Status != "" && !AssertEqual("course status", param.Status, res.Status) {
+		return errInvalidResponse("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています")
+	}
+
 	return nil
 }
 

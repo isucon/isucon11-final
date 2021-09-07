@@ -29,16 +29,6 @@ func GetMe(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 	return a.Do(ctx, req)
 }
 
-type DayOfWeek string
-
-var DayOfWeekTable = []DayOfWeek{
-	"monday",
-	"tuesday",
-	"wednesday",
-	"thursday",
-	"friday",
-}
-
 type GetRegisteredCourseResponseContent struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`

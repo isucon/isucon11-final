@@ -56,6 +56,7 @@ type SearchCourseParam struct {
 	Period    int
 	DayOfWeek int
 	Keywords  []string
+	Status    string
 }
 
 func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *Course {
