@@ -10,8 +10,9 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/pborman/uuid"
+
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type AddAnnouncementRequest struct {
@@ -20,10 +21,6 @@ type AddAnnouncementRequest struct {
 	Title     string `json:"title"`
 	Message   string `json:"message"`
 	CreatedAt int64  `json:"created_at"`
-}
-
-type AddAnnouncementResponse struct {
-	ID string `json:"id"`
 }
 
 func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnouncementRequest) (*http.Response, error) {

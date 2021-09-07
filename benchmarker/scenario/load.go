@@ -647,7 +647,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if s.isNoRetryTime(ctx) {
 				return
 			}
-			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				var urlError *url.Error
 				if errors.As(err, &urlError) && urlError.Timeout() {
@@ -661,7 +661,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 					continue
 				}
 			} else {
-				announcement.ID = ancRes.ID
 				if !isExtendRequest {
 					step.AddScore(score.AddAnnouncement)
 				}

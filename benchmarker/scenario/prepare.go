@@ -256,12 +256,11 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 			// お知らせ追加
 			announcement := generate.Announcement(course, class)
-			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				step.AddError(err)
 				return
 			}
-			announcement.ID = ancRes.ID
 			course.BroadCastAnnouncement(announcement)
 
 			courseStudents := course.Students()
@@ -521,12 +520,11 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 
 			// お知らせ追加
 			announcement := generate.Announcement(course, class)
-			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				step.AddError(err)
 				return err
 			}
-			announcement.ID = ancRes.ID
 			course.BroadCastAnnouncement(announcement)
 
 			// 生徒ごとにおしらせリストの確認
@@ -818,11 +816,10 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 
 	// course に紐づくお知らせ
 	announcement1 := generate.Announcement(course, submissionNotClosedClass)
-	_, announcementRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement1)
+	_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement1)
 	if err != nil {
 		return err
 	}
-	announcement1.ID = announcementRes.ID
 
 	// ======== 検証 ========
 
@@ -907,7 +904,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	}
 
 	announcement2 := generate.Announcement(course, submissionNotClosedClass)
-	hres, _, err = SendAnnouncementAction(ctx, agent, announcement2)
+	hres, err = SendAnnouncementAction(ctx, agent, announcement2)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
@@ -1018,7 +1015,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 	}
 
 	announcement := generate.Announcement(course, submissionNotClosedClass)
-	hres, _, err = SendAnnouncementAction(ctx, student.Agent, announcement)
+	hres, err = SendAnnouncementAction(ctx, student.Agent, announcement)
 	if err := checkAuthorization(hres, err); err != nil {
 		return err
 	}
@@ -1720,7 +1717,7 @@ func (s *Scenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) err
 
 	// 存在しない科目IDでのお知らせ追加
 	announcement := generate.Announcement(notRegisteredCourse, class)
-	hres, _, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	hres, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 	if err == nil {
 		return errSendAnnouncementForUnknownCourse
 	}
@@ -1771,11 +1768,10 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 
 	// notRegisteredCourse に紐づくお知らせ
 	announcement := generate.Announcement(notRegisteredCourse, class)
-	_, announcementRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 	if err != nil {
 		return err
 	}
-	announcement.ID = announcementRes.ID
 
 	// ======== 検証 ========
 
