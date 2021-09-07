@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
@@ -40,6 +41,7 @@ type Course struct {
 	reservations       int
 	capacity           int // 登録学生上限
 	classes            []*Class
+	status             api.CourseStatus
 
 	closer              chan struct{}
 	zeroReservationCond *sync.Cond
@@ -64,6 +66,7 @@ func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *C
 		registeredStudents: make(map[string]*Student, capacity),
 		capacity:           capacity,
 		classes:            make([]*Class, 0, ClassCountPerCourse),
+		status:             api.StatusRegistration,
 
 		closer: make(chan struct{}, 0),
 	}
@@ -76,6 +79,27 @@ func (c *Course) AddClass(class *Class) {
 	defer c.rmu.Unlock()
 
 	c.classes = append(c.classes, class)
+}
+
+func (c *Course) Status() api.CourseStatus {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	return c.status
+}
+
+func (c *Course) SetStatusToInProgress() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.status = api.StatusInProgress
+}
+
+func (c *Course) SetStatusToClosed() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.status = api.StatusClosed
 }
 
 func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc, addCourseFunc func()) <-chan struct{} {

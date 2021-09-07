@@ -223,7 +223,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	activeStudents := s.activeStudents
 	users := make(map[string]*model.Student, len(activeStudents))
 	for _, activeStudent := range activeStudents {
-		if len(activeStudent.Courses()) > 0 {
+		if activeStudent.HasFinishedCourse() {
 			users[activeStudent.Code] = activeStudent
 		}
 	}
@@ -443,7 +443,9 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 
 	gpas := make([]float64, 0, n)
 	for _, student := range students {
-		gpas = append(gpas, student.GPA())
+		if student.HasFinishedCourse() {
+			gpas = append(gpas, student.GPA())
+		}
 	}
 
 	targetUserGpa := students[userCode].GPA()
