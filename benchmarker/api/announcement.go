@@ -10,7 +10,6 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/pborman/uuid"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -52,15 +51,15 @@ type GetAnnouncementsResponse struct {
 	Announcements []AnnouncementResponse `json:"announcements"`
 }
 
-func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID uuid.UUID) (*http.Response, error) {
+func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID string) (*http.Response, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
 	q := u.Query()
 
-	if courseID != nil {
-		q.Set("course_id", courseID.String())
+	if courseID != "" {
+		q.Set("course_id", courseID)
 		u.RawQuery = q.Encode()
 	}
 

@@ -230,7 +230,7 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	if next == "" {
 		next = "/api/announcements"
 	}
-	hres, err := api.GetAnnouncementList(ctx, agent, next, nil)
+	hres, err := api.GetAnnouncementList(ctx, agent, next, "")
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}

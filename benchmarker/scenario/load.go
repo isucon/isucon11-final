@@ -241,7 +241,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.SearchCourses)
 
 					if len(res) > 0 {
-						checkTargetID = res[0].ID.String()
+						checkTargetID = res[0].ID
 					}
 
 					// Linkヘッダから次ページのPath + QueryParamを取得
@@ -260,7 +260,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					expected, exists := s.CourseManager.GetCourseByID(res.ID.String())
+					expected, exists := s.CourseManager.GetCourseByID(res.ID)
 					// ベンチ側の登録がまだの場合は検証スキップ
 					if exists {
 						if err := verifyCourseDetail(&res, expected); err != nil {
@@ -581,6 +581,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
 			return
 		}
+		course.SetStatusToInProgress()
 		s.debugData.AddInt("waitCourseTime", time.Since(waitStart).Milliseconds())
 		DebugLogger.Printf("[科目開始] id: %v, time: %v, registered students: %v", course.ID, time.Since(waitStart).Milliseconds(), len(course.Students()))
 
@@ -697,8 +698,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				step.AddError(err)
 				<-timer
 				continue
-			} else {
-				step.AddScore(score.RegisterScore)
 			}
 
 			classTimes[i] = time.Since(classStart).Milliseconds()
@@ -724,13 +723,25 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		}
 
 		// 科目ステータスをclosedにする
-		_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
-		if err != nil {
-			step.AddError(err)
-			AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
+	statusLoop:
+		if s.isNoRetryTime(ctx) {
 			return
 		}
+		_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
+		if err != nil {
+			var urlError *url.Error
+			if errors.As(err, &urlError) && urlError.Timeout() {
+				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				goto statusLoop
+			} else {
+				step.AddError(err)
+				AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
+				return
+			}
+		}
 
+		course.SetStatusToClosed()
 		step.AddScore(score.FinishCourses)
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
@@ -977,7 +988,12 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 		return nil, nil
 	}
 
+	// 60秒以降のリトライリクエストかどうか
+	isExtendRequest := false
 L:
+	if s.isNoRetryTime(ctx) {
+		return nil, nil
+	}
 	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, scores)
 	if err != nil {
 		var urlError *url.Error
@@ -985,6 +1001,7 @@ L:
 			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
 			time.Sleep(100 * time.Millisecond)
+			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
 		} else if hres != nil && hres.StatusCode == http.StatusNoContent {
 			// すでにwebappに登録されていたら続ける
@@ -994,7 +1011,9 @@ L:
 		}
 	}
 
-	step.AddScore(score.RegisterScore)
+	if !isExtendRequest {
+		step.AddScore(score.RegisterScore)
+	}
 
 	// POST成功したスコアをベンチ内に保存する
 	for _, scoreData := range scores {

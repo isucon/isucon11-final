@@ -220,6 +220,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			step.AddError(err)
 			return
 		}
+		course.SetStatusToInProgress()
 	}, worker.WithLoopCount(prepareCourseCount))
 	if err != nil {
 		panic(fmt.Errorf("unreachable! %w", err))
@@ -243,7 +244,6 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		w, err = worker.NewWorker(func(ctx context.Context, i int) {
 			course := courses[i]
 			teacher := course.Teacher()
-
 			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
@@ -363,6 +363,43 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		w.Process(ctx)
 		w.Wait()
 	}
+
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		course := courses[i]
+		teacher := course.Teacher()
+		_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+		course.SetStatusToClosed()
+	}, worker.WithLoopCount(prepareCourseCount))
+	if err != nil {
+		panic(fmt.Errorf("unreachable! %w", err))
+	}
+	w.Process(ctx)
+	w.Wait()
+
+	w, err = worker.NewWorker(func(ctx context.Context, i int) {
+		student := students[i]
+		expected := calculateGradeRes(student, studentByCode)
+		_, res, err := GetGradeAction(ctx, student.Agent)
+		if err != nil {
+			step.AddError(failure.NewError(fails.ErrCritical, err))
+			return
+		}
+
+		err = validateUserGrade(&expected, &res)
+		if err != nil {
+			step.AddError(err)
+			return
+		}
+	}, worker.WithLoopCount(prepareStudentCount))
+	if err != nil {
+		panic(fmt.Errorf("unreachable! %w", err))
+	}
+	w.Process(ctx)
+	w.Wait()
 
 	if hasErrors() {
 		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
@@ -498,6 +535,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		if err != nil {
 			return err
 		}
+		course.SetStatusToInProgress()
 	}
 
 	// クラス追加、おしらせ追加をする
@@ -793,6 +831,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	if err != nil {
 		return err
 	}
+	course.SetStatusToInProgress()
 
 	// 課題提出が締め切られた講義
 	classParam := generate.ClassParam(course, 1)
@@ -958,6 +997,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 	if err != nil {
 		return err
 	}
+	course.SetStatusToInProgress()
 
 	// 課題提出が締め切られた講義
 	classParam := generate.ClassParam(course, 1)
@@ -1118,6 +1158,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
+	inProgressCourse.SetStatusToInProgress()
 
 	// ステータスが closed の科目
 	courseParam = generate.CourseParam(0, 2, teacher)
@@ -1130,6 +1171,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
+	closedCourse.SetStatusToClosed()
 
 	// student が履修登録済みの科目
 	courseParam = generate.CourseParam(1, 0, teacher)
@@ -1406,6 +1448,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	course.SetStatusToInProgress()
 
 	// course の講義を追加
 	classParam = generate.ClassParam(course, 1)
@@ -1436,6 +1479,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	course.SetStatusToClosed()
 
 	// ======== 検証 ========
 
@@ -1487,6 +1531,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
+	inProgressCourse.SetStatusToInProgress()
 
 	// student が履修していない、in-progressの科目
 	courseParam = generate.CourseParam(0, 2, teacher)
@@ -1499,6 +1544,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
+	notRegisteredCourse.SetStatusToInProgress()
 
 	// inProgressCourse の課題提出が締め切られた講義
 	classParam := generate.ClassParam(inProgressCourse, 1)
@@ -1578,6 +1624,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
+	inProgressCourse.SetStatusToClosed()
 
 	// ======== 検証 ========
 
@@ -1622,6 +1669,7 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	course.SetStatusToInProgress()
 
 	// 課題提出が締め切られていない講義
 	classParam := generate.ClassParam(course, 1)
@@ -1757,6 +1805,7 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 	if err != nil {
 		return err
 	}
+	notRegisteredCourse.SetStatusToInProgress()
 
 	// notRegisteredCourse の講義
 	classParam := generate.ClassParam(notRegisteredCourse, 1)
