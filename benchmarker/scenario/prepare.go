@@ -16,13 +16,12 @@ import (
 	"github.com/isucon/isucandar/parallel"
 	"github.com/isucon/isucandar/random/useragent"
 	"github.com/isucon/isucandar/worker"
+	"github.com/oklog/ulid/v2"
 
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
-
-	"github.com/pborman/uuid"
 )
 
 const (
@@ -1210,7 +1209,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(2, 0, teacher)
-	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generateULID(), teacher, prepareCourseCapacity)
 
 	// ======== 検証 ========
 
@@ -1274,7 +1273,7 @@ func (s *Scenario) prepareCheckGetCourseDetailAbnormal(ctx context.Context) erro
 	// ======== 検証 ========
 
 	// 存在しない科目IDでの科目詳細取得
-	hres, _, err := GetCourseDetailAction(ctx, student.Agent, uuid.NewRandom().String())
+	hres, _, err := GetCourseDetailAction(ctx, student.Agent, generateULID())
 	if err == nil {
 		return errGetUnknownCourseDetail
 	}
@@ -1358,7 +1357,7 @@ func (s *Scenario) prepareCheckSetCourseStatusAbnormal(ctx context.Context) erro
 	// ======== 検証 ========
 
 	// 存在しない科目IDでの科目ステータス変更
-	hres, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, uuid.NewRandom().String())
+	hres, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, generateULID())
 	if err == nil {
 		return errSetStatusForUnknownCourse
 	}
@@ -1383,7 +1382,7 @@ func (s *Scenario) prepareCheckGetClassesAbnormal(ctx context.Context) error {
 	// ======== 検証 ========
 
 	// 存在しない科目IDでの講義一覧取得
-	hres, _, err := GetClassesAction(ctx, student.Agent, uuid.NewRandom().String())
+	hres, _, err := GetClassesAction(ctx, student.Agent, generateULID())
 	if err == nil {
 		return errGetClassesForUnknownCourse
 	}
@@ -1417,7 +1416,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(0, 1, teacher)
-	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generateULID(), teacher, prepareCourseCapacity)
 
 	// ======== 検証 ========
 
@@ -1579,7 +1578,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	submissionData, fileName := generate.SubmissionData(inProgressCourse, submissionNotClosedClass, student.UserAccount)
 
 	// 存在しない科目IDでの課題提出
-	hres, err := SubmitAssignmentAction(ctx, student.Agent, uuid.NewRandom().String(), submissionNotClosedClass.ID, fileName, submissionData)
+	hres, err := SubmitAssignmentAction(ctx, student.Agent, generateULID(), submissionNotClosedClass.ID, fileName, submissionData)
 	if err == nil {
 		return errSubmitAssignmentForUnknownClass
 	}
@@ -1588,7 +1587,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	}
 
 	// 存在しない講義IDでの課題提出
-	hres, err = SubmitAssignmentAction(ctx, student.Agent, inProgressCourse.ID, uuid.NewRandom().String(), fileName, submissionData)
+	hres, err = SubmitAssignmentAction(ctx, student.Agent, inProgressCourse.ID, generateULID(), fileName, submissionData)
 	if err == nil {
 		return errSubmitAssignmentForUnknownClass
 	}
@@ -1689,7 +1688,7 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 	}
 
 	// 存在しない講義IDでの成績登録
-	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, uuid.NewRandom().String(), scores)
+	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, generateULID(), scores)
 	if err == nil {
 		return errPostGradeForUnknownClass
 	}
@@ -1731,7 +1730,7 @@ func (s *Scenario) prepareCheckDownloadSubmissionsAbnormal(ctx context.Context) 
 	// ======== 検証 ========
 
 	// 存在しない講義IDでの課題ダウンロード
-	hres, _, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, uuid.NewRandom().String())
+	hres, _, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, generateULID())
 	if err == nil {
 		return errDownloadSubmissionsForUnknownClass
 	}
@@ -1755,11 +1754,11 @@ func (s *Scenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) err
 
 	// 存在しない科目
 	courseParam := generate.CourseParam(0, 0, teacher)
-	notRegisteredCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, generateULID(), teacher, prepareCourseCapacity)
 
 	// 存在しない講義
 	classParam := generate.ClassParam(notRegisteredCourse, 1)
-	class := model.NewClass(uuid.NewRandom().String(), classParam)
+	class := model.NewClass(generateULID(), classParam)
 
 	// ======== 検証 ========
 
@@ -1825,7 +1824,7 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 	// ======== 検証 ========
 
 	// 存在しないお知らせIDでのお知らせ詳細取得
-	hres, _, err := GetAnnouncementDetailAction(ctx, student.Agent, uuid.NewRandom().String())
+	hres, _, err := GetAnnouncementDetailAction(ctx, student.Agent, generateULID())
 	if err == nil {
 		return errGetClassesForUnknownCourse
 	}
@@ -1872,4 +1871,8 @@ func (s *Scenario) getLoggedInTeacher(ctx context.Context) (*model.Teacher, erro
 	}
 
 	return teacher, nil
+}
+
+func generateULID() string {
+	return ulid.MustNew(ulid.Now(), ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)).String()
 }
