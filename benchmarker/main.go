@@ -44,6 +44,7 @@ var (
 	exitStatusOnFail bool
 	noLoad           bool
 	noPrepare        bool
+	noResource       bool
 	isDebug          bool
 	showVersion      bool
 	timeoutDuration  string
@@ -70,6 +71,7 @@ func init() {
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
 	flag.BoolVar(&noPrepare, "no-prepare", false, "only load and validation step")
+	flag.BoolVar(&noResource, "no-resource", false, "do not verify page resource")
 	flag.BoolVar(&isDebug, "is-debug", false, "silence debug log")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
@@ -239,11 +241,12 @@ func main() {
 		panic(err)
 	}
 	config := &scenario.Config{
-		BaseURL:   baseURL,
-		UseTLS:    useTLS,
-		NoLoad:    noLoad,
-		NoPrepare: noPrepare,
-		IsDebug:   isDebug,
+		BaseURL:          baseURL,
+		UseTLS:           useTLS,
+		NoLoad:           noLoad,
+		NoPrepare:        noPrepare,
+		NoVerifyResource: noResource,
+		IsDebug:          isDebug,
 	}
 
 	s, err := scenario.NewScenario(config)

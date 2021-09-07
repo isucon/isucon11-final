@@ -772,13 +772,16 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(err)
 				return
 			}
-			errs := verifyPageResource(hres, resources)
-			if len(errs) != 0 {
-				AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", student.Name)
-				for _, err := range errs {
-					step.AddError(err)
+
+			if !s.NoVerifyResource {
+				errs := verifyPageResource(hres, resources)
+				if len(errs) != 0 {
+					AdminLogger.Printf("学生 %vがアクセスしたログイン画面の検証に失敗しました", student.Name)
+					for _, err := range errs {
+						step.AddError(err)
+					}
+					return
 				}
-				return
 			}
 
 			if s.isNoRequestTime(ctx) {
