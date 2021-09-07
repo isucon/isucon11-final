@@ -47,6 +47,7 @@ const config = {
             'faPlus',
             'faBell',
             'faGraduationCap',
+            'faEllipsisV',
           ],
           regular: ['faClock'],
         },
