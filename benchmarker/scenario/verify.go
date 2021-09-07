@@ -71,18 +71,25 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 	return nil
 }
 
-func collectVerifyGradesData(student *model.Student) map[string]*model.SimpleCourseResult {
+// この返り値の map の value の interfaceは
+// すでにclosedなコースについてはCourseResult に、
+// そうでない場合は、SimpleCourseResult になる
+func collectVerifyGradesData(student *model.Student) map[string]interface{} {
 	courses := student.Courses()
-	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
+	simpleCourseResults := make(map[string]interface{}, len(courses))
 	for _, course := range courses {
-		classScore := course.CollectSimpleClassScores(student.Code)
-		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
+		if course.Status() == api.StatusClosed {
+			simpleCourseResults[course.Code] = course.CalcCourseResultByStudentCode(student.Code)
+		} else {
+			classScore := course.CollectSimpleClassScores(student.Code)
+			simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
+		}
 	}
 
 	return simpleCourseResults
 }
 
-func verifyGrades(expected map[string]*model.SimpleCourseResult, res *api.GetGradeResponse) error {
+func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse) error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 	if len(expected) != len(res.CourseResults) {
 		return errInvalidResponse("成績確認でのコース結果の数が一致しません")
@@ -93,10 +100,21 @@ func verifyGrades(expected map[string]*model.SimpleCourseResult, res *api.GetGra
 			return errInvalidResponse("成績確認で期待しないコースが含まれています")
 		}
 
-		err := verifySimpleCourseResult(expected[resCourseResult.Code], &resCourseResult)
-		if err != nil {
-			return err
+		switch v := expected[resCourseResult.Code].(type) {
+		case *model.SimpleCourseResult:
+			err := verifySimpleCourseResult(v, &resCourseResult)
+			if err != nil {
+				return err
+			}
+		case *model.CourseResult:
+			err := validateCourseResult(v, &resCourseResult)
+			if err != nil {
+				return err
+			}
+		default:
+			panic(fmt.Sprintf("expect %T or %T, actual %T", &model.SimpleCourseResult{}, &model.CourseResult{}, v))
 		}
+
 	}
 
 	return nil
