@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -21,7 +22,7 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/pborman/uuid"
+	"github.com/oklog/ulid/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -866,7 +867,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	courseID := uuid.New()
+	courseID := ulid.MustNew(ulid.Now(), ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)).String()
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
@@ -1230,7 +1231,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in-progress.")
 	}
 
-	classID := uuid.New()
+	classID := ulid.MustNew(ulid.Now(), ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)).String()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
 		_ = tx.Rollback()
@@ -1456,14 +1457,11 @@ type Announcement struct {
 }
 
 type AddAnnouncementRequest struct {
+	ID        string `json:"id"`
 	CourseID  string `json:"course_id"`
 	Title     string `json:"title"`
 	Message   string `json:"message"`
 	CreatedAt int64  `json:"created_at"`
-}
-
-type AddAnnouncementResponse struct {
-	ID string `json:"id"`
 }
 
 // AddAnnouncement POST /api/announcements 新規お知らせ追加
@@ -1489,21 +1487,20 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	announcementID := uuid.New()
 	createdAt := time.Unix(req.CreatedAt, 0)
 	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
-		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
+		req.ID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
 		_ = tx.Rollback()
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
 			var announcement Announcement
-			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?", req.CourseID, createdAt); err != nil {
+			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `id` = ?", req.ID); err != nil {
 				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			if announcement.CourseID != req.CourseID || announcement.Title != req.Title || announcement.Message != req.Message {
 				return echo.NewHTTPError(http.StatusConflict, "An announcement with the same course_id and created_at already exists.")
 			}
-			return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcement.ID})
+			return c.NoContent(http.StatusCreated)
 		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1519,7 +1516,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", req.ID, user.ID); err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
@@ -1530,5 +1527,5 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcementID})
+	return c.NoContent(http.StatusCreated)
 }
