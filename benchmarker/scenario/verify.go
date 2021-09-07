@@ -64,6 +64,10 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 		return errInvalidResponse("学籍番号が期待する値と一致しません")
 	}
 
+	if res.Name != expectedUserAccount.Name {
+		return errInvalidResponse("氏名が期待する値と一致しません")
+	}
+
 	if res.IsAdmin != expectedAdminFlag {
 		return errInvalidResponse("管理者フラグが期待する値と一致しません")
 	}

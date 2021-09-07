@@ -14,6 +14,7 @@ import (
 
 type GetMeResponse struct {
 	Code    string `json:"code"`
+	Name    string `json:"name"`
 	IsAdmin bool   `json:"is_admin"`
 }
 
