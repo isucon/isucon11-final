@@ -196,56 +196,47 @@ function isValidLoginRequest(body: LoginRequest): body is LoginRequest {
 }
 
 // POST /login ログイン
-app.post(
-  "/login",
-  async (
-    req: express.Request<Record<string, never>, unknown, LoginRequest>,
-    res
-  ) => {
-    const request = req.body;
-    if (!isValidLoginRequest(request)) {
-      return res.status(400).send("Invalid format.");
-    }
-
-    const db = await pool.getConnection();
-    try {
-      const [[user]] = await db.query<User[]>(
-        "SELECT * FROM `users` WHERE `code` = ?",
-        [request.code]
-      );
-      if (!user) {
-        return res.status(401).send("Code or Password is wrong.");
-      }
-
-      if (
-        !(await bcrypt.compare(
-          request.password,
-          user.hashed_password.toString()
-        ))
-      ) {
-        return res.status(401).send("Code or Password is wrong.");
-      }
-
-      if (req.session && req.session["userID"] === user.id) {
-        return res.status(400).send("You are already logged in.");
-      }
-
-      req.session = {
-        userID: user.id,
-        userName: user.name,
-        isAdmin: user.type === UserType.Teacher,
-      };
-      req.sessionOptions.maxAge = 3600 * 1000;
-
-      return res.status(200).send();
-    } catch (err) {
-      console.error(err);
-      return res.status(500).send();
-    } finally {
-      db.release();
-    }
+app.post("/login", async (req, res) => {
+  const request = req.body;
+  if (!isValidLoginRequest(request)) {
+    return res.status(400).send("Invalid format.");
   }
-);
+
+  const db = await pool.getConnection();
+  try {
+    const [[user]] = await db.query<User[]>(
+      "SELECT * FROM `users` WHERE `code` = ?",
+      [request.code]
+    );
+    if (!user) {
+      return res.status(401).send("Code or Password is wrong.");
+    }
+
+    if (
+      !(await bcrypt.compare(request.password, user.hashed_password.toString()))
+    ) {
+      return res.status(401).send("Code or Password is wrong.");
+    }
+
+    if (req.session && req.session["userID"] === user.id) {
+      return res.status(400).send("You are already logged in.");
+    }
+
+    req.session = {
+      userID: user.id,
+      userName: user.name,
+      isAdmin: user.type === UserType.Teacher,
+    };
+    req.sessionOptions.maxAge = 3600 * 1000;
+
+    return res.status(200).send();
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send();
+  } finally {
+    db.release();
+  }
+});
 
 // POST /logout ログアウト
 app.post("/logout", (req, res) => {
@@ -373,125 +364,115 @@ interface RegisterCoursesErrorResponse {
 }
 
 // PUT /api/users/me/courses 履修登録
-usersApi.put(
-  "/me/courses",
-  async (
-    req: express.Request<
-      Record<string, never>,
-      unknown,
-      RegisterCourseRequestContent[]
-    >,
-    res
-  ) => {
-    let userId: string;
-    try {
-      [userId] = getUserInfo(req.session);
-    } catch (err) {
-      console.error(err);
-      return res.status(500).send();
-    }
-
-    const request = req.body;
-    if (!isValidRegisterCourseRequestContent(request)) {
-      return res.status(400).send("Invalid format.");
-    }
-    request.sort((a, b) => {
-      if (a.id < b.id) {
-        return -1;
-      }
-      if (a.id > b.id) {
-        return 1;
-      }
-      return 0;
-    });
-
-    const db = await pool.getConnection();
-    try {
-      await db.beginTransaction();
-
-      const errors: RegisterCoursesErrorResponse = {
-        course_not_found: [],
-        not_registrable_status: [],
-        schedule_conflict: [],
-      };
-      const newlyAdded: Course[] = [];
-      for (const courseReq of request) {
-        const [[course]] = await db.query<Course[]>(
-          "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE",
-          [courseReq.id]
-        );
-        if (!course) {
-          errors.course_not_found.push(courseReq.id);
-          continue;
-        }
-
-        if (course.status !== CourseStatus.StatusRegistration) {
-          errors.not_registrable_status.push(course.id);
-          continue;
-        }
-
-        // すでに履修登録済みの科目は無視する
-        const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
-          "SELECT COUNT(*) AS `cnt` FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
-          [course.id, userId]
-        );
-        if (cnt > 0) {
-          continue;
-        }
-
-        newlyAdded.push(course);
-      }
-
-      const [alreadyRegistered] = await db.query<Course[]>(
-        "SELECT `courses`.*" +
-          " FROM `courses`" +
-          " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
-          " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?",
-        [CourseStatus.StatusClosed, userId]
-      );
-
-      alreadyRegistered.push(...newlyAdded);
-      for (const course1 of newlyAdded) {
-        for (const course2 of alreadyRegistered) {
-          if (
-            course1.id !== course2.id &&
-            course1.period === course2.period &&
-            course1.day_of_week === course2.day_of_week
-          ) {
-            errors.schedule_conflict.push(course1.id);
-            break;
-          }
-        }
-      }
-
-      if (
-        errors.course_not_found.length > 0 ||
-        errors.not_registrable_status.length > 0 ||
-        errors.schedule_conflict.length > 0
-      ) {
-        await db.rollback();
-        return res.status(400).json(errors);
-      }
-
-      for (const course of newlyAdded) {
-        await db.query(
-          "INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)",
-          [course.id, userId]
-        );
-      }
-
-      await db.commit();
-
-      return res.status(200).send();
-    } catch (err) {
-      console.error(err);
-      await db.rollback();
-      return res.status(500).send();
-    } finally {
-      db.release();
-    }
+usersApi.put("/me/courses", async (req, res) => {
+  let userId: string;
+  try {
+    [userId] = getUserInfo(req.session);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send();
   }
-);
+
+  const request = req.body;
+  if (!isValidRegisterCourseRequestContent(request)) {
+    return res.status(400).send("Invalid format.");
+  }
+  request.sort((a, b) => {
+    if (a.id < b.id) {
+      return -1;
+    }
+    if (a.id > b.id) {
+      return 1;
+    }
+    return 0;
+  });
+
+  const db = await pool.getConnection();
+  try {
+    await db.beginTransaction();
+
+    const errors: RegisterCoursesErrorResponse = {
+      course_not_found: [],
+      not_registrable_status: [],
+      schedule_conflict: [],
+    };
+    const newlyAdded: Course[] = [];
+    for (const courseReq of request) {
+      const [[course]] = await db.query<Course[]>(
+        "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE",
+        [courseReq.id]
+      );
+      if (!course) {
+        errors.course_not_found.push(courseReq.id);
+        continue;
+      }
+
+      if (course.status !== CourseStatus.StatusRegistration) {
+        errors.not_registrable_status.push(course.id);
+        continue;
+      }
+
+      // すでに履修登録済みの科目は無視する
+      const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
+        "SELECT COUNT(*) AS `cnt` FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+        [course.id, userId]
+      );
+      if (cnt > 0) {
+        continue;
+      }
+
+      newlyAdded.push(course);
+    }
+
+    const [alreadyRegistered] = await db.query<Course[]>(
+      "SELECT `courses`.*" +
+        " FROM `courses`" +
+        " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
+        " WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?",
+      [CourseStatus.StatusClosed, userId]
+    );
+
+    alreadyRegistered.push(...newlyAdded);
+    for (const course1 of newlyAdded) {
+      for (const course2 of alreadyRegistered) {
+        if (
+          course1.id !== course2.id &&
+          course1.period === course2.period &&
+          course1.day_of_week === course2.day_of_week
+        ) {
+          errors.schedule_conflict.push(course1.id);
+          break;
+        }
+      }
+    }
+
+    if (
+      errors.course_not_found.length > 0 ||
+      errors.not_registrable_status.length > 0 ||
+      errors.schedule_conflict.length > 0
+    ) {
+      await db.rollback();
+      return res.status(400).json(errors);
+    }
+
+    for (const course of newlyAdded) {
+      await db.query(
+        "INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)",
+        [course.id, userId]
+      );
+    }
+
+    await db.commit();
+
+    return res.status(200).send();
+  } catch (err) {
+    console.error(err);
+    await db.rollback();
+    return res.status(500).send();
+  } finally {
+    db.release();
+  }
+});
 
 interface Class extends RowDataPacket {
   id: string;
@@ -581,13 +562,11 @@ usersApi.get("/me/grades", async (req, res) => {
           [cls.id]
         );
 
-        const [[{ myScore }]] = await db.query<
-          ({ score: number } & RowDataPacket)[]
-        >(
+        const [[row]] = await db.query<({ score: number } & RowDataPacket)[]>(
           "SELECT `submissions`.`score` FROM `submissions` WHERE `user_id` = ? AND `class_id` = ?",
           [userId, cls.id]
         );
-        if (typeof myScore !== "number") {
+        if (!row || typeof row.score !== "number") {
           classScores.push({
             class_id: cls.id,
             part: cls.part,
@@ -596,6 +575,7 @@ usersApi.get("/me/grades", async (req, res) => {
             submitters: submissionsCount,
           });
         } else {
+          const myScore = row.score;
           myTotalScore += myScore;
           classScores.push({
             class_id: cls.id,
@@ -832,50 +812,6 @@ coursesApi.get(
   }
 );
 
-interface GetCourseDetailResponse extends RowDataPacket {
-  id: string;
-  code: string;
-  type: string;
-  name: string;
-  description: string;
-  credit: number;
-  period: number;
-  day_of_week: string;
-  teacher_id: string;
-  keywords: string;
-  status: CourseStatus;
-  teacher: string;
-}
-
-// GET /api/courses/:courseID 科目詳細の取得
-coursesApi.get(
-  "/:courseId",
-  async (req: express.Request<{ courseId: string }>, res) => {
-    const courseId = req.params.courseId;
-
-    const db = await pool.getConnection();
-    try {
-      const [[response]] = await db.query<GetCourseDetailResponse[]>(
-        "SELECT `courses`.*, `users`.`name` AS `teacher`" +
-          " FROM `courses`" +
-          " JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
-          " WHERE `courses`.`id` = ?",
-        [courseId]
-      );
-      if (!response) {
-        return res.status(404).send("No such course.");
-      }
-
-      return res.status(200).json({ ...response, teacher_id: undefined });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).send();
-    } finally {
-      db.release();
-    }
-  }
-);
-
 interface AddCourseRequest {
   code: string;
   type: CourseType;
@@ -908,73 +844,111 @@ interface AddCourseResponse {
 }
 
 // POST /api/courses 新規科目登録
-coursesApi.post(
-  "",
-  isAdmin,
-  async (
-    req: express.Request<Record<string, never>, unknown, AddCourseRequest>,
-    res
-  ) => {
-    let userId: string;
+coursesApi.post("", isAdmin, async (req, res) => {
+  let userId: string;
+  try {
+    [userId] = getUserInfo(req.session);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send();
+  }
+
+  const request = req.body;
+  if (!isValidAddCourseRequest(request)) {
+    return res.status(400).send("Invalid format.");
+  }
+
+  if (
+    request.type !== CourseType.LiberalArts &&
+    request.type !== CourseType.MajorSubjects
+  ) {
+    return res.status(400).send("Invalid course type.");
+  }
+  if (!DaysOfWeek.includes(request.day_of_week)) {
+    return res.status(400).send("Invalid day of week.");
+  }
+
+  const db = await pool.getConnection();
+  try {
+    await db.beginTransaction();
+
+    const courseId = uuid();
     try {
-      [userId] = getUserInfo(req.session);
+      db.query(
+        "INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+          courseId,
+          request.code,
+          request.type,
+          request.name,
+          request.description,
+          request.credit,
+          request.period,
+          request.day_of_week,
+          userId,
+          request.keywords,
+        ]
+      );
     } catch (err) {
+      await db.rollback();
+
+      // TODO
+
       console.error(err);
       return res.status(500).send();
     }
 
-    const request = req.body;
-    if (!isValidAddCourseRequest(request)) {
-      return res.status(400).send("Invalid format.");
-    }
+    await db.commit();
 
-    if (
-      request.type !== CourseType.LiberalArts &&
-      request.type !== CourseType.MajorSubjects
-    ) {
-      return res.status(400).send("Invalid course type.");
-    }
-    if (!DaysOfWeek.includes(request.day_of_week)) {
-      return res.status(400).send("Invalid day of week.");
-    }
+    const response: AddCourseResponse = { id: courseId };
+    return res.status(201).json(response);
+  } catch (err) {
+    console.error(err);
+    await db.rollback();
+    return res.send(500).send();
+  } finally {
+    db.release();
+  }
+});
+
+interface GetCourseDetailResponse extends RowDataPacket {
+  id: string;
+  code: string;
+  type: string;
+  name: string;
+  description: string;
+  credit: number;
+  period: number;
+  day_of_week: string;
+  teacher_id: string;
+  keywords: string;
+  status: CourseStatus;
+  teacher: string;
+}
+
+// GET /api/courses/:courseId 科目詳細の取得
+coursesApi.get(
+  "/:courseId",
+  async (req: express.Request<{ courseId: string }>, res) => {
+    const courseId = req.params.courseId;
 
     const db = await pool.getConnection();
     try {
-      await db.beginTransaction();
-
-      const courseId = uuid();
-      try {
-        db.query(
-          "INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          [
-            courseId,
-            request.code,
-            request.type,
-            request.name,
-            request.description,
-            request.credit,
-            request.period,
-            request.day_of_week,
-            userId,
-            request.keywords,
-          ]
-        );
-      } catch (err) {
-        await db.rollback();
-
-        // TODO
-
-        return res.status(500).send();
+      const [[response]] = await db.query<GetCourseDetailResponse[]>(
+        "SELECT `courses`.*, `users`.`name` AS `teacher`" +
+          " FROM `courses`" +
+          " JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+          " WHERE `courses`.`id` = ?",
+        [courseId]
+      );
+      if (!response) {
+        return res.status(404).send("No such course.");
       }
 
-      await db.commit();
-
-      const response: AddCourseResponse = { id: courseId };
-      return res.status(201).json(response);
+      return res.status(200).json({ ...response, teacher_id: undefined });
     } catch (err) {
       console.error(err);
-      await db.rollback();
-      return res.send(500).send();
+      return res.status(500).send();
     } finally {
       db.release();
     }
@@ -991,7 +965,7 @@ function isValidSetCourseStatusRequest(
   return typeof body === "object" && typeof body.status === "string";
 }
 
-// PUT /api/courses/:courseID/status 科目のステータスを変更
+// PUT /api/courses/:courseId/status 科目のステータスを変更
 coursesApi.put(
   "/:courseId/status",
   isAdmin,
