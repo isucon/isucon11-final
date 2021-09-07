@@ -5,11 +5,15 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/oklog/ulid/v2"
 )
 
 var (
 	once          sync.Once
 	timeGenerator *timer
+	entropy       = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+	entropyLock   sync.Mutex
 )
 
 func init() {
@@ -40,6 +44,12 @@ func GenTime() int64 {
 
 	timeGenerator.count++
 	return timeGenerator.base + timeGenerator.count
+}
+
+func GenULID(timestamp uint64) string {
+	entropyLock.Lock()
+	defer entropyLock.Unlock()
+	return ulid.MustNew(timestamp, entropy).String()
 }
 
 func randElt(arr []string) string {
