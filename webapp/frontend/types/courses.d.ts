@@ -127,3 +127,9 @@ export type Grade = {
   summary: SummaryGrade
   courses: CourseGrade[]
 }
+
+export type RegistrationError = {
+  notRegistrableStatus: string[]
+  scheduleConflict: string[]
+  courseNotFound: string[]
+}

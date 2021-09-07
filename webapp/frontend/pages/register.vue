@@ -11,7 +11,9 @@
         <template v-if="hasError">
           <InlineNotification type="error" class="my-4">
             <template #title>APIエラーがあります</template>
-            <template #message>履修済み科目の取得に失敗しました。</template>
+            <template #message>{{
+              errorMessage || '履修済み科目の取得に失敗しました。'
+            }}</template>
           </InlineNotification>
         </template>
 
@@ -112,6 +114,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Context } from '@nuxt/types'
+import axios from 'axios'
 import Button from '../components/common/Button.vue'
 import Calendar from '../components/Calendar.vue'
 import CalendarCell from '../components/CalendarCell.vue'
@@ -120,6 +123,10 @@ import { notify } from '~/helpers/notification_helper'
 import { Course, DayOfWeek } from '~/types/courses'
 import { DayOfWeekMap, PeriodCount, WeekdayCount } from '~/constants/calendar'
 import InlineNotification from '~/components/common/InlineNotification.vue'
+import {
+  formatRegistrationError,
+  isRegistrationError,
+} from '~/helpers/course_helper'
 
 type DisplayType = 'registered' | 'will_register' | 'none'
 type DisplayCourse = Partial<Course> & { displayType: DisplayType }
@@ -132,6 +139,7 @@ type DataType = {
   registeredCourses: Course[]
   periodCount: number
   hasError: boolean
+  errorMessage: string | undefined
 }
 
 export default Vue.extend({
@@ -162,6 +170,7 @@ export default Vue.extend({
       registeredCourses: [],
       periodCount: PeriodCount,
       hasError: false,
+      errorMessage: undefined,
     }
   },
   computed: {
@@ -241,6 +250,13 @@ export default Vue.extend({
         period: undefined,
       })
     },
+    formatRegistrationError(err: any): string {
+      if (axios.isAxiosError(err) && isRegistrationError(err?.response?.data)) {
+        return `(失敗理由: ${formatRegistrationError(err?.response?.data)})`
+      }
+
+      return ''
+    },
     async onClickConfirm(): Promise<void> {
       try {
         const ids = this.willRegisterCourses.flat().map((c) => ({ id: c.id }))
@@ -249,6 +265,10 @@ export default Vue.extend({
           await this.$router.push('/mypage')
         }
       } catch (e) {
+        this.hasError = true
+        this.errorMessage = `履修登録に失敗しました。${this.formatRegistrationError(
+          e
+        )}`
         notify('履修登録に失敗しました')
       }
     },
