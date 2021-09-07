@@ -645,19 +645,19 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	// GPAの統計値
-	// 一つでも科目を履修している学生のGPA一覧
+	// 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
 	var gpas []float64
-	query = "SELECT IF(`credits`.`credits` = 0, 0, IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits`) AS `gpa`" +
+	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
 		" FROM `users`" +
 		" JOIN (" +
-		"     SELECT `users`.`id` AS `user_id`, IFNULL(SUM(`courses`.`credit`), 0) AS `credits`" +
+		"     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`" +
 		"     FROM `users`" +
 		"     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-		"     LEFT JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
+		"     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
 		"     GROUP BY `users`.`id`" +
 		" ) AS `credits` ON `credits`.`user_id` = `users`.`id`" +
 		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-		" LEFT JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
+		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
 		" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
 		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
 		" WHERE `users`.`type` = ?" +
