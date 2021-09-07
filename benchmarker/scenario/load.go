@@ -241,7 +241,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.SearchCourses)
 
 					if len(res) > 0 {
-						checkTargetID = res[0].ID.String()
+						checkTargetID = res[0].ID
 					}
 
 					// Linkヘッダから次ページのPath + QueryParamを取得
@@ -260,7 +260,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					expected, exists := s.CourseManager.GetCourseByID(res.ID.String())
+					expected, exists := s.CourseManager.GetCourseByID(res.ID)
 					// ベンチ側の登録がまだの場合は検証スキップ
 					if exists {
 						if err := verifyCourseDetail(&res, expected); err != nil {

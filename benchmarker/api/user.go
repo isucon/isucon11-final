@@ -8,7 +8,6 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/pborman/uuid"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -41,7 +40,7 @@ var DayOfWeekTable = []DayOfWeek{
 }
 
 type GetRegisteredCourseResponseContent struct {
-	ID        uuid.UUID `json:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Teacher   string    `json:"teacher"`
 	Period    uint8     `json:"period"`

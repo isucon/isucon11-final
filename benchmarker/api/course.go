@@ -13,7 +13,6 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/pborman/uuid"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -28,7 +27,7 @@ type SearchCourseRequest struct {
 }
 
 type GetCourseDetailResponse struct {
-	ID          uuid.UUID  `json:"id"`
+	ID          string     `json:"id"`
 	Code        string     `json:"code"`
 	Type        CourseType `json:"type"`
 	Name        string     `json:"name"`
