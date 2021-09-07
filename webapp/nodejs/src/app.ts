@@ -38,10 +38,12 @@ app.set("etag", false);
 const api = express.Router();
 const usersApi = express.Router();
 const coursesApi = express.Router();
+const announcementsApi = express.Router();
 app.use("/api", api);
 api.use(isLoggedIn);
 api.use("/users", usersApi);
 api.use("/courses", coursesApi);
+api.use("/announcements", announcementsApi);
 
 interface InitializeResponse {
   language: string;
@@ -980,7 +982,7 @@ coursesApi.put(
     const db = await pool.getConnection();
     try {
       const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
-        "SELECT COUNT(*) FROM `courses` WHERE `id` = ?",
+        "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
         [courseId]
       );
       if (cnt === 0) {
@@ -1032,7 +1034,7 @@ coursesApi.get(
     const db = await pool.getConnection();
     try {
       const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
-        "SELECT COUNT(*) FROM `courses` WHERE `id` = ?",
+        "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
         [courseId]
       );
       if (cnt === 0) {
@@ -1148,5 +1150,101 @@ coursesApi.post(
     }
   }
 );
+
+interface AddAnnouncementRequest {
+  course_id: string;
+  title: string;
+  message: string;
+  created_at: number;
+}
+
+function isValidAddAnnouncementRequest(
+  body: AddAnnouncementRequest
+): body is AddAnnouncementRequest {
+  return (
+    typeof body === "object" &&
+    typeof body.course_id === "string" &&
+    typeof body.title === "string" &&
+    typeof body.message === "string" &&
+    typeof body.created_at === "number"
+  );
+}
+
+interface AddAnnouncementResponse {
+  id: string;
+}
+
+// POST /api/announcements 新規お知らせ追加
+announcementsApi.post("", isAdmin, async (req, res) => {
+  const request = req.body;
+  if (!isValidAddAnnouncementRequest(request)) {
+    return res.status(400).send("Invalid format.");
+  }
+
+  const db = await pool.getConnection();
+  try {
+    const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
+      "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
+      [request.course_id]
+    );
+    if (cnt === 0) {
+      return res.status(404).send("No such course.");
+    }
+  } catch (err) {
+    db.release();
+    console.error(err);
+    return res.status(500).send();
+  }
+
+  try {
+    await db.beginTransaction();
+
+    const announcementId = uuid();
+    const createdAt = new Date(request.created_at * 1000);
+    try {
+      await db.query(
+        "INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
+        [
+          announcementId,
+          request.course_id,
+          request.title,
+          request.message,
+          createdAt,
+        ]
+      );
+    } catch (err) {
+      await db.rollback();
+
+      // TODO
+
+      console.error(err);
+      return res.status(500).send();
+    }
+
+    const [targets] = await db.query<User[]>(
+      "SELECT `users`.* FROM `users`" +
+        " JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
+        " WHERE `registrations`.`course_id` = ?",
+      [request.course_id]
+    );
+    for (const user of targets) {
+      await db.query(
+        "INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)",
+        [announcementId, user.id]
+      );
+    }
+
+    await db.commit();
+
+    const response: AddAnnouncementResponse = { id: announcementId };
+    return res.status(201).json(response);
+  } catch (err) {
+    await db.rollback();
+    console.error(err);
+    return res.status(500).send();
+  } finally {
+    db.release();
+  }
+});
 
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
