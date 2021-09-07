@@ -270,6 +270,18 @@ func (s *Student) Courses() []*Course {
 	return res
 }
 
+func (s *Student) HasFinishedCourse() bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	for _, course := range s.registeredCourses {
+		if course.Status() == api.StatusClosed {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Student) RegisteredSchedule() [5][6]*Course {
 	s.scheduleMutex.RLock()
 	defer s.scheduleMutex.RUnlock()
@@ -308,7 +320,7 @@ func (s *Student) GPA() float64 {
 
 	tmp := 0
 	for _, course := range s.registeredCourses {
-		if course.status == api.StatusClosed {
+		if course.Status() == api.StatusClosed {
 			tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
 		}
 	}
@@ -328,7 +340,7 @@ func (s *Student) TotalCredit() int {
 
 	res := 0
 	for _, course := range s.registeredCourses {
-		if course.status == api.StatusClosed {
+		if course.Status() == api.StatusClosed {
 			res += course.Credit
 		}
 	}

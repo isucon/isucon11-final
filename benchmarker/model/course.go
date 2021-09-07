@@ -81,6 +81,13 @@ func (c *Course) AddClass(class *Class) {
 	c.classes = append(c.classes, class)
 }
 
+func (c *Course) Status() api.CourseStatus {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	return c.status
+}
+
 func (c *Course) SetStatusToInProgress() {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
