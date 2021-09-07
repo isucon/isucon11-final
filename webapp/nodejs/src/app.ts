@@ -1028,4 +1028,151 @@ coursesApi.put(
   }
 );
 
+interface ClassWithSubmitted extends Class {
+  submitted: number;
+}
+
+interface GetClassResponse {
+  id: string;
+  part: number;
+  title: string;
+  description: string;
+  submission_closed: boolean;
+  submitted: boolean;
+}
+
+// GET /api/courses/:courseId/classes 科目に紐づく講義一覧の取得
+coursesApi.get(
+  "/:courseId/classes",
+  async (req: express.Request<{ courseId: string }>, res) => {
+    let userId: string;
+    try {
+      [userId] = getUserInfo(req.session);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    }
+
+    const courseId = req.params.courseId;
+
+    const db = await pool.getConnection();
+    try {
+      const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
+        "SELECT COUNT(*) FROM `courses` WHERE `id` = ?",
+        [courseId]
+      );
+      if (cnt === 0) {
+        return res.status(404).send("No such course.");
+      }
+
+      const [classes] = await db.query<ClassWithSubmitted[]>(
+        "SELECT `classes`.*, `submissions`.`user_id` IS NOT NULL AS `submitted`" +
+          " FROM `classes`" +
+          " LEFT JOIN `submissions` ON `classes`.`id` = `submissions`.`class_id` AND `submissions`.`user_id` = ?" +
+          " WHERE `classes`.`course_id` = ?" +
+          " ORDER BY `classes`.`part`",
+        [userId, courseId]
+      );
+
+      // 結果が0件の時は空配列を返却
+      const response: GetClassResponse[] = classes.map((cls) => {
+        return {
+          id: cls.id,
+          part: cls.part,
+          title: cls.title,
+          description: cls.description,
+          submission_closed: !!cls.submission_closed,
+          submitted: !!cls.submitted,
+        };
+      });
+
+      return res.status(200).json(response);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
+interface AddClassRequest {
+  part: number;
+  title: string;
+  description: string;
+}
+
+function isValidAddClassRequest(
+  body: AddClassRequest
+): body is AddClassRequest {
+  return (
+    typeof body === "object" &&
+    typeof body.part === "number" &&
+    typeof body.title === "string" &&
+    typeof body.description === "string"
+  );
+}
+
+interface AddClassResponse {
+  class_id: string;
+}
+
+// POST /api/courses/:courseId/classes 新規講義(&課題)追加
+coursesApi.post(
+  "/:courseId/classes",
+  isAdmin,
+  async (req: express.Request<{ courseId: string }>, res) => {
+    const courseId = req.params.courseId;
+
+    const request = req.body;
+    if (!isValidAddClassRequest(request)) {
+      return res.status(400).send("Invalid format.");
+    }
+
+    const db = await pool.getConnection();
+    try {
+      await db.beginTransaction();
+
+      const [[course]] = await db.query<Course[]>(
+        "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE",
+        [courseId]
+      );
+      if (!course) {
+        await db.rollback();
+        return res.status(404).send("No such course.");
+      }
+      if (course.status !== CourseStatus.StatusInProgress) {
+        await db.rollback();
+        return res.status(400).send("This course is not in-progress.");
+      }
+
+      const classId = uuid();
+      try {
+        await db.query(
+          "INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
+          [classId, courseId, request.part, request.title, request.description]
+        );
+      } catch (err) {
+        await db.rollback();
+
+        // TODO
+
+        console.error(err);
+        return res.status(500).send();
+      }
+
+      await db.commit();
+
+      const response: AddClassResponse = { class_id: classId };
+      return res.status(201).json(response);
+    } catch (err) {
+      console.error(err);
+      await db.rollback();
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
