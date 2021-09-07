@@ -5,7 +5,8 @@ use futures::StreamExt as _;
  *
  * - commit()/rollback() していないトランザクション (sqlx::Transaction) が drop される
  *   - このとき drop 後に自動的に ROLLBACK が実行される
- * - fetch_one()/fetch_optional() のようにレスポンスを最後まで読まないメソッドを使っている
+ * - fetch_one()/fetch_optional() のように MySQL からのレスポンスを最後まで読まない関数を最後に使っ
+ *   ている
  *
  * の両方を満たす場合に、sqlx::Transaction が drop された後に panic する不具合がある。
  * panic しても正常にレスポンスは返されておりアプリケーションとしての動作には影響無い。
