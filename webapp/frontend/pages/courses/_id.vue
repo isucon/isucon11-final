@@ -27,10 +27,20 @@
           </template>
           <template v-else>
             <template slot="announcements">
-              <div class="pt-2">お知らせを取得できませんでした。</div>
+              <InlineNotification type="error" class="my-4">
+                <template #title>APIエラーがあります</template>
+                <template #message
+                  >お知らせまたは科目概要の取得に失敗しました。</template
+                >
+              </InlineNotification>
             </template>
             <template slot="classworks">
-              <div class="pt-2">講義情報を取得できませんでした。</div>
+              <InlineNotification type="error" class="my-4">
+                <template #title>APIエラーがあります</template>
+                <template #message
+                  >お知らせまたは科目概要の取得に失敗しました。</template
+                >
+              </InlineNotification>
             </template>
           </template>
         </tabs>
@@ -52,6 +62,7 @@ import { notify } from '~/helpers/notification_helper'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import ClassList from '~/components/ClassList.vue'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type CourseData = {
   course: Course | undefined
@@ -66,6 +77,7 @@ export default Vue.extend({
     return route.fullPath
   },
   components: {
+    InlineNotification,
     AnnouncementList,
     ClassList,
   },

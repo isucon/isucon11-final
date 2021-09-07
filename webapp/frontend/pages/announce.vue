@@ -49,9 +49,10 @@
           />
         </template>
         <template v-else>
-          <div class="flex justify-center text-xl">
-            お知らせを取得できませんでした。
-          </div>
+          <InlineNotification type="error" class="my-4">
+            <template #title>APIエラーがあります</template>
+            <template #message>お知らせ一覧の取得に失敗しました。</template>
+          </InlineNotification>
         </template>
       </div>
     </div>
@@ -70,6 +71,7 @@ import { notify } from '~/helpers/notification_helper'
 import TextField from '~/components/common/TextField.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type AsyncAnnounceData = {
   innerAnnouncements: Announcement[]
@@ -88,7 +90,7 @@ export default Vue.extend({
   key(route) {
     return route.fullPath
   },
-  components: { TextField, AnnouncementList },
+  components: { InlineNotification, TextField, AnnouncementList },
   middleware: 'is_student',
   async asyncData(ctx: Context) {
     const { $axios, query } = ctx
