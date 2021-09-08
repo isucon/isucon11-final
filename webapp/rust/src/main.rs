@@ -801,15 +801,17 @@ async fn get_grades(
         });
 
         // 自分のGPA計算
-        my_gpa += (my_total_score * course.credit as i64) as f64;
-        my_credits += course.credit as i64;
+        if course.status == CourseStatus::Closed {
+            my_gpa += (my_total_score * course.credit as i64) as f64;
+            my_credits += course.credit as i64;
+        }
     }
     if my_credits > 0 {
         my_gpa = my_gpa / 100.0 / my_credits as f64;
     }
 
     // GPAの統計値
-    // 一つでも科目を履修している学生のGPA一覧
+    // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
     let mut rows = sqlx::query_scalar(concat!(
         "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`",
         " FROM `users`",
@@ -817,16 +819,18 @@ async fn get_grades(
         "     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`",
         "     FROM `users`",
         "     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`",
-        "     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`",
+        "     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?",
         "     GROUP BY `users`.`id`",
         " ) AS `credits` ON `credits`.`user_id` = `users`.`id`",
         " JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`",
-        " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`",
+        " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?",
         " LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`",
         " LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`",
         " WHERE `users`.`type` = ?",
         " GROUP BY `users`.`id`",
     ))
+    .bind(CourseStatus::Closed)
+    .bind(CourseStatus::Closed)
     .bind(UserType::Student)
     .fetch(pool.as_ref());
     let mut gpas = Vec::new();
