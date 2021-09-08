@@ -29,10 +29,19 @@ return function (App $app) {
      * isLoggedIn ログイン確認用middleware
      */
     $isLoggedIn = function (Request $request, RequestHandler $handler) use ($app): Response {
-        // TODO: 実装
-        $response = $handler->handle($request);
+        /** @var \Psr\Container\ContainerInterface $container */
+        $container = $app->getContainer();
+        /** @var SessionHelper $session */
+        $session = $container->get(SessionHelper::class);
 
-        return $response;
+        if (!$session->exists('userID')) {
+            $response = $app->getResponseFactory()->createResponse();
+            $response->getBody()->write('You are not logged in.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_UNAUTHORIZED);
+        }
+
+        return $handler->handle($request);
     };
 
     /**
