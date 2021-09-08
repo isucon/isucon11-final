@@ -210,7 +210,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				if err != nil {
 					step.AddError(err)
 				} else {
-					step.AddScore(score.GetGrades)
+					step.AddScore(score.ScoreGetGrades)
+					step.AddScore(score.RegGetGrades)
 				}
 			}
 
@@ -238,7 +239,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					step.AddScore(score.SearchCourses)
+					step.AddScore(score.RegSearchCourses)
 
 					if len(res) > 0 {
 						checkTargetID = res[0].ID
@@ -266,10 +267,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						if err := verifyCourseDetail(&res, expected); err != nil {
 							step.AddError(err)
 						} else {
-							step.AddScore(score.GetCourseDetail)
+							step.AddScore(score.RegGetCourseDetail)
 						}
 					} else {
-						step.AddScore(score.GetCourseDetailVerifySkipped)
+						step.AddScore(score.RegGetCourseDetailVerifySkipped)
 					}
 				}
 
@@ -290,7 +291,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.GetRegisteredCourses)
+				step.AddScore(score.RegGetRegisteredCourses)
 			}
 
 			// ----------------------------------------
@@ -349,10 +350,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 			} else {
 				if !isExtendRequest {
-					step.AddScore(score.RegisterCourses)
+					step.AddScore(score.RegRegisterCourses)
 				}
 				for _, c := range temporaryReservedCourses {
-					step.AddScore(score.RegisterCourseByStudent)
+					step.AddScore(score.RegRegisterCourseByStudent)
 					c.CommitReservation(student)
 					student.AddCourse(c)
 					c.StartTimer(waitCourseFullTimeout)
@@ -390,7 +391,8 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			if err := verifyAnnouncementsList(&res, expectAnnouncementList, true); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.GetAnnouncementList)
+				step.AddScore(score.ScoreGetAnnouncementList)
+				step.AddScore(score.UnreadGetAnnouncementList)
 			}
 
 			// このページに存在する未読お知らせ数（ページングするかどうかの判定用）
@@ -432,6 +434,8 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
+					step.AddScore(score.UnreadGetAnnouncementDetail)
+
 				}
 
 				student.ReadAnnouncement(ans.ID)
@@ -487,7 +491,8 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 			if err := verifyAnnouncementsList(&res, expectAnnounceList, false); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.GetAnnouncementList)
+				step.AddScore(score.ScoreGetAnnouncementList)
+				step.AddScore(score.PagingGetAnnouncementList)
 			}
 
 			// このページ内で既読のおしらせを集める
@@ -524,6 +529,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
+					step.AddScore(score.PagingGetAnnouncementDetail)
 				}
 			}
 
@@ -590,11 +596,11 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		studentLen := len(course.Students())
 		switch {
 		case studentLen < 50:
-			step.AddScore(score.StartCourseUnder50)
+			step.AddScore(score.CourseStartCourseUnder50)
 		case studentLen == 50:
-			step.AddScore(score.StartCourseFull)
+			step.AddScore(score.CourseStartCourseFull)
 		case studentLen > 50:
-			step.AddScore(score.StartCourseOver50)
+			step.AddScore(score.CourseStartCourseOver50)
 		}
 
 		var classTimes [ClassCountPerCourse]int64
@@ -634,7 +640,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				}
 			} else {
 				if !isExtendRequest {
-					step.AddScore(score.AddClass)
+					step.AddScore(score.CourseAddClass)
 				}
 			}
 			class := model.NewClass(classRes.ClassID, classParam)
@@ -670,7 +676,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			} else {
 				announcement.ID = ancRes.ID
 				if !isExtendRequest {
-					step.AddScore(score.AddAnnouncement)
+					step.AddScore(score.CourseAddAnnouncement)
 				}
 			}
 			course.BroadCastAnnouncement(announcement)
@@ -693,7 +699,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if err := verifyAssignments(assignmentsData, class); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.DownloadSubmissions)
+				step.AddScore(score.CourseDownloadSubmissions)
 			}
 
 			if s.isNoRequestTime(ctx) {
@@ -892,7 +898,7 @@ L:
 		}
 	}
 	if !isExtendRequest {
-		step.AddScore(score.AddCourse)
+		step.AddScore(score.CourseAddCourse)
 	}
 
 	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, StudentCapacityPerCourse)
@@ -938,7 +944,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			if err := verifyClasses(res, course.Classes()); err != nil {
 				step.AddError(err)
 			} else {
-				step.AddScore(score.GetClasses)
+				step.AddScore(score.CourseGetClasses)
 			}
 
 			// 課題を提出する
@@ -968,7 +974,8 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				}
 			} else {
 				if !isExtendRequest {
-					step.AddScore(score.SubmitAssignment)
+					step.AddScore(score.ScoreSubmitAssignment)
+					step.AddScore(score.CourseSubmitAssignment)
 				}
 				submission := model.NewSubmission(fileName, submissionData)
 				class.AddSubmission(student.Code, submission)
@@ -1033,7 +1040,7 @@ L:
 	}
 
 	if !isExtendRequest {
-		step.AddScore(score.RegisterScore)
+		step.AddScore(score.CourseRegisterScore)
 	}
 
 	// POST成功したスコアをベンチ内に保存する
