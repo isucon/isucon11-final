@@ -214,7 +214,7 @@ type Selected = {
 }
 
 type DataType = {
-  courses: SyllabusCourse[] | undefined
+  courses: SyllabusCourse[] | null
   checkedCourses: SyllabusCourse[]
   params: SearchCourseRequest
   link: Partial<Link>
@@ -251,7 +251,7 @@ export default Vue.extend({
   },
   data(): DataType {
     return {
-      courses: undefined,
+      courses: null,
       checkedCourses: this.value,
       params: Object.assign({}, initParams),
       link: { prev: undefined, next: undefined },
@@ -260,7 +260,10 @@ export default Vue.extend({
   },
   computed: {
     isShowSearchResult(): boolean {
-      return typeof this.courses !== 'undefined' && this.courses.length > 0
+      if (this.courses) {
+        return this.courses.length > 0
+      }
+      return false
     },
     periods() {
       return new Array(PeriodCount).fill(undefined).map((_, i) => {
@@ -305,7 +308,7 @@ export default Vue.extend({
         }
       } catch (e) {
         this.hasError = true
-        this.courses = undefined
+        this.courses = null
         notify('検索結果を取得できませんでした')
       }
     },
@@ -340,7 +343,7 @@ export default Vue.extend({
     },
     reset(): void {
       this.hasError = false
-      this.courses = undefined
+      this.courses = null
       this.params = Object.assign({}, this.params, initParams)
     },
   },
