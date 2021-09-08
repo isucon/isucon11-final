@@ -26,11 +26,6 @@
               >新規登録</Button
             >
           </div>
-          <div class="py-4">
-            <Button color="primary" @click="visibleModal = 'SetCourseStatus'"
-              >ステータス変更</Button
-            >
-          </div>
           <CourseTable
             :courses="courses"
             :selected-course-idx="selectedCourseIdx"
@@ -79,6 +74,9 @@
     />
     <SetCourseStatusModal
       :is-shown="visibleModal === 'SetCourseStatus'"
+      :course-id="courseId"
+      :course-name="courseName"
+      :course-status="courseStatus"
       @close="visibleModal = null"
       @completed="loadCourses"
     />
@@ -156,6 +154,23 @@ export default Vue.extend({
       classLink: { prev: undefined, next: undefined },
     }
   },
+  computed: {
+    courseId(): string {
+      return this.selectedCourseIdx !== null
+        ? this.courses[this.selectedCourseIdx].id
+        : ''
+    },
+    courseName(): string {
+      return this.selectedCourseIdx !== null
+        ? this.courses[this.selectedCourseIdx].name
+        : ''
+    },
+    courseStatus(): string {
+      return this.selectedCourseIdx !== null
+        ? this.courses[this.selectedCourseIdx].status
+        : ''
+    },
+  },
   async created() {
     await this.loadCourses()
   },
@@ -218,7 +233,7 @@ export default Vue.extend({
     },
     showSetStatusModal(courseIdx: number) {
       this.visibleModal = 'SetCourseStatus'
-      console.log(courseIdx)
+      this.selectedCourseIdx = courseIdx
     },
     showAddClassModal(courseIdx: number) {
       this.visibleModal = 'AddClass'
