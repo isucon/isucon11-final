@@ -1,7 +1,7 @@
 -- for browser check
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
-('81c95a50-f81f-425b-8e9e-6f07d774eac1','T00000','isucon-teacher','$2a$04$nfgVNp2Zh0iVMYtMkKBYOuTjGs2Tt0TOaxl24bBkCU.glKau1aJVy','teacher'),
-('983350fe-ea3a-4828-ab7b-5c7934d1d309','S00000','isucon','$2a$04$lmKw6juHcAsKhRQJE599VuWoMdgBUQqC5b.18ZpTCB4Eig0moVhZG','student');
+('81c95a50-f81f-425b-8e9e-6f07d774eac1','T00000','isucon(教員)','$2a$04$nfgVNp2Zh0iVMYtMkKBYOuTjGs2Tt0TOaxl24bBkCU.glKau1aJVy','teacher'),
+('983350fe-ea3a-4828-ab7b-5c7934d1d309','S00000','isucon(学生)','$2a$04$lmKw6juHcAsKhRQJE599VuWoMdgBUQqC5b.18ZpTCB4Eig0moVhZG','student');
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('c6482e64-b532-44dd-92ef-f027b5c066c7','T00001','山口 陽輝','$2a$04$11HvLZoso2fGl8nnm4Wv3.KnwJ30DmhNqHuthYri7Hv2.oWZ3De9i','teacher'),
 ('50261242-df34-479e-9065-9439769f1343','T00002','加藤 駿','$2a$04$2SRGQjwcmZH/Jh7DwWUzkeLSEK7B8b4s8ahRx/HyGRA1hsrHALbOS','teacher'),
