@@ -1352,10 +1352,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	// 対象になっているお知らせが0件の時は空配列を返却
-	announcementsRes := make([]AnnouncementWithoutDetail, 0, len(announcements))
-	for _, announcement := range announcements {
-		announcementsRes = append(announcementsRes, announcement)
-	}
+	announcementsRes := append(make([]AnnouncementWithoutDetail, 0, len(announcements)), announcements...)
 
 	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
 		UnreadCount:   unreadCount,
