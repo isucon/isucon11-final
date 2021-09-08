@@ -307,9 +307,62 @@ final class Handler
      */
     public function getRegisteredCourses(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        /** @var array<Course> $courses */
+        $courses = [];
+        $query = 'SELECT `courses`.*' .
+            ' FROM `courses`' .
+            ' JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`' .
+            ' WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([self::COURSE_STATUS_CLOSED, $userId]);
+            while ($row = $stmt->fetch()) {
+                $courses[] = Course::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        // 履修科目が0件の時は空配列を返却
+        /** @var array<GetRegisteredCourseResponseContent> $res */
+        $res = [];
+        foreach ($courses as $course) {
+            try {
+                $stmt = $this->dbh->prepare('SELECT * FROM `users` WHERE `id` = ?');
+                $stmt->execute([$course->teacherId]);
+                $row = $stmt->fetch();
+            } catch (PDOException $e) {
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
+            if ($row === false) {
+                $this->logger->error('db error: no rows');
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+            $teacher = User::fromDbRow($row);
+
+            $res[] = new GetRegisteredCourseResponseContent(
+                id:        $course->id,
+                name:      $course->name,
+                teacher:   $teacher->name,
+                period:    $course->period,
+                dayOfWeek: $course->dayOfWeek
+            );
+        }
+
+        return $this->jsonResponse($response, $res);
     }
 
     /**
