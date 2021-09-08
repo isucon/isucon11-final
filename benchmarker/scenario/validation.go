@@ -105,7 +105,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 			// レスポンスのunread_countの検証
 			var actualUnreadCount int
-			for _, a := range actualAnnouncementsMap {
+			for _, a := range actualAnnouncements {
 				if a.Unread {
 					actualUnreadCount++
 				}
@@ -116,8 +116,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			}
 
 			// actual の重複確認
-			existingID := make(map[string]struct{}, len(actualAnnouncementsMap))
-			for _, a := range actualAnnouncementsMap {
+			existingID := make(map[string]struct{}, len(actualAnnouncements))
+			for _, a := range actualAnnouncements {
 				if _, ok := existingID[a.ID]; ok {
 					step.AddError(errDuplicated)
 					return
@@ -156,7 +156,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				}
 			}
 
-			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncementsMap)) {
+			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
 				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
 				step.AddError(errNotMatchOver)
