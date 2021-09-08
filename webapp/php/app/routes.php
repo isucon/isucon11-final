@@ -247,7 +247,7 @@ final class Handler
      */
     public function logout(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        $this->session->destroy();
 
         return $response;
     }
