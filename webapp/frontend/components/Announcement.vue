@@ -26,7 +26,7 @@
           </p>
         </template>
         <template v-else>
-          <p class="text-base break-all text-red-500 font-bold">
+          <p class="text-base break-all my-2">
             お知らせ詳細の取得に失敗しました。
           </p>
         </template>

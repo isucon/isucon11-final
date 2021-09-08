@@ -158,6 +158,13 @@ export default Vue.extend({
         }
         event.done()
       } catch (e) {
+        const target = this.announcements.find(
+          (item) => item.id === announcement.id
+        )
+        if (target) {
+          target.hasError = true
+        }
+        event.done()
         notify('お知らせの取得に失敗しました')
       }
     },
