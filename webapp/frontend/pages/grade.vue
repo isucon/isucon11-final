@@ -7,7 +7,7 @@
         <template v-if="hasError">
           <InlineNotification type="error" class="my-4">
             <template #title>APIエラーがあります</template>
-            <template #message>履修済み科目の取得に失敗しました。</template>
+            <template #message>成績の取得に失敗しました。</template>
           </InlineNotification>
         </template>
 
@@ -198,7 +198,7 @@ export default Vue.extend({
   middleware: 'is_student',
   async asyncData(ctx: Context) {
     try {
-      const res = await ctx.$axios.get('/api/users/me/grade')
+      const res = await ctx.$axios.get('/api/users/me/grades')
       if (res.status === 200) {
         return { grades: res.data, hasError: false }
       }
