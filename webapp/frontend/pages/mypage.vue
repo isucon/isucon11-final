@@ -31,6 +31,13 @@
           </template>
         </section>
 
+        <template v-if="hasError">
+          <InlineNotification type="error" class="my-4">
+            <template #title>APIエラーがあります</template>
+            <template #message>履修済み科目の取得に失敗しました。</template>
+          </InlineNotification>
+        </template>
+
         <section>
           <h2 class="text-lg mt-4">2021年度前期</h2>
           <Calendar>
@@ -83,6 +90,7 @@ import Card from '~/components/common/Card.vue'
 import Button from '~/components/common/Button.vue'
 import { DayOfWeekMap, PeriodCount, WeekdayCount } from '~/constants/calendar'
 import { Course, DayOfWeek } from '~/types/courses'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type MinimalCourse = Pick<
   Course,
@@ -96,22 +104,23 @@ type DataType = {
     dayOfWeek: number
     period: number
   }
+  hasError: boolean
 }
 
 export default Vue.extend({
-  components: { Button, Card, CalendarCell, Calendar },
+  components: { InlineNotification, Button, Card, CalendarCell, Calendar },
   middleware: 'is_student',
   async asyncData(
     ctx: Context
-  ): Promise<{ registeredCourses: MinimalCourse[] }> {
+  ): Promise<{ registeredCourses: MinimalCourse[]; hasError: boolean }> {
     try {
       const res = await ctx.$axios.get<MinimalCourse[]>(`/api/users/me/courses`)
-      return { registeredCourses: res.data }
+      return { registeredCourses: res.data, hasError: false }
     } catch (e) {
       console.error(e)
     }
 
-    return { registeredCourses: [] }
+    return { registeredCourses: [], hasError: true }
   },
   data(): DataType {
     return {
@@ -120,6 +129,7 @@ export default Vue.extend({
         dayOfWeek: -1,
         period: -1,
       },
+      hasError: false,
     }
   },
   computed: {

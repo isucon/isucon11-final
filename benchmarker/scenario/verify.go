@@ -64,6 +64,10 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 		return errInvalidResponse("学籍番号が期待する値と一致しません")
 	}
 
+	if res.Name != expectedUserAccount.Name {
+		return errInvalidResponse("氏名が期待する値と一致しません")
+	}
+
 	if res.IsAdmin != expectedAdminFlag {
 		return errInvalidResponse("管理者フラグが期待する値と一致しません")
 	}
@@ -281,6 +285,10 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 	if !isNameHit && !isKeywordsHit {
 		AdminLogger.Printf("name / keyword not match: expect: %v, acutual: %s", param.Keywords, res.Keywords)
 		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
+	}
+
+	if param.Status != "" && !AssertEqual("course status", param.Status, res.Status) {
+		return errInvalidResponse("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています")
 	}
 
 	return nil

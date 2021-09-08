@@ -56,6 +56,7 @@ export type Announcement = {
   unread: boolean
   createdAt: string
   message?: string
+  hasError?: boolean
 }
 
 export type AnnouncementResponse = {
@@ -125,4 +126,10 @@ type CourseGrade = {
 export type Grade = {
   summary: SummaryGrade
   courses: CourseGrade[]
+}
+
+export type RegistrationError = {
+  notRegistrableStatus: string[]
+  scheduleConflict: string[]
+  courseNotFound: string[]
 }

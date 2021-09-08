@@ -147,6 +147,7 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 			Teacher:  param.Teacher,
 			Period:   uint8(param.Period + 1),
 			Keywords: strings.Join(param.Keywords, " "),
+			Status:   api.CourseStatus(param.Status),
 		}
 		if param.DayOfWeek != -1 {
 			req.DayOfWeek = api.DayOfWeekTable[param.DayOfWeek]

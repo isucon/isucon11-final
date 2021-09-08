@@ -4,6 +4,13 @@
       <div class="flex-1 flex-col">
         <h1 class="text-2xl">個人成績照会</h1>
 
+        <template v-if="hasError">
+          <InlineNotification type="error" class="my-4">
+            <template #title>APIエラーがあります</template>
+            <template #message>成績の取得に失敗しました。</template>
+          </InlineNotification>
+        </template>
+
         <section class="mt-10">
           <h1 class="text-xl">成績概要</h1>
 
@@ -163,35 +170,50 @@ import Vue from 'vue'
 import { Context } from '@nuxt/types'
 import { Grade } from '~/types/courses'
 import Button from '~/components/common/Button.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type Data = {
   digits: number
   grades: Grade | undefined
   openedIndex: number[]
+  hasError: boolean
+}
+
+const initGrade: Grade = {
+  summary: {
+    gpa: 0,
+    credits: 0,
+    gpaAvg: 0,
+    gpaMax: 0,
+    gpaMin: 0,
+    gpaTScore: 0,
+  },
+  courses: [],
 }
 
 const DIGITS = 2
 
 export default Vue.extend({
-  components: { Button },
+  components: { InlineNotification, Button },
   middleware: 'is_student',
   async asyncData(ctx: Context) {
     try {
       const res = await ctx.$axios.get('/api/users/me/grades')
       if (res.status === 200) {
-        return { grades: res.data }
+        return { grades: res.data, hasError: false }
       }
     } catch (e) {
       console.error(e)
     }
 
-    return { grades: undefined }
+    return { grades: initGrade, hasError: true }
   },
   data(): Data {
     return {
       digits: DIGITS,
-      grades: undefined,
+      grades: initGrade,
       openedIndex: [],
+      hasError: false,
     }
   },
   methods: {

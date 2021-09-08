@@ -1,4 +1,9 @@
-import { CourseStatus, CourseType, DayOfWeek } from '~/types/courses'
+import {
+  CourseStatus,
+  CourseType,
+  DayOfWeek,
+  RegistrationError,
+} from '~/types/courses'
 
 export function formatType(type: CourseType): string {
   if (type === 'liberal-arts') {
@@ -40,4 +45,31 @@ export function formatStatus(status: CourseStatus): string {
     const _s: never = status
     return ''
   }
+}
+
+export function isRegistrationError(err: any): err is RegistrationError {
+  return Object.keys(err).some((k) =>
+    ['notRegistrableStatus', 'scheduleConflict', 'courseNotFound'].includes(k)
+  )
+}
+
+export function formatRegistrationError(
+  err: RegistrationError | undefined
+): string {
+  const message = []
+  if (!err) {
+    return ''
+  }
+
+  for (const key of Object.keys(err)) {
+    if (key === 'notRegistrableStatus') {
+      message.push('履修登録できないステータス')
+    } else if (key === 'scheduleConflict') {
+      message.push('時間割のコンフリクト')
+    } else if (key === 'courseNotFound') {
+      message.push('科目が存在しない')
+    }
+  }
+
+  return message.join(', ')
 }
