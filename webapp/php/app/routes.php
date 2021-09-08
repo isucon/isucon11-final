@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Fig\Http\Message\StatusCodeInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
@@ -314,5 +315,21 @@ final class Handler
         // TODO: 実装
 
         return $response;
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    private function jsonResponse(Response $response, JsonSerializable|array $data, int $statusCode = StatusCodeInterface::STATUS_OK): Response
+    {
+        $responseBody = json_encode($data, JSON_UNESCAPED_UNICODE);
+        if ($responseBody === false) {
+            throw new UnexpectedValueException('failed to json_encode');
+        }
+
+        $response->getBody()->write($responseBody);
+
+        return $response->withStatus($statusCode)
+            ->withHeader('Content-Type', 'application/json; charset=UTF-8');
     }
 }
