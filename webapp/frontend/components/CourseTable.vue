@@ -71,7 +71,7 @@
                     :class="openDropdownIdx === i ? 'show' : 'hidden'"
                   >
                     <a
-                      :href="`/courses/${c.id}`"
+                      :href="`/syllabus/${c.id}`"
                       target="_blank"
                       class="
                         block

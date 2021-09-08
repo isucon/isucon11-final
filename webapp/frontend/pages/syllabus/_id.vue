@@ -179,7 +179,7 @@ type SyllabusData = {
 }
 
 export default Vue.extend({
-  middleware: 'is_student',
+  middleware: 'is_logged_in',
   async asyncData(ctx: Context): Promise<SyllabusData> {
     const id = ctx.params.id
     const res = await ctx.$axios.get(`/api/courses/${id}`)
