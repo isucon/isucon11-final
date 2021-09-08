@@ -151,8 +151,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
 				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
-				AdminLogger.Printf("expect: %v", expectAnnouncements)
-				AdminLogger.Printf("actual: %v", actualAnnouncements)
 				step.AddError(errNotMatchOver)
 				return
 			}
