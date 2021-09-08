@@ -40,13 +40,6 @@
         <section class="mt-10">
           <h1 class="text-2xl">講義</h1>
           <div class="py-4">
-            <Button
-              color="primary"
-              @click="visibleModal = 'DownloadSubmissions'"
-              >提出課題のダウンロード</Button
-            >
-          </div>
-          <div class="py-4">
             <Button color="primary" @click="visibleModal = 'RegisterScores'"
               >成績登録</Button
             >
@@ -54,7 +47,7 @@
           <ClassTable
             :classes="classes"
             :selected-class-idx="selectedClassIdx"
-            @downloadSubmissions="showDownloadSubmissionsModal"
+            @downloadSubmissions="downloadSubmissions"
             @registerScores="showRegisterScoresModal"
           />
         </section>
@@ -84,10 +77,6 @@
       :is-shown="visibleModal === 'RegisterScores'"
       @close="visibleModal = null"
     />
-    <DownloadSubmissionsModal
-      :is-shown="visibleModal === 'DownloadSubmissions'"
-      @close="visibleModal = null"
-    />
   </div>
 </template>
 
@@ -101,7 +90,6 @@ import AddCourseModal from '~/components/AddCourseModal.vue'
 import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
 import AddClassModal from '~/components/AddClassModal.vue'
 import RegisterScoresModal from '~/components/RegisterScoresModal.vue'
-import DownloadSubmissionsModal from '~/components/DownloadSubmissionsModal.vue'
 import { SyllabusCourse, ClassInfo, User } from '~/types/courses'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
@@ -111,7 +99,6 @@ type modalKinds =
   | 'SetCourseStatus'
   | 'AddClass'
   | 'RegisterScores'
-  | 'DownloadSubmissions'
   | null
 
 type FacultyPageData = {
@@ -134,7 +121,6 @@ export default Vue.extend({
     SetCourseStatusModal,
     AddClassModal,
     RegisterScoresModal,
-    DownloadSubmissionsModal,
   },
   middleware: 'is_teacher',
   data(): FacultyPageData {
@@ -161,6 +147,16 @@ export default Vue.extend({
     courseStatus(): string {
       return this.selectedCourseIdx !== null
         ? this.courses[this.selectedCourseIdx].status
+        : ''
+    },
+    classId(): string {
+      return this.selectedClassIdx !== null
+        ? this.classes[this.selectedClassIdx].id
+        : ''
+    },
+    classTitle(): string {
+      return this.selectedClassIdx !== null
+        ? this.classes[this.selectedClassIdx].title
         : ''
     },
   },
@@ -208,6 +204,28 @@ export default Vue.extend({
         notify('講義の読み込みに失敗しました')
       }
     },
+    async downloadSubmissions(classIdx: number) {
+      this.selectedClassIdx = classIdx
+      try {
+        await this.$axios
+          .get(
+            `/api/courses/${this.courseId}/classes/${this.classId}/assignments/export`,
+            {
+              responseType: 'blob',
+            }
+          )
+          .then((response) => {
+            const link = document.createElement('a')
+            link.href = window.URL.createObjectURL(response.data)
+            link.download = `${this.classId}.zip`
+            link.click()
+
+            notify('ダウンロードに成功しました')
+          })
+      } catch (e) {
+        notify('ダウンロードに失敗しました')
+      }
+    },
     async selectCourse(courseIdx: number) {
       this.selectedCourseIdx = courseIdx
       await this.loadClasses()
@@ -222,10 +240,6 @@ export default Vue.extend({
     showAddClassModal(courseIdx: number) {
       this.selectedCourseIdx = courseIdx
       this.visibleModal = 'AddClass'
-    },
-    showDownloadSubmissionsModal(classIdx: number) {
-      this.visibleModal = 'DownloadSubmissions'
-      console.log(classIdx)
     },
     showRegisterScoresModal(classIdx: number) {
       this.visibleModal = 'RegisterScores'
