@@ -81,7 +81,20 @@
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.stop=""
-                      >詳細を見る
+                      >シラバスを確認
+                    </a>
+                    <a
+                      :href="`/teacher/courses/${c.id}`"
+                      target="_blank"
+                      class="
+                        block
+                        px-4
+                        py-2
+                        text-black text-sm
+                        hover:bg-primary-300 hover:text-white
+                      "
+                      @click.stop=""
+                      >講義一覧を確認
                     </a>
                     <a
                       href="#"
@@ -94,18 +107,6 @@
                       "
                       @click.prevent.stop="onClickSetStatus(i)"
                       >ステータス変更
-                    </a>
-                    <a
-                      href="#"
-                      class="
-                        block
-                        px-4
-                        py-2
-                        text-black text-sm
-                        hover:bg-primary-300 hover:text-white
-                      "
-                      @click.prevent.stop="onClickAddClass(i)"
-                      >講義追加
                     </a>
                   </div>
                 </div>
@@ -208,10 +209,6 @@ export default Vue.extend({
     },
     onClickSetStatus(courseIdx: number): void {
       this.$emit('setStatus', courseIdx)
-      this.openDropdownIdx = null
-    },
-    onClickAddClass(courseIdx: number): void {
-      this.$emit('addClass', courseIdx)
       this.openDropdownIdx = null
     },
     outsideClick() {
