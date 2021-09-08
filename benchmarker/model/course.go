@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/util"
 )
 
@@ -40,10 +41,12 @@ type Course struct {
 	reservations       int
 	capacity           int // 登録学生上限
 	classes            []*Class
-	closer             chan struct{}
-	isZeroReservation  chan struct{}
-	once               sync.Once
-	rmu                sync.RWMutex
+	status             api.CourseStatus
+
+	closer              chan struct{}
+	zeroReservationCond *sync.Cond
+	once                sync.Once
+	rmu                 sync.RWMutex
 }
 
 type SearchCourseParam struct {
@@ -53,20 +56,23 @@ type SearchCourseParam struct {
 	Period    int
 	DayOfWeek int
 	Keywords  []string
+	Status    string
 }
 
 func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *Course {
-	return &Course{
+	c := &Course{
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
 		registeredStudents: make(map[string]*Student, capacity),
 		capacity:           capacity,
 		classes:            make([]*Class, 0, ClassCountPerCourse),
-		closer:             make(chan struct{}, 0),
-		isZeroReservation:  make(chan struct{}, 0),
-		rmu:                sync.RWMutex{},
+		status:             api.StatusRegistration,
+
+		closer: make(chan struct{}, 0),
 	}
+	c.zeroReservationCond = sync.NewCond(&c.rmu)
+	return c
 }
 
 func (c *Course) AddClass(class *Class) {
@@ -74,6 +80,27 @@ func (c *Course) AddClass(class *Class) {
 	defer c.rmu.Unlock()
 
 	c.classes = append(c.classes, class)
+}
+
+func (c *Course) Status() api.CourseStatus {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	return c.status
+}
+
+func (c *Course) SetStatusToInProgress() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.status = api.StatusInProgress
+}
+
+func (c *Course) SetStatusToClosed() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.status = api.StatusClosed
 }
 
 func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc, addCourseFunc func()) <-chan struct{} {
@@ -84,7 +111,11 @@ func (c *Course) Wait(ctx context.Context, cancel context.CancelFunc, addCourseF
 			addCourseFunc()
 		case <-ctx.Done():
 		}
-		<-c.isZeroReservation
+		c.zeroReservationCond.L.Lock()
+		for c.reservations > 0 {
+			c.zeroReservationCond.Wait()
+		}
+		c.zeroReservationCond.L.Unlock()
 		cancel()
 	}()
 	return ctx.Done()
@@ -144,6 +175,9 @@ func (c *Course) CommitReservation(s *Student) {
 
 	c.registeredStudents[s.Code] = s
 	c.reservations--
+	if c.reservations == 0 {
+		c.zeroReservationCond.Broadcast()
+	}
 
 	// 満員が確定した時、履修を締め切る
 	if len(c.registeredStudents) == c.capacity {
@@ -154,27 +188,15 @@ func (c *Course) CommitReservation(s *Student) {
 			close(c.closer)
 		}
 	}
-	// 仮登録数がゼロですでに履修が締め切られているなら、仮登録の待ちを閉じる
-	if c.reservations == 0 {
-		select {
-		case <-c.closer:
-			close(c.isZeroReservation)
-		default:
-		}
-	}
 }
 
 func (c *Course) RollbackReservation() {
 	c.rmu.Lock()
 	defer c.rmu.Unlock()
+
 	c.reservations--
-	// 仮登録数がゼロですでに履修が締め切られているなら、仮登録の待ちを閉じる
 	if c.reservations == 0 {
-		select {
-		case <-c.closer:
-			close(c.isZeroReservation)
-		default:
-		}
+		c.zeroReservationCond.Broadcast()
 	}
 }
 
@@ -182,6 +204,7 @@ func (c *Course) StartTimer(duration time.Duration) {
 	c.once.Do(func() {
 		go func() {
 			time.Sleep(duration)
+
 			c.rmu.Lock()
 			defer c.rmu.Unlock()
 			select {

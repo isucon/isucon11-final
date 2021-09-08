@@ -32,6 +32,11 @@ const axios: Plugin = (context, inject) => {
     })
 
     return response
+  }, err => {
+    err.response.data = camelCaseKeys(err.response.data, {
+      deep: true,
+    })
+    return Promise.reject(err)
   })
 
   context.$axios = Axios

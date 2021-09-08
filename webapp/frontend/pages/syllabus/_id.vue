@@ -5,8 +5,20 @@
         <section>
           <h1 class="text-2xl">科目概要</h1>
 
+          <template v-if="hasError">
+            <InlineNotification type="error" class="my-4">
+              <template #title>APIエラーがあります</template>
+              <template #message>科目概要の取得に失敗しました。</template>
+            </InlineNotification>
+          </template>
+
           <div
-            class="grid grid-cols-syllabus justify-items-stretch items-stretch"
+            class="
+              grid grid-cols-syllabus
+              justify-items-stretch
+              items-stretch
+              mt-4
+            "
           >
             <div
               class="
@@ -173,35 +185,47 @@ import Vue from 'vue'
 import { Context } from '@nuxt/types'
 import { SyllabusCourse } from '~/types/courses'
 import { formatType, formatPeriod, formatStatus } from '~/helpers/course_helper'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type SyllabusData = {
   course: SyllabusCourse
+  hasError: boolean
+}
+
+const initCourse: SyllabusCourse = {
+  id: '',
+  code: '',
+  type: 'liberal-arts',
+  name: '',
+  description: '',
+  credit: 0,
+  period: 0,
+  dayOfWeek: 'monday',
+  teacher: '',
+  keywords: '',
+  status: 'registration',
 }
 
 export default Vue.extend({
+  components: { InlineNotification },
   middleware: 'is_student',
   async asyncData(ctx: Context): Promise<SyllabusData> {
-    const id = ctx.params.id
-    const res = await ctx.$axios.get(`/api/syllabus/${id}`)
-    const course: SyllabusCourse = res.data
+    try {
+      const id = ctx.params.id
+      const res = await ctx.$axios.get(`/api/courses/${id}`)
+      const course: SyllabusCourse = res.data
 
-    return { course }
+      return { course, hasError: false }
+    } catch (e) {
+      console.error(e)
+    }
+
+    return { course: initCourse, hasError: true }
   },
   data(): SyllabusData {
     return {
-      course: {
-        id: '',
-        code: '',
-        type: 'liberal-arts',
-        name: '',
-        description: '',
-        credit: 0,
-        period: 0,
-        dayOfWeek: 'monday',
-        teacher: '',
-        keywords: '',
-        status: 'registration',
-      },
+      course: initCourse,
+      hasError: false,
     }
   },
   computed: {

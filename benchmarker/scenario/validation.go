@@ -39,6 +39,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
+	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複した内容の Announcement が見つかりました"))
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
@@ -110,6 +111,16 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				return
 			}
 
+			// actualの重複確認
+			existCreatedAt := make(map[int64]struct{}, len(actualAnnouncements))
+			for _, a := range actualAnnouncements {
+				if _, ok := existCreatedAt[a.CreatedAt]; ok {
+					step.AddError(errDuplicated)
+					return
+				}
+				existCreatedAt[a.CreatedAt] = struct{}{}
+			}
+
 			expectAnnouncements := student.Announcements()
 			for _, expectStatus := range expectAnnouncements {
 				expect := expectStatus.Announcement
@@ -174,7 +185,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
-	nextPathParam := "/api/syllabus"
+	nextPathParam := "/api/courses"
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
@@ -194,13 +205,13 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	for _, actual := range actuals {
-		expect, ok := expectCourses[actual.ID.String()]
+		expect, ok := expectCourses[actual.ID]
 		if !ok {
 			step.AddError(errNotMatch)
 			return
 		}
 
-		if !AssertEqual("course ID", expect.ID, actual.ID.String()) ||
+		if !AssertEqual("course ID", expect.ID, actual.ID) ||
 			!AssertEqual("course Code", expect.Code, actual.Code) ||
 			!AssertEqual("course Name", expect.Name, actual.Name) ||
 			!AssertEqual("course Type", api.CourseType(expect.Type), actual.Type) ||
@@ -223,7 +234,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	activeStudents := s.activeStudents
 	users := make(map[string]*model.Student, len(activeStudents))
 	for _, activeStudent := range activeStudents {
-		if len(activeStudent.Courses()) > 0 {
+		if activeStudent.HasFinishedCourse() {
 			users[activeStudent.Code] = activeStudent
 		}
 	}
@@ -443,7 +454,9 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 
 	gpas := make([]float64, 0, n)
 	for _, student := range students {
-		gpas = append(gpas, student.GPA())
+		if student.HasFinishedCourse() {
+			gpas = append(gpas, student.GPA())
+		}
 	}
 
 	targetUserGpa := students[userCode].GPA()

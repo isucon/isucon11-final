@@ -78,3 +78,17 @@ resource "aws_security_group_rule" "final-dev-contestant-ingress-contestant" {
   to_port                  = 0
   source_security_group_id = aws_security_group.final-dev-contestant.id
 }
+
+data "aws_security_group" "prometheus" {
+  vpc_id = data.aws_vpc.main.id
+  name   = "prometheus"
+}
+
+resource "aws_security_group_rule" "final-dev-bench-ingress-prometheus" {
+  security_group_id        = aws_security_group.final-dev-bench.id
+  type                     = "ingress"
+  protocol                 = "tcp"
+  from_port                = 9100
+  to_port                  = 9100
+  source_security_group_id = data.aws_security_group.prometheus.id
+}

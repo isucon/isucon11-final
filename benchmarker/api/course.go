@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"strconv"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -23,6 +24,100 @@ const (
 	CourseTypeMajorSubjects CourseType = "major-subjects"
 )
 
+type DayOfWeek string
+
+var DayOfWeekTable = []DayOfWeek{
+	"monday",
+	"tuesday",
+	"wednesday",
+	"thursday",
+	"friday",
+}
+
+type CourseStatus string
+
+const (
+	StatusRegistration CourseStatus = "registration"
+	StatusInProgress   CourseStatus = "in-progress"
+	StatusClosed       CourseStatus = "closed"
+)
+
+type SearchCourseRequest struct {
+	Type      CourseType
+	Credit    uint8
+	Teacher   string
+	Period    uint8
+	DayOfWeek DayOfWeek
+	Keywords  string
+	Status    CourseStatus
+}
+
+type GetCourseDetailResponse struct {
+	ID          string       `json:"id"`
+	Code        string       `json:"code"`
+	Type        CourseType   `json:"type"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Credit      uint8        `json:"credit"`
+	Period      uint8        `json:"period"`
+	DayOfWeek   DayOfWeek    `json:"day_of_week"`
+	Teacher     string       `json:"teacher"`
+	Status      CourseStatus `json:"status"`
+	Keywords    string       `json:"keywords"`
+}
+
+func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseRequest) (*http.Response, error) {
+	req, err := a.GET("/api/courses")
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+	query := req.URL.Query()
+	if param.Type != "" {
+		query.Add("type", string(param.Type))
+	}
+	if param.Credit != 0 {
+		query.Add("credit", strconv.Itoa((int(param.Credit))))
+	}
+	if param.Teacher != "" {
+		query.Add("teacher", param.Teacher)
+	}
+	if param.Period != 0 {
+		query.Add("period", strconv.Itoa((int(param.Period))))
+	}
+	if param.DayOfWeek != "" {
+		query.Add("day_of_week", string(param.DayOfWeek))
+	}
+	if param.Keywords != "" {
+		query.Add("keywords", param.Keywords)
+	}
+	if param.Status != "" {
+		query.Add("status", string(param.Status))
+	}
+	req.URL.RawQuery = query.Encode()
+
+	return a.Do(ctx, req)
+}
+
+func SearchCourseWithNext(ctx context.Context, a *agent.Agent, pathParam string) (*http.Response, error) {
+	req, err := a.GET(pathParam)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
+	return a.Do(ctx, req)
+}
+
+func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID string) (*http.Response, error) {
+	path := fmt.Sprintf("/api/courses/%s", courseID)
+
+	req, err := a.GET(path)
+	if err != nil {
+		return nil, failure.NewError(fails.ErrCritical, err)
+	}
+
+	return a.Do(ctx, req)
+}
+
 type AddCourseRequest struct {
 	Code        string     `json:"code"`
 	Type        CourseType `json:"type"`
@@ -33,6 +128,7 @@ type AddCourseRequest struct {
 	DayOfWeek   DayOfWeek  `json:"day_of_week"`
 	Keywords    string     `json:"keywords"`
 }
+
 type AddCourseResponse struct {
 	ID string `json:"id"`
 }
@@ -51,14 +147,6 @@ func AddCourse(ctx context.Context, a *agent.Agent, courseRequest AddCourseReque
 
 	return a.Do(ctx, req)
 }
-
-type CourseStatus string
-
-const (
-	StatusRegistration CourseStatus = "registration"
-	StatusInProgress   CourseStatus = "in-progress"
-	StatusClosed       CourseStatus = "closed"
-)
 
 type SetCourseStatusRequest struct {
 	Status CourseStatus `json:"status"`

@@ -7,6 +7,16 @@
           <Button @click="onClickSearchCourse">科目検索</Button>
           <Button color="primary" @click="onClickConfirm">内容の確定</Button>
         </div>
+
+        <template v-if="hasError">
+          <InlineNotification type="error" class="my-4">
+            <template #title>APIエラーがあります</template>
+            <template #message>{{
+              errorMessage || '履修済み科目の取得に失敗しました。'
+            }}</template>
+          </InlineNotification>
+        </template>
+
         <Calendar :period-count="periodCount">
           <template v-for="(periodCourses, p) in courses">
             <template v-for="(weekdayCourses, w) in periodCourses">
@@ -15,7 +25,7 @@
                   <template v-if="course.id">
                     <a
                       :key="`link-${p}-${w}-${i}`"
-                      :href="`/syllabus/${course.id}`"
+                      :href="`/courses/${course.id}`"
                       target="_blank"
                       class="
                         flex-grow
@@ -104,6 +114,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Context } from '@nuxt/types'
+import axios from 'axios'
 import Button from '../components/common/Button.vue'
 import Calendar from '../components/Calendar.vue'
 import CalendarCell from '../components/CalendarCell.vue'
@@ -111,6 +122,11 @@ import SearchModal from '../components/SearchModal.vue'
 import { notify } from '~/helpers/notification_helper'
 import { Course, DayOfWeek } from '~/types/courses'
 import { DayOfWeekMap, PeriodCount, WeekdayCount } from '~/constants/calendar'
+import InlineNotification from '~/components/common/InlineNotification.vue'
+import {
+  formatRegistrationError,
+  isRegistrationError,
+} from '~/helpers/course_helper'
 
 type DisplayType = 'registered' | 'will_register' | 'none'
 type DisplayCourse = Partial<Course> & { displayType: DisplayType }
@@ -122,10 +138,13 @@ type DataType = {
   willRegisterCourses: Course[]
   registeredCourses: Course[]
   periodCount: number
+  hasError: boolean
+  errorMessage: string | undefined
 }
 
 export default Vue.extend({
   components: {
+    InlineNotification,
     SearchModal,
     CalendarCell,
     Calendar,
@@ -135,13 +154,13 @@ export default Vue.extend({
   async asyncData(ctx: Context) {
     try {
       const res = await ctx.$axios.get<Course[]>(`/api/users/me/courses`)
-      return { registeredCourses: res.data }
+      return { registeredCourses: res.data, hasError: false }
     } catch (e) {
       console.error(e)
       notify('履修登録済み科目の取得に失敗しました')
     }
 
-    return { registeredCourses: [] }
+    return { registeredCourses: [], hasError: true }
   },
   data(): DataType {
     return {
@@ -150,6 +169,8 @@ export default Vue.extend({
       willRegisterCourses: [],
       registeredCourses: [],
       periodCount: PeriodCount,
+      hasError: false,
+      errorMessage: undefined,
     }
   },
   computed: {
@@ -229,6 +250,13 @@ export default Vue.extend({
         period: undefined,
       })
     },
+    formatRegistrationError(err: any): string {
+      if (axios.isAxiosError(err) && isRegistrationError(err?.response?.data)) {
+        return `(失敗理由: ${formatRegistrationError(err?.response?.data)})`
+      }
+
+      return ''
+    },
     async onClickConfirm(): Promise<void> {
       try {
         const ids = this.willRegisterCourses.flat().map((c) => ({ id: c.id }))
@@ -237,6 +265,10 @@ export default Vue.extend({
           await this.$router.push('/mypage')
         }
       } catch (e) {
+        this.hasError = true
+        this.errorMessage = `履修登録に失敗しました。${this.formatRegistrationError(
+          e
+        )}`
         notify('履修登録に失敗しました')
       }
     },

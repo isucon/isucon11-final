@@ -64,6 +64,10 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 		return errInvalidResponse("学籍番号が期待する値と一致しません")
 	}
 
+	if res.Name != expectedUserAccount.Name {
+		return errInvalidResponse("氏名が期待する値と一致しません")
+	}
+
 	if res.IsAdmin != expectedAdminFlag {
 		return errInvalidResponse("管理者フラグが期待する値と一致しません")
 	}
@@ -71,18 +75,25 @@ func verifyMe(res *api.GetMeResponse, expectedUserAccount *model.UserAccount, ex
 	return nil
 }
 
-func collectVerifyGradesData(student *model.Student) map[string]*model.SimpleCourseResult {
+// この返り値の map の value の interfaceは
+// すでにclosedなコースについてはCourseResult に、
+// そうでない場合は、SimpleCourseResult になる
+func collectVerifyGradesData(student *model.Student) map[string]interface{} {
 	courses := student.Courses()
-	simpleCourseResults := make(map[string]*model.SimpleCourseResult, len(courses))
+	courseResults := make(map[string]interface{}, len(courses))
 	for _, course := range courses {
-		classScore := course.CollectSimpleClassScores(student.Code)
-		simpleCourseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
+		if course.Status() == api.StatusClosed {
+			courseResults[course.Code] = course.CalcCourseResultByStudentCode(student.Code)
+		} else {
+			classScore := course.CollectSimpleClassScores(student.Code)
+			courseResults[course.Code] = model.NewSimpleCourseResult(course.Name, course.Code, classScore)
+		}
 	}
 
-	return simpleCourseResults
+	return courseResults
 }
 
-func verifyGrades(expected map[string]*model.SimpleCourseResult, res *api.GetGradeResponse) error {
+func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse) error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 	if len(expected) != len(res.CourseResults) {
 		return errInvalidResponse("成績確認でのコース結果の数が一致しません")
@@ -93,10 +104,21 @@ func verifyGrades(expected map[string]*model.SimpleCourseResult, res *api.GetGra
 			return errInvalidResponse("成績確認で期待しないコースが含まれています")
 		}
 
-		err := verifySimpleCourseResult(expected[resCourseResult.Code], &resCourseResult)
-		if err != nil {
-			return err
+		switch v := expected[resCourseResult.Code].(type) {
+		case *model.SimpleCourseResult:
+			err := verifySimpleCourseResult(v, &resCourseResult)
+			if err != nil {
+				return err
+			}
+		case *model.CourseResult:
+			err := validateCourseResult(v, &resCourseResult)
+			if err != nil {
+				return err
+			}
+		default:
+			panic(fmt.Sprintf("expect %T or %T, actual %T", &model.SimpleCourseResult{}, &model.CourseResult{}, v))
 		}
+
 	}
 
 	return nil
@@ -160,7 +182,7 @@ func verifyClassScores(expected *model.SimpleClassScore, res *api.ClassScore) er
 }
 
 func verifyRegisteredCourse(actual *api.GetRegisteredCourseResponseContent, expected *model.Course) error {
-	if actual.ID.String() != expected.ID {
+	if actual.ID != expected.ID {
 		return errInvalidResponse("コースのIDが期待する値と一致しません")
 	}
 
@@ -263,6 +285,10 @@ func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.Sea
 	if !isNameHit && !isKeywordsHit {
 		AdminLogger.Printf("name / keyword not match: expect: %v, acutual: %s", param.Keywords, res.Keywords)
 		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
+	}
+
+	if param.Status != "" && !AssertEqual("course status", param.Status, res.Status) {
+		return errInvalidResponse("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています")
 	}
 
 	return nil

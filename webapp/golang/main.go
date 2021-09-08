@@ -66,14 +66,11 @@ func main() {
 			usersAPI.PUT("/me/courses", h.RegisterCourses)
 			usersAPI.GET("/me/grades", h.GetGrades)
 		}
-		syllabusAPI := API.Group("/syllabus")
-		{
-			syllabusAPI.GET("", h.SearchCourses)
-			syllabusAPI.GET("/:courseID", h.GetCourseDetail)
-		}
 		coursesAPI := API.Group("/courses")
 		{
+			coursesAPI.GET("", h.SearchCourses)
 			coursesAPI.POST("", h.AddCourse, h.IsAdmin)
+			coursesAPI.GET("/:courseID", h.GetCourseDetail)
 			coursesAPI.PUT("/:courseID/status", h.SetCourseStatus, h.IsAdmin)
 			coursesAPI.GET("/:courseID/classes", h.GetClasses)
 			coursesAPI.POST("/:courseID/classes", h.AddClass, h.IsAdmin)
@@ -638,15 +635,17 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		})
 
 		// 自分のGPA計算
-		myGPA += float64(myTotalScore * int(course.Credit))
-		myCredits += int(course.Credit)
+		if course.Status == StatusClosed {
+			myGPA += float64(myTotalScore * int(course.Credit))
+			myCredits += int(course.Credit)
+		}
 	}
 	if myCredits > 0 {
 		myGPA = myGPA / 100 / float64(myCredits)
 	}
 
 	// GPAの統計値
-	// 一つでも科目を履修している学生のGPA一覧
+	// 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
 	var gpas []float64
 	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
 		" FROM `users`" +
@@ -654,16 +653,16 @@ func (h *handlers) GetGrades(c echo.Context) error {
 		"     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`" +
 		"     FROM `users`" +
 		"     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-		"     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+		"     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
 		"     GROUP BY `users`.`id`" +
 		" ) AS `credits` ON `credits`.`user_id` = `users`.`id`" +
 		" JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`" +
-		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`" +
+		" JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?" +
 		" LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`" +
 		" LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`" +
 		" WHERE `users`.`type` = ?" +
 		" GROUP BY `users`.`id`"
-	if err := h.DB.Select(&gpas, query, Student); err != nil {
+	if err := h.DB.Select(&gpas, query, StatusClosed, StatusClosed, Student); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -683,7 +682,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// SearchCourses GET /api/syllabus 科目検索
+// SearchCourses GET /api/courses 科目検索
 func (h *handlers) SearchCourses(c echo.Context) error {
 	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
 		" FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
@@ -808,7 +807,7 @@ type GetCourseDetailResponse struct {
 	Teacher     string       `json:"teacher" db:"teacher"`
 }
 
-// GetCourseDetail GET /api/syllabus/:courseID 科目詳細の取得
+// GetCourseDetail GET /api/courses/:courseID 科目詳細の取得
 func (h *handlers) GetCourseDetail(c echo.Context) error {
 	courseID := c.Param("courseID")
 
@@ -910,16 +909,18 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
 	}
 
-	result, err := h.DB.Exec("UPDATE `courses` SET `status` = ? WHERE `id` = ?", req.Status, courseID)
-	if err != nil {
+	var count int
+	if err := h.DB.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if num, err := result.RowsAffected(); err != nil {
+	if count == 0 {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+	}
+
+	if _, err := h.DB.Exec("UPDATE `courses` SET `status` = ? WHERE `id` = ?", req.Status, courseID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
-	} else if num == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
 	return c.NoContent(http.StatusOK)

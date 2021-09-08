@@ -35,6 +35,7 @@ resource "aws_instance" "bench" {
 
   tags = {
     Name = format("final-dev-bench-%02d", count.index + 1)
+    Role = "bench"
   }
 
   root_block_device {
@@ -42,11 +43,19 @@ resource "aws_instance" "bench" {
     volume_size = "20"
     tags = {
       Name    = format("final-dev-bench-%02d", count.index + 1)
+      Role    = "bench"
       Project = "final-dev"
     }
   }
 
   user_data = templatefile("${path.module}/bench-user-data.sh.tpl", { isuxportal_supervisor_token = data.aws_ssm_parameter.bench_token.value })
+
+  lifecycle {
+    ignore_changes = [
+      ami,
+      user_data,
+    ]
+  }
 }
 
 resource "aws_instance" "bench-test" {

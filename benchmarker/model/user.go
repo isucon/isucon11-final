@@ -7,6 +7,8 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
+
+	"github.com/isucon/isucon11-final/benchmarker/api"
 )
 
 type UserAccount struct {
@@ -22,13 +24,14 @@ type Student struct {
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus
 	announcementIndexByID map[string]int
-	readAnnouncementCond  *sync.Cond
-	addAnnouncementCond   *sync.Cond
+	readAnnouncementCond  *sync.Cond // おしらせの既読を監視するCond
+	addAnnouncementCond   *sync.Cond // おしらせの追加を監視するCond
 	rmu                   sync.RWMutex
 
 	registeredSchedule [5][6]*Course // 空きコマ管理[DayOfWeek:5][Period:6]
 	registeringCount   int
 	scheduleMutex      sync.RWMutex
+	scheduleCond       *sync.Cond // スケジュールの空きを監視するCond
 }
 type AnnouncementStatus struct {
 	Announcement *Announcement
@@ -55,6 +58,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	}
 	s.readAnnouncementCond = sync.NewCond(&s.rmu)
 	s.addAnnouncementCond = sync.NewCond(&s.rmu)
+	s.scheduleCond = sync.NewCond(&s.scheduleMutex)
 	return s
 }
 
@@ -253,6 +257,7 @@ func (s *Student) ReleaseTimeslot(dayOfWeek, period int) {
 
 	s.registeredSchedule[dayOfWeek][period] = nil
 	s.registeringCount--
+	s.scheduleCond.Broadcast()
 }
 
 func (s *Student) Courses() []*Course {
@@ -265,11 +270,48 @@ func (s *Student) Courses() []*Course {
 	return res
 }
 
+func (s *Student) HasFinishedCourse() bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	for _, course := range s.registeredCourses {
+		if course.Status() == api.StatusClosed {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Student) RegisteredSchedule() [5][6]*Course {
 	s.scheduleMutex.RLock()
 	defer s.scheduleMutex.RUnlock()
 
 	return s.registeredSchedule
+}
+
+func (s *Student) WaitReleaseTimeslot(ctx context.Context, cancel context.CancelFunc, registerCourseLimit int) <-chan struct{} {
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-s.waitReleaseTimeslot(registerCourseLimit):
+		}
+		cancel()
+	}()
+	return ctx.Done()
+}
+
+func (s *Student) waitReleaseTimeslot(registerCourseLimit int) <-chan struct{} {
+	ch := make(chan struct{})
+	// MEMO: このgoroutineはWaitReleaseTimeslotがctx.Done()で抜けた場合放置される
+	go func() {
+		s.scheduleCond.L.Lock()
+		for s.registeringCount >= registerCourseLimit {
+			s.scheduleCond.Wait()
+		}
+		s.scheduleCond.L.Unlock()
+		close(ch)
+	}()
+	return ch
 }
 
 func (s *Student) GPA() float64 {
@@ -278,12 +320,18 @@ func (s *Student) GPA() float64 {
 
 	tmp := 0
 	for _, course := range s.registeredCourses {
-		tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
+		if course.Status() == api.StatusClosed {
+			tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
+		}
 	}
 
 	gpt := float64(tmp) / 100.0
+	credits := s.TotalCredit()
 
-	return gpt / float64(s.TotalCredit())
+	if credits == 0 {
+		return 0
+	}
+	return gpt / float64(credits)
 }
 
 func (s *Student) TotalCredit() int {
@@ -292,7 +340,9 @@ func (s *Student) TotalCredit() int {
 
 	res := 0
 	for _, course := range s.registeredCourses {
-		res += course.Credit
+		if course.Status() == api.StatusClosed {
+			res += course.Credit
+		}
 	}
 
 	return res
