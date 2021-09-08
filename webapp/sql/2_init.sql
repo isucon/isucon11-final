@@ -1,8 +1,5 @@
--- for browser check
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('81c95a50-f81f-425b-8e9e-6f07d774eac1','T00000','isucon(教員)','$2a$04$nfgVNp2Zh0iVMYtMkKBYOuTjGs2Tt0TOaxl24bBkCU.glKau1aJVy','teacher'),
-('983350fe-ea3a-4828-ab7b-5c7934d1d309','S00000','isucon(学生)','$2a$04$lmKw6juHcAsKhRQJE599VuWoMdgBUQqC5b.18ZpTCB4Eig0moVhZG','student');
-INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('c6482e64-b532-44dd-92ef-f027b5c066c7','T00001','山口 陽輝','$2a$04$11HvLZoso2fGl8nnm4Wv3.KnwJ30DmhNqHuthYri7Hv2.oWZ3De9i','teacher'),
 ('50261242-df34-479e-9065-9439769f1343','T00002','加藤 駿','$2a$04$2SRGQjwcmZH/Jh7DwWUzkeLSEK7B8b4s8ahRx/HyGRA1hsrHALbOS','teacher'),
 ('8eef895f-9f6d-4af2-bc20-1040fb523402','T00003','獅子吼 加奈子','$2a$04$moxiDsNEEVkj71CePbWkBeU9L2nUJCG/pLFqMaBglnwxIJSkYPmMK','teacher'),
@@ -53,6 +50,7 @@ INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 ('35bf49e3-3386-46a0-b71b-26141d3c04a9','T00048','佐々木 翼','$2a$04$no8cAUZ7LqZBfdwbTiUxKO9nKUgOPTuXVuI14pc4rg8MwB0P4QXdy','teacher'),
 ('f21a7e7a-7580-457c-a873-767c99cea88e','T00049','佐藤 大樹','$2a$04$d2416wzVHmyw1oDzeOHbzOZZ0riC7RjG43.ENQGrQhFgT8s8WN8c6','teacher');
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
+('983350fe-ea3a-4828-ab7b-5c7934d1d309','S00000','isucon(学生)','$2a$04$lmKw6juHcAsKhRQJE599VuWoMdgBUQqC5b.18ZpTCB4Eig0moVhZG','student'),
 ('a10bb7bf-dc7c-4de1-bf39-9efa49c0f37e','S00001','佐々木 翠','$2a$04$xs2Ki5q5i4Jv3VSqaCxyyuitSZELSUO2RTjf/PHO.Y4yk/NYwuLA.','student'),
 ('b2d64bcf-8b95-4345-9ba3-b0a1e7d5dd87','S00002','井上 一郎','$2a$04$5TScW.USIdTiihpoa8ZEj.tpvKwDzAscIdBBG1mcSt5z2bx4UdId6','student'),
 ('76d14aca-2426-4ac4-9e0c-a8fa9b3bd22b','S00003','安藤 蘭','$2a$04$HsDP1mSXAhBLZm9W.VX4UeS2N7lM5m06lF1m2fcqPYzx/auv2HtMS','student'),
@@ -5055,16 +5053,15 @@ INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
 
 -- 動作確認用
 INSERT INTO `users` (`id`, `code`, `name`, `hashed_password`, `type`) VALUES
-('93a85eda-5576-429e-ab9b-dd1da14d72bf','T99999','isucon-teacher2','$2a$04$DM8mmWZ9vaCRS1ZCBCAMju3Fg2PAv9SvSq4UZss7XYGJQNSESQEZm','teacher'),
+('93a85eda-5576-429e-ab9b-dd1da14d72bf','T99999','isucon-teacher','$2a$04$DM8mmWZ9vaCRS1ZCBCAMju3Fg2PAv9SvSq4UZss7XYGJQNSESQEZm','teacher'),
 ('6eee1df5-a734-4eef-97f5-33fadf9def15','S99999','isucon1','$2a$04$E6TdLLp72D1l5EJcQ6qDn.AB/bdFh6gtVcgu0SUFS.3j.Vt5X9ch2','student'),
 ('804bc9a1-4b18-4784-913a-f9765083d1f0','S99998','isucon2','$2a$04$abH7BE13odlVdw.rLLDvT.mWcTsvR.FXIm0.Pu0p2iiE4WvV6N51O','student'),
 ('680a6610-7115-4b19-b149-e5bcb5250d9e','S99997','isucon3','$2a$04$6q3Lb.KYJLkkaWx34DMVy.1t2icsMbzW1eQvwFzXesHW3encgz/ru','student');
 
-
 INSERT INTO `courses` VALUES
-('b4f7ab13-8629-420a-a173-f166b0162b56','X00001','major-subjects','ISUCON演習第一','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'monday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON チューニングアップ ','in-progress'),
-('c22a43db-e9d9-4077-9bc8-99479ef86b41','X00002','major-subjects','ISUCON演習第二','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'tuesday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON チューニングアップ','in-progress'),
-('ae53eb49-0258-463f-be70-1b295d7df740','X00003','major-subjects','ISUCON演習第三','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'wednesday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON チューニングアップ','registration');
+('b4f7ab13-8629-420a-a173-f166b0162b56','X00001','major-subjects','ISUCON演習第一','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'monday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON SpeedUP','in-progress'),
+('c22a43db-e9d9-4077-9bc8-99479ef86b41','X00002','major-subjects','ISUCON演習第二','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'tuesday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON SpeedUP','in-progress'),
+('ae53eb49-0258-463f-be70-1b295d7df740','X00003','major-subjects','ISUCON演習第三','この科目ではISUCONの過去問を通してサーバのチューニングアップを学びます。\n課題は講義中に出題するクイズへの回答を提出してください。\n\n本講義の成績は課題の提出状況により判断します。',1,1,'wednesday','93a85eda-5576-429e-ab9b-dd1da14d72bf','ISUCON SpeedUP','in-progress');
 
 INSERT INTO `registrations` VALUES
 ('b4f7ab13-8629-420a-a173-f166b0162b56','6eee1df5-a734-4eef-97f5-33fadf9def15'),
