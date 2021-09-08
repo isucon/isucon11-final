@@ -197,7 +197,47 @@ final class Handler
      */
     public function login(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        try {
+            $req = LoginRequest::fromJson((string)$request->getBody());
+        } catch (UnexpectedValueException) {
+            // TODO: エラーハンドリング方法の統一待ち
+            $response->getBody()->write('bind request: ');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT * FROM `users` WHERE `code` = ?');
+            $stmt->execute([$req->code]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if ($row === false) {
+            $response->getBody()->write('Code or Password is wrong.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_UNAUTHORIZED);
+        }
+        $user = User::fromDbRow($row);
+
+        if (!password_verify($req->password, $user->hashedPassword)) {
+            $response->getBody()->write('Code or Password is wrong.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_UNAUTHORIZED);
+        }
+
+        if ($this->session->get('userID') === $user->id) {
+            $response->getBody()->write('You are already logged in.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        $this->session->set('userID', $user->id);
+        $this->session->set('userName', $user->name);
+        $this->session->set('isAdmin', $user->type);
 
         return $response;
     }

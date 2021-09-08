@@ -29,6 +29,7 @@ return function (ContainerBuilder $containerBuilder) {
                     'password' => getenv('MYSQL_PASS') ?: 'isucon',
                 ],
                 'session' => [
+                    'lifetime' => '3600 seconds',
                     'name' => 'isucholar_php',
                 ],
             ]);
