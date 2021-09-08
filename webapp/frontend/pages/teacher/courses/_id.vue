@@ -2,193 +2,84 @@
   <div>
     <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
-        <section>
-          <h1 class="text-2xl">科目概要</h1>
-
-          <div
-            class="grid grid-cols-syllabus justify-items-stretch items-stretch"
+        <div
+          class="
+            bg-yellow-100
+            border border-yellow-400
+            text-yellow-700
+            px-4
+            py-3
+            rounded
+            relative
+            mb-4
+          "
+          role="alert"
+        >
+          <span class="block sm:inline"
+            >本ページは工事中であり、UIは将来的に刷新される予定です。</span
           >
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              <span class="text-center">科目名</span>
-            </div>
-            <div class="px-2 py-2 border">
-              {{ course.name }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              科目番号
-            </div>
-            <div class="px-2 py-2 border">
-              {{ course.code }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              科目種別
-            </div>
-            <div class="px-2 py-2 border">
-              {{ courseType }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              単位数
-            </div>
-            <div class="px-2 py-2 border">
-              {{ course.credit }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              時限
-            </div>
-            <div class="px-2 py-2 border">
-              {{ coursePeriod }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              科目ステータス
-            </div>
-            <div class="px-2 py-2 border">
-              {{ courseStatus }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              担当教員
-            </div>
-            <div class="px-2 py-2 border">
-              {{ course.teacher }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              講義内容
-            </div>
-            <div class="px-2 py-2 border">
-              {{ course.description }}
-            </div>
-            <div
-              class="
-                px-2
-                py-2
-                bg-primary-500
-                text-white
-                flex flex-col
-                justify-center
-                items-center
-                border
-              "
-            >
-              キーワード
-            </div>
-            <div class="px-2 py-2 border">
-              {{ course.keywords }}
-            </div>
+        </div>
+        <section>
+          <h1 class="text-2xl">講義</h1>
+          <div class="py-4">
+            <Button color="primary" @click="showAddClassModal">新規登録</Button>
           </div>
+          <ClassTable
+            :classes="classes"
+            :selected-class-idx="selectedClassIdx"
+            @downloadSubmissions="downloadSubmissions"
+            @registerScores="showRegisterScoresModal"
+          />
         </section>
       </div>
     </div>
+    <AddClassModal
+      :is-shown="visibleModal === 'AddClass'"
+      :course-id="course.id"
+      :course-name="course.name"
+      @close="visibleModal = null"
+      @completed="loadClasses"
+    />
+    <RegisterScoresModal
+      :is-shown="visibleModal === 'RegisterScores'"
+      :course-id="course.id"
+      :course-name="course.name"
+      :class-id="classId"
+      :class-title="classTitle"
+      @close="visibleModal = null"
+    />
   </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
-import { Context } from '@nuxt/types'
-import { SyllabusCourse } from '~/types/courses'
-import { formatType, formatPeriod, formatStatus } from '~/helpers/course_helper'
+import { notify } from '~/helpers/notification_helper'
+import Button from '~/components/common/Button.vue'
+import ClassTable from '~/components/ClassTable.vue'
+import AddClassModal from '~/components/AddClassModal.vue'
+import RegisterScoresModal from '~/components/RegisterScoresModal.vue'
+import { SyllabusCourse, ClassInfo } from '~/types/courses'
 
-type SyllabusData = {
+type modalKinds = 'AddClass' | 'RegisterScores' | null
+
+type DataType = {
+  visibleModal: modalKinds
   course: SyllabusCourse
+  classes: ClassInfo[]
+  selectedClassIdx: number | null
 }
 
 export default Vue.extend({
-  middleware: 'is_logged_in',
-  async asyncData(ctx: Context): Promise<SyllabusData> {
-    const id = ctx.params.id
-    const res = await ctx.$axios.get(`/api/courses/${id}`)
-    const course: SyllabusCourse = res.data
-
-    return { course }
+  components: {
+    Button,
+    ClassTable,
+    AddClassModal,
+    RegisterScoresModal,
   },
-  data(): SyllabusData {
+  middleware: 'is_teacher',
+  data(): DataType {
     return {
+      visibleModal: null,
       course: {
         id: '',
         code: '',
@@ -202,17 +93,75 @@ export default Vue.extend({
         keywords: '',
         status: 'registration',
       },
+      classes: [],
+      selectedClassIdx: null,
     }
   },
   computed: {
-    courseType(): string {
-      return formatType(this.course.type)
+    classId(): string {
+      return this.selectedClassIdx !== null
+        ? this.classes[this.selectedClassIdx].id
+        : ''
     },
-    coursePeriod(): string {
-      return formatPeriod(this.course.dayOfWeek, this.course.period)
+    classTitle(): string {
+      return this.selectedClassIdx !== null
+        ? this.classes[this.selectedClassIdx].title
+        : ''
     },
-    courseStatus(): string {
-      return formatStatus(this.course.status)
+  },
+  async created() {
+    await this.loadCourseDetail()
+    await this.loadClasses()
+  },
+  methods: {
+    async loadCourseDetail() {
+      try {
+        const resCourse = await this.$axios.get<SyllabusCourse>(
+          `/api/courses/${this.$route.params.id}`
+        )
+        this.course = resCourse.data
+      } catch (e) {
+        notify('科目の読み込みに失敗しました')
+      }
+    },
+    async loadClasses() {
+      try {
+        const resClasses = await this.$axios.get<ClassInfo[]>(
+          `/api/courses/${this.$route.params.id}/classes`
+        )
+        this.classes = resClasses.data
+      } catch (e) {
+        notify('講義の読み込みに失敗しました')
+      }
+    },
+    async downloadSubmissions(classIdx: number) {
+      this.selectedClassIdx = classIdx
+      try {
+        await this.$axios
+          .get(
+            `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignments/export`,
+            {
+              responseType: 'blob',
+            }
+          )
+          .then((response) => {
+            const link = document.createElement('a')
+            link.href = window.URL.createObjectURL(response.data)
+            link.download = `${this.classId}.zip`
+            link.click()
+
+            notify('ダウンロードに成功しました')
+          })
+      } catch (e) {
+        notify('ダウンロードに失敗しました')
+      }
+    },
+    showAddClassModal() {
+      this.visibleModal = 'AddClass'
+    },
+    showRegisterScoresModal(classIdx: number) {
+      this.selectedClassIdx = classIdx
+      this.visibleModal = 'RegisterScores'
     },
   },
 })

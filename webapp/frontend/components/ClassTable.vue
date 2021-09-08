@@ -1,5 +1,5 @@
 <template>
-  <div class="max-h-48 overflow-y-scroll">
+  <div>
     <table class="table-fixed border w-full mt-1">
       <thead>
         <tr class="text-center">
