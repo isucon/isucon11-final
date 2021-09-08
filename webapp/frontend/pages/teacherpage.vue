@@ -40,11 +40,6 @@
         <section class="mt-10">
           <h1 class="text-2xl">講義</h1>
           <div class="py-4">
-            <Button color="primary" @click="visibleModal = 'AddClass'"
-              >新規登録</Button
-            >
-          </div>
-          <div class="py-4">
             <Button
               color="primary"
               @click="visibleModal = 'DownloadSubmissions'"
@@ -59,8 +54,6 @@
           <ClassTable
             :classes="classes"
             :selected-class-idx="selectedClassIdx"
-            :link="classLink"
-            @paginate="moveClassPage"
             @downloadSubmissions="showDownloadSubmissionsModal"
             @registerScores="showRegisterScoresModal"
           />
@@ -128,7 +121,6 @@ type FacultyPageData = {
   courseLink: Partial<Link>
   classes: ClassInfo[]
   selectedClassIdx: number | null
-  classLink: Partial<Link>
 }
 
 const initLink = { prev: undefined, next: undefined }
@@ -153,7 +145,6 @@ export default Vue.extend({
       courseLink: { prev: undefined, next: undefined },
       classes: [],
       selectedClassIdx: null,
-      classLink: { prev: undefined, next: undefined },
     }
   },
   computed: {
@@ -199,10 +190,7 @@ export default Vue.extend({
         notify('科目の読み込みに失敗しました')
       }
     },
-    async loadClasses(query?: Record<string, any>) {
-      if (!query) {
-        this.classLink = Object.assign({}, initLink)
-      }
+    async loadClasses() {
       try {
         if (
           this.selectedCourseIdx === null ||
@@ -213,13 +201,7 @@ export default Vue.extend({
         }
         const courseId = this.courses[this.selectedCourseIdx].id
         const resClasses = await this.$axios.get<ClassInfo[]>(
-          `/api/courses/${courseId}/classes`,
-          { params: { ...query } }
-        )
-        this.classLink = Object.assign(
-          {},
-          this.courseLink,
-          parseLinkHeader(resClasses.headers.link)
+          `/api/courses/${courseId}/classes`
         )
         this.classes = resClasses.data
       } catch (e) {
@@ -240,9 +222,6 @@ export default Vue.extend({
     showAddClassModal(courseIdx: number) {
       this.selectedCourseIdx = courseIdx
       this.visibleModal = 'AddClass'
-    },
-    async moveClassPage(query: URLSearchParams) {
-      await this.loadClasses(urlSearchParamsToObject(query))
     },
     showDownloadSubmissionsModal(classIdx: number) {
       this.visibleModal = 'DownloadSubmissions'

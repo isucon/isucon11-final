@@ -90,29 +90,18 @@
         </template>
       </tbody>
     </table>
-    <div class="flex justify-center mt-2">
-      <Pagination
-        :prev-disabled="!Boolean(link.prev)"
-        :next-disabled="!Boolean(link.next)"
-        @goPrev="onClickPagination(link.prev.query)"
-        @goNext="onClickPagination(link.next.query)"
-      />
-    </div>
   </div>
 </template>
 
 <script lang="ts">
 import Vue, { PropType } from 'vue'
 import { ClassInfo } from '~/types/courses'
-import Pagination from '~/components/common/Pagination.vue'
-import { Link } from '~/helpers/link_helper'
 
 type DataType = {
   openDropdownIdx: number | null
 }
 
 export default Vue.extend({
-  components: { Pagination },
   props: {
     classes: {
       type: Array as PropType<ClassInfo[]>,
@@ -121,12 +110,6 @@ export default Vue.extend({
     selectedClassIdx: {
       type: Number as PropType<number | null>,
       default: null,
-    },
-    link: {
-      type: Object as PropType<Partial<Link>>,
-      default: () => {
-        return { prev: undefined, next: undefined }
-      },
     },
   },
   data(): DataType {
@@ -146,9 +129,6 @@ export default Vue.extend({
     document.removeEventListener('click', this.outsideClick)
   },
   methods: {
-    onClickPagination(query: URLSearchParams): void {
-      this.$emit('paginate', query)
-    },
     onClickClassDropdown(classIdx: number): void {
       if (this.openDropdownIdx !== null && this.openDropdownIdx === classIdx) {
         this.openDropdownIdx = null
