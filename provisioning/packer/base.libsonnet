@@ -116,13 +116,6 @@
         'sudo apt-get install -y ansible',
       ],
     },
-    configurate_ansible: {
-      type: 'shell',
-      inline: [
-        'sudo cp /dev/shm/files/tls-cert.pem /dev/shm/ansible/roles/contestant/files/etc/nginx/certificates',
-        'sudo cp /dev/shm/files/tls-key.pem /dev/shm/ansible/roles/contestant/files/etc/nginx/certificates',
-      ],
-    },
     run_ansible: {
       type: 'shell',
       inline: [

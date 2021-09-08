@@ -39,13 +39,6 @@ jobs:
             && mv /tmp/jsonnet* $HOME/work/_tool/isucon11-final/
           curl -sL https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip -o /tmp/packer.zip \
             && unzip -o /tmp/packer.zip -d $HOME/work/_tool/isucon11-final/
-
-      # *.t.isucon.dev の証明書の配置
-      - name: Save Secrets
-        run: |
-          echo "${{ secrets.TLS_CERT }}" > files/tls-cert.pem
-          echo "${{ secrets.TLS_KEY }}" > files/tls-key.pem
-
       # packer に渡すファイルを生成
       - run: make clean
       - run: make clean-output
