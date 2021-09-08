@@ -48,10 +48,29 @@ return function (App $app) {
      * isAdmin admin確認用middleware
      */
     $isAdmin = function (Request $request, RequestHandler $handler) use ($app): Response {
-        // TODO: 実装
-        $response = $handler->handle($request);
+        /** @var \Psr\Container\ContainerInterface $container */
+        $container = $app->getContainer();
+        /** @var SessionHelper $session */
+        $session = $container->get(SessionHelper::class);
+        /** @var LoggerInterface $logger */
+        $logger = $container->get(LoggerInterface::class);
 
-        return $response;
+        if (!$session->exists('isAdmin')) {
+            $logger->error('failed to get isAdmin from session');
+
+            return $app->getResponseFactory()
+                ->createResponse()
+                ->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if (!$session->get('isAdmin')) {
+            $response = $app->getResponseFactory()->createResponse();
+            $response->getBody()->write('You are not admin user.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_FORBIDDEN);
+        }
+
+        return $handler->handle($request);
     };
 
     $app->group('/api', function (RouteCollectorProxy $api) use ($isAdmin) {
