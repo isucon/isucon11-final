@@ -272,11 +272,10 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 
 func SendAnnouncementAction(ctx context.Context, agent *agent.Agent, announcement *model.Announcement) (*http.Response, error) {
 	req := &api.AddAnnouncementRequest{
-		ID:        announcement.ID,
-		CourseID:  announcement.CourseID,
-		Title:     announcement.Title,
-		Message:   announcement.Message,
-		CreatedAt: announcement.CreatedAt,
+		ID:       announcement.ID,
+		CourseID: announcement.CourseID,
+		Title:    announcement.Title,
+		Message:  announcement.Message,
 	}
 
 	hres, err := api.AddAnnouncement(ctx, agent, *req)

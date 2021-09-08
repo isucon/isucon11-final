@@ -145,8 +145,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
 					!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
 					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
-					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
-					!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
+					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) {
 					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
 					step.AddError(errNotMatch)
 					return

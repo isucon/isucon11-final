@@ -10,46 +10,18 @@ import (
 )
 
 var (
-	once          sync.Once
-	timeGenerator *timer
-	entropy       = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
-	entropyLock   sync.Mutex
+	entropy     = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+	entropyLock sync.Mutex
 )
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	newTimer()
 }
 
-type timer struct {
-	base  int64 // unix time
-	count int64
-
-	mu sync.Mutex
-}
-
-func newTimer() {
-	once.Do(func() {
-		timeGenerator = &timer{
-			base:  time.Now().Unix(),
-			count: 0,
-			mu:    sync.Mutex{},
-		}
-	})
-}
-
-func GenTime() int64 {
-	timeGenerator.mu.Lock()
-	defer timeGenerator.mu.Unlock()
-
-	timeGenerator.count++
-	return timeGenerator.base + timeGenerator.count
-}
-
-func GenULID(timestamp uint64) string {
+func GenULID() string {
 	entropyLock.Lock()
 	defer entropyLock.Unlock()
-	return ulid.MustNew(timestamp, entropy).String()
+	return ulid.MustNew(ulid.Now(), entropy).String()
 }
 
 func randElt(arr []string) string {

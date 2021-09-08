@@ -15,11 +15,10 @@ import (
 )
 
 type AddAnnouncementRequest struct {
-	ID        string `json:"id"`
-	CourseID  string `json:"course_id"`
-	Title     string `json:"title"`
-	Message   string `json:"message"`
-	CreatedAt int64  `json:"created_at"`
+	ID       string `json:"id"`
+	CourseID string `json:"course_id"`
+	Title    string `json:"title"`
+	Message  string `json:"message"`
 }
 
 func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnouncementRequest) (*http.Response, error) {
