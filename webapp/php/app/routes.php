@@ -115,9 +115,43 @@ final class Handler
      */
     public function initialize(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        $files = [
+            '1_schema.sql',
+            '2_init.sql',
+        ];
 
-        return $response;
+        foreach ($files as $file) {
+            $data = file_get_contents(self::SQL_DIRECTORY . $file);
+            if ($data === false) {
+                $this->logger->error('failed to read file: ' . self::SQL_DIRECTORY . $file);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
+            try {
+                $this->dbh->exec($data);
+            } catch (PDOException $e) {
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        if (exec(sprintf('rm -rf %s', escapeshellarg(self::ASSIGNMENTS_DIRECTORY))) === false) {
+            $this->logger->error('failed to remove directory: ' . self::ASSIGNMENTS_DIRECTORY);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if (exec(sprintf('mkdir %s', escapeshellarg(self::ASSIGNMENTS_DIRECTORY))) === false) {
+            $this->logger->error('failed to make directory: ' . self::ASSIGNMENTS_DIRECTORY);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $res = new InitializeResponse(language: 'php');
+
+        return $this->jsonResponse($response, $res);
     }
 
     /**
