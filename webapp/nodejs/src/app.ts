@@ -1,13 +1,15 @@
-import { readFile } from "fs/promises";
+import { exec as _exec } from "child_process";
+import { readFile, writeFile } from "fs/promises";
+import { promisify } from "util";
 
 import bcrypt from "bcrypt";
 import session from "cookie-session";
 import express from "express";
 import morgan from "morgan";
+import multer from "multer";
 import mysql, { ResultSetHeader, RowDataPacket } from "mysql2/promise";
 import { v4 as uuid } from "uuid";
 
-import { getDbInfo } from "./db";
 import {
   averageFloat,
   averageInt,
@@ -16,12 +18,24 @@ import {
   tScoreFloat,
   tScoreInt,
 } from "./util";
+import { fstat } from "fs";
 
 const SqlDirectory = "../sql/";
-// const AssignmentsDirectory = "../assignments/";
+const AssignmentsDirectory = "../assignments/";
 const SessionName = "isucholar_nodejs";
 
-const pool = mysql.createPool(getDbInfo(false));
+const dbinfo: mysql.PoolOptions = {
+  host: process.env["MYSQL_HOSTNAME"] ?? "127.0.0.1",
+  port: parseInt(process.env["MYSQL_PORT"] ?? "3306", 10),
+  user: process.env["MYSQL_USER"] ?? "isucon",
+  password: process.env["MYSQL_PASS"] || "isucon",
+  database: process.env["MYSQL_DATABASE"] ?? "isucholar",
+  timezone: "+00:00",
+  decimalNumbers: true,
+};
+const exec = promisify(_exec);
+const pool = mysql.createPool(dbinfo);
+const upload = multer();
 
 const app = express();
 
@@ -51,21 +65,30 @@ interface InitializeResponse {
 
 // POST /initialize 初期化エンドポイント
 app.post("/initialize", async (_, res) => {
-  const dbForInit = await mysql.createConnection(getDbInfo(true));
+  const db = await mysql.createConnection({
+    ...dbinfo,
+    multipleStatements: true,
+  });
   try {
     const files = ["1_schema.sql", "2_init.sql"];
     for (const file of files) {
       const data = await readFile(SqlDirectory + file);
-      dbForInit.query(data.toString());
+      db.query(data.toString());
     }
   } catch (err) {
     console.error(err);
     return res.status(500).send();
   } finally {
-    await dbForInit.end();
+    await db.end();
   }
 
-  // TODO rm & mkdir
+  try {
+    await exec(`rm -rf ${AssignmentsDirectory}`);
+    await exec(`mkdir ${AssignmentsDirectory}`);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send();
+  }
 
   const response: InitializeResponse = { language: "nodejs" };
   return res.status(200).json(response);
@@ -1151,6 +1174,93 @@ coursesApi.post(
   }
 );
 
+// POST /api/courses/:courseId/classes/:classId/assignments 課題の提出
+coursesApi.post(
+  "/:courseId/classes/:classId/assignments",
+  upload.single("file"),
+  async (req: express.Request<{ courseId: string; classId: string }>, res) => {
+    let userId: string;
+    try {
+      [userId] = getUserInfo(req.session);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    }
+
+    const courseId = req.params.courseId;
+    const classId = req.params.classId;
+
+    const db = await pool.getConnection();
+    try {
+      await db.beginTransaction();
+
+      const [[course]] = await db.query<Course[]>(
+        "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE",
+        [courseId]
+      );
+      if (!course) {
+        await db.rollback();
+        return res.status(404).send("No such course.");
+      }
+      if (course.status !== CourseStatus.StatusInProgress) {
+        await db.rollback();
+        return res.status(400).send("This course is not in-progress.");
+      }
+
+      const [[{ registrationCount }]] = await db.query<
+        ({ registrationCount: number } & RowDataPacket)[]
+      >(
+        "SELECT COUNT(*) AS `registrationCount` FROM `registrations` WHERE `user_id` = ? AND `course_id` = ?",
+        [userId, courseId]
+      );
+      if (registrationCount === 0) {
+        await db.rollback();
+        return res.status(400).send("You have not taken this course.");
+      }
+
+      const [[row]] = await db.query<
+        ({ submission_closed: number } & RowDataPacket)[]
+      >("SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", [
+        classId,
+      ]);
+      if (!row) {
+        await db.rollback();
+        return res.status(404).send("No such class.");
+      }
+      if (row.submission_closed) {
+        await db.rollback();
+        return res
+          .status(400)
+          .send("Submission has been closed for this class.");
+      }
+
+      if (!req.file) {
+        await db.rollback();
+        return res.status(400).send("Invalid file.");
+      }
+      await db.query(
+        "INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `file_name` = VALUES(`file_name`)",
+        [userId, classId, req.file.originalname]
+      );
+
+      await writeFile(
+        AssignmentsDirectory + classId + "-" + userId + ".pdf",
+        req.file.buffer
+      );
+
+      await db.commit();
+
+      return res.status(204).send();
+    } catch (err) {
+      await db.rollback();
+      console.error(err);
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
 interface AddAnnouncementRequest {
   course_id: string;
   title: string;
@@ -1239,8 +1349,8 @@ announcementsApi.post("", isAdmin, async (req, res) => {
     const response: AddAnnouncementResponse = { id: announcementId };
     return res.status(201).json(response);
   } catch (err) {
-    await db.rollback();
     console.error(err);
+    await db.rollback();
     return res.status(500).send();
   } finally {
     db.release();
