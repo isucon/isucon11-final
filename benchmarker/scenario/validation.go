@@ -57,7 +57,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// responseに含まれるunread_count
 			var responseUnreadCounts []int
 			actualAnnouncements := map[string]api.AnnouncementResponse{}
-			lastCreatedAt := int64(math.MaxInt64)
 
 			timer := time.After(10 * time.Second)
 			var next string
@@ -75,15 +74,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				for _, announcement := range res.Announcements {
-					actualAnnouncements[announcement.ID] = announcement
-
-					// 順序の検証
-					if lastCreatedAt < announcement.CreatedAt {
+				// 順序の検証
+				for i := 0; i < len(res.Announcements)-1; i++ {
+					if res.Announcements[i].ID < res.Announcements[i+1].ID {
 						step.AddError(errNotSorted)
 						return
 					}
-					lastCreatedAt = announcement.CreatedAt
 				}
 
 				_, next = parseLinkHeader(hres)
@@ -111,14 +107,14 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			// actualの重複確認
-			existCreatedAt := make(map[int64]struct{}, len(actualAnnouncements))
+			// actual の重複確認
+			existingID := make(map[string]struct{}, len(actualAnnouncements))
 			for _, a := range actualAnnouncements {
-				if _, ok := existCreatedAt[a.CreatedAt]; ok {
+				if _, ok := existingID[a.ID]; ok {
 					step.AddError(errDuplicated)
 					return
 				}
-				existCreatedAt[a.CreatedAt] = struct{}{}
+				existingID[a.ID] = struct{}{}
 			}
 
 			expectAnnouncements := student.Announcements()
@@ -154,6 +150,9 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
+				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
+				AdminLogger.Printf("expect: %v", expectAnnouncements)
+				AdminLogger.Printf("actual: %v", actualAnnouncements)
 				step.AddError(errNotMatchOver)
 				return
 			}

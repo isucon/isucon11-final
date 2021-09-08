@@ -43,7 +43,6 @@ type AnnouncementResponse struct {
 	CourseName string `json:"course_name"`
 	Title      string `json:"title"`
 	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
 }
 type GetAnnouncementsResponse struct {
 	UnreadCount   int                    `json:"unread_count"`
@@ -77,7 +76,6 @@ type GetAnnouncementDetailResponse struct {
 	Title      string `json:"title"`
 	Message    string `json:"message"`
 	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
 }
 
 func GetAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*http.Response, error) {

@@ -3,7 +3,6 @@ package scenario
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -663,14 +662,13 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 		return errNotMatch
 	}
 
-	lastCreatedAt := int64(math.MaxInt64)
-	for _, announcement := range actual.Announcements {
-		// 順序の検証
-		if lastCreatedAt < announcement.CreatedAt {
+	// 順序の検証
+	for i := 0; i < len(actual.Announcements)-1; i++ {
+		if actual.Announcements[i].ID < actual.Announcements[i+1].ID {
 			return errNotSorted
 		}
-		lastCreatedAt = announcement.CreatedAt
 	}
+
 	for i := 0; i < len(actual.Announcements); i++ {
 		expect := expected[i].Announcement
 		actual := actual.Announcements[i]

@@ -295,7 +295,7 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 		}
 	}
 
-	// CreatedAtの降順でソートされているか
+	// Code の昇順でソートされているか
 	for i := 0; i < len(res)-1; i++ {
 		if res[i].Code > res[i+1].Code {
 			return errInvalidResponse("科目検索結果の順序が不正です")
@@ -403,9 +403,9 @@ func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[s
 		}
 	}
 
-	// CreatedAtの降順でソートされているか
+	// id の降順でソートされているか
 	for i := 0; i < len(res.Announcements)-1; i++ {
-		if res.Announcements[i].CreatedAt < res.Announcements[i+1].CreatedAt {
+		if res.Announcements[i].ID < res.Announcements[i+1].ID {
 			return errInvalidResponse("お知らせの順序が不正です")
 		}
 	}
