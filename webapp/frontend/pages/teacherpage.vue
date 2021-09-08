@@ -82,6 +82,8 @@
     />
     <AddClassModal
       :is-shown="visibleModal === 'AddClass'"
+      :course-id="courseId"
+      :course-name="courseName"
       @close="visibleModal = null"
       @completed="loadClasses"
     />
@@ -232,12 +234,12 @@ export default Vue.extend({
       await this.loadCourses(urlSearchParamsToObject(query))
     },
     showSetStatusModal(courseIdx: number) {
-      this.visibleModal = 'SetCourseStatus'
       this.selectedCourseIdx = courseIdx
+      this.visibleModal = 'SetCourseStatus'
     },
     showAddClassModal(courseIdx: number) {
+      this.selectedCourseIdx = courseIdx
       this.visibleModal = 'AddClass'
-      console.log(courseIdx)
     },
     async moveClassPage(query: URLSearchParams) {
       await this.loadClasses(urlSearchParamsToObject(query))
