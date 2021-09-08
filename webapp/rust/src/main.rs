@@ -1117,18 +1117,23 @@ async fn set_course_status(
 ) -> actix_web::Result<HttpResponse> {
     let course_id = &course_id.0;
 
-    let result = sqlx::query("UPDATE `courses` SET `status` = ? WHERE `id` = ?")
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM `courses` WHERE `id` = ?")
+        .bind(course_id)
+        .fetch_one(pool.as_ref())
+        .await
+        .map_err(SqlxError)?;
+    if count == 0 {
+        return Err(actix_web::error::ErrorNotFound("No such course."));
+    }
+
+    sqlx::query("UPDATE `courses` SET `status` = ? WHERE `id` = ?")
         .bind(&req.status)
         .bind(course_id)
         .execute(pool.as_ref())
         .await
         .map_err(SqlxError)?;
 
-    if result.rows_affected() == 0 {
-        Err(actix_web::error::ErrorNotFound("No such course."))
-    } else {
-        Ok(HttpResponse::Ok().finish())
-    }
+    Ok(HttpResponse::Ok().finish())
 }
 
 #[derive(Debug, sqlx::FromRow)]
