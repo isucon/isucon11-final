@@ -39,17 +39,14 @@
 
         <section class="mt-10">
           <h1 class="text-2xl">講義</h1>
-          <div class="py-4">
-            <Button color="primary" @click="visibleModal = 'RegisterScores'"
-              >成績登録</Button
-            >
+          <div class="mt-4">
+            <ClassTable
+              :classes="classes"
+              :selected-class-idx="selectedClassIdx"
+              @downloadSubmissions="downloadSubmissions"
+              @registerScores="showRegisterScoresModal"
+            />
           </div>
-          <ClassTable
-            :classes="classes"
-            :selected-class-idx="selectedClassIdx"
-            @downloadSubmissions="downloadSubmissions"
-            @registerScores="showRegisterScoresModal"
-          />
         </section>
       </div>
     </div>
@@ -75,6 +72,10 @@
     />
     <RegisterScoresModal
       :is-shown="visibleModal === 'RegisterScores'"
+      :course-id="courseId"
+      :course-name="courseName"
+      :class-id="classId"
+      :class-title="classTitle"
       @close="visibleModal = null"
     />
   </div>
@@ -242,8 +243,8 @@ export default Vue.extend({
       this.visibleModal = 'AddClass'
     },
     showRegisterScoresModal(classIdx: number) {
+      this.selectedClassIdx = classIdx
       this.visibleModal = 'RegisterScores'
-      console.log(classIdx)
     },
   },
 })

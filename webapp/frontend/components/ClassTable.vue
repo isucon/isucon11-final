@@ -5,8 +5,8 @@
         <tr class="text-center">
           <th class="w-2/12">講義回</th>
           <th class="w-3/12">講義タイトル</th>
-          <th class="w-5/12">講義詳細</th>
-          <th class="w-2/12"></th>
+          <th class="w-6/12">講義詳細</th>
+          <th class="w-1/12"></th>
         </tr>
       </thead>
 
