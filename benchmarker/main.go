@@ -132,14 +132,15 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		}
 	}
 
-	scenario.ContestantLogger.Printf("score: %d(%d - %d) : %s", totalScore, rawScore, deductScore, reason)
+	scenario.ContestantLogger.Printf("score: %d (= %d - %d) : %s", totalScore, rawScore, deductScore, reason)
 	scenario.ContestantLogger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
-	// 競技者には最終的なScoreTagの統計のみ見せる
+	// 競技者には最終的な raw score の内訳のみ見せる
 	if finish {
-		tagFormat := fmt.Sprintf("tag: %%-%ds : %%d", score.MaxTagLengthForContestant)
+		scenario.ContestantLogger.Printf("raw score (%d) breakdown:", rawScore)
+		tagFormat := fmt.Sprintf("%%-%ds : %%d 回 (%%d 点)", score.MaxTagLengthForContestant)
 		for _, tag := range score.TagsForContestant {
-			scenario.ContestantLogger.Printf(tagFormat, tag, scoreTable[tag])
+			scenario.ContestantLogger.Printf(tagFormat, tag, scoreTable[tag], rawBreakdown[tag])
 		}
 	}
 
