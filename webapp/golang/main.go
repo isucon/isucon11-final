@@ -1260,24 +1260,16 @@ func (h *handlers) AddClass(c echo.Context) error {
 }
 
 type AnnouncementWithoutDetail struct {
-	ID         string `db:"id"`
-	CourseID   string `db:"course_id"`
-	CourseName string `db:"course_name"`
-	Title      string `db:"title"`
-	Unread     bool   `db:"unread"`
+	ID         string `json:"id" db:"id"`
+	CourseID   string `json:"course_id" db:"course_id"`
+	CourseName string `json:"course_name" db:"course_name"`
+	Title      string `json:"title" db:"title"`
+	Unread     bool   `json:"unread" db:"unread"`
 }
 
 type GetAnnouncementsResponse struct {
-	UnreadCount   int                    `json:"unread_count"`
-	Announcements []AnnouncementResponse `json:"announcements"`
-}
-
-type AnnouncementResponse struct {
-	ID         string `json:"id"`
-	CourseID   string `json:"course_id"`
-	CourseName string `json:"course_name"`
-	Title      string `json:"title"`
-	Unread     bool   `json:"unread"`
+	UnreadCount   int                         `json:"unread_count"`
+	Announcements []AnnouncementWithoutDetail `json:"announcements"`
 }
 
 // GetAnnouncementList GET /api/announcements お知らせ一覧取得
@@ -1360,15 +1352,9 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	// 対象になっているお知らせが0件の時は空配列を返却
-	announcementsRes := make([]AnnouncementResponse, 0, len(announcements))
+	announcementsRes := make([]AnnouncementWithoutDetail, 0, len(announcements))
 	for _, announcement := range announcements {
-		announcementsRes = append(announcementsRes, AnnouncementResponse{
-			ID:         announcement.ID,
-			CourseID:   announcement.CourseID,
-			CourseName: announcement.CourseName,
-			Title:      announcement.Title,
-			Unread:     announcement.Unread,
-		})
+		announcementsRes = append(announcementsRes, announcement)
 	}
 
 	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
@@ -1378,21 +1364,12 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 }
 
 type AnnouncementDetail struct {
-	ID         string `db:"id"`
-	CourseID   string `db:"course_id"`
-	CourseName string `db:"course_name"`
-	Title      string `db:"title"`
-	Message    string `db:"message"`
-	Unread     bool   `db:"unread"`
-}
-
-type GetAnnouncementDetailResponse struct {
-	ID         string `json:"id"`
-	CourseID   string `json:"course_id"`
-	CourseName string `json:"course_name"`
-	Title      string `json:"title"`
-	Message    string `json:"message"`
-	Unread     bool   `json:"unread"`
+	ID         string `json:"id" db:"id"`
+	CourseID   string `json:"course_id" db:"course_id"`
+	CourseName string `json:"course_name" db:"course_name"`
+	Title      string `json:"title" db:"title"`
+	Message    string `json:"message" db:"message"`
+	Unread     bool   `json:"unread" db:"unread"`
 }
 
 // GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
@@ -1433,14 +1410,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusOK, GetAnnouncementDetailResponse{
-		ID:         announcement.ID,
-		CourseID:   announcement.CourseID,
-		CourseName: announcement.CourseName,
-		Title:      announcement.Title,
-		Message:    announcement.Message,
-		Unread:     announcement.Unread,
-	})
+	return c.JSON(http.StatusOK, announcement)
 }
 
 type Announcement struct {
