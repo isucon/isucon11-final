@@ -22,7 +22,7 @@
         <section>
           <h1 class="text-2xl">科目</h1>
           <div class="py-4">
-            <Button color="primary" @click="visibleModal = 'AddCourse'"
+            <Button color="primary" @click="showAddCourseModal"
               >新規登録</Button
             >
           </div>
@@ -30,23 +30,9 @@
             :courses="courses"
             :selected-course-idx="selectedCourseIdx"
             :link="courseLink"
-            @change="selectCourse"
             @paginate="moveCoursePage"
             @setStatus="showSetStatusModal"
-            @addClass="showAddClassModal"
           />
-        </section>
-
-        <section class="mt-10">
-          <h1 class="text-2xl">講義</h1>
-          <div class="mt-4">
-            <ClassTable
-              :classes="classes"
-              :selected-class-idx="selectedClassIdx"
-              @downloadSubmissions="downloadSubmissions"
-              @registerScores="showRegisterScoresModal"
-            />
-          </div>
         </section>
       </div>
     </div>
@@ -63,21 +49,6 @@
       @close="visibleModal = null"
       @completed="loadCourses"
     />
-    <AddClassModal
-      :is-shown="visibleModal === 'AddClass'"
-      :course-id="courseId"
-      :course-name="courseName"
-      @close="visibleModal = null"
-      @completed="loadClasses"
-    />
-    <RegisterScoresModal
-      :is-shown="visibleModal === 'RegisterScores'"
-      :course-id="courseId"
-      :course-name="courseName"
-      :class-id="classId"
-      :class-title="classTitle"
-      @close="visibleModal = null"
-    />
   </div>
 </template>
 
@@ -86,29 +57,19 @@ import Vue from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Button from '~/components/common/Button.vue'
 import CourseTable from '~/components/CourseTable.vue'
-import ClassTable from '~/components/ClassTable.vue'
 import AddCourseModal from '~/components/AddCourseModal.vue'
 import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
-import AddClassModal from '~/components/AddClassModal.vue'
-import RegisterScoresModal from '~/components/RegisterScoresModal.vue'
-import { SyllabusCourse, ClassInfo, User } from '~/types/courses'
+import { SyllabusCourse, User } from '~/types/courses'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 
-type modalKinds =
-  | 'AddCourse'
-  | 'SetCourseStatus'
-  | 'AddClass'
-  | 'RegisterScores'
-  | null
+type modalKinds = 'AddCourse' | 'SetCourseStatus' | null
 
-type FacultyPageData = {
+type DataType = {
   visibleModal: modalKinds
   courses: SyllabusCourse[]
   selectedCourseIdx: number | null
   courseLink: Partial<Link>
-  classes: ClassInfo[]
-  selectedClassIdx: number | null
 }
 
 const initLink = { prev: undefined, next: undefined }
@@ -117,21 +78,16 @@ export default Vue.extend({
   components: {
     Button,
     CourseTable,
-    ClassTable,
     AddCourseModal,
     SetCourseStatusModal,
-    AddClassModal,
-    RegisterScoresModal,
   },
   middleware: 'is_teacher',
-  data(): FacultyPageData {
+  data(): DataType {
     return {
       visibleModal: null,
       courses: [],
       selectedCourseIdx: null,
       courseLink: { prev: undefined, next: undefined },
-      classes: [],
-      selectedClassIdx: null,
     }
   },
   computed: {
@@ -148,16 +104,6 @@ export default Vue.extend({
     courseStatus(): string {
       return this.selectedCourseIdx !== null
         ? this.courses[this.selectedCourseIdx].status
-        : ''
-    },
-    classId(): string {
-      return this.selectedClassIdx !== null
-        ? this.classes[this.selectedClassIdx].id
-        : ''
-    },
-    classTitle(): string {
-      return this.selectedClassIdx !== null
-        ? this.classes[this.selectedClassIdx].title
         : ''
     },
   },
@@ -187,64 +133,15 @@ export default Vue.extend({
         notify('科目の読み込みに失敗しました')
       }
     },
-    async loadClasses() {
-      try {
-        if (
-          this.selectedCourseIdx === null ||
-          !this.courses[this.selectedCourseIdx]
-        ) {
-          notify('科目が選択されていないか、存在しません')
-          return
-        }
-        const courseId = this.courses[this.selectedCourseIdx].id
-        const resClasses = await this.$axios.get<ClassInfo[]>(
-          `/api/courses/${courseId}/classes`
-        )
-        this.classes = resClasses.data
-      } catch (e) {
-        notify('講義の読み込みに失敗しました')
-      }
-    },
-    async downloadSubmissions(classIdx: number) {
-      this.selectedClassIdx = classIdx
-      try {
-        await this.$axios
-          .get(
-            `/api/courses/${this.courseId}/classes/${this.classId}/assignments/export`,
-            {
-              responseType: 'blob',
-            }
-          )
-          .then((response) => {
-            const link = document.createElement('a')
-            link.href = window.URL.createObjectURL(response.data)
-            link.download = `${this.classId}.zip`
-            link.click()
-
-            notify('ダウンロードに成功しました')
-          })
-      } catch (e) {
-        notify('ダウンロードに失敗しました')
-      }
-    },
-    async selectCourse(courseIdx: number) {
-      this.selectedCourseIdx = courseIdx
-      await this.loadClasses()
-    },
     async moveCoursePage(query: URLSearchParams) {
       await this.loadCourses(urlSearchParamsToObject(query))
+    },
+    showAddCourseModal() {
+      this.visibleModal = 'AddCourse'
     },
     showSetStatusModal(courseIdx: number) {
       this.selectedCourseIdx = courseIdx
       this.visibleModal = 'SetCourseStatus'
-    },
-    showAddClassModal(courseIdx: number) {
-      this.selectedCourseIdx = courseIdx
-      this.visibleModal = 'AddClass'
-    },
-    showRegisterScoresModal(classIdx: number) {
-      this.selectedClassIdx = classIdx
-      this.visibleModal = 'RegisterScores'
     },
   },
 })
