@@ -160,7 +160,11 @@ final class RegisterCourseRequestContent
     {
     }
 
-    public static function fromJson(string $json): self
+    /**
+     * @return array<self>
+     * @throws UnexpectedValueException
+     */
+    public static function listFromJson(string $json): array
     {
         try {
             $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
@@ -168,11 +172,17 @@ final class RegisterCourseRequestContent
             throw new UnexpectedValueException();
         }
 
-        if (!isset($data['id'])) {
-            throw new UnexpectedValueException();
+        /** @var array<self> $list */
+        $list = [];
+        foreach ($data as $course) {
+            if (!isset($course['id'])) {
+                throw new UnexpectedValueException();
+            }
+
+            $list[] = new self($course['id']);
         }
 
-        return new self($data['id']);
+        return $list;
     }
 }
 

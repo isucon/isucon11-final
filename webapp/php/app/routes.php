@@ -370,7 +370,119 @@ final class Handler
      */
     public function registerCourses(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            $req = RegisterCourseRequestContent::listFromJson((string)$request->getBody());
+        } catch (UnexpectedValueException) {
+            $response->getBody()->write('Invalid format.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        usort($req, function (RegisterCourseRequestContent $one, RegisterCourseRequestContent $another) {
+            return $one->id <=> $another->id;
+        });
+
+        $this->dbh->beginTransaction();
+
+        $errors = new RegisterCoursesErrorResponse();
+        /** @var array<Course> $newlyAdded */
+        $newlyAdded = [];
+        foreach ($req as $courseReq) {
+            $courseId = $courseReq->id;
+            try {
+                $stmt = $this->dbh->prepare('SELECT * FROM `courses` WHERE `id` = ? FOR SHARE');
+                $stmt->execute([$courseId]);
+                $row = $stmt->fetch();
+            } catch (PDOException $e) {
+                $this->dbh->rollBack();
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
+            if ($row === false) {
+                $errors->courseNotFound[] = $courseReq->id;
+                continue;
+            }
+            $course = Course::fromDbRow($row);
+
+            if ($course->status !== self::COURSE_STATUS_REGISTRATION) {
+                $errors->notRegistrableStatus[] = $course->id;
+            }
+
+            // すでに履修登録済みの科目は無視する
+            try {
+                $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?');
+                $stmt->execute([$course->id, $userId]);
+                $count = $stmt->fetch()[0];
+            } catch (PDOException $e) {
+                $this->dbh->rollBack();
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
+            if ($count > 0) {
+                continue;
+            }
+
+            $newlyAdded[] = $course;
+        }
+
+        /** @var array<Course> $alreadyRegistered */
+        $alreadyRegistered = [];
+        $query = 'SELECT `courses`.*' .
+            ' FROM `courses`' .
+            ' JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`' .
+            ' WHERE `courses`.`status` != ? AND `registrations`.`user_id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([self::COURSE_STATUS_CLOSED, $userId]);
+            while ($row = $stmt->fetch()) {
+                $alreadyRegistered[] = Course::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $alreadyRegistered = array_merge($alreadyRegistered, $newlyAdded);
+        foreach ($newlyAdded as $course1) {
+            foreach ($alreadyRegistered as $course2) {
+                if ($course1->id !== $course2->id && $course1->period === $course2->period && $course1->dayOfWeek === $course2->dayOfWeek) {
+                    $errors->scheduleConflict[] = $course1->id;
+                }
+            }
+        }
+
+        if (count($errors->courseNotFound) > 0 || count($errors->notRegistrableStatus) > 0 || count($errors->scheduleConflict) > 0) {
+            $this->dbh->rollBack();
+
+            return $this->jsonResponse($response, $errors, StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        foreach ($newlyAdded as $course) {
+            try {
+                $stmt = $this->dbh->prepare('INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)');
+                $stmt->execute([$course->id, $userId]);
+            } catch (PDOException $e) {
+                $this->dbh->rollBack();
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        $this->dbh->commit();
 
         return $response;
     }
