@@ -167,6 +167,7 @@ export default Vue.extend({
         await this.$axios.post(`/api/announcements`, params)
 
         notify('講義の登録のお知らせ投稿が完了しました')
+        this.$emit('completed')
         this.close()
       } catch (e) {
         notify('講義の登録またはお知らせ投稿に失敗しました')

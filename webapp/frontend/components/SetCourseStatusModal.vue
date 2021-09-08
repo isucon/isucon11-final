@@ -148,6 +148,7 @@ export default Vue.extend({
           this.params
         )
         notify('ステータス変更が完了しました')
+        this.$emit('completed')
         this.close()
       } catch (e) {
         notify('ステータス変更に失敗しました')

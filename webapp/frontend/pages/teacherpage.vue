@@ -52,7 +52,7 @@
           <div class="py-4">
             <Button
               color="primary"
-              @click="visibleModal = 'DownloadAssignments'"
+              @click="visibleModal = 'DownloadSubmissions'"
               >提出課題のダウンロード</Button
             >
           </div>
@@ -66,6 +66,8 @@
             :selected-class-idx="selectedClassIdx"
             :link="classLink"
             @paginate="moveClassPage"
+            @downloadSubmissions="showDownloadSubmissionsModal"
+            @registerScores="showRegisterScoresModal"
           />
         </section>
       </div>
@@ -73,21 +75,24 @@
     <AddCourseModal
       :is-shown="visibleModal === 'AddCourse'"
       @close="visibleModal = null"
+      @completed="loadCourses"
     />
     <SetCourseStatusModal
       :is-shown="visibleModal === 'SetCourseStatus'"
       @close="visibleModal = null"
+      @completed="loadCourses"
     />
     <AddClassModal
       :is-shown="visibleModal === 'AddClass'"
       @close="visibleModal = null"
+      @completed="loadClasses"
     />
     <RegisterScoresModal
       :is-shown="visibleModal === 'RegisterScores'"
       @close="visibleModal = null"
     />
-    <DownloadAssignmentsModal
-      :is-shown="visibleModal === 'DownloadAssignments'"
+    <DownloadSubmissionsModal
+      :is-shown="visibleModal === 'DownloadSubmissions'"
       @close="visibleModal = null"
     />
   </div>
@@ -103,7 +108,7 @@ import AddCourseModal from '~/components/AddCourseModal.vue'
 import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
 import AddClassModal from '~/components/AddClassModal.vue'
 import RegisterScoresModal from '~/components/RegisterScoresModal.vue'
-import DownloadAssignmentsModal from '~/components/DownloadAssignmentsModal.vue'
+import DownloadSubmissionsModal from '~/components/DownloadSubmissionsModal.vue'
 import { SyllabusCourse, ClassInfo, User } from '~/types/courses'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
@@ -113,7 +118,7 @@ type modalKinds =
   | 'SetCourseStatus'
   | 'AddClass'
   | 'RegisterScores'
-  | 'DownloadAssignments'
+  | 'DownloadSubmissions'
   | null
 
 type FacultyPageData = {
@@ -137,7 +142,7 @@ export default Vue.extend({
     SetCourseStatusModal,
     AddClassModal,
     RegisterScoresModal,
-    DownloadAssignmentsModal,
+    DownloadSubmissionsModal,
   },
   middleware: 'is_teacher',
   data(): FacultyPageData {
@@ -221,6 +226,14 @@ export default Vue.extend({
     },
     async moveClassPage(query: URLSearchParams) {
       await this.loadClasses(urlSearchParamsToObject(query))
+    },
+    showDownloadSubmissionsModal(classIdx: number) {
+      this.visibleModal = 'DownloadSubmissions'
+      console.log(classIdx)
+    },
+    showRegisterScoresModal(classIdx: number) {
+      this.visibleModal = 'RegisterScores'
+      console.log(classIdx)
     },
   },
 })

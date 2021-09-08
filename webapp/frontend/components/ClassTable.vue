@@ -1,48 +1,29 @@
 <template>
   <div>
-    <table class="table-auto border w-full mt-1">
+    <table class="table-fixed border w-full mt-1">
       <thead>
         <tr class="text-center">
-          <th></th>
-          <th>科目コード</th>
-          <th>科目名</th>
-          <th>科目種別</th>
-          <th>時間</th>
-          <th>単位数</th>
-          <th>ステータス</th>
-          <th>担当</th>
-          <th></th>
+          <th class="w-2/12">講義回</th>
+          <th class="w-3/12">講義タイトル</th>
+          <th class="w-5/12">講義詳細</th>
+          <th class="w-2/12"></th>
         </tr>
       </thead>
 
       <tbody>
         <template v-if="isShowSearchResult">
-          <template v-for="(c, i) in courses">
+          <template v-for="(c, i) in classes">
             <tr
-              :key="`course-tr-${i}`"
-              class="text-center bg-gray-200 odd:bg-white cursor-pointer"
-              @click="onChangeRadioButton(i)"
+              :key="`class-tr-${i}`"
+              class="text-center bg-gray-200 odd:bg-white"
             >
+              <td>{{ c.part }}</td>
               <td>
-                <input
-                  name="course-select"
-                  type="radio"
-                  class="
-                    form-input
-                    text-primary-500
-                    focus:outline-none focus:ring-primary-200
-                    rounded
-                  "
-                  :checked="selectedCourseIdx === i"
-                />
+                <p class="truncate">{{ c.title }}</p>
               </td>
-              <td>{{ c.code }}</td>
-              <td>{{ c.name }}</td>
-              <td>{{ formatType(c.type) }}</td>
-              <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
-              <td>{{ c.credit }}</td>
-              <td>{{ formatStatus(c.status) }}</td>
-              <td>{{ c.teacher }}</td>
+              <td>
+                <p class="truncate">{{ c.description }}</p>
+              </td>
               <td>
                 <div class="relative">
                   <fa-icon
@@ -54,7 +35,7 @@
                       rounded
                       hover:bg-primary-300
                     "
-                    @click.stop="onClickCourseDropdown(i)"
+                    @click.stop="onClickClassDropdown(i)"
                   />
                   <div
                     class="
@@ -64,15 +45,14 @@
                       py-1
                       rounded
                       z-20
-                      w-40
+                      w-52
                       bg-white
                       shadow-2xl
                     "
                     :class="openDropdownIdx === i ? 'show' : 'hidden'"
                   >
                     <a
-                      :href="`/courses/${c.id}`"
-                      target="_blank"
+                      href="#"
                       class="
                         block
                         px-4
@@ -80,8 +60,8 @@
                         text-black text-sm
                         hover:bg-primary-300 hover:text-white
                       "
-                      @click.stop=""
-                      >詳細を見る
+                      @click.prevent.stop="onClickDownloadSubmissions(i)"
+                      >提出課題のダウンロード
                     </a>
                     <a
                       href="#"
@@ -92,20 +72,8 @@
                         text-black text-sm
                         hover:bg-primary-300 hover:text-white
                       "
-                      @click.prevent.stop="onClickSetStatus(i)"
-                      >ステータス変更
-                    </a>
-                    <a
-                      href="#"
-                      class="
-                        block
-                        px-4
-                        py-2
-                        text-black text-sm
-                        hover:bg-primary-300 hover:text-white
-                      "
-                      @click.prevent.stop="onClickAddClass(i)"
-                      >講義追加
+                      @click.prevent.stop="onClickRegisterScores(i)"
+                      >成績入力
                     </a>
                   </div>
                 </div>
@@ -115,8 +83,8 @@
         </template>
         <template v-else>
           <tr>
-            <td colspan="9">
-              <div class="text-center">登録済みの科目が存在しません</div>
+            <td colspan="4">
+              <div class="text-center">登録済みの講義が存在しません</div>
             </td>
           </tr>
         </template>
@@ -135,13 +103,7 @@
 
 <script lang="ts">
 import Vue, { PropType } from 'vue'
-import {
-  CourseStatus,
-  CourseType,
-  DayOfWeek,
-  SyllabusCourse,
-} from '~/types/courses'
-import { formatPeriod, formatStatus, formatType } from '~/helpers/course_helper'
+import { ClassInfo } from '~/types/courses'
 import Pagination from '~/components/common/Pagination.vue'
 import { Link } from '~/helpers/link_helper'
 
@@ -152,11 +114,11 @@ type DataType = {
 export default Vue.extend({
   components: { Pagination },
   props: {
-    courses: {
-      type: Array as PropType<SyllabusCourse[]>,
+    classes: {
+      type: Array as PropType<ClassInfo[]>,
       default: () => [],
     },
-    selectedCourseIdx: {
+    selectedClassIdx: {
       type: Number as PropType<number | null>,
       default: null,
     },
@@ -174,7 +136,7 @@ export default Vue.extend({
   },
   computed: {
     isShowSearchResult(): boolean {
-      return this.courses.length > 0
+      return this.classes.length > 0
     },
   },
   beforeMount() {
@@ -184,34 +146,22 @@ export default Vue.extend({
     document.removeEventListener('click', this.outsideClick)
   },
   methods: {
-    formatType(type: CourseType): string {
-      return formatType(type)
-    },
-    formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
-      return formatPeriod(dayOfWeek, period)
-    },
-    formatStatus(status: CourseStatus): string {
-      return formatStatus(status)
-    },
-    onChangeRadioButton(courseIdx: number): void {
-      this.$emit('change', courseIdx)
-    },
     onClickPagination(query: URLSearchParams): void {
       this.$emit('paginate', query)
     },
-    onClickCourseDropdown(courseIdx: number): void {
-      if (this.openDropdownIdx !== null && this.openDropdownIdx === courseIdx) {
+    onClickClassDropdown(classIdx: number): void {
+      if (this.openDropdownIdx !== null && this.openDropdownIdx === classIdx) {
         this.openDropdownIdx = null
         return
       }
-      this.openDropdownIdx = courseIdx
+      this.openDropdownIdx = classIdx
     },
-    onClickSetStatus(courseIdx: number): void {
-      this.$emit('setStatus', courseIdx)
+    onClickDownloadSubmissions(classIdx: number): void {
+      this.$emit('downloadSubmissions', classIdx)
       this.openDropdownIdx = null
     },
-    onClickAddClass(courseIdx: number): void {
-      this.$emit('addClass', courseIdx)
+    onClickRegisterScores(classIdx: number): void {
+      this.$emit('registerScores', classIdx)
       this.openDropdownIdx = null
     },
     outsideClick() {
