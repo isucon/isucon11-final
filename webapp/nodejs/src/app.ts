@@ -1,5 +1,7 @@
 import { exec as _exec } from "child_process";
 import { readFile, writeFile } from "fs/promises";
+import { join } from "path";
+import { cwd } from "process";
 import { promisify } from "util";
 
 import bcrypt from "bcrypt";
@@ -18,7 +20,6 @@ import {
   tScoreFloat,
   tScoreInt,
 } from "./util";
-import { fstat } from "fs";
 
 const SqlDirectory = "../sql/";
 const AssignmentsDirectory = "../assignments/";
@@ -83,8 +84,8 @@ app.post("/initialize", async (_, res) => {
   }
 
   try {
-    await exec(`rm -rf ${AssignmentsDirectory}`);
-    await exec(`mkdir ${AssignmentsDirectory}`);
+    await exec(`rm -rf '${AssignmentsDirectory}'`);
+    await exec(`mkdir '${AssignmentsDirectory}'`);
   } catch (err) {
     console.error(err);
     return res.status(500).send();
@@ -367,13 +368,15 @@ usersApi.get("/me/courses", async (req, res) => {
   }
 });
 
+type RegisterCourseRequest = RegisterCourseRequestContent[];
+
 interface RegisterCourseRequestContent {
   id: string;
 }
 
-function isValidRegisterCourseRequestContent(
-  body: RegisterCourseRequestContent[]
-): body is RegisterCourseRequestContent[] {
+function isValidRegisterCourseRequest(
+  body: RegisterCourseRequest
+): body is RegisterCourseRequest {
   return (
     Array.isArray(body) &&
     body.every((data) => {
@@ -399,7 +402,7 @@ usersApi.put("/me/courses", async (req, res) => {
   }
 
   const request = req.body;
-  if (!isValidRegisterCourseRequestContent(request)) {
+  if (!isValidRegisterCourseRequest(request)) {
     return res.status(400).send("Invalid format.");
   }
   request.sort((a, b) => {
@@ -1261,6 +1264,158 @@ coursesApi.post(
   }
 );
 
+type RegisterScoresRequest = Score[];
+
+interface Score {
+  user_code: string;
+  score: number;
+}
+
+function isValidRegisterScoresRequest(
+  body: RegisterScoresRequest
+): body is RegisterScoresRequest {
+  return (
+    Array.isArray(body) &&
+    body.every((data) => {
+      return (
+        typeof data === "object" &&
+        typeof data.user_code === "string" &&
+        typeof data.score === "number"
+      );
+    })
+  );
+}
+
+// PUT /api/courses/:courseId/classes/:classId/assignments/scores 成績登録
+coursesApi.put(
+  "/:courseId/classes/:classId/assignments/scores",
+  isAdmin,
+  async (req: express.Request<{ courseId: string; classId: string }>, res) => {
+    const classId = req.params.classId;
+
+    const db = await pool.getConnection();
+    try {
+      await db.beginTransaction();
+
+      const [[row]] = await db.query<
+        ({ submission_closed: number } & RowDataPacket)[]
+      >("SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", [
+        classId,
+      ]);
+      if (!row) {
+        await db.rollback();
+        return res.status(404).send("No such class.");
+      }
+      if (!row.submission_closed) {
+        await db.rollback();
+        return res.status(400).send("This assignment is not closed yet.");
+      }
+
+      const request = req.body;
+      if (!isValidRegisterScoresRequest(request)) {
+        await db.rollback();
+        return res.status(400).send("Invalid format.");
+      }
+
+      for (const score of request) {
+        await db.query(
+          "UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?",
+          [score.score, score.user_code, classId]
+        );
+      }
+
+      await db.commit();
+
+      return res.status(204).send();
+    } catch (err) {
+      console.error(err);
+      await db.rollback();
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
+interface Submission extends RowDataPacket {
+  user_id: string;
+  user_code: string;
+  file_name: string;
+}
+
+// GET /api/courses/:courseId/classes/:classId/assignments/export 提出済みの課題ファイルをzip形式で一括ダウンロード
+coursesApi.get(
+  "/:courseId/classes/:classId/assignments/export",
+  isAdmin,
+  async (req: express.Request<{ courseId: string; classId: string }>, res) => {
+    const classId = req.params.classId;
+
+    const db = await pool.getConnection();
+    try {
+      await db.beginTransaction();
+
+      const [[{ classCount }]] = await db.query<
+        ({ classCount: number } & RowDataPacket)[]
+      >(
+        "SELECT COUNT(*) AS `classCount` FROM `classes` WHERE `id` = ? FOR UPDATE",
+        [classId]
+      );
+      if (classCount === 0) {
+        await db.rollback();
+        return res.status(404).send("No such class.");
+      }
+
+      const [submissions] = await db.query<Submission[]>(
+        "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +
+          " FROM `submissions`" +
+          " JOIN `users` ON `users`.`id` = `submissions`.`user_id`" +
+          " WHERE `class_id` = ? FOR SHARE",
+        [classId]
+      );
+
+      const zipFilePath = AssignmentsDirectory + classId + ".zip";
+      await createSubmissionsZip(zipFilePath, classId, submissions);
+
+      await db.query(
+        "UPDATE `classes` SET `submission_closed` = true WHERE `id` = ?",
+        [classId]
+      );
+
+      await db.commit();
+
+      return res.sendFile(join(cwd(), zipFilePath));
+    } catch (err) {
+      console.error(err);
+      await db.rollback();
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
+async function createSubmissionsZip(
+  zipFilePath: string,
+  classId: string,
+  submissions: Submission[]
+) {
+  const tmpDir = AssignmentsDirectory + classId + "/";
+  await exec(`rm -rf '${tmpDir}'`);
+  await exec(`mkdir '${tmpDir}'`);
+
+  // ファイル名を指定の形式に変更
+  for (const submission of submissions) {
+    await exec(
+      `cp '${
+        AssignmentsDirectory + classId + "-" + submission.user_id + ".pdf"
+      }' '${tmpDir + submission.user_code + "-" + submission.file_name}'`
+    );
+  }
+
+  // -i 'tmpDir/*': 空zipを許す
+  await exec(`zip -j -r '${zipFilePath}' '${tmpDir}' -i '${tmpDir + "*"}'`);
+}
+
 interface AddAnnouncementRequest {
   course_id: string;
   title: string;
@@ -1301,8 +1456,8 @@ announcementsApi.post("", isAdmin, async (req, res) => {
       return res.status(404).send("No such course.");
     }
   } catch (err) {
-    db.release();
     console.error(err);
+    db.release();
     return res.status(500).send();
   }
 
