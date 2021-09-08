@@ -187,9 +187,22 @@ final class Handler
      */
     private function getUserInfo(): array
     {
-        // TODO: 実装
+        $userId = $this->session->get('userID');
+        if ($userId === null) {
+            return ['', '', false, 'failed to get userID from session'];
+        }
 
-        return ['', '', false, ''];
+        $userName  = $this->session->get('userName');
+        if ($userName === null) {
+            return ['', '', false, 'failed to get userName from session'];
+        }
+
+        $isAdmin  = $this->session->get('isAdmin');
+        if ($isAdmin === null) {
+            return ['', '', false, 'failed to get isAdmin from session'];
+        }
+
+        return [$userId, $userName, $isAdmin, ''];
     }
 
     /**
@@ -237,7 +250,7 @@ final class Handler
 
         $this->session->set('userID', $user->id);
         $this->session->set('userName', $user->name);
-        $this->session->set('isAdmin', $user->type);
+        $this->session->set('isAdmin', $user->type === self::USER_TYPE_TEACHER);
 
         return $response;
     }
@@ -257,9 +270,36 @@ final class Handler
      */
     public function getMe(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        [$userId, $userName, $isAdmin, $err] = $this->getUserInfo();
 
-        return $response;
+        if ($err !== '') {
+            $this->logger->error($err);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT `code` FROM `users` WHERE `id` = ?');
+            $stmt->execute([$userId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if ($row === false) {
+            $this->logger->error('db error: no rows');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        $userCode = $row[0];
+
+        return $this->jsonResponse($response, new GetMeResponse(
+            code: $userCode,
+            name: $userName,
+            isAdmin: $isAdmin
+        ));
     }
 
     /**
