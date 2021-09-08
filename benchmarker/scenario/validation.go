@@ -57,7 +57,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// responseに含まれるunread_count
 			responseUnreadCounts := make([]int, 0)
 			actualAnnouncements := make([]api.AnnouncementResponse, 0)
-			actualAnnouncementsMap := map[string]api.AnnouncementResponse{}
+			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
 			timer := time.After(10 * time.Second)
 			var next string
