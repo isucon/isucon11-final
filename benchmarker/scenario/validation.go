@@ -175,6 +175,9 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
+	for _, c := range s.initCourse {
+		expectCourses[c.ID] = c
+	}
 
 	if len(students) == 0 || len(expectCourses) == 0 {
 		return
@@ -199,7 +202,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		_, nextPathParam = parseLinkHeader(hres)
 	}
 
-	if len(expectCourses) != len(actuals) {
+	if !AssertEqual("course count", len(expectCourses), len(actuals)) {
 		step.AddError(errNotMatchCount)
 		return
 	}
