@@ -17,7 +17,7 @@
           rounded
           placeholder-gray-500
           appearance-none
-          focus:ring-primary-200
+          focus:outline-none focus:border-primary-500 focus:ring-0
         "
         :placeholder="placeholder"
         @change="onChange"

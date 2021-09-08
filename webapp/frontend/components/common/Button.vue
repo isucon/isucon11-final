@@ -7,6 +7,10 @@
       disabled:text-white
       disabled:border-gray-400
       disabled:cursor-default
+      hover:opacity-90 hover:shadow-md
+      transition-opacity transition-shadow
+      ease-out
+      duration-500
     "
     :class="[colorType, sizeType]"
     :type="type"
