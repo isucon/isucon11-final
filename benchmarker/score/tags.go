@@ -3,57 +3,88 @@ package score
 import "github.com/isucon/isucandar/score"
 
 const (
-	SubmitAssignment    score.ScoreTag = "01.SubmitAssignment"
-	GetGrades           score.ScoreTag = "02.GetGrades"
-	GetAnnouncementList score.ScoreTag = "03.GetAnnouncementList"
+	// score
+	ScoreSubmitAssignment    score.ScoreTag = "SubmitAssignment"
+	ScoreGetGrades           score.ScoreTag = "GetGrades"
+	ScoreGetAnnouncementList score.ScoreTag = "GetAnnouncementList"
 
-	ActiveStudents               score.ScoreTag = "_01.ActiveStudents"
-	FinishCourses                score.ScoreTag = "_02.FinishCourses"
-	FinishCoursesStudents        score.ScoreTag = "_03.FinishCoursesStudents"
-	GetCourseDetailVerifySkipped score.ScoreTag = "_04.GetCourseDetailVerifySkipped"
-	StartCourseUnder50           score.ScoreTag = "_05.StartCourseUnder50"
-	StartCourseFull              score.ScoreTag = "_06.StartCourseFull"
-	RegisterCourses              score.ScoreTag = "_07.RegisterCourses"
-	GetRegisteredCourses         score.ScoreTag = "_08.GetRegisteredCourses"
-	SearchCourses                score.ScoreTag = "_09.SearchCourses"
-	GetCourseDetail              score.ScoreTag = "_10.GetCourseDetail"
-	AddCourse                    score.ScoreTag = "_11.AddCourse"
-	AddClass                     score.ScoreTag = "_12.AddClass"
-	GetClasses                   score.ScoreTag = "_13.GetClasses"
-	DownloadSubmissions          score.ScoreTag = "_14.DownloadSubmissions"
-	RegisterScore                score.ScoreTag = "_15.RegisterScore"
-	AddAnnouncement              score.ScoreTag = "_16.AddAnnouncement"
-	GetAnnouncementsDetail       score.ScoreTag = "_17.GetAnnouncementDetail"
-	RegisterCourseByStudent      score.ScoreTag = "_18.RegisterCourseByStudent"
+	// other
+	ActiveStudents           score.ScoreTag = "_O1.ActiveStudents"
+	FinishCourses            score.ScoreTag = "_O2.FinishCourses"
+	FinishCoursesStudents    score.ScoreTag = "_O3.FinishCoursesStudents"
+	GetAnnouncementsDetail   score.ScoreTag = "_O4.GetAnnouncementDetail"
+	CourseStartCourseUnder50 score.ScoreTag = "_O5.StartCourseUnder50"
+	CourseStartCourseFull    score.ScoreTag = "_O6.StartCourseFull"
+	CourseStartCourseOver50  score.ScoreTag = "!O7.StartCourseOver50"
 
-	StartCourseOver50 score.ScoreTag = "!01.StartCourseOver50"
+	// registration scenario
+	RegGetGrades                    score.ScoreTag = "_R1.GetGrades"
+	RegSearchCourses                score.ScoreTag = "_R2.SearchCourses"
+	RegGetCourseDetail              score.ScoreTag = "_R3.GetCourseDetail"
+	RegGetCourseDetailVerifySkipped score.ScoreTag = "_R4.GetCourseDetailVerifySkipped"
+	RegGetRegisteredCourses         score.ScoreTag = "_R5.GetRegisteredCourses"
+	RegRegisterCourses              score.ScoreTag = "_R6.RegisterCourses"
+	RegRegisterCourseByStudent      score.ScoreTag = "_R7.RegisterCourseByStudent"
+
+	// read announcement scenario
+	UnreadGetAnnouncementList   score.ScoreTag = "_U1.GetAnnouncementList"
+	UnreadGetAnnouncementDetail score.ScoreTag = "_U2.GetAnnouncementDetail"
+
+	// read announcement paging scenario
+	PagingGetAnnouncementList   score.ScoreTag = "_P1.GetAnnouncementList"
+	PagingGetAnnouncementDetail score.ScoreTag = "_P2.GetAnnouncementDetail"
+
+	// course scenario
+	CourseAddCourse           score.ScoreTag = "_C1.AddCourse"
+	CourseAddClass            score.ScoreTag = "_C2.AddClass"
+	CourseAddAnnouncement     score.ScoreTag = "_C3.AddAnnouncement"
+	CourseGetClasses          score.ScoreTag = "_C4.GetClasses"
+	CourseSubmitAssignment    score.ScoreTag = "_C5.SubmitAssignment"
+	CourseDownloadSubmissions score.ScoreTag = "_C6.DownloadSubmissions"
+	CourseRegisterScore       score.ScoreTag = "_C7.RegisterScore"
 )
 
 var Tags = []score.ScoreTag{
-	SubmitAssignment,
-	GetGrades,
-	GetAnnouncementList,
+	// score
+	ScoreSubmitAssignment,
+	ScoreGetGrades,
+	ScoreGetAnnouncementList,
 
+	// other
 	ActiveStudents,
 	FinishCourses,
 	FinishCoursesStudents,
-	GetCourseDetailVerifySkipped,
-	StartCourseUnder50,
-	StartCourseFull,
-	RegisterCourses,
-	GetRegisteredCourses,
-	SearchCourses,
-	GetCourseDetail,
-	AddCourse,
-	AddClass,
-	GetClasses,
-	DownloadSubmissions,
-	RegisterScore,
-	AddAnnouncement,
 	GetAnnouncementsDetail,
-	RegisterCourseByStudent,
 
-	StartCourseOver50,
+	// registration scenario
+	RegGetGrades,
+	RegSearchCourses,
+	RegGetCourseDetail,
+	RegGetCourseDetailVerifySkipped,
+	RegGetRegisteredCourses,
+	RegRegisterCourses,
+	RegRegisterCourseByStudent,
+
+	// read announcement scenario
+	UnreadGetAnnouncementList,
+	UnreadGetAnnouncementDetail,
+
+	// read announcement paging scenario
+	PagingGetAnnouncementList,
+	PagingGetAnnouncementDetail,
+
+	// course scenario
+	CourseAddCourse,
+	CourseAddClass,
+	CourseAddAnnouncement,
+	CourseGetClasses,
+	CourseSubmitAssignment,
+	CourseDownloadSubmissions,
+	CourseRegisterScore,
+
+	CourseStartCourseUnder50,
+	CourseStartCourseFull,
+	CourseStartCourseOver50,
 }
 
 var (

@@ -8,13 +8,13 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/pborman/uuid"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
 type GetMeResponse struct {
 	Code    string `json:"code"`
+	Name    string `json:"name"`
 	IsAdmin bool   `json:"is_admin"`
 }
 
@@ -26,22 +26,11 @@ func GetMe(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 
-type DayOfWeek string
-
-var DayOfWeekTable = []DayOfWeek{
-	"monday",
-	"tuesday",
-	"wednesday",
-	"thursday",
-	"friday",
-}
-
 type GetRegisteredCourseResponseContent struct {
-	ID        uuid.UUID `json:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Teacher   string    `json:"teacher"`
 	Period    uint8     `json:"period"`
@@ -56,7 +45,6 @@ func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, 
 		return nil, failure.NewError(fails.ErrCritical, err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
 }
 

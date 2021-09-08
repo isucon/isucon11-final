@@ -13,9 +13,33 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/pborman/uuid"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
+)
+
+type CourseType string
+
+const (
+	CourseTypeLiberalArts   CourseType = "liberal-arts"
+	CourseTypeMajorSubjects CourseType = "major-subjects"
+)
+
+type DayOfWeek string
+
+var DayOfWeekTable = []DayOfWeek{
+	"monday",
+	"tuesday",
+	"wednesday",
+	"thursday",
+	"friday",
+}
+
+type CourseStatus string
+
+const (
+	StatusRegistration CourseStatus = "registration"
+	StatusInProgress   CourseStatus = "in-progress"
+	StatusClosed       CourseStatus = "closed"
 )
 
 type SearchCourseRequest struct {
@@ -25,19 +49,21 @@ type SearchCourseRequest struct {
 	Period    uint8
 	DayOfWeek DayOfWeek
 	Keywords  string
+	Status    CourseStatus
 }
 
 type GetCourseDetailResponse struct {
-	ID          uuid.UUID  `json:"id"`
-	Code        string     `json:"code"`
-	Type        CourseType `json:"type"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Credit      uint8      `json:"credit"`
-	Period      uint8      `json:"period"`
-	DayOfWeek   DayOfWeek  `json:"day_of_week"`
-	Teacher     string     `json:"teacher"`
-	Keywords    string     `json:"keywords"`
+	ID          string       `json:"id"`
+	Code        string       `json:"code"`
+	Type        CourseType   `json:"type"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Credit      uint8        `json:"credit"`
+	Period      uint8        `json:"period"`
+	DayOfWeek   DayOfWeek    `json:"day_of_week"`
+	Teacher     string       `json:"teacher"`
+	Status      CourseStatus `json:"status"`
+	Keywords    string       `json:"keywords"`
 }
 
 func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseRequest) (*http.Response, error) {
@@ -64,6 +90,9 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 	if param.Keywords != "" {
 		query.Add("keywords", param.Keywords)
 	}
+	if param.Status != "" {
+		query.Add("status", string(param.Status))
+	}
 	req.URL.RawQuery = query.Encode()
 
 	return a.Do(ctx, req)
@@ -89,13 +118,6 @@ func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID string) (*htt
 	return a.Do(ctx, req)
 }
 
-type CourseType string
-
-const (
-	CourseTypeLiberalArts   CourseType = "liberal-arts"
-	CourseTypeMajorSubjects CourseType = "major-subjects"
-)
-
 type AddCourseRequest struct {
 	Code        string     `json:"code"`
 	Type        CourseType `json:"type"`
@@ -106,6 +128,7 @@ type AddCourseRequest struct {
 	DayOfWeek   DayOfWeek  `json:"day_of_week"`
 	Keywords    string     `json:"keywords"`
 }
+
 type AddCourseResponse struct {
 	ID string `json:"id"`
 }
@@ -124,14 +147,6 @@ func AddCourse(ctx context.Context, a *agent.Agent, courseRequest AddCourseReque
 
 	return a.Do(ctx, req)
 }
-
-type CourseStatus string
-
-const (
-	StatusRegistration CourseStatus = "registration"
-	StatusInProgress   CourseStatus = "in-progress"
-	StatusClosed       CourseStatus = "closed"
-)
 
 type SetCourseStatusRequest struct {
 	Status CourseStatus `json:"status"`
