@@ -178,15 +178,11 @@
         </template>
         <template v-else-if="courses && !hasError">
           <hr class="my-6" />
-          <div class="flex justify-center text-xl">
-            検索条件にマッチする科目がありませんでした。
-          </div>
+          <div class="">検索条件にマッチする科目がありませんでした。</div>
         </template>
         <template v-else-if="hasError">
           <hr class="my-6" />
-          <div class="flex justify-center text-xl">
-            検索結果を取得できませんでした。
-          </div>
+          <div class="">検索結果を取得できませんでした。</div>
         </template>
       </div>
     </div>
