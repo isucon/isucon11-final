@@ -819,12 +819,11 @@ final class Announcement
         public ?string $courseId,
         public ?string $title,
         public ?string $message,
-        public ?DateTimeInterface $createdAt,
     ) {
     }
 
     /**
-     * @param array{id?: string, course_id?: string, title?: string, message?: string, created_at?: string} $dbRow
+     * @param array{id?: string, course_id?: string, title?: string, message?: string} $dbRow
      */
     public static function fromDbRow(array $dbRow): self
     {
@@ -833,7 +832,6 @@ final class Announcement
             $dbRow['course_id'] ?? null,
             $dbRow['title'] ?? null,
             $dbRow['message'] ?? null,
-            isset($dbRow['created_at']) ? new DateTimeImmutable($dbRow['created_at']) : null,
         );
     }
 }
@@ -841,10 +839,10 @@ final class Announcement
 final class AddAnnouncementRequest
 {
     public function __construct(
+        public string $id,
         public string $courseId,
         public string $title,
         public string $message,
-        public int $createdAt,
     ) {
     }
 
@@ -861,35 +859,20 @@ final class AddAnnouncementRequest
 
         if (
             !(
+                isset($data['id']) &&
                 isset($data['course_id']) &&
                 isset($data['title']) &&
-                isset($data['message']) &&
-                isset($data['created_at'])
+                isset($data['message'])
             )
         ) {
             throw new UnexpectedValueException();
         }
 
         return new self(
+            $data['id'],
             $data['course_id'],
             $data['title'],
             $data['message'],
-            $data['created_at'],
         );
-    }
-}
-
-final class AddAnnouncementResponse implements JsonSerializable
-{
-    public function __construct(public string $id)
-    {
-    }
-
-    /**
-     * @return array{id: string}
-     */
-    public function jsonSerialize(): array
-    {
-        return ['id' => $this->id];
     }
 }

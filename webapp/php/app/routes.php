@@ -1551,9 +1551,99 @@ final class Handler
      */
     public function addAnnouncement(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        try {
+            $req = AddAnnouncementRequest::fromJson((string)$response->getBody());
+        } catch (UnexpectedValueException) {
+            $response->getBody()->write('Invalid format.');
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ?');
+            $stmt->execute([$req->courseId]);
+            $count = $stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($count == 0) {
+            $response->getBody()->write('No such courese.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+
+        $this->dbh->beginTransaction();
+
+        try {
+            $stmt = $this->dbh->prepare('INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$req->id, $req->courseId, $req->title, $req->message]);
+        } catch (PDOException $exception) {
+            $this->dbh->rollBack();
+            if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
+                try {
+                    $stmt = $this->dbh->prepare('SELECT * FROM `announcements` WHERE `id` = ?');
+                    $stmt->execute([$req->id]);
+                    $row = $stmt->fetch();
+                } catch (PDOException $e) {
+                    $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+
+                if ($row === false) {
+                    $this->logger->error('db error: no rows');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+                $announcement = Announcement::fromDbRow($row);
+
+                if ($announcement->courseId !== $req->courseId || $announcement->title !== $req->title || $announcement->message !== $req->message) {
+                    $response->getBody()->write('An announcement with the same id already exists.');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_CONFLICT);
+                }
+            }
+
+            $this->logger->error('db error: ' . $exception->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        /** @var array<User> $targets */
+        $targets = [];
+        $query = 'SELECT `users`.* FROM `users`' .
+            ' JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`' .
+            ' WHERE `registrations`.`course_id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$req->courseId]);
+            while ($row = $stmt->fetch()) {
+                $targets[] = User::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)');
+            foreach ($targets as $user) {
+                $stmt->execute([$req->id, $user->id]);
+            }
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $this->dbh->commit();
+
+        return $response->withStatus(StatusCodeInterface::STATUS_CREATED);
     }
 
     /**
