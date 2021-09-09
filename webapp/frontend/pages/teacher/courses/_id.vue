@@ -2,34 +2,43 @@
   <div>
     <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
-        <div
-          class="
-            bg-yellow-100
-            border border-yellow-400
-            text-yellow-700
-            px-4
-            py-3
-            rounded
-            relative
-            mb-4
-          "
-          role="alert"
-        >
-          <span class="block sm:inline"
-            >本ページは工事中であり、UIは将来的に刷新される予定です。</span
-          >
-        </div>
-        <section>
+        <InlineNotification type="warn" class="mt-4">
+          <template #title>本ページは工事中です。</template>
+          <template #message>UIは将来的に刷新される可能性があります。</template>
+        </InlineNotification>
+        <section class="mt-8">
           <h1 class="text-2xl">講義</h1>
-          <div class="py-4">
+          <div class="mt-4">
             <Button color="primary" @click="showAddClassModal">新規登録</Button>
           </div>
-          <ClassTable
-            :classes="classes"
-            :selected-class-idx="selectedClassIdx"
-            @downloadSubmissions="downloadSubmissions"
-            @registerScores="showRegisterScoresModal"
-          />
+          <template v-if="hasLoadCourseError">
+            <InlineNotification type="error" class="mt-4">
+              <template #title>APIエラーがあります</template>
+              <template #message>科目情報の取得に失敗しました。</template>
+            </InlineNotification>
+          </template>
+          <template v-if="hasLoadClassesError">
+            <InlineNotification type="error" class="mt-4">
+              <template #title>APIエラーがあります</template>
+              <template #message>講義一覧の取得に失敗しました。</template>
+            </InlineNotification>
+          </template>
+          <template v-if="hasDownloadSubmissionsError">
+            <InlineNotification type="error" class="mt-4">
+              <template #title>APIエラーがあります</template>
+              <template #message
+                >提出課題のダウンロードに失敗しました。</template
+              >
+            </InlineNotification>
+          </template>
+          <div class="mt-4">
+            <ClassTable
+              :classes="classes"
+              :selected-class-idx="selectedClassIdx"
+              @downloadSubmissions="downloadSubmissions"
+              @registerScores="showRegisterScoresModal"
+            />
+          </div>
         </section>
       </div>
     </div>
@@ -53,8 +62,10 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { Context } from '@nuxt/types'
 import { notify } from '~/helpers/notification_helper'
 import Button from '~/components/common/Button.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 import ClassTable from '~/components/ClassTable.vue'
 import AddClassModal from '~/components/AddClassModal.vue'
 import RegisterScoresModal from '~/components/RegisterScoresModal.vue'
@@ -62,11 +73,31 @@ import { SyllabusCourse, ClassInfo } from '~/types/courses'
 
 type modalKinds = 'AddClass' | 'RegisterScores' | null
 
-type DataType = {
-  visibleModal: modalKinds
+type AsyncData = {
   course: SyllabusCourse
+  hasLoadCourseError: boolean
+}
+
+type DataType = AsyncData & {
+  visibleModal: modalKinds
   classes: ClassInfo[]
   selectedClassIdx: number | null
+  hasLoadClassesError: boolean
+  hasDownloadSubmissionsError: boolean
+}
+
+const initCourse: SyllabusCourse = {
+  id: '',
+  code: '',
+  type: 'liberal-arts',
+  name: '',
+  description: '',
+  credit: 0,
+  period: 0,
+  dayOfWeek: 'monday',
+  teacher: '',
+  keywords: '',
+  status: 'registration',
 }
 
 export default Vue.extend({
@@ -75,26 +106,30 @@ export default Vue.extend({
     ClassTable,
     AddClassModal,
     RegisterScoresModal,
+    InlineNotification,
   },
   middleware: 'is_teacher',
+  async asyncData(ctx: Context): Promise<AsyncData> {
+    try {
+      const id = ctx.params.id
+      const res = await ctx.$axios.get(`/api/courses/${id}`)
+      const course: SyllabusCourse = res.data
+      return { course, hasLoadCourseError: false }
+    } catch (e) {
+      console.error(e)
+    }
+
+    return { course: initCourse, hasLoadCourseError: true }
+  },
   data(): DataType {
     return {
       visibleModal: null,
-      course: {
-        id: '',
-        code: '',
-        type: 'liberal-arts',
-        name: '',
-        description: '',
-        credit: 0,
-        period: 0,
-        dayOfWeek: 'monday',
-        teacher: '',
-        keywords: '',
-        status: 'registration',
-      },
+      course: initCourse,
       classes: [],
       selectedClassIdx: null,
+      hasLoadCourseError: false,
+      hasLoadClassesError: false,
+      hasDownloadSubmissionsError: false,
     }
   },
   computed: {
@@ -110,32 +145,24 @@ export default Vue.extend({
     },
   },
   async created() {
-    await this.loadCourseDetail()
     await this.loadClasses()
   },
   methods: {
-    async loadCourseDetail() {
-      try {
-        const resCourse = await this.$axios.get<SyllabusCourse>(
-          `/api/courses/${this.$route.params.id}`
-        )
-        this.course = resCourse.data
-      } catch (e) {
-        notify('科目の読み込みに失敗しました')
-      }
-    },
     async loadClasses() {
+      this.hasLoadClassesError = false
       try {
         const resClasses = await this.$axios.get<ClassInfo[]>(
           `/api/courses/${this.$route.params.id}/classes`
         )
         this.classes = resClasses.data ?? []
       } catch (e) {
+        this.hasLoadClassesError = true
         notify('講義の読み込みに失敗しました')
       }
     },
     async downloadSubmissions(classIdx: number) {
       this.selectedClassIdx = classIdx
+      this.hasDownloadSubmissionsError = false
       try {
         await this.$axios
           .get(
@@ -153,6 +180,7 @@ export default Vue.extend({
             notify('ダウンロードに成功しました')
           })
       } catch (e) {
+        this.hasDownloadSubmissionsError = true
         notify('ダウンロードに失敗しました')
       }
     },
