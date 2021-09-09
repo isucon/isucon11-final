@@ -31,6 +31,10 @@ type Scenario struct {
 	loadRequestEndTime  time.Time
 	debugData           *DebugData
 
+	// initCourse は/initializeで追加されるコース
+	// 中のデータの更新はしないこと
+	initCourse []*model.Course
+
 	rmu sync.RWMutex
 
 	finishCoursePubSub        *pubsub.PubSub
@@ -66,6 +70,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 		debugData:          NewDebugData(config.IsDebug),
 		finishCoursePubSub: pubsub.NewPubSub(),
+		initCourse:         generate.InitialCourses(),
 	}, nil
 }
 
