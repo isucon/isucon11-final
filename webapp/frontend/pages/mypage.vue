@@ -115,7 +115,7 @@ export default Vue.extend({
   ): Promise<{ registeredCourses: MinimalCourse[]; hasError: boolean }> {
     try {
       const res = await ctx.$axios.get<MinimalCourse[]>(`/api/users/me/courses`)
-      return { registeredCourses: res.data, hasError: false }
+      return { registeredCourses: res.data ?? [], hasError: false }
     } catch (e) {
       console.error(e)
     }
