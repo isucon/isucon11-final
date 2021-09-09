@@ -3,7 +3,6 @@ package generate
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"image"
 	"image/color"
 	_ "image/jpeg"
@@ -30,7 +29,6 @@ func init() {
 	files, _ := f.ReadDir("data/images")
 	imageCount = len(files)
 	for _, file := range files {
-		fmt.Println(file.Name())
 		data, err := f.ReadFile("data/images/" + file.Name())
 		if err != nil {
 			panic(err)
@@ -49,7 +47,6 @@ func init() {
 
 func cyclicGetImage() *Image {
 	img := images[next]
-	fmt.Println(img.height)
 	next = (next + 1) % imageCount
 	return img
 }
