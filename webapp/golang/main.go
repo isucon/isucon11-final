@@ -1011,7 +1011,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 	if status != StatusInProgress {
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in progress.")
@@ -1031,7 +1031,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
 	}
 	if submissionClosed {
 		return echo.NewHTTPError(http.StatusBadRequest, "Submission has been closed for this class.")
@@ -1089,7 +1089,7 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
 	}
 
 	if !submissionClosed {
@@ -1139,7 +1139,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if classCount == 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
 	}
 	var submissions []Submission
 	query := "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +

@@ -1577,7 +1577,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err == nil {
 		return errSubmitAssignmentForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
@@ -1586,7 +1586,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err == nil {
 		return errSubmitAssignmentForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
@@ -1687,7 +1687,7 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 	if err == nil {
 		return errPostGradeForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
@@ -1729,7 +1729,7 @@ func (s *Scenario) prepareCheckDownloadSubmissionsAbnormal(ctx context.Context) 
 	if err == nil {
 		return errDownloadSubmissionsForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
