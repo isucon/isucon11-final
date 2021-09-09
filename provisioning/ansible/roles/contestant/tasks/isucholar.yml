@@ -8,12 +8,6 @@
     owner: isucon
     group: isucon
 
-- name: "roles/contestant/tasks/isucholar: Deploy hosts"
-  become_user: root
-  copy:
-    src: "etc/hosts"
-    dest: "/etc/hosts"
-
 - name: "roles/contestant/tasks/isucholar: Deploy env file"
   become_user: isucon
   copy:
