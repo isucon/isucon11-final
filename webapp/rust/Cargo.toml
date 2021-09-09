@@ -14,6 +14,7 @@ bcrypt = "0.10"
 chrono = "0.4"
 env_logger = "0.9"
 futures = "0.3"
+lazy_static = "1"
 listenfd = "0.3"
 log = "0.4"
 mime = "0.3"
@@ -22,4 +23,4 @@ serde = { version = "1", features = ["derive"] }
 serde_urlencoded = "0.7"
 sqlx = { version = "0.5", default-features = false, features = ["macros", "runtime-actix-rustls", "mysql", "chrono", "decimal"] }
 tokio = { version = "1", features = ["fs", "process"] }
-uuid = { version = "0.8", features = ["v4"] }
+ulid = "0.4"

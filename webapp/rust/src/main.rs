@@ -1061,7 +1061,7 @@ async fn add_course(
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
 
-    let course_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+    let course_id = isucholar::util::new_ulid().await;
     let result = sqlx::query("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(&course_id)
         .bind(&req.code)
@@ -1503,7 +1503,7 @@ async fn add_class(
         ));
     }
 
-    let class_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
+    let class_id = isucholar::util::new_ulid().await;
     let result = sqlx::query("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)")
         .bind(&class_id)
         .bind(course_id)
@@ -1542,30 +1542,19 @@ async fn add_class(
     Ok(HttpResponse::Created().json(AddClassResponse { class_id }))
 }
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
 struct AnnouncementWithoutDetail {
     id: String,
     course_id: String,
     course_name: String,
     title: String,
     unread: bool,
-    created_at: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, serde::Serialize)]
 struct GetAnnouncementsResponse {
     unread_count: i64,
-    announcements: Vec<AnnouncementResponse>,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct AnnouncementResponse {
-    id: String,
-    course_id: String,
-    course_name: String,
-    title: String,
-    unread: bool,
-    created_at: i64,
+    announcements: Vec<AnnouncementWithoutDetail>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -1584,7 +1573,7 @@ async fn get_announcement_list(
     let (user_id, _, _) = get_user_info(session)?;
 
     let mut query = concat!(
-        "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`, `announcements`.`created_at`",
+        "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`",
         " FROM `announcements`",
         " JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`",
         " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`",
@@ -1601,7 +1590,7 @@ async fn get_announcement_list(
     query.push_str(concat!(
         " AND `unread_announcements`.`user_id` = ?",
         " AND `registrations`.`user_id` = ?",
-        " ORDER BY `announcements`.`created_at` DESC",
+        " ORDER BY `announcements`.`id` DESC",
         " LIMIT ? OFFSET ?",
     ));
     args.add(&user_id);
@@ -1659,17 +1648,6 @@ async fn get_announcement_list(
     }
 
     // 対象になっているお知らせが0件の時は空配列を返却
-    let announcements_res = announcements
-        .into_iter()
-        .map(|announcement| AnnouncementResponse {
-            id: announcement.id,
-            course_id: announcement.course_id,
-            course_name: announcement.course_name,
-            title: announcement.title,
-            unread: announcement.unread,
-            created_at: announcement.created_at.timestamp(),
-        })
-        .collect::<Vec<_>>();
 
     let mut builder = HttpResponse::Ok();
     if !links.is_empty() {
@@ -1677,11 +1655,11 @@ async fn get_announcement_list(
     }
     Ok(builder.json(GetAnnouncementsResponse {
         unread_count,
-        announcements: announcements_res,
+        announcements,
     }))
 }
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
 struct AnnouncementDetail {
     id: String,
     course_id: String,
@@ -1689,18 +1667,6 @@ struct AnnouncementDetail {
     title: String,
     message: String,
     unread: bool,
-    created_at: chrono::NaiveDateTime,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct GetAnnouncementDetailResponse {
-    id: String,
-    course_id: String,
-    course_name: String,
-    title: String,
-    message: String,
-    unread: bool,
-    created_at: i64,
 }
 
 // GET /api/announcements/{announcement_id} お知らせ詳細取得
@@ -1714,7 +1680,7 @@ async fn get_announcement_detail(
     let announcement_id = &announcement_id.0;
 
     let announcement: Option<AnnouncementDetail> = sqlx::query_as(concat!(
-            "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`, `announcements`.`created_at`",
+            "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`",
             " FROM `announcements`",
             " JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`",
             " JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`",
@@ -1750,15 +1716,7 @@ async fn get_announcement_detail(
         .await
         .map_err(SqlxError)?;
 
-    Ok(HttpResponse::Ok().json(GetAnnouncementDetailResponse {
-        id: announcement.id,
-        course_id: announcement.course_id,
-        course_name: announcement.course_name,
-        title: announcement.title,
-        message: announcement.message,
-        unread: announcement.unread,
-        created_at: announcement.created_at.timestamp(),
-    }))
+    Ok(HttpResponse::Ok().json(announcement))
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -1767,20 +1725,14 @@ struct Announcement {
     course_id: String,
     title: String,
     message: String,
-    created_at: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, serde::Deserialize)]
 struct AddAnnouncementRequest {
+    id: String,
     course_id: String,
     title: String,
     message: String,
-    created_at: i64,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct AddAnnouncementResponse {
-    id: String,
 }
 
 // POST /api/announcements 新規お知らせ追加
@@ -1799,25 +1751,20 @@ async fn add_announcement(
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
 
-    let announcement_id = uuid::Uuid::new_v4().to_hyphenated().to_string();
-    let created_at = chrono::NaiveDateTime::from_timestamp(req.created_at, 0);
-    let result = sqlx::query("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)")
-        .bind(&announcement_id)
-        .bind(&req.course_id)
-        .bind(&req.title)
-        .bind(&req.message)
-        .bind(&created_at)
-        .execute(&mut tx)
-        .await;
+    let result = sqlx::query(
+        "INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`) VALUES (?, ?, ?, ?)",
+    )
+    .bind(&req.id)
+    .bind(&req.course_id)
+    .bind(&req.title)
+    .bind(&req.message)
+    .execute(&mut tx)
+    .await;
     if let Err(sqlx::error::Error::Database(ref db_error)) = result {
         if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
             if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
                 let announcement: Announcement = isucholar::db::fetch_one_as(
-                    sqlx::query_as(
-                        "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?",
-                    )
-                    .bind(&req.course_id)
-                    .bind(&created_at),
+                    sqlx::query_as("SELECT * FROM `announcements` WHERE `id` = ?").bind(&req.id),
                     &mut tx,
                 )
                 .await
@@ -1827,12 +1774,10 @@ async fn add_announcement(
                     || announcement.message != req.message
                 {
                     return Err(actix_web::error::ErrorConflict(
-                        "An announcement with the same course_id and created_at already exists.",
+                        "An announcement with the same id already exists.",
                     ));
                 } else {
-                    return Ok(HttpResponse::Created().json(AddAnnouncementResponse {
-                        id: announcement.id,
-                    }));
+                    return Ok(HttpResponse::Created().finish());
                 }
             }
         }
@@ -1853,7 +1798,7 @@ async fn add_announcement(
         sqlx::query(
             "INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)",
         )
-        .bind(&announcement_id)
+        .bind(&req.id)
         .bind(user.id)
         .execute(&mut tx)
         .await
@@ -1862,7 +1807,5 @@ async fn add_announcement(
 
     tx.commit().await.map_err(SqlxError)?;
 
-    Ok(HttpResponse::Created().json(AddAnnouncementResponse {
-        id: announcement_id,
-    }))
+    Ok(HttpResponse::Created().finish())
 }

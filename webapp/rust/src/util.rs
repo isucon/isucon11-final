@@ -1,5 +1,14 @@
 #![allow(clippy::float_cmp)]
 
+lazy_static::lazy_static! {
+    static ref UILD_GENERATOR: tokio::sync::Mutex<ulid::Generator> = tokio::sync::Mutex::new(ulid::Generator::new());
+}
+
+pub async fn new_ulid() -> String {
+    let mut g = UILD_GENERATOR.lock().await;
+    g.generate().unwrap().to_string()
+}
+
 // ----- int -----
 
 pub fn average_int(arr: &[i64], or: f64) -> f64 {
