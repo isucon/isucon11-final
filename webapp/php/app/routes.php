@@ -840,9 +840,74 @@ final class Handler
      */
     public function addCourse(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            $req = AddCourseRequest::fromJson((string)$request->getBody());
+        } catch (UnexpectedValueException) {
+            $response->getBody()->write('Invalid format.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        if ($req->type !== self::COURSE_TYPE_LIBERAL_ARTS && $req->type !== self::COURSE_TYPE_MAJOR_SUBJECTS) {
+            $response->getBody()->write('Invalid course type.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        if (!in_array($req->dayOfWeek, self::DAYS_OF_WEEK)) {
+            $response->getBody()->write('Invalid day of week.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        $this->dbh->beginTransaction();
+
+        $courseId = util\newUlid();
+        try {
+            $stmt = $this->dbh->prepare('INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$courseId, $req->code, $req->type, $req->name, $req->description, $req->credit, $req->period, $req->dayOfWeek, $userId, $req->keywords]);
+        } catch (PDOException $exception) {
+            $this->dbh->rollBack();
+            if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
+                try {
+                    $stmt = $this->dbh->prepare('SELECT * FROM `courses` WHERE `code` = ?');
+                    $stmt->execute([$req->code]);
+                    $row = $stmt->fetch();
+                } catch (PDOException $e) {
+                    $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+
+                if ($row === false) {
+                    $this->logger->error('db error: no rows');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+                $course = Course::fromDbRow($row);
+
+                if ($req->type !== $course->type || $req->name !== $course->name || $req->description !== $course->description || $req->credit !== $course->credit || $req->period !== $course->period || $req->dayOfWeek !== $course->dayOfWeek || $req->keywords !== $course->keywords) {
+                    $response->getBody()->write('A course with the same code already exists.');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_CONFLICT);
+                }
+            }
+
+            $this->logger->error('db error: ' . $exception->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $this->dbh->commit();
+
+        return $this->jsonResponse($response, new AddCourseResponse(id: $courseId), StatusCodeInterface::STATUS_CREATED);
     }
 
     /**
