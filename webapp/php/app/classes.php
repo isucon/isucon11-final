@@ -343,13 +343,13 @@ final class ClassScore implements JsonSerializable
         public string $classId,
         public string $title,
         public int $part,
-        public int $score, // 0~100点
+        public ?int $score, // 0~100点
         public int $submitters, // 提出した学生数
     ) {
     }
 
     /**
-     * @return array{class_id: string, title: string, part: int, score: int, submitters: int}
+     * @return array{class_id: string, title: string, part: int, score: ?int, submitters: int}
      */
     public function jsonSerialize(): array
     {

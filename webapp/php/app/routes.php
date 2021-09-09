@@ -492,9 +492,190 @@ final class Handler
      */
     public function getGrades(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        // 履修している科目一覧取得
+        /** @var array<Course> $registeredCourses */
+        $registeredCourses = [];
+        $query = 'SELECT `courses`.*' .
+            ' FROM `registrations`' .
+            ' JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`' .
+            ' WHERE `user_id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$userId]);
+            while ($row = $stmt->fetch()) {
+                $registeredCourses[] = Course::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        // 科目毎の成績計算処理
+        /** @var CourseResult $courseResult */
+        $courseResults = [];
+        $myGpa = 0.0;
+        $myCredits = 0;
+        foreach ($registeredCourses as $course) {
+            // 講義一覧の取得
+            /** @var array<Klass> $classes */
+            $classes = [];
+            $query = 'SELECT *' .
+                ' FROM `classes`' .
+                ' WHERE `course_id` = ?' .
+                ' ORDER BY `part` DESC';
+            try {
+                $stmt = $this->dbh->prepare($query);
+                $stmt->execute([$course->id]);
+                while ($row = $stmt->fetch()) {
+                    $classes[] = Klass::fromDbRow($row);
+                }
+            } catch (PDOException $e) {
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
+            // 講義毎の成績計算処理
+            /** @var array<ClassScore> $classScores */
+            $classScores = [];
+            $myTotalScore = 0;
+            foreach ($classes as $class) {
+                try {
+                    $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `submissions` WHERE `class_id` = ?');
+                    $stmt->execute([$class->id]);
+                    $submissionsCount = $stmt->fetch()[0];
+                } catch (PDOException $e) {
+                    $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+
+                try {
+                    $stmt = $this->dbh->prepare('SELECT `submissions`.`score` FROM `submissions` WHERE `user_id` = ? AND `class_id` = ?');
+                    $stmt->execute([$userId, $class->id]);
+                    $row = $stmt->fetch();
+                } catch (PDOException $e) {
+                    $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+
+                if ($row === false || is_null($score = $row[0])) {
+                    $classScores[] = new ClassScore(
+                        classId: $class->id,
+                        part: $class->part,
+                        title: $class->title,
+                        score: null,
+                        submitters: $submissionsCount,
+                    );
+                } else {
+                    $myTotalScore += $score;
+                    $classScores[] = new ClassScore(
+                        classId: $class->id,
+                        part: $class->part,
+                        title: $class->title,
+                        score: $score,
+                        submitters: $submissionsCount,
+                    );
+                }
+            }
+
+            /** @var array<int> $totals */
+            $totals = [];
+            $query = 'SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`' .
+                ' FROM `users`' .
+                ' JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`' .
+                ' JOIN `courses` ON `registrations`.`course_id` = `courses`.`id`' .
+                ' LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`' .
+                ' LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`' .
+                ' WHERE `courses`.`id` = ?' .
+                ' GROUP BY `users`.`id`';
+            try {
+                $stmt = $this->dbh->prepare($query);
+                $stmt->execute([$course->id]);
+                while ($row = $stmt->fetch) {
+                    $totals[] = $row['total_score'];
+                }
+            } catch (PDOException $e) {
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+
+            $courseResults[] = new CourseResult(
+                name: $course->name,
+                code: $course->code,
+                totalScore: $myTotalScore,
+                totalScoreTScore: util\tScoreInt($myTotalScore, $totals),
+                totalScoreAvg: util\average($totals, 0),
+                totalScoreMax: util\max($totals, 0),
+                totalScoreMin: util\min($totals, 0),
+                classScores: $classScores,
+            );
+
+            // 自分のGPA計算
+            if ($course->status === self::COURSE_STATUS_CLOSED) {
+                $myGpa += $myTotalScore * $course->credit;
+                $myCredits += $course->credit;
+            }
+        }
+
+        if ($myCredits > 0) {
+            $myGpa = (float)$myGpa / 100 / $myCredits;
+        }
+
+        // GPAの統計値
+        // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
+        /** @var array<float> $gpas */
+        $gpas = [];
+        $query = 'SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`' .
+            ' FROM `users`' .
+            ' JOIN (' .
+            '     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`' .
+            '     FROM `users`' .
+            '     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`' .
+            '     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?' .
+            '     GROUP BY `users`.`id`' .
+            ' ) AS `credits` ON `credits`.`user_id` = `users`.`id`' .
+            ' JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`' .
+            ' JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?' .
+            ' LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`' .
+            ' LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`' .
+            ' WHERE `users`.`type` = ?' .
+            ' GROUP BY `users`.`id`';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([self::COURSE_STATUS_CLOSED, self::COURSE_STATUS_CLOSED, self::USER_TYPE_STUDENT]);
+            while ($row = $stmt->fetch()) {
+                $gpas[] = $row['gpa'];
+            }
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $res = new GetGradeResponse(
+            summary: new Summary(
+                credits: $myCredits,
+                gpa: $myGpa,
+                gpaTScore: util\tScoreFloat($myGpa, $gpas),
+                gpaAvg: util\average($gpas, 0),
+                gpaMax: util\max($gpas, 0),
+                gpaMin: util\min($gpas, 0),
+            ),
+            courseResults: $courseResults
+        );
+
+        return $this->jsonResponse($response, $res);
     }
 
     /**
