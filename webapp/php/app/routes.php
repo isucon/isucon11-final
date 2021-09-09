@@ -805,11 +805,32 @@ final class Handler
     /**
      * getCourseDetail GET /api/courses/:courseId 科目詳細の取得
      */
-    public function getCourseDetail(Request $request, Response $response): Response
+    public function getCourseDetail(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        $courseId = $params['courseId'];
 
-        return $response;
+        $query = 'SELECT `courses`.*, `users`.`name` AS `teacher`' .
+            ' FROM `courses`' .
+            ' JOIN `users` ON `courses`.`teacher_id` = `users`.`id`' .
+            ' WHERE `courses`.`id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$courseId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if ($row === false) {
+            $response->getBody()->write('No such course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+        $res = GetCourseDetailResponse::fromDbRow($row);
+
+        return $this->jsonResponse($response, $res);
     }
 
     /**
