@@ -2,37 +2,33 @@
   <div>
     <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
-        <div
-          class="
-            bg-yellow-100
-            border border-yellow-400
-            text-yellow-700
-            px-4
-            py-3
-            rounded
-            relative
-            mb-4
-          "
-          role="alert"
-        >
-          <span class="block sm:inline"
-            >本ページは工事中であり、UIは将来的に刷新される予定です。</span
-          >
-        </div>
-        <section>
+        <InlineNotification type="warn">
+          <template #title>本ページは工事中です。</template>
+          <template #message>UIは将来的に刷新される可能性があります。</template>
+        </InlineNotification>
+
+        <section class="mt-8">
           <h1 class="text-2xl">科目</h1>
-          <div class="py-4">
+          <div class="mt-4">
             <Button color="primary" @click="showAddCourseModal"
               >新規登録</Button
             >
           </div>
-          <CourseTable
-            :courses="courses"
-            :selected-course-idx="selectedCourseIdx"
-            :link="courseLink"
-            @paginate="moveCoursePage"
-            @setStatus="showSetStatusModal"
-          />
+          <template v-if="hasError">
+            <InlineNotification type="error" class="mt-4">
+              <template #title>APIエラーがあります</template>
+              <template #message>科目一覧の取得に失敗しました。</template>
+            </InlineNotification>
+          </template>
+          <div class="mt-4">
+            <CourseTable
+              :courses="courses"
+              :selected-course-idx="selectedCourseIdx"
+              :link="courseLink"
+              @paginate="moveCoursePage"
+              @setStatus="showSetStatusModal"
+            />
+          </div>
         </section>
       </div>
     </div>
@@ -56,6 +52,7 @@
 import Vue from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Button from '~/components/common/Button.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 import CourseTable from '~/components/CourseTable.vue'
 import AddCourseModal from '~/components/AddCourseModal.vue'
 import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
@@ -70,6 +67,7 @@ type DataType = {
   courses: SyllabusCourse[]
   selectedCourseIdx: number | null
   courseLink: Partial<Link>
+  hasError: boolean
 }
 
 const initLink = { prev: undefined, next: undefined }
@@ -80,6 +78,7 @@ export default Vue.extend({
     CourseTable,
     AddCourseModal,
     SetCourseStatusModal,
+    InlineNotification,
   },
   middleware: 'is_teacher',
   data(): DataType {
@@ -88,6 +87,7 @@ export default Vue.extend({
       courses: [],
       selectedCourseIdx: null,
       courseLink: { prev: undefined, next: undefined },
+      hasError: false,
     }
   },
   computed: {
@@ -112,6 +112,7 @@ export default Vue.extend({
   },
   methods: {
     async loadCourses(query?: Record<string, any>) {
+      this.hasError = false
       if (!query) {
         this.courseLink = Object.assign({}, initLink)
       }
@@ -129,7 +130,8 @@ export default Vue.extend({
           parseLinkHeader(resCourses.headers.link)
         )
       } catch (e) {
-        notify('科目の読み込みに失敗しました')
+        this.hasError = true
+        notify('科目一覧の取得に失敗しました')
       }
     },
     async moveCoursePage(query: URLSearchParams) {
