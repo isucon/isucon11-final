@@ -257,12 +257,11 @@ func (h *handlers) Login(c echo.Context) error {
 	}
 
 	var user User
-	err := h.DB.Get(&user, "SELECT * FROM `users` WHERE `code` = ?", req.Code)
-	if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
-	} else if err != nil {
+	if err := h.DB.Get(&user, "SELECT * FROM `users` WHERE `code` = ?", req.Code); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
 	}
 
 	if bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(req.Password)) != nil {
@@ -428,12 +427,12 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	for _, courseReq := range req {
 		courseID := courseReq.ID
 		var course Course
-		if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
-			errors.CourseNotFound = append(errors.CourseNotFound, courseReq.ID)
-			continue
-		} else if err != nil {
+		if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
+		} else if err == sql.ErrNoRows {
+			errors.CourseNotFound = append(errors.CourseNotFound, courseReq.ID)
+			continue
 		}
 
 		if course.Status != StatusRegistration {
@@ -814,11 +813,11 @@ func (h *handlers) GetCourseDetail(c echo.Context) error {
 		" FROM `courses`" +
 		" JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
 		" WHERE `courses`.`id` = ?"
-	if err := h.DB.Get(&res, query, courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
-	} else if err != nil {
+	if err := h.DB.Get(&res, query, courseID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -1008,11 +1007,11 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	defer tx.Rollback()
 
 	var status CourseStatus
-	if err := tx.Get(&status, "SELECT `status` FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such course.")
-	} else if err != nil {
+	if err := tx.Get(&status, "SELECT `status` FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
 	}
 	if status != StatusInProgress {
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in progress.")
@@ -1028,11 +1027,11 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 
 	var submissionClosed bool
-	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
-	} else if err != nil {
+	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
 	}
 	if submissionClosed {
 		return echo.NewHTTPError(http.StatusBadRequest, "Submission has been closed for this class.")
@@ -1086,11 +1085,11 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 	defer tx.Rollback()
 
 	var submissionClosed bool
-	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
-	} else if err != nil {
+	if err := tx.Get(&submissionClosed, "SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE", classID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
 	}
 
 	if !submissionClosed {
@@ -1140,7 +1139,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if classCount == 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "No such class.")
+		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
 	}
 	var submissions []Submission
 	query := "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +
@@ -1386,11 +1385,11 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
 		" WHERE `announcements`.`id` = ?" +
 		" AND `unread_announcements`.`user_id` = ?"
-	if err := h.DB.Get(&announcement, query, announcementID, userID); err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
-	} else if err != nil {
+	if err := h.DB.Get(&announcement, query, announcementID, userID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
 	}
 
 	var registrationCount int
