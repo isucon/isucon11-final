@@ -1022,11 +1022,113 @@ final class Handler
     /**
      * submitAssignment POST /api/courses/:courseId/classes/:classId/assignments 課題の提出
      */
-    public function submitAssignment(Request $request, Response $response): Response
+    public function submitAssignment(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $courseId = $params['courseId'];
+        $classId = $params['classId'];
+
+        $this->dbh->beginTransaction();
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT `status` FROM `courses` WHERE `id` = ? FOR SHARE');
+            $stmt->execute([$courseId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($row === false) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('No such course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+        if ($row['status'] !== self::COURSE_STATUS_IN_PROGRESS) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('This course is not in progress.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `registrations` WHERE `user_id` = ? AND `course_id` = ?');
+            $stmt->execute([$userId, $courseId]);
+            $registrationCount = $stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($registrationCount == 0) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('You have not taken this course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE');
+            $stmt->execute([$classId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($row === false) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('No such class.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+        if ($row['submission_closed']) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('Submission has been closed for this class.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        /** @var \Psr\Http\Message\UploadedFileInterface|null $file */
+        $file = $request->getUploadedFiles()['file'] ?? null;
+        if (is_null($file) || $file->getError() !== UPLOAD_ERR_OK) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('"Invalid file.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `file_name` = VALUES(`file_name`)');
+            $stmt->execute([$userId, $classId, $file->getClientFilename()]);
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        // TODO: stream の扱いについて要検証
+        if (file_put_contents(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . 'pdf', $file->getStream()) === false) {
+            $this->dbh->rollBack();
+            $this->logger->error('failed to create file: ' . self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . 'pdf');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $this->dbh->commit();
+
+        return $response->withStatus(StatusCodeInterface::STATUS_NO_CONTENT);
     }
 
     /**
