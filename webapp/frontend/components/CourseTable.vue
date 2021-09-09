@@ -3,7 +3,6 @@
     <table class="table-auto border w-full mt-1">
       <thead>
         <tr class="text-center">
-          <th></th>
           <th>科目コード</th>
           <th>科目名</th>
           <th>科目種別</th>
@@ -20,22 +19,8 @@
           <template v-for="(c, i) in courses">
             <tr
               :key="`course-tr-${i}`"
-              class="text-center bg-gray-200 odd:bg-white cursor-pointer"
-              @click="onChangeRadioButton(i)"
+              class="text-center bg-gray-200 odd:bg-white"
             >
-              <td>
-                <input
-                  name="course-select"
-                  type="radio"
-                  class="
-                    form-input
-                    text-primary-500
-                    focus:outline-none focus:ring-primary-200
-                    rounded
-                  "
-                  :checked="selectedCourseIdx === i"
-                />
-              </td>
               <td>{{ c.code }}</td>
               <td>{{ c.name }}</td>
               <td>{{ formatType(c.type) }}</td>
@@ -193,9 +178,6 @@ export default Vue.extend({
     },
     formatStatus(status: CourseStatus): string {
       return formatStatus(status)
-    },
-    onChangeRadioButton(courseIdx: number): void {
-      this.$emit('change', courseIdx)
     },
     onClickPagination(query: URLSearchParams): void {
       this.$emit('paginate', query)
