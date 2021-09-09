@@ -75,7 +75,7 @@ app.post("/initialize", async (_, res) => {
     const files = ["1_schema.sql", "2_init.sql", "3_sample.sql"];
     for (const file of files) {
       const data = await readFile(SqlDirectory + file);
-      db.query(data.toString());
+      await db.query(data.toString());
     }
   } catch (err) {
     console.error(err);
@@ -903,7 +903,7 @@ coursesApi.post("", isAdmin, async (req, res) => {
 
     const courseId = newUlid();
     try {
-      db.query(
+      await db.query(
         "INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           courseId,
@@ -1685,7 +1685,7 @@ announcementsApi.get(
         ({ registrationCount: number } & RowDataPacket)[]
       >(
         "SELECT COUNT(*) AS `registrationCount` FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
-        [announcement.CourseID, userId]
+        [announcement.course_id, userId]
       );
       if (registrationCount === 0) {
         return res.status(404).send("No such announcement.");
