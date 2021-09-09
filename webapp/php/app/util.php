@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace util;
 
+use Ulid\Ulid;
+
 function getEnv(string $key, string $val): string
 {
     $v = \getenv($key);
@@ -12,6 +14,11 @@ function getEnv(string $key, string $val): string
     }
 
     return $v;
+}
+
+function newUlid(): string
+{
+    return (string)Ulid::generate();
 }
 
 // ----- common for int and float
