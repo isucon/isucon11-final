@@ -303,7 +303,7 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 		}
 	}
 
-	// CreatedAtの降順でソートされているか
+	// Code の昇順でソートされているか
 	for i := 0; i < len(res)-1; i++ {
 		if res[i].Code > res[i+1].Code {
 			return errInvalidResponse("科目検索結果の順序が不正です")
@@ -354,6 +354,10 @@ func verifyCourseDetail(actual *api.GetCourseDetailResponse, expected *model.Cou
 }
 
 func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announcementStatus *model.AnnouncementStatus) error {
+	if res.ID != announcementStatus.Announcement.ID {
+		return errInvalidResponse("お知らせのIDが期待する値と一致しません")
+	}
+
 	if res.CourseID != announcementStatus.Announcement.CourseID {
 		return errInvalidResponse("お知らせの講義IDが期待する値と一致しません")
 	}
@@ -368,10 +372,6 @@ func verifyAnnouncementDetail(res *api.GetAnnouncementDetailResponse, announceme
 
 	if res.Message != announcementStatus.Announcement.Message {
 		return errInvalidResponse("お知らせのメッセージが期待する値と一致しません")
-	}
-
-	if res.CreatedAt != announcementStatus.Announcement.CreatedAt {
-		return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
 	}
 
 	// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
@@ -405,9 +405,6 @@ func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[s
 		if !AssertEqual("announcement list title", expectStatus.Announcement.Title, actual.Title) {
 			return errInvalidResponse("お知らせのタイトルが期待する値と一致しません")
 		}
-		if !AssertEqual("announcement create_at", expectStatus.Announcement.CreatedAt, actual.CreatedAt) {
-			return errInvalidResponse("お知らせの生成時刻が期待する値と一致しません")
-		}
 
 		// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 		// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
@@ -418,9 +415,9 @@ func verifyAnnouncementsList(res *api.GetAnnouncementsResponse, expectList map[s
 		}
 	}
 
-	// CreatedAtの降順でソートされているか
+	// id の降順でソートされているか
 	for i := 0; i < len(res.Announcements)-1; i++ {
-		if res.Announcements[i].CreatedAt < res.Announcements[i+1].CreatedAt {
+		if res.Announcements[i].ID < res.Announcements[i+1].ID {
 			return errInvalidResponse("お知らせの順序が不正です")
 		}
 	}

@@ -442,9 +442,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
-			// MEMO: Student.Announcementsはwebapp内のお知らせの順番(createdAt)と完全同期できていない
-			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
-			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
 			// 以降のページに未読お知らせがない（このページの未読数とレスポンスの未読数が一致）
 			// DoSにならないように少しwaitして1ページ目から見直す
@@ -658,7 +655,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if s.isNoRetryTime(ctx) {
 				return
 			}
-			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				if !isExtendRequest {
 					step.AddError(err)
@@ -674,7 +671,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 					continue
 				}
 			} else {
-				announcement.ID = ancRes.ID
 				if !isExtendRequest {
 					step.AddScore(score.CourseAddAnnouncement)
 				}

@@ -13,7 +13,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
@@ -21,7 +20,6 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/pborman/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -868,7 +866,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	courseID := uuid.New()
+	courseID := newULID()
 	_, err = tx.Exec("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		courseID, req.Code, req.Type, req.Name, req.Description, req.Credit, req.Period, req.DayOfWeek, userID, req.Keywords)
 	if err != nil {
@@ -1234,7 +1232,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in-progress.")
 	}
 
-	classID := uuid.New()
+	classID := newULID()
 	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
 		classID, courseID, req.Part, req.Title, req.Description); err != nil {
 		_ = tx.Rollback()
@@ -1262,26 +1260,16 @@ func (h *handlers) AddClass(c echo.Context) error {
 }
 
 type AnnouncementWithoutDetail struct {
-	ID         string    `db:"id"`
-	CourseID   string    `db:"course_id"`
-	CourseName string    `db:"course_name"`
-	Title      string    `db:"title"`
-	Unread     bool      `db:"unread"`
-	CreatedAt  time.Time `db:"created_at"`
+	ID         string `json:"id" db:"id"`
+	CourseID   string `json:"course_id" db:"course_id"`
+	CourseName string `json:"course_name" db:"course_name"`
+	Title      string `json:"title" db:"title"`
+	Unread     bool   `json:"unread" db:"unread"`
 }
 
 type GetAnnouncementsResponse struct {
-	UnreadCount   int                    `json:"unread_count"`
-	Announcements []AnnouncementResponse `json:"announcements"`
-}
-
-type AnnouncementResponse struct {
-	ID         string `json:"id"`
-	CourseID   string `json:"course_id"`
-	CourseName string `json:"course_name"`
-	Title      string `json:"title"`
-	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
+	UnreadCount   int                         `json:"unread_count"`
+	Announcements []AnnouncementWithoutDetail `json:"announcements"`
 }
 
 // GetAnnouncementList GET /api/announcements お知らせ一覧取得
@@ -1294,7 +1282,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	var announcements []AnnouncementWithoutDetail
 	var args []interface{}
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
 		" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
@@ -1308,7 +1296,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	query += " AND `unread_announcements`.`user_id` = ?" +
 		" AND `registrations`.`user_id` = ?" +
-		" ORDER BY `announcements`.`created_at` DESC" +
+		" ORDER BY `announcements`.`id` DESC" +
 		" LIMIT ? OFFSET ?"
 	args = append(args, userID, userID)
 
@@ -1364,17 +1352,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	// 対象になっているお知らせが0件の時は空配列を返却
-	announcementsRes := make([]AnnouncementResponse, 0, len(announcements))
-	for _, announcement := range announcements {
-		announcementsRes = append(announcementsRes, AnnouncementResponse{
-			ID:         announcement.ID,
-			CourseID:   announcement.CourseID,
-			CourseName: announcement.CourseName,
-			Title:      announcement.Title,
-			Unread:     announcement.Unread,
-			CreatedAt:  announcement.CreatedAt.Unix(),
-		})
-	}
+	announcementsRes := append(make([]AnnouncementWithoutDetail, 0, len(announcements)), announcements...)
 
 	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
 		UnreadCount:   unreadCount,
@@ -1383,23 +1361,12 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 }
 
 type AnnouncementDetail struct {
-	ID         string    `db:"id"`
-	CourseID   string    `db:"course_id"`
-	CourseName string    `db:"course_name"`
-	Title      string    `db:"title"`
-	Message    string    `db:"message"`
-	Unread     bool      `db:"unread"`
-	CreatedAt  time.Time `db:"created_at"`
-}
-
-type GetAnnouncementDetailResponse struct {
-	ID         string `json:"id"`
-	CourseID   string `json:"course_id"`
-	CourseName string `json:"course_name"`
-	Title      string `json:"title"`
-	Message    string `json:"message"`
-	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
+	ID         string `json:"id" db:"id"`
+	CourseID   string `json:"course_id" db:"course_id"`
+	CourseName string `json:"course_name" db:"course_name"`
+	Title      string `json:"title" db:"title"`
+	Message    string `json:"message" db:"message"`
+	Unread     bool   `json:"unread" db:"unread"`
 }
 
 // GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
@@ -1413,7 +1380,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	announcementID := c.Param("announcementID")
 
 	var announcement AnnouncementDetail
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`, `announcements`.`created_at`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
 		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
@@ -1440,34 +1407,21 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusOK, GetAnnouncementDetailResponse{
-		ID:         announcement.ID,
-		CourseID:   announcement.CourseID,
-		CourseName: announcement.CourseName,
-		Title:      announcement.Title,
-		Message:    announcement.Message,
-		Unread:     announcement.Unread,
-		CreatedAt:  announcement.CreatedAt.Unix(),
-	})
+	return c.JSON(http.StatusOK, announcement)
 }
 
 type Announcement struct {
-	ID        string    `db:"id"`
-	CourseID  string    `db:"course_id"`
-	Title     string    `db:"title"`
-	Message   string    `db:"message"`
-	CreatedAt time.Time `db:"created_at"`
+	ID       string `db:"id"`
+	CourseID string `db:"course_id"`
+	Title    string `db:"title"`
+	Message  string `db:"message"`
 }
 
 type AddAnnouncementRequest struct {
-	CourseID  string `json:"course_id"`
-	Title     string `json:"title"`
-	Message   string `json:"message"`
-	CreatedAt int64  `json:"created_at"`
-}
-
-type AddAnnouncementResponse struct {
-	ID string `json:"id"`
+	ID       string `json:"id"`
+	CourseID string `json:"course_id"`
+	Title    string `json:"title"`
+	Message  string `json:"message"`
 }
 
 // AddAnnouncement POST /api/announcements 新規お知らせ追加
@@ -1493,21 +1447,19 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	announcementID := uuid.New()
-	createdAt := time.Unix(req.CreatedAt, 0)
-	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
-		announcementID, req.CourseID, req.Title, req.Message, createdAt); err != nil {
+	if _, err := tx.Exec("INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`) VALUES (?, ?, ?, ?)",
+		req.ID, req.CourseID, req.Title, req.Message); err != nil {
 		_ = tx.Rollback()
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
 			var announcement Announcement
-			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `course_id` = ? AND `created_at` = ?", req.CourseID, createdAt); err != nil {
+			if err := h.DB.Get(&announcement, "SELECT * FROM `announcements` WHERE `id` = ?", req.ID); err != nil {
 				c.Logger().Error(err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			if announcement.CourseID != req.CourseID || announcement.Title != req.Title || announcement.Message != req.Message {
-				return echo.NewHTTPError(http.StatusConflict, "An announcement with the same course_id and created_at already exists.")
+				return echo.NewHTTPError(http.StatusConflict, "An announcement with the same id already exists.")
 			}
-			return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcement.ID})
+			return c.NoContent(http.StatusCreated)
 		}
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1523,7 +1475,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", announcementID, user.ID); err != nil {
+		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", req.ID, user.ID); err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
@@ -1534,5 +1486,5 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusCreated, AddAnnouncementResponse{ID: announcementID})
+	return c.NoContent(http.StatusCreated)
 }
