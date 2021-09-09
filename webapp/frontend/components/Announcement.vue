@@ -12,12 +12,6 @@
             >未読</span
           >
         </div>
-        <div class="flex items-center">
-          <fa-icon class="text-gray-500" :icon="['far', 'clock']" size="sm" />
-          <span class="text-gray-500 text-sm mr-2">
-            {{ announcement.createdAt }}
-          </span>
-        </div>
       </template>
       <template #default>
         <template v-if="!announcement.hasError">
