@@ -8,6 +8,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Psr\Log\LoggerInterface;
 use Slim\App;
+use Slim\Psr7\Stream;
 use Slim\Routing\RouteCollectorProxy;
 use SlimSession\Helper as SessionHelper;
 
@@ -1193,18 +1194,106 @@ final class Handler
     /**
      * downloadSubmittedAssignments GET /api/courses/:courseId/classes/:classId/assignments/export 提出済みの課題ファイルをzip形式で一括ダウンロード
      */
-    public function downloadSubmittedAssignments(Request $request, Response $response): Response
+    public function downloadSubmittedAssignments(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        $classId = $params['classId'];
 
-        return $response;
+        $this->dbh->beginTransaction();
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `classes` WHERE `id` = ? FOR UPDATE');
+            $stmt->execute([$classId]);
+            $classCount = $stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($classCount == 0) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('No such class.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        /** @var array<Submission> $submissions */
+        $submissions = [];
+        $query = 'SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`' .
+            ' FROM `submissions`' .
+            ' JOIN `users` ON `users`.`id` = `submissions`.`user_id`' .
+            ' WHERE `class_id` = ? FOR SHARE';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$classId]);
+            while ($row = $stmt->fetch()) {
+                $submissions[] = Submission::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $zipFilePath = self::ASSIGNMENTS_DIRECTORY . $classId . '.zip';
+        $err = $this->createSubmissionsZip($zipFilePath, $classId, $submissions);
+        if ($err !== '') {
+            $this->dbh->rollBack();
+            $this->logger->error($err);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('UPDATE `classes` SET `submission_closed` = true WHERE `id` = ?');
+            $stmt->execute([$classId]);
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error($e->getMessage());
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $this->dbh->commit();
+
+        return $response->withHeader('Content-Type', 'application/octet-stream')
+            ->withHeader('Content-Disposition', 'attachment; filename=' . $classId . '.zip')
+            ->withBody(new Stream(fopen($zipFilePath, 'rb')));
     }
 
     /**
-     * @throws RuntimeException
+     * @param array<Submission> $submissions
      */
-    private function createSubmissionsZip(string $zipFilePath, string $classId, array $submissions): void
+    private function createSubmissionsZip(string $zipFilePath, string $classId, array $submissions): string
     {
+        $tmpDir = self::ASSIGNMENTS_DIRECTORY . $classId . '/';
+        if (exec(sprintf('rm -rf %s', escapeshellarg($tmpDir))) === false) {
+            return 'failed to remove directory: ' . $tmpDir;
+        }
+        if (exec(sprintf('mkdir %s', escapeshellarg($tmpDir))) === false) {
+            return 'failed to make directory: ' . $tmpDir;
+        }
+
+        // ファイル名を指定の形式に変更
+        foreach ($submissions as $submission) {
+            if (
+                exec(sprintf(
+                    'cp %s %s',
+                    escapeshellarg(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . 'pdf'),
+                    escapeshellarg($tmpDir . $submission->userCode . '-' . $submission->fileName),
+                )) === false
+            ) {
+                return 'failed to copy file: ' . $classId . '-' . $submission->userId . 'pdf';
+            }
+        }
+
+        // -i 'tmpDir/*': 空zipを許す
+        if (exec(sprintf('zip -j -r %s  %s -i %s*', $zipFilePath, $tmpDir, $tmpDir)) === false) {
+            return 'failed to zip';
+        }
+
+        return '';
     }
 
     /**
