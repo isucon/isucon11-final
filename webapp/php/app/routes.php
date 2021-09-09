@@ -691,62 +691,62 @@ final class Handler
 
         // 無効な検索条件はエラーを返さず無視して良い
 
-        $courseType = $request->getQueryParams()['type'];
-        if (isset($courseType) && $courseType !== '') {
+        $courseType = $request->getQueryParams()['type'] ?? '';
+        if ($courseType !== '') {
             $condition .= ' AND `courses`.`type` = ?';
-            $args[] = $courseType;
+            $args[] = [$courseType, PDO::PARAM_STR];
         }
 
-        $credit = filter_var($request->getQueryParams()['credit'], FILTER_VALIDATE_INT);
+        $credit = filter_var($request->getQueryParams()['credit'] ?? null, FILTER_VALIDATE_INT);
         if (is_int($credit) && $credit > 0) {
             $condition .= ' AND `courses`.`credit` = ?';
-            $args[] = $credit;
+            $args[] = [$credit, PDO::PARAM_INT];
         }
 
-        $teacher = $request->getQueryParams()['teacher'];
-        if (isset($teacher) && $teacher !== '') {
+        $teacher = $request->getQueryParams()['teacher'] ?? '';
+        if ($teacher !== '') {
             $condition .= ' AND `users`.`name` = ?';
-            $args[] = $teacher;
+            $args[] = [$teacher, PDO::PARAM_STR];
         }
 
-        $period = filter_var($request->getQueryParams()['period'], FILTER_VALIDATE_INT);
+        $period = filter_var($request->getQueryParams()['period'] ?? null, FILTER_VALIDATE_INT);
         if (is_int($period) && $period > 0) {
             $condition .= ' AND `courses`.`period` = ?';
-            $args[] = $period;
+            $args[] = [$period, PDO::PARAM_INT];
         }
 
-        $dayOfWeek = $request->getQueryParams()['day_of_week'];
-        if (isset($dayOfWeek) && $dayOfWeek !== '') {
+        $dayOfWeek = $request->getQueryParams()['day_of_week'] ?? '';
+        if ($dayOfWeek !== '') {
             $condition .= ' AND `courses`.`day_of_week` = ?';
-            $args[] = $dayOfWeek;
+            $args[] = [$dayOfWeek, PDO::PARAM_STR];
         }
 
-        $keywords = $request->getQueryParams()['keywords'];
-        if (isset($keywords) && $keywords !== '') {
+        $keywords = $request->getQueryParams()['keywords'] ?? '';
+        if ($keywords !== '') {
             $arr = explode(' ', $keywords);
             $nameCondition = '';
             foreach ($arr as $keyword) {
                 $nameCondition .= ' AND `courses`.`name` LIKE ?';
-                $args[] = '%' . $keyword . '%';
+                $args[] = ['%' . $keyword . '%', PDO::PARAM_STR];
             }
             $keywordsCondition = '';
             foreach ($arr as $keyword) {
                 $keywordsCondition .= ' AND `courses`.`keywords` LIKE ?';
-                $args[] = '%' . $keyword . '%';
+                $args[] = ['%' . $keyword . '%', PDO::PARAM_STR];
             }
             $condition .= sprintf(' AND ((1=1%s) OR (1=1%s))', $nameCondition, $keywordsCondition);
         }
 
-        $status = $request->getQueryParams()['status'];
-        if (isset($status) && $status !== '') {
+        $status = $request->getQueryParams()['status'] ?? '';
+        if ($status !== '') {
             $condition .= ' AND `courses`.`status` = ?';
-            $args[] = $status;
+            $args[] = [$status, PDO::PARAM_STR];
         }
 
         $condition .= ' ORDER BY `courses`.`code`';
 
-        $pageStr = $request->getQueryParams()['page'];
-        if (!isset($pageStr) || $pageStr === '') {
+        $pageStr = $request->getQueryParams()['page'] ?? '';
+        if ($pageStr === '') {
             $page = 1;
         } else {
             $page = filter_var($pageStr, FILTER_VALIDATE_INT);
@@ -761,15 +761,17 @@ final class Handler
 
         // limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
         $condition .= ' LIMIT ? OFFSET ?';
-        $args[] = $limit + 1;
-        $args[] = $offset;
+        $args = [...$args, [$limit + 1, PDO::PARAM_INT], [$offset, PDO::PARAM_INT]];
 
         // 結果が0件の時は空配列を返却
         /** @var array<GetCourseDetailResponse> $res */
         $res = [];
         try {
             $stmt = $this->dbh->prepare($query . $condition);
-            $stmt->execute($args);
+            foreach ($args as $i => [$value, $type]) {
+                $stmt->bindValue($i + 1, $value, $type);
+            }
+            $stmt->execute();
             while ($row = $stmt->fetch()) {
                 $res[] = GetCourseDetailResponse::fromDbRow($row);
             }
