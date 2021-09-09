@@ -2,7 +2,7 @@
   <div>
     <Accordion @open="$emit('open', $event)" @close="$emit('close', $event)">
       <template #header>
-        <div class="text-xl text-primary-500 flex items-center justify-between">
+        <div class="text-xl text-black flex items-center justify-between">
           <span>
             {{ announcement.title }}
           </span>
