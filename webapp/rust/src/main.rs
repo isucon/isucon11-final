@@ -8,6 +8,7 @@ use sqlx::Executor as _;
 
 const SQL_DIRECTORY: &str = "../sql/";
 const ASSIGNMENTS_DIRECTORY: &str = "../assignments/";
+const INIT_DATA_DIRECTORY: &str = "../data/";
 const SESSION_NAME: &str = "isucholar_rust";
 const MYSQL_ERR_NUM_DUPLICATE_ENTRY: u16 = 1062;
 
@@ -173,7 +174,7 @@ struct InitializeResponse {
 
 // POST /initialize 初期化エンドポイント
 async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpResponse> {
-    let files = ["1_schema.sql", "2_init.sql"];
+    let files = ["1_schema.sql", "2_init.sql", "3_sample.sql"];
     for file in files {
         let data = tokio::fs::read_to_string(format!("{}{}", SQL_DIRECTORY, file)).await?;
         let mut stream = pool.execute_many(data.as_str());
@@ -191,7 +192,9 @@ async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpR
     {
         return Err(actix_web::error::ErrorInternalServerError(""));
     }
-    if !tokio::process::Command::new("mkdir")
+    if !tokio::process::Command::new("cp")
+        .arg("-r")
+        .arg(INIT_DATA_DIRECTORY)
         .arg(ASSIGNMENTS_DIRECTORY)
         .status()
         .await?
