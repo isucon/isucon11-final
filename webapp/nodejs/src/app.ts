@@ -780,13 +780,13 @@ coursesApi.get(
     condition += " ORDER BY `courses`.`code`";
 
     let page: number;
-    if (req.query.page) {
+    if (!req.query.page) {
+      page = 1;
+    } else {
       page = parseInt(req.query.page, 10);
       if (isNaN(page) || page <= 0) {
         return res.status(400).send("Invalid page.");
       }
-    } else {
-      page = 1;
     }
     const limit = 20;
     const offset = limit * (page - 1);
@@ -934,7 +934,7 @@ coursesApi.post("", isAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     await db.rollback();
-    return res.send(500).send();
+    return res.status(500).send();
   } finally {
     db.release();
   }
@@ -1417,6 +1417,143 @@ async function createSubmissionsZip(
   await exec(`zip -j -r '${zipFilePath}' '${tmpDir}' -i '${tmpDir + "*"}'`);
 }
 
+interface AnnouncementWithoutDetail {
+  id: string;
+  course_id: string;
+  course_name: string;
+  title: string;
+  unread: boolean;
+}
+
+interface AnnouncementWithoutDetailRow
+  extends Omit<AnnouncementWithoutDetail, "unread">,
+    RowDataPacket {
+  unread: number;
+}
+
+interface GetAnnouncementListQuery {
+  course_id: string;
+  page: string;
+}
+
+interface GetAnnouncementsResponse {
+  unread_count: number;
+  announcements: AnnouncementWithoutDetail[];
+}
+
+// GET /api/announcements お知らせ一覧取得
+announcementsApi.get(
+  "",
+  async (
+    req: express.Request<
+      Record<string, never>,
+      unknown,
+      never,
+      GetAnnouncementListQuery
+    >,
+    res
+  ) => {
+    let userId: string;
+    try {
+      [userId] = getUserInfo(req.session);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    }
+
+    const args = [];
+    let query =
+      "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
+      " FROM `announcements`" +
+      " JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
+      " JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
+      " JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
+      " WHERE 1=1";
+
+    if (req.query.course_id) {
+      query += " AND `announcements`.`course_id` = ?";
+      args.push(req.query.course_id);
+    }
+
+    query +=
+      " AND `unread_announcements`.`user_id` = ?" +
+      " AND `registrations`.`user_id` = ?" +
+      " ORDER BY `announcements`.`id` DESC" +
+      " LIMIT ? OFFSET ?";
+    args.push(userId, userId);
+
+    let page: number;
+    if (!req.query.page) {
+      page = 1;
+    } else {
+      page = parseInt(req.query.page, 10);
+      if (isNaN(page) || page <= 0) {
+        return res.status(400).send("Invalid page.");
+      }
+    }
+    const limit = 20;
+    const offset = limit * (page - 1);
+    // limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
+    args.push(limit + 1, offset);
+
+    const db = await pool.getConnection();
+    try {
+      let [announcements] = await db.query<AnnouncementWithoutDetailRow[]>(
+        query,
+        args
+      );
+
+      const [[{ unreadCount }]] = await db.query<
+        ({ unreadCount: number } & RowDataPacket)[]
+      >(
+        "SELECT COUNT(*) AS `unreadCount` FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`",
+        [userId]
+      );
+
+      const links = [];
+      const linkUrl = new URL(
+        req.originalUrl,
+        `${req.protocol}://${req.hostname}`
+      );
+
+      const q = linkUrl.searchParams;
+      if (page > 1) {
+        q.set("page", `${page - 1}`);
+        links.push(`<${linkUrl.pathname}?${q}>; rel="prev"`);
+      }
+      if (announcements.length > limit) {
+        q.set("page", `${page + 1}`);
+        links.push(`<${linkUrl.pathname}?${q}>; rel="next"`);
+      }
+      if (links.length > 0) {
+        res.append("Link", links.join(","));
+      }
+
+      if (announcements.length === limit + 1) {
+        announcements = announcements.slice(0, announcements.length - 1);
+      }
+
+      // 対象になっているお知らせが0件の時は空配列を返却
+
+      const response: GetAnnouncementsResponse = {
+        unread_count: unreadCount,
+        announcements: announcements.map((announcement) => {
+          return {
+            ...announcement,
+            unread: !!announcement.unread,
+          };
+        }),
+      };
+      return res.status(200).json(response);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    } finally {
+      db.release();
+    }
+  }
+);
+
 interface AddAnnouncementRequest {
   id: string;
   course_id: string;
@@ -1499,5 +1636,76 @@ announcementsApi.post("", isAdmin, async (req, res) => {
     db.release();
   }
 });
+
+interface AnnouncementDetail {
+  id: string;
+  course_id: string;
+  course_name: string;
+  title: string;
+  message: string;
+  unread: boolean;
+}
+
+interface AnnouncementDetailRow
+  extends Omit<AnnouncementDetail, "unread">,
+    RowDataPacket {
+  unread: number;
+}
+
+// GET /api/announcements/:announcementId お知らせ詳細取得
+announcementsApi.get(
+  "/:announcementId",
+  async (req: express.Request<{ announcementId: string }>, res) => {
+    let userId: string;
+    try {
+      [userId] = getUserInfo(req.session);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    }
+
+    const announcementId = req.params.announcementId;
+
+    const db = await pool.getConnection();
+    try {
+      const [[announcement]] = await db.query<AnnouncementDetailRow[]>(
+        "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
+          " FROM `announcements`" +
+          " JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
+          " JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
+          " WHERE `announcements`.`id` = ?" +
+          " AND `unread_announcements`.`user_id` = ?",
+        [announcementId, userId]
+      );
+      if (!announcement) {
+        return res.status(404).send("No such announcement.");
+      }
+
+      const [[{ registrationCount }]] = await db.query<
+        ({ registrationCount: number } & RowDataPacket)[]
+      >(
+        "SELECT COUNT(*) AS `registrationCount` FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+        [announcement.CourseID, userId]
+      );
+      if (registrationCount === 0) {
+        return res.status(404).send("No such announcement.");
+      }
+
+      await db.query(
+        "UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?",
+        [announcementId, userId]
+      );
+
+      const response: AnnouncementDetail = {
+        ...announcement,
+        unread: !!announcement.unread,
+      };
+      return res.status(200).json(response);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).send();
+    }
+  }
+);
 
 app.listen(parseInt(process.env["PORT"] ?? "7000", 10));
