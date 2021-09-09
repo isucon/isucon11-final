@@ -2,7 +2,7 @@
   <div>
     <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
-        <InlineNotification type="warn" class="mt-4">
+        <InlineNotification type="warn">
           <template #title>本ページは工事中です。</template>
           <template #message>UIは将来的に刷新される可能性があります。</template>
         </InlineNotification>
@@ -157,7 +157,7 @@ export default Vue.extend({
         this.classes = resClasses.data ?? []
       } catch (e) {
         this.hasLoadClassesError = true
-        notify('講義の読み込みに失敗しました')
+        notify('講義一覧の取得に失敗しました')
       }
     },
     async downloadSubmissions(classIdx: number) {
@@ -177,11 +177,11 @@ export default Vue.extend({
             link.download = `${this.classId}.zip`
             link.click()
 
-            notify('ダウンロードに成功しました')
+            notify('提出課題のダウンロードに成功しました')
           })
       } catch (e) {
         this.hasDownloadSubmissionsError = true
-        notify('ダウンロードに失敗しました')
+        notify('提出課題のダウンロードに失敗しました')
       }
     },
     showAddClassModal() {
