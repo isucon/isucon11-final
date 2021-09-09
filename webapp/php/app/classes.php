@@ -688,20 +688,19 @@ final class AddClassResponse implements JsonSerializable
     }
 }
 
-final class AnnouncementWithoutDetail
+final class AnnouncementWithoutDetail implements JsonSerializable
 {
     public function __construct(
         public ?string $id,
-        public ?string $courseID,
+        public ?string $courseId,
         public ?string $courseName,
         public ?string $title,
         public ?bool $unread,
-        public ?DateTimeInterface $createdAt,
     ) {
     }
 
     /**
-     * @param array{id?: string, course_id?: string, course_name?: string, title?: string, unread?: int, created_at?: string} $dbRow
+     * @param array{id?: string, course_id?: string, course_name?: string, title?: string, unread?: int} $dbRow
      */
     public static function fromDbRow(array $dbRow): self
     {
@@ -711,15 +710,37 @@ final class AnnouncementWithoutDetail
             $dbRow['course_name'] ?? null,
             $dbRow['title'] ?? null,
             isset($dbRow['unread']) ? (bool)$dbRow['unread'] : null,
-            isset($dbRow['created_at']) ? new DateTimeImmutable($dbRow['created_at']) : null,
         );
+    }
+
+    /**
+     * @return array{id: string, course_id: string, course_name: string, title: string, unread: bool}
+     * @throws UnexpectedValueException
+     */
+    public function jsonSerialize(): array
+    {
+        $data = [
+            'id' => $this->id,
+            'course_id' => $this->courseId,
+            'course_name' => $this->courseName,
+            'title' => $this->title,
+            'unread' => $this->unread,
+        ];
+
+        foreach ($data as $value) {
+            if (is_null($value)) {
+                throw new UnexpectedValueException();
+            }
+        }
+
+        return $data;
     }
 }
 
 final class GetAnnouncementsResponse implements JsonSerializable
 {
     /**
-     * @param array<AnnouncementResponse> $announcements
+     * @param array<AnnouncementWithoutDetail> $announcements
      */
     public function __construct(
         public int $unreadCount,
@@ -728,41 +749,13 @@ final class GetAnnouncementsResponse implements JsonSerializable
     }
 
     /**
-     * @return array{unread_count: int, announcements: array<AnnouncementResponse>}
+     * @return array{unread_count: int, announcements: array<AnnouncementWithoutDetail>}
      */
     public function jsonSerialize(): array
     {
         return [
             'unread_count' => $this->unreadCount,
             'announcements' => $this->announcements,
-        ];
-    }
-}
-
-final class AnnouncementResponse implements JsonSerializable
-{
-    public function __construct(
-        public string $id,
-        public string $courseId,
-        public string $courseName,
-        public string $title,
-        public bool $unread,
-        public int $createdAt,
-    ) {
-    }
-
-    /**
-     * @return array{id: string, course_id: string, course_name: string, title: string, unread: bool, created_at: int}
-     */
-    public function jsonSerialize(): array
-    {
-        return [
-            'id' => $this->id,
-            'course_id' => $this->courseId,
-            'course_name' => $this->courseName,
-            'title' => $this->title,
-            'unread' => $this->unread,
-            'created_at' => $this->createdAt,
         ];
     }
 }

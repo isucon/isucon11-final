@@ -1385,9 +1385,101 @@ final class Handler
      */
     public function getAnnouncementList(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        /** @var array<AnnouncementWithoutDetail $announcements */
+        $announcements = [];
+        $args = [];
+        $query = 'SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`' .
+            ' FROM `announcements`' .
+            ' JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`' .
+            ' JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`' .
+            ' JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`' .
+            ' WHERE 1=1';
+
+        $courseId = $request->getQueryParams()['course_id'] ?? '';
+        if ($courseId !== '') {
+            $query .= ' AND `announcements`.`course_id` = ?';
+            $args[] = [$courseId, PDO::PARAM_STR];
+        }
+
+        $query .= ' AND `unread_announcements`.`user_id` = ?' .
+            ' AND `registrations`.`user_id` = ?' .
+            ' ORDER BY `announcements`.`id` DESC' .
+            ' LIMIT ? OFFSET ?';
+        $args = [...$args, [$userId, PDO::PARAM_STR], [$userId, PDO::PARAM_STR]];
+
+        $pageStr = $request->getQueryParams()['page'] ?? '';
+        if ($pageStr === '') {
+            $page = 1;
+        } else {
+            $page = filter_var($pageStr, FILTER_VALIDATE_INT);
+            if (!is_int($page) || $page <= 0) {
+                $response->getBody()->write('Invalid page.');
+
+                return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+            }
+        }
+        $limit = 20;
+        $offset = $limit * ($page - 1);
+        // limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
+        $args = [$args, [$limit + 1, PDO::PARAM_INT], [$offset, PDO::PARAM_INT]];
+
+        try {
+            $stmt = $this->dbh->prepare($query);
+            foreach ($args as $i => [$value, $type]) {
+                $stmt->bindValue($i + 1, $value, $type);
+            }
+            $stmt->execute();
+            while ($row = $stmt->fetch()) {
+                $announcements[] = AnnouncementWithoutDetail::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`');
+            $stmt->execute([$userId]);
+            $unreadCount = (int)$stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        /** @var array<string> $links */
+        $links = [];
+
+        $q = $request->getQueryParams();
+        if ($page > 1) {
+            $q['page'] = $page - 1;
+            $links[] = sprintf('<%s>; rel="prev"', $request->getUri()->getPath() . '?' . http_build_query($q));
+        }
+        if (count($announcements) > $limit) {
+            $q['page'] = $page + 1;
+            $links[] = sprintf('<%s>; rel="next"', $request->getUri()->getPath() . '?' . http_build_query($q));
+        }
+        if (count($links) > 0) {
+            $response = $response->withHeader('Link', implode(',', $links));
+        }
+
+        if (count($announcements) === $limit + 1) {
+            array_pop($announcements);
+        }
+
+        // 対象になっているお知らせが0件の時は空配列を返却
+        return $this->jsonResponse($response, new GetAnnouncementsResponse(
+            unreadCount: $unreadCount,
+            announcements: $announcements,
+        ));
     }
 
     /**
