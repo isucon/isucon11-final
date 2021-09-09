@@ -140,7 +140,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			step.AddError(err)
 			return
 		}
-		if err := verifyMe(&getMeRes, teacher.UserAccount, true); err != nil {
+		if err := verifyMe(teacher.UserAccount, &getMeRes); err != nil {
 			step.AddError(err)
 			return
 		}
@@ -184,7 +184,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			step.AddError(err)
 			return
 		}
-		if err := verifyMe(&getMeRes, student.UserAccount, false); err != nil {
+		if err := verifyMe(student.UserAccount, &getMeRes); err != nil {
 			step.AddError(err)
 			return
 		}
@@ -1076,6 +1076,7 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 		Code:        "X12345",
 		Name:        "unknown",
 		RawPassword: "password",
+		IsAdmin:     false,
 	})
 	if err == nil {
 		return errInvalidLogin
@@ -1089,6 +1090,7 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 		Code:        student.Code,
 		Name:        student.Name,
 		RawPassword: student.RawPassword + "abc",
+		IsAdmin:     false,
 	})
 	if err == nil {
 		return errInvalidLogin

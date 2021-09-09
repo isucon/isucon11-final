@@ -17,14 +17,14 @@ var (
 )
 
 func LoadStudentsData() ([]*model.UserAccount, error) {
-	return loadUserAccountData(studentsData)
+	return loadUserAccountData(studentsData, false)
 }
 
 func LoadTeachersData() ([]*model.UserAccount, error) {
-	return loadUserAccountData(teachersData)
+	return loadUserAccountData(teachersData, true)
 }
 
-func loadUserAccountData(data []byte) ([]*model.UserAccount, error) {
+func loadUserAccountData(data []byte, isAdmin bool) ([]*model.UserAccount, error) {
 	userDataSet := make([]*model.UserAccount, 0)
 	s := bufio.NewScanner(bytes.NewReader(data))
 	for s.Scan() {
@@ -33,6 +33,7 @@ func loadUserAccountData(data []byte) ([]*model.UserAccount, error) {
 			Code:        line[0],
 			Name:        line[1],
 			RawPassword: line[2],
+			IsAdmin:     isAdmin,
 		}
 		userDataSet = append(userDataSet, account)
 	}

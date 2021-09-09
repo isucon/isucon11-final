@@ -15,6 +15,7 @@ type UserAccount struct {
 	Code        string
 	Name        string
 	RawPassword string
+	IsAdmin     bool
 }
 
 type Student struct {
