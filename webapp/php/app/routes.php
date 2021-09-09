@@ -913,9 +913,42 @@ final class Handler
     /**
      * setCourseStatus PUT /api/courses/:courseId/status 科目のステータスを変更
      */
-    public function setCourseStatus(Request $request, Response $response): Response
+    public function setCourseStatus(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        $courseId = $params['courseId'];
+
+        try {
+            $req = SetCourseStatusRequest::fromJson((string)$request->getBody());
+        } catch (UnexpectedValueException) {
+            $response->getBody()->write('Invalid format.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ?');
+            $stmt->execute([$courseId]);
+            $count = $stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if ($count == 0) {
+            $response->getBody()->write('No such course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('UPDATE `courses` SET `status` = ? WHERE `id` = ?');
+            $stmt->execute([$req->status, $courseId]);
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
 
         return $response;
     }
