@@ -683,9 +683,123 @@ final class Handler
      */
     public function searchCourses(Request $request, Response $response): Response
     {
-        // TODO: 実装
+        $query = 'SELECT `courses`.*, `users`.`name` AS `teacher`' .
+            ' FROM `courses` JOIN `users` ON `courses`.`teacher_id` = `users`.`id`' .
+            ' WHERE 1=1';
+        $condition = '';
+        $args = [];
 
-        return $response;
+        // 無効な検索条件はエラーを返さず無視して良い
+
+        $courseType = $request->getQueryParams()['type'];
+        if (isset($courseType) && $courseType !== '') {
+            $condition .= ' AND `courses`.`type` = ?';
+            $args[] = $courseType;
+        }
+
+        $credit = filter_var($request->getQueryParams()['credit'], FILTER_VALIDATE_INT);
+        if (is_int($credit) && $credit > 0) {
+            $condition .= ' AND `courses`.`credit` = ?';
+            $args[] = $credit;
+        }
+
+        $teacher = $request->getQueryParams()['teacher'];
+        if (isset($teacher) && $teacher !== '') {
+            $condition .= ' AND `users`.`name` = ?';
+            $args[] = $teacher;
+        }
+
+        $period = filter_var($request->getQueryParams()['period'], FILTER_VALIDATE_INT);
+        if (is_int($period) && $period > 0) {
+            $condition .= ' AND `courses`.`period` = ?';
+            $args[] = $period;
+        }
+
+        $dayOfWeek = $request->getQueryParams()['day_of_week'];
+        if (isset($dayOfWeek) && $dayOfWeek !== '') {
+            $condition .= ' AND `courses`.`day_of_week` = ?';
+            $args[] = $dayOfWeek;
+        }
+
+        $keywords = $request->getQueryParams()['keywords'];
+        if (isset($keywords) && $keywords !== '') {
+            $arr = explode(' ', $keywords);
+            $nameCondition = '';
+            foreach ($arr as $keyword) {
+                $nameCondition .= ' AND `courses`.`name` LIKE ?';
+                $args[] = '%' . $keyword . '%';
+            }
+            $keywordsCondition = '';
+            foreach ($arr as $keyword) {
+                $keywordsCondition .= ' AND `courses`.`keywords` LIKE ?';
+                $args[] = '%' . $keyword . '%';
+            }
+            $condition .= sprintf(' AND ((1=1%s) OR (1=1%s))', $nameCondition, $keywordsCondition);
+        }
+
+        $status = $request->getQueryParams()['status'];
+        if (isset($status) && $status !== '') {
+            $condition .= ' AND `courses`.`status` = ?';
+            $args[] = $status;
+        }
+
+        $condition .= ' ORDER BY `courses`.`code`';
+
+        $pageStr = $request->getQueryParams()['page'];
+        if (!isset($pageStr) || $pageStr === '') {
+            $page = 1;
+        } else {
+            $page = filter_var($pageStr, FILTER_VALIDATE_INT);
+            if (!is_int($page) || $page <= 0) {
+                $response->getBody()->write('Invalid page.');
+
+                return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+            }
+        }
+        $limit = 20;
+        $offset = $limit * ($page - 1);
+
+        // limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
+        $condition .= ' LIMIT ? OFFSET ?';
+        $args[] = $limit + 1;
+        $args[] = $offset;
+
+        // 結果が0件の時は空配列を返却
+        /** @var array<GetCourseDetailResponse> $res */
+        $res = [];
+        try {
+            $stmt = $this->dbh->prepare($query . $condition);
+            $stmt->execute($args);
+            while ($row = $stmt->fetch()) {
+                $res[] = GetCourseDetailResponse::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        /** @var array<string> $links */
+        $links = [];
+
+        $q = $request->getQueryParams();
+        if ($page > 1) {
+            $q['page'] = $page - 1;
+            $links[] = sprintf('<%s>; rel="prev"', $request->getUri()->getPath() . '?' . http_build_query($q));
+        }
+        if (count($res) > $limit) {
+            $q['page'] = $page + 1;
+            $links[] = sprintf('<%s>; rel="next"', $request->getUri()->getPath() . '?' . http_build_query($q));
+        }
+        if (count($links) > 0) {
+            $response = $response->withHeader('Link', implode(',', $links));
+        }
+
+        if (count($res) === $limit + 1) {
+            array_pop($res);
+        }
+
+        return $this->jsonResponse($response, $res);
     }
 
     /**
