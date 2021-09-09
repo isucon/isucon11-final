@@ -1242,7 +1242,7 @@ async fn submit_assignment(
             ));
         }
     } else {
-        return Err(actix_web::error::ErrorBadRequest("No such course."));
+        return Err(actix_web::error::ErrorNotFound("No such course."));
     }
 
     let registration_count: i64 = isucholar::db::fetch_one_scalar(
@@ -1275,7 +1275,7 @@ async fn submit_assignment(
             ));
         }
     } else {
-        return Err(actix_web::error::ErrorBadRequest("No such class."));
+        return Err(actix_web::error::ErrorNotFound("No such class."));
     }
 
     let mut file = None;
@@ -1352,7 +1352,7 @@ async fn register_scores(
             ));
         }
     } else {
-        return Err(actix_web::error::ErrorBadRequest("No such class."));
+        return Err(actix_web::error::ErrorNotFound("No such class."));
     }
 
     for score in req.into_inner() {
@@ -1394,7 +1394,7 @@ async fn download_submitted_assignments(
     .await
     .map_err(SqlxError)?;
     if class_count == 0 {
-        return Err(actix_web::error::ErrorBadRequest("No such class."));
+        return Err(actix_web::error::ErrorNotFound("No such class."));
     }
     let submissions: Vec<Submission> = sqlx::query_as(concat!(
         "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`",
