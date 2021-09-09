@@ -8,6 +8,7 @@
     "bryanjhv/slim-session": "^4.1",
     "monolog/monolog": "^2.3",
     "php-di/php-di": "^6.3",
+    "robinvdvleuten/ulid": "^5.0",
     "slim/psr7": "^1.4",
     "slim/slim": "^4.8"
   },
