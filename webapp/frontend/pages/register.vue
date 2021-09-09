@@ -154,7 +154,7 @@ export default Vue.extend({
   async asyncData(ctx: Context) {
     try {
       const res = await ctx.$axios.get<Course[]>(`/api/users/me/courses`)
-      return { registeredCourses: res.data, hasError: false }
+      return { registeredCourses: res.data ?? [], hasError: false }
     } catch (e) {
       console.error(e)
       notify('履修登録済み科目の取得に失敗しました')

@@ -3,7 +3,6 @@ package scenario
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -21,8 +20,6 @@ import (
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
-
-	"github.com/pborman/uuid"
 )
 
 const (
@@ -256,12 +253,11 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 			// お知らせ追加
 			announcement := generate.Announcement(course, class)
-			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				step.AddError(err)
 				return
 			}
-			announcement.ID = ancRes.ID
 			course.BroadCastAnnouncement(announcement)
 
 			courseStudents := course.Students()
@@ -411,9 +407,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		student := students[i]
 		expected := student.Announcements()
 
-		// createdAtが新しい方が先頭に来るようにソート
+		// id が新しい方が先頭に来るようにソート
 		sort.Slice(expected, func(i, j int) bool {
-			return expected[i].Announcement.CreatedAt > expected[j].Announcement.CreatedAt
+			return expected[i].Announcement.ID > expected[j].Announcement.ID
 		})
 		expectedUnreadCount := 0
 		for _, announcement := range expected {
@@ -559,12 +555,11 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 
 			// お知らせ追加
 			announcement := generate.Announcement(course, class)
-			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				step.AddError(err)
 				return err
 			}
-			announcement.ID = ancRes.ID
 			course.BroadCastAnnouncement(announcement)
 
 			// 生徒ごとにおしらせリストの確認
@@ -575,9 +570,9 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 				err := p.Do(func(ctx context.Context) {
 					expected := student.Announcements()
 
-					// createdAtが新しい方が先頭に来るようにソート
+					// id が新しい方が先頭に来るようにソート
 					sort.Slice(expected, func(i, j int) bool {
-						return expected[i].Announcement.CreatedAt > expected[j].Announcement.CreatedAt
+						return expected[i].Announcement.ID > expected[j].Announcement.ID
 					})
 					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, len(expected))
 					if err != nil {
@@ -667,14 +662,13 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 		return errNotMatch
 	}
 
-	lastCreatedAt := int64(math.MaxInt64)
-	for _, announcement := range actual.Announcements {
-		// 順序の検証
-		if lastCreatedAt < announcement.CreatedAt {
+	// 順序の検証
+	for i := 0; i < len(actual.Announcements)-1; i++ {
+		if actual.Announcements[i].ID < actual.Announcements[i+1].ID {
 			return errNotSorted
 		}
-		lastCreatedAt = announcement.CreatedAt
 	}
+
 	for i := 0; i < len(actual.Announcements); i++ {
 		expect := expected[i].Announcement
 		actual := actual.Announcements[i]
@@ -682,8 +676,7 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 			!AssertEqual("announcement ID", expect.ID, actual.ID) ||
 			!AssertEqual("announcement CourseID", expect.CourseID, actual.CourseID) ||
 			!AssertEqual("announcement Title", expect.Title, actual.Title) ||
-			!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
-			!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
+			!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) {
 			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
 			return errNotMatch
 		}
@@ -699,7 +692,6 @@ func prepareCheckAnnouncementDetailContent(expected *model.AnnouncementStatus, a
 		!AssertEqual("announcement Title", expected.Announcement.Title, actual.Title) ||
 		!AssertEqual("announcement CourseID", expected.Announcement.CourseID, actual.CourseID) ||
 		!AssertEqual("announcement CourseName", expected.Announcement.CourseName, actual.CourseName) ||
-		!AssertEqual("announcement CreatedAt", expected.Announcement.CreatedAt, actual.CreatedAt) ||
 		!AssertEqual("announcement Message", expected.Announcement.Message, actual.Message) {
 		AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
 		return errNotMatch
@@ -857,11 +849,10 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 
 	// course に紐づくお知らせ
 	announcement1 := generate.Announcement(course, submissionNotClosedClass)
-	_, announcementRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement1)
+	_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement1)
 	if err != nil {
 		return err
 	}
-	announcement1.ID = announcementRes.ID
 
 	// ======== 検証 ========
 
@@ -946,7 +937,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	}
 
 	announcement2 := generate.Announcement(course, submissionNotClosedClass)
-	hres, _, err = SendAnnouncementAction(ctx, agent, announcement2)
+	hres, err = SendAnnouncementAction(ctx, agent, announcement2)
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}
@@ -1058,7 +1049,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 	}
 
 	announcement := generate.Announcement(course, submissionNotClosedClass)
-	hres, _, err = SendAnnouncementAction(ctx, student.Agent, announcement)
+	hres, err = SendAnnouncementAction(ctx, student.Agent, announcement)
 	if err := checkAuthorization(hres, err); err != nil {
 		return err
 	}
@@ -1213,7 +1204,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(2, 0, teacher)
-	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
 
 	// ======== 検証 ========
 
@@ -1277,7 +1268,7 @@ func (s *Scenario) prepareCheckGetCourseDetailAbnormal(ctx context.Context) erro
 	// ======== 検証 ========
 
 	// 存在しない科目IDでの科目詳細取得
-	hres, _, err := GetCourseDetailAction(ctx, student.Agent, uuid.NewRandom().String())
+	hres, _, err := GetCourseDetailAction(ctx, student.Agent, generate.GenULID())
 	if err == nil {
 		return errGetUnknownCourseDetail
 	}
@@ -1361,7 +1352,7 @@ func (s *Scenario) prepareCheckSetCourseStatusAbnormal(ctx context.Context) erro
 	// ======== 検証 ========
 
 	// 存在しない科目IDでの科目ステータス変更
-	hres, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, uuid.NewRandom().String())
+	hres, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, generate.GenULID())
 	if err == nil {
 		return errSetStatusForUnknownCourse
 	}
@@ -1386,7 +1377,7 @@ func (s *Scenario) prepareCheckGetClassesAbnormal(ctx context.Context) error {
 	// ======== 検証 ========
 
 	// 存在しない科目IDでの講義一覧取得
-	hres, _, err := GetClassesAction(ctx, student.Agent, uuid.NewRandom().String())
+	hres, _, err := GetClassesAction(ctx, student.Agent, generate.GenULID())
 	if err == nil {
 		return errGetClassesForUnknownCourse
 	}
@@ -1420,7 +1411,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(0, 1, teacher)
-	unknownCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
 
 	// ======== 検証 ========
 
@@ -1582,20 +1573,20 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	submissionData, fileName := generate.SubmissionData(inProgressCourse, submissionNotClosedClass, student.UserAccount)
 
 	// 存在しない科目IDでの課題提出
-	hres, err := SubmitAssignmentAction(ctx, student.Agent, uuid.NewRandom().String(), submissionNotClosedClass.ID, fileName, submissionData)
+	hres, err := SubmitAssignmentAction(ctx, student.Agent, generate.GenULID(), submissionNotClosedClass.ID, fileName, submissionData)
 	if err == nil {
 		return errSubmitAssignmentForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
 	// 存在しない講義IDでの課題提出
-	hres, err = SubmitAssignmentAction(ctx, student.Agent, inProgressCourse.ID, uuid.NewRandom().String(), fileName, submissionData)
+	hres, err = SubmitAssignmentAction(ctx, student.Agent, inProgressCourse.ID, generate.GenULID(), fileName, submissionData)
 	if err == nil {
 		return errSubmitAssignmentForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
@@ -1692,11 +1683,11 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 	}
 
 	// 存在しない講義IDでの成績登録
-	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, uuid.NewRandom().String(), scores)
+	hres, err := PostGradeAction(ctx, teacher.Agent, course.ID, generate.GenULID(), scores)
 	if err == nil {
 		return errPostGradeForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
@@ -1734,11 +1725,11 @@ func (s *Scenario) prepareCheckDownloadSubmissionsAbnormal(ctx context.Context) 
 	// ======== 検証 ========
 
 	// 存在しない講義IDでの課題ダウンロード
-	hres, _, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, uuid.NewRandom().String())
+	hres, _, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, generate.GenULID())
 	if err == nil {
 		return errDownloadSubmissionsForUnknownClass
 	}
-	if err := verifyStatusCode(hres, []int{http.StatusBadRequest}); err != nil {
+	if err := verifyStatusCode(hres, []int{http.StatusNotFound}); err != nil {
 		return err
 	}
 
@@ -1758,17 +1749,17 @@ func (s *Scenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) err
 
 	// 存在しない科目
 	courseParam := generate.CourseParam(0, 0, teacher)
-	notRegisteredCourse := model.NewCourse(courseParam, uuid.NewRandom().String(), teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
 
 	// 存在しない講義
 	classParam := generate.ClassParam(notRegisteredCourse, 1)
-	class := model.NewClass(uuid.NewRandom().String(), classParam)
+	class := model.NewClass(generate.GenULID(), classParam)
 
 	// ======== 検証 ========
 
 	// 存在しない科目IDでのお知らせ追加
 	announcement := generate.Announcement(notRegisteredCourse, class)
-	hres, _, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	hres, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
 	if err == nil {
 		return errSendAnnouncementForUnknownCourse
 	}
@@ -1820,16 +1811,15 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 
 	// notRegisteredCourse に紐づくお知らせ
 	announcement := generate.Announcement(notRegisteredCourse, class)
-	_, announcementRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+	_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 	if err != nil {
 		return err
 	}
-	announcement.ID = announcementRes.ID
 
 	// ======== 検証 ========
 
 	// 存在しないお知らせIDでのお知らせ詳細取得
-	hres, _, err := GetAnnouncementDetailAction(ctx, student.Agent, uuid.NewRandom().String())
+	hres, _, err := GetAnnouncementDetailAction(ctx, student.Agent, generate.GenULID())
 	if err == nil {
 		return errGetClassesForUnknownCourse
 	}

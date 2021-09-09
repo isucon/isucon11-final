@@ -99,7 +99,7 @@ export default Vue.extend({
       const response = await $axios.get('/api/announcements', { params: query })
       const responseBody: GetAnnouncementResponse = response.data
       const link = response.headers.link
-      const announcements = Object.values(responseBody.announcements).map(
+      const announcements = Object.values(responseBody.announcements ?? []).map(
         (item: AnnouncementResponse): Announcement => {
           return {
             id: item.id,

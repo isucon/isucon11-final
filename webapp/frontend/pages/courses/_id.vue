@@ -95,7 +95,7 @@ export default Vue.extend({
       ])
       const responseBody: GetAnnouncementResponse = announcementResult.data
       const link = announcementResult.headers.link
-      const announcements = Object.values(responseBody.announcements).map(
+      const announcements = Object.values(responseBody.announcements ?? []).map(
         (item) => {
           const announce: Announcement = {
             id: item.id,
@@ -111,7 +111,7 @@ export default Vue.extend({
       return {
         course: course.data,
         announcements,
-        classes: classes.data,
+        classes: classes.data ?? [],
         link,
         hasError: false,
       }
