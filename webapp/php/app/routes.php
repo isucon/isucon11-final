@@ -1299,11 +1299,85 @@ final class Handler
     /**
      * addClass POST /api/courses/:courseId/classes 新規講義(&課題)追加
      */
-    public function addClass(Request $request, Response $response): Response
+    public function addClass(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        $courseId = $params['courseId'];
 
-        return $response;
+        try {
+            $req = AddClassRequest::fromJson((string)$request->getBody());
+        } catch (UnexpectedValueException) {
+            $response->getBody()->write('Invalid format.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        $this->dbh->beginTransaction();
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT * FROM `courses` WHERE `id` = ? FOR SHARE');
+            $stmt->execute([$courseId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($row === false) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('No such course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+        $course = Course::fromDbRow($row);
+        if ($course->status !== self::COURSE_STATUS_IN_PROGRESS) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('This course is not in-progress.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        $classId = util\newUlid();
+        try {
+            $stmt = $this->dbh->prepare('INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)');
+            $stmt->execute([$classId, $courseId, $req->part, $req->title, $req->description]);
+        } catch (PDOException $exception) {
+            $this->dbh->rollBack();
+            if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
+                try {
+                    $stmt = $this->dbh->prepare('SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?');
+                    $stmt->execute([$courseId, $req->part]);
+                    $row = $stmt->fetch();
+                } catch (PDOException $e) {
+                    $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+
+                if ($row === false) {
+                    $this->logger->error('db error: no rows');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+                $class = Klass::fromDbRow($row);
+
+                if ($req->title !== $class->title || $req->description !== $class->description) {
+                    $response->getBody()->write('A class with the same part already exists.');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_CONFLICT);
+                }
+
+                return $this->jsonResponse($response, new AddClassResponse(classId: $class->id), StatusCodeInterface::STATUS_CREATED);
+            }
+
+            $this->logger->error('db error: ' . $exception->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $this->dbh->commit();
+
+        return $this->jsonResponse($response, new AddClassResponse(classId: $classId), StatusCodeInterface::STATUS_CREATED);
     }
 
     /**
