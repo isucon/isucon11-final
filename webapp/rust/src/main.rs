@@ -1,10 +1,10 @@
 use actix_web::web;
 use actix_web::HttpResponse;
 use futures::StreamExt as _;
+use futures::TryStreamExt as _;
 use num_traits::ToPrimitive as _;
 use sqlx::Arguments as _;
 use sqlx::Executor as _;
-use tokio::io::AsyncWriteExt as _;
 
 const SQL_DIRECTORY: &str = "../sql/";
 const ASSIGNMENTS_DIRECTORY: &str = "../assignments/";
@@ -1293,7 +1293,7 @@ async fn submit_assignment(
     if file.is_none() {
         return Err(actix_web::error::ErrorBadRequest("Invalid file."));
     }
-    let mut file = file.unwrap();
+    let file = file.unwrap();
 
     sqlx::query(
         "INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `file_name` = VALUES(`file_name`)",
@@ -1305,17 +1305,12 @@ async fn submit_assignment(
     .await
     .map_err(SqlxError)?;
 
-    let dst = tokio::fs::File::create(format!(
-        "{}{}-{}.pdf",
-        ASSIGNMENTS_DIRECTORY, class_id, user_id
-    ))
-    .await?;
-    let mut writer = tokio::io::BufWriter::new(dst);
-    while let Some(chunk) = file.next().await {
-        let mut chunk = chunk?;
-        writer.write_buf(&mut chunk).await?;
-    }
-    writer.shutdown().await?;
+    let data = file
+        .map_ok(|b| web::BytesMut::from(&b[..]))
+        .try_concat()
+        .await?;
+    let dst = format!("{}{}-{}.pdf", ASSIGNMENTS_DIRECTORY, class_id, user_id);
+    tokio::fs::write(&dst, data).await?;
 
     tx.commit().await.map_err(SqlxError)?;
 
