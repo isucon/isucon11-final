@@ -492,10 +492,11 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 				step.AddScore(score.PagingGetAnnouncementList)
 			}
 
-			// このページ内で既読のおしらせを集める
+			// このページ内で既に詳細取得リクエストを送ったおしらせを集める
 			var readAnnouncementsID []string
 			for _, ans := range res.Announcements {
-				if !ans.Unread {
+				status := student.GetAnnouncement(ans.ID)
+				if status != nil && !status.Unread {
 					readAnnouncementsID = append(readAnnouncementsID, ans.ID)
 				}
 			}
