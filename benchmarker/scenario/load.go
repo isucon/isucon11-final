@@ -438,9 +438,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
-			// MEMO: Student.Announcementsはwebapp内のお知らせの順番(ID)と完全同期できていない
-			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをIDで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
-			// ※ webappに追加するAnnouncementのIDはベンチ側が指定する
 
 			// 以降のページに未読お知らせがない（このページの未読数とレスポンスの未読数が一致）
 			// DoSにならないように少しwaitして1ページ目から見直す
