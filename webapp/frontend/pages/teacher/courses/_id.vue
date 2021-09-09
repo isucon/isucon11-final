@@ -129,7 +129,7 @@ export default Vue.extend({
         const resClasses = await this.$axios.get<ClassInfo[]>(
           `/api/courses/${this.$route.params.id}/classes`
         )
-        this.classes = resClasses.data
+        this.classes = resClasses.data ?? []
       } catch (e) {
         notify('講義の読み込みに失敗しました')
       }

@@ -122,13 +122,12 @@ export default Vue.extend({
           `/api/courses`,
           { params: { ...query, teacher: user.name } }
         )
-        this.courses = resCourses.data
+        this.courses = resCourses.data ?? []
         this.courseLink = Object.assign(
           {},
           this.courseLink,
           parseLinkHeader(resCourses.headers.link)
         )
-        this.courses = resCourses.data
       } catch (e) {
         notify('科目の読み込みに失敗しました')
       }
