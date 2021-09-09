@@ -3,7 +3,6 @@ package scenario
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"sync"
 	"time"
@@ -55,9 +54,9 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			// responseに含まれるunread_count
-			var responseUnreadCounts []int
-			actualAnnouncements := map[string]api.AnnouncementResponse{}
-			lastCreatedAt := int64(math.MaxInt64)
+			responseUnreadCounts := make([]int, 0)
+			actualAnnouncements := make([]api.AnnouncementResponse, 0)
+			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
 			timer := time.After(10 * time.Second)
 			var next string
@@ -68,22 +67,10 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 				responseUnreadCounts = append(responseUnreadCounts, res.UnreadCount)
-				if responseUnreadCounts[0] != res.UnreadCount {
-					step.AddError(errNotMatchUnreadCount)
-					return
-				}
-
-				for _, announcement := range res.Announcements {
-					actualAnnouncements[announcement.ID] = announcement
-
-					// 順序の検証
-					if lastCreatedAt < announcement.CreatedAt {
-						step.AddError(errNotSorted)
-						return
-					}
-					lastCreatedAt = announcement.CreatedAt
+				actualAnnouncements = append(actualAnnouncements, res.Announcements...)
+				for _, a := range res.Announcements {
+					actualAnnouncementsMap[a.ID] = a
 				}
 
 				_, next = parseLinkHeader(hres)
@@ -99,6 +86,22 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				}
 			}
 
+			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
+			for _, unreadCount := range responseUnreadCounts {
+				if responseUnreadCounts[0] != unreadCount {
+					step.AddError(errNotMatchUnreadCount)
+					return
+				}
+			}
+
+			// 順序の検証
+			for i := 0; i < len(actualAnnouncements)-1; i++ {
+				if actualAnnouncements[i].ID < actualAnnouncements[i+1].ID {
+					step.AddError(errNotSorted)
+					return
+				}
+			}
+
 			// レスポンスのunread_countの検証
 			var actualUnreadCount int
 			for _, a := range actualAnnouncements {
@@ -111,20 +114,20 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			// actualの重複確認
-			existCreatedAt := make(map[int64]struct{}, len(actualAnnouncements))
+			// actual の重複確認
+			existingID := make(map[string]struct{}, len(actualAnnouncements))
 			for _, a := range actualAnnouncements {
-				if _, ok := existCreatedAt[a.CreatedAt]; ok {
+				if _, ok := existingID[a.ID]; ok {
 					step.AddError(errDuplicated)
 					return
 				}
-				existCreatedAt[a.CreatedAt] = struct{}{}
+				existingID[a.ID] = struct{}{}
 			}
 
 			expectAnnouncements := student.Announcements()
 			for _, expectStatus := range expectAnnouncements {
 				expect := expectStatus.Announcement
-				actual, ok := actualAnnouncements[expect.ID]
+				actual, ok := actualAnnouncementsMap[expect.ID]
 
 				if !ok {
 					AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
@@ -145,8 +148,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
 					!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
 					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
-					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
-					!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
+					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) {
 					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
 					step.AddError(errNotMatch)
 					return
@@ -155,6 +157,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
+				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
 				step.AddError(errNotMatchOver)
 				return
 			}
@@ -175,6 +178,9 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
+	for _, c := range s.initCourse {
+		expectCourses[c.ID] = c
+	}
 
 	if len(students) == 0 || len(expectCourses) == 0 {
 		return
@@ -199,7 +205,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		_, nextPathParam = parseLinkHeader(hres)
 	}
 
-	if len(expectCourses) != len(actuals) {
+	if !AssertEqual("course count", len(expectCourses), len(actuals)) {
 		step.AddError(errNotMatchCount)
 		return
 	}
@@ -280,8 +286,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 }
 
 func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
-	if len(expected.CourseResults) != len(actual.CourseResults) {
-		AdminLogger.Println("courseResult len. expected: ", len(expected.CourseResults), "actual: ", len(actual.CourseResults))
+	if !AssertEqual("grade courses length", len(expected.CourseResults), len(actual.CourseResults)) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません"))
 	}
 
@@ -307,33 +312,27 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) e
 }
 
 func validateSummary(expected *model.Summary, actual *api.Summary) error {
-	if expected.Credits != actual.Credits {
-		AdminLogger.Println("credits. expected: ", expected.Credits, "actual: ", actual.Credits)
+	if !AssertEqual("grade summary credits", expected.Credits, actual.Credits) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
 	}
 
-	if math.Abs(expected.GPA-actual.GPA) > validateGPAErrorTolerance {
-		AdminLogger.Println("gpa. expected: ", expected.GPA, "actual: ", actual.GPA)
+	if !AssertWithinTolerance("grade summary gpa", expected.GPA, actual.GPA, validateGPAErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません"))
 	}
 
-	if math.Abs(expected.GpaAvg-actual.GpaAvg) > validateGPAErrorTolerance {
-		AdminLogger.Println("gpaavg. expected: ", expected.GpaAvg, "actual: ", actual.GpaAvg)
+	if !AssertWithinTolerance("grade summary gpa_avg", expected.GpaAvg, actual.GpaAvg, validateGPAErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_avgが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMax-actual.GpaMax) > validateGPAErrorTolerance {
-		AdminLogger.Println("gpamax. expected: ", expected.GpaMax, "actual: ", actual.GpaMax)
+	if !AssertWithinTolerance("grade summary gpa_max", expected.GpaMax, actual.GpaMax, validateGPAErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_maxが一致しません"))
 	}
 
-	if math.Abs(expected.GpaMin-actual.GpaMin) > validateGPAErrorTolerance {
-		AdminLogger.Println("gpamin. expected: ", expected.GpaMin, "actual: ", actual.GpaMin)
+	if !AssertWithinTolerance("grade summary gpa_min", expected.GpaMin, actual.GpaMin, validateGPAErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_minが一致しません"))
 	}
 
-	if math.Abs(expected.GpaTScore-actual.GpaTScore) > validateGPAErrorTolerance {
-		AdminLogger.Println("gpatscore. expected: ", expected.GpaTScore, "actual: ", actual.GpaTScore)
+	if !AssertWithinTolerance("grade summary gpa_t_score", expected.GpaTScore, actual.GpaTScore, validateGPAErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_t_scoreが一致しません"))
 	}
 
@@ -341,43 +340,35 @@ func validateSummary(expected *model.Summary, actual *api.Summary) error {
 }
 
 func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult) error {
-	if expected.Name != actual.Name {
-		AdminLogger.Println("name. expected: ", expected.Name, "actual: ", actual.Name)
+	if !AssertEqual("grade courses name", expected.Name, actual.Name) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースの名前が一致しません"))
 	}
 
-	if expected.Code != actual.Code {
-		AdminLogger.Println("code. expected: ", expected.Code, "actual: ", actual.Code)
+	if !AssertEqual("grade courses code", expected.Code, actual.Code) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのコードが一致しません"))
 	}
 
-	if expected.TotalScore != actual.TotalScore {
-		AdminLogger.Println("TotalScore. expected: ", expected.TotalScore, "actual: ", actual.TotalScore)
+	if !AssertEqual("grade courses total_score", expected.TotalScore, actual.TotalScore) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreが一致しません"))
 	}
 
-	if expected.TotalScoreMax != actual.TotalScoreMax {
-		AdminLogger.Println("TotalScoreMax. expected: ", expected.TotalScoreMax, "actual: ", actual.TotalScoreMax)
+	if !AssertEqual("grade courses total_score_max", expected.TotalScoreMax, actual.TotalScoreMax) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません"))
 	}
 
-	if expected.TotalScoreMin != actual.TotalScoreMin {
-		AdminLogger.Println("TotalScoreMin. expected: ", expected.TotalScoreMin, "actual: ", actual.TotalScoreMin)
+	if !AssertEqual("grade courses total_score_min", expected.TotalScoreMin, actual.TotalScoreMin) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
 	}
 
-	if math.Abs(expected.TotalScoreAvg-actual.TotalScoreAvg) > validateTotalScoreErrorTolerance {
-		AdminLogger.Println("TotalScoreAvg. expected: ", expected.TotalScoreAvg, "actual: ", actual.TotalScoreAvg)
+	if !AssertWithinTolerance("grade courses total_score_avg", expected.TotalScoreAvg, actual.TotalScoreAvg, validateTotalScoreErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
 	}
 
-	if math.Abs(expected.TotalScoreTScore-actual.TotalScoreTScore) > validateTotalScoreErrorTolerance {
-		AdminLogger.Println("TotalScoreTScore. expected: ", expected.TotalScoreTScore, "actual: ", actual.TotalScoreTScore)
+	if !AssertWithinTolerance("grade courses total_score_t_score", expected.TotalScoreTScore, actual.TotalScoreTScore, validateTotalScoreErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
 	}
 
-	if len(expected.ClassScores) != len(actual.ClassScores) {
-		AdminLogger.Println("len ClassScores. expected: ", len(expected.ClassScores), "actual: ", len(actual.ClassScores))
+	if !AssertEqual("grade courses class_scores length", len(expected.ClassScores), len(actual.ClassScores)) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のClassScoresの数が一致しません"))
 	}
 
@@ -393,29 +384,23 @@ func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult
 }
 
 func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) error {
-	if expected.ClassID != actual.ClassID {
-		AdminLogger.Println("classID. expected: ", expected.ClassID, "actual: ", actual.ClassID)
+	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのIDが一致しません"))
 	}
 
-	if expected.Part != actual.Part {
-		AdminLogger.Println("part. expected: ", expected.Part, "actual: ", actual.Part)
+	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのpartが一致しません"))
 	}
 
-	if expected.Title != actual.Title {
-		AdminLogger.Println("title. expected: ", expected.Title, "actual: ", actual.Title)
+	if !AssertEqual("grade courses class_scores title", expected.Title, actual.Title) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
 	}
 
-	if !((expected.Score == nil && actual.Score == nil) ||
-		((expected.Score != nil && actual.Score != nil) && (*expected.Score == *actual.Score))) {
-		AdminLogger.Println("score. expected: ", expected.Score, "actual: ", actual.Score)
+	if !AssertEqual("grade courses class_scores score", expected.Score, actual.Score) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
 	}
 
-	if expected.SubmitterCount != actual.Submitters {
-		AdminLogger.Println("submitters. expected: ", expected.SubmitterCount, "actual: ", actual.Submitters)
+	if !AssertEqual("grade courses class_scores submitters", expected.SubmitterCount, actual.Submitters) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題提出者の数が一致しません"))
 	}
 

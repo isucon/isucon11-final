@@ -42,6 +42,7 @@ func NewUserPool(studentAccounts []*model.UserAccount, teacherAccounts []*model.
 		Code:        sampleTeacherID,
 		Name:        sampleTeacherName,
 		RawPassword: sampleTeacherPass,
+		IsAdmin:     true,
 	}, baseURL)
 
 	teachers := make([]*model.Teacher, len(teacherAccounts))
@@ -69,6 +70,7 @@ func (p *userPool) newStudent() (*model.Student, error) {
 			Code:        sampleStudentID,
 			Name:        sampleStudentName,
 			RawPassword: sampleStudentPass,
+			IsAdmin:     false,
 		}, p.baseURL), nil
 	}
 

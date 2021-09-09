@@ -264,7 +264,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					expected, exists := s.CourseManager.GetCourseByID(res.ID)
 					// ベンチ側の登録がまだの場合は検証スキップ
 					if exists {
-						if err := verifyCourseDetail(&res, expected); err != nil {
+						if err := verifyCourseDetail(expected, &res); err != nil {
 							step.AddError(err)
 						} else {
 							step.AddScore(score.RegGetCourseDetail)
@@ -282,13 +282,13 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				return
 			}
 
-			registeredSchedule := student.RegisteredSchedule()
+			expected := student.RegisteredSchedule()
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
 				continue
 			}
-			if err := verifyRegisteredCourses(getRegisteredCoursesRes, registeredSchedule); err != nil {
+			if err := verifyRegisteredCourses(expected, getRegisteredCoursesRes); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.RegGetRegisteredCourses)
@@ -376,7 +376,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				return
 			}
 
-			expectAnnouncementList := student.AnnouncementsMap()
+			expectAnnouncementMap := student.AnnouncementsMap()
 
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
@@ -388,7 +388,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
-			if err := verifyAnnouncementsList(&res, expectAnnouncementList, true); err != nil {
+			if err := verifyAnnouncementsList(expectAnnouncementMap, &res, true); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.ScoreGetAnnouncementList)
@@ -402,14 +402,14 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					unreadCount++
 				}
 
-				announcementStatus := student.GetAnnouncement(ans.ID)
-				if announcementStatus == nil {
+				expectStatus := student.GetAnnouncement(ans.ID)
+				if expectStatus == nil {
 					// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
 					// load中には検証できないので既読化しない
 					continue
 				}
 				// 前にタイムアウトになってしまっていた場合、もしくはまだ見ていないお知らせの場合詳細を見に行く
-				if !(announcementStatus.Dirty || ans.Unread) {
+				if !(expectStatus.Dirty || ans.Unread) {
 					continue
 				}
 
@@ -430,7 +430,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				}
 				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
-				if err := verifyAnnouncementDetail(&res, announcementStatus); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
@@ -442,9 +442,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
-			// MEMO: Student.Announcementsはwebapp内のお知らせの順番(createdAt)と完全同期できていない
-			// MEMO: 理想1,2を実現するためにはStudent.AnnouncementsをcreatedAtで保持する必要がある。insertできる木構造では持つのは辛いのでやりたくない。
-			// ※ webappに追加するAnnouncementのcreatedAtはベンチ側が指定する
 
 			// 以降のページに未読お知らせがない（このページの未読数とレスポンスの未読数が一致）
 			// DoSにならないように少しwaitして1ページ目から見直す
@@ -475,7 +472,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 				return
 			}
 
-			expectAnnounceList := student.AnnouncementsMap()
+			expectAnnouncementMap := student.AnnouncementsMap()
 
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
@@ -488,7 +485,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
 			// 並列で走る既読にするシナリオが未読/既読状態を変更するので、こちらのシナリオでは未読/既読状態は検証しない
-			if err := verifyAnnouncementsList(&res, expectAnnounceList, false); err != nil {
+			if err := verifyAnnouncementsList(expectAnnouncementMap, &res, false); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.ScoreGetAnnouncementList)
@@ -525,7 +522,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 					continue
 				}
 
-				if err := verifyAnnouncementDetail(&res, expectStatus); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
@@ -658,7 +655,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if s.isNoRetryTime(ctx) {
 				return
 			}
-			_, ancRes, err := SendAnnouncementAction(ctx, teacher.Agent, announcement)
+			_, err = SendAnnouncementAction(ctx, teacher.Agent, announcement)
 			if err != nil {
 				if !isExtendRequest {
 					step.AddError(err)
@@ -674,7 +671,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 					continue
 				}
 			} else {
-				announcement.ID = ancRes.ID
 				if !isExtendRequest {
 					step.AddScore(score.CourseAddAnnouncement)
 				}
@@ -821,7 +817,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				step.AddError(err)
 				return
 			}
-			if err := verifyMe(&res, student.UserAccount, false); err != nil {
+			if err := verifyMe(student.UserAccount, &res); err != nil {
 				step.AddError(err)
 				return
 			}
@@ -865,7 +861,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 		step.AddError(err)
 		return
 	}
-	if err := verifyMe(&getMeRes, teacher.UserAccount, true); err != nil {
+	if err := verifyMe(teacher.UserAccount, &getMeRes); err != nil {
 		step.AddError(err)
 		return
 	}
@@ -941,7 +937,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				step.AddError(err)
 				return
 			}
-			if err := verifyClasses(res, course.Classes()); err != nil {
+			if err := verifyClasses(course.Classes(), res); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CourseGetClasses)
