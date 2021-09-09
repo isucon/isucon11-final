@@ -592,9 +592,10 @@ final class Score
     }
 
     /**
+     * @return array<Score>
      * @throws UnexpectedValueException
      */
-    public static function fromJson(string $json): self
+    public static function listFromJson(string $json): array
     {
         try {
             $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
@@ -602,11 +603,17 @@ final class Score
             throw new UnexpectedValueException();
         }
 
-        if (!(isset($data['user_code']) && isset($data['score']))) {
-            throw new UnexpectedValueException();
+        /** @var array<self> $list */
+        $list = [];
+        foreach ($data as $score) {
+            if (!(isset($score['user_code']) && isset($score['score']))) {
+                throw new UnexpectedValueException();
+            }
+
+            $list[] = new self($data['user_code'], $data['score']);
         }
 
-        return new self($data['user_code'], $data['score']);
+        return $list;
     }
 }
 

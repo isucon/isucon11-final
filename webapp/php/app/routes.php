@@ -1134,11 +1134,60 @@ final class Handler
     /**
      * registerScores PUT /api/courses/:courseId/classes/:classId/assignments/scores 成績登録
      */
-    public function registerScores(Request $request, Response $response): Response
+    public function registerScores(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        $classId = $params['classId'];
 
-        return $response;
+        $this->dbh->beginTransaction();
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT `submission_closed` FROM `classes` WHERE `id` = ? FOR SHARE');
+            $stmt->execute([$classId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if ($row === false) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('No such class.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+        if (!$row['submission_closed']) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('This assignment is not closed yet.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        try {
+            $req = Score::listFromJson((string)$request->getBody());
+        } catch (UnexpectedValueException) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('Invalid format.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        foreach ($req as $score) {
+            try {
+                $stmt = $this->dbh->prepare('UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?');
+                $stmt->execute([$score->score, $score->userCode, $classId]);
+            } catch (PDOException $e) {
+                $this->dbh->rollBack();
+                $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        $this->dbh->commit();
+
+        return $response->withStatus(StatusCodeInterface::STATUS_NO_CONTENT);
     }
 
     /**
