@@ -4,11 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -1051,14 +1049,14 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	dst, err := os.Create(AssignmentsDirectory + classID + "-" + userID + ".pdf")
+	data, err := ioutil.ReadAll(file)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	defer dst.Close()
 
-	if _, err = io.Copy(dst, file); err != nil {
+	dst := AssignmentsDirectory + classID + "-" + userID + ".pdf"
+	if err := ioutil.WriteFile(dst, data, 0644); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
