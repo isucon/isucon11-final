@@ -956,11 +956,67 @@ final class Handler
     /**
      * getClasses GET /api/courses/:courseId/classes 科目に紐づく講義一覧の取得
      */
-    public function getClasses(Request $request, Response $response): Response
+    public function getClasses(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $courseId = $params['courseId'];
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ?');
+            $stmt->execute([$courseId]);
+            $count = $stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if ($count == 0) {
+            $response->getBody()->write('No such course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+
+        /** @var array<ClassWithSubmitted> $classes */
+        $classes = [];
+        $query = 'SELECT `classes`.*, `submissions`.`user_id` IS NOT NULL AS `submitted`' .
+            ' FROM `classes`' .
+            ' LEFT JOIN `submissions` ON `classes`.`id` = `submissions`.`class_id` AND `submissions`.`user_id` = ?' .
+            ' WHERE `classes`.`course_id` = ?' .
+            ' ORDER BY `classes`.`part`';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$userId, $courseId]);
+            while ($row = $stmt->fetch()) {
+                $classes[] = ClassWithSubmitted::fromDbRow($row);
+            }
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        // 結果が0件の時は空配列を返却
+        /** @var array<GetClassResponse> $res */
+        $res = [];
+        foreach ($classes as $class) {
+            $res[] = new GetClassResponse(
+                id: $class->id,
+                part: $class->part,
+                title: $class->title,
+                description: $class->description,
+                submissionClosed: $class->submissionClosed,
+                submitted: $class->submitted,
+            );
+        }
+
+        return $this->jsonResponse($response, $res);
     }
 
     /**
