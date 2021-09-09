@@ -39,6 +39,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
+	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複した内容の Announcement が見つかりました"))
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
@@ -54,9 +55,9 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
 			// responseに含まれるunread_count
-			var responseUnreadCounts []int
-			actualAnnouncements := map[string]api.AnnouncementResponse{}
-			lastCreatedAt := int64(math.MaxInt64)
+			responseUnreadCounts := make([]int, 0)
+			actualAnnouncements := make([]api.AnnouncementResponse, 0)
+			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
 			timer := time.After(10 * time.Second)
 			var next string
@@ -67,22 +68,10 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 				responseUnreadCounts = append(responseUnreadCounts, res.UnreadCount)
-				if responseUnreadCounts[0] != res.UnreadCount {
-					step.AddError(errNotMatchUnreadCount)
-					return
-				}
-
-				for _, announcement := range res.Announcements {
-					actualAnnouncements[announcement.ID] = announcement
-
-					// 順序の検証
-					if lastCreatedAt < announcement.CreatedAt {
-						step.AddError(errNotSorted)
-						return
-					}
-					lastCreatedAt = announcement.CreatedAt
+				actualAnnouncements = append(actualAnnouncements, res.Announcements...)
+				for _, a := range res.Announcements {
+					actualAnnouncementsMap[a.ID] = a
 				}
 
 				_, next = parseLinkHeader(hres)
@@ -98,6 +87,22 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				}
 			}
 
+			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
+			for _, unreadCount := range responseUnreadCounts {
+				if responseUnreadCounts[0] != unreadCount {
+					step.AddError(errNotMatchUnreadCount)
+					return
+				}
+			}
+
+			// 順序の検証
+			for i := 0; i < len(actualAnnouncements)-1; i++ {
+				if actualAnnouncements[i].ID < actualAnnouncements[i+1].ID {
+					step.AddError(errNotSorted)
+					return
+				}
+			}
+
 			// レスポンスのunread_countの検証
 			var actualUnreadCount int
 			for _, a := range actualAnnouncements {
@@ -110,10 +115,20 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				return
 			}
 
+			// actual の重複確認
+			existingID := make(map[string]struct{}, len(actualAnnouncements))
+			for _, a := range actualAnnouncements {
+				if _, ok := existingID[a.ID]; ok {
+					step.AddError(errDuplicated)
+					return
+				}
+				existingID[a.ID] = struct{}{}
+			}
+
 			expectAnnouncements := student.Announcements()
 			for _, expectStatus := range expectAnnouncements {
 				expect := expectStatus.Announcement
-				actual, ok := actualAnnouncements[expect.ID]
+				actual, ok := actualAnnouncementsMap[expect.ID]
 
 				if !ok {
 					AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
@@ -134,8 +149,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
 					!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
 					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
-					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) ||
-					!AssertEqual("announcement CreatedAt", expect.CreatedAt, actual.CreatedAt) {
+					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) {
 					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
 					step.AddError(errNotMatch)
 					return
@@ -144,6 +158,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
+				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
 				step.AddError(errNotMatchOver)
 				return
 			}
@@ -194,13 +209,13 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	for _, actual := range actuals {
-		expect, ok := expectCourses[actual.ID.String()]
+		expect, ok := expectCourses[actual.ID]
 		if !ok {
 			step.AddError(errNotMatch)
 			return
 		}
 
-		if !AssertEqual("course ID", expect.ID, actual.ID.String()) ||
+		if !AssertEqual("course ID", expect.ID, actual.ID) ||
 			!AssertEqual("course Code", expect.Code, actual.Code) ||
 			!AssertEqual("course Name", expect.Name, actual.Name) ||
 			!AssertEqual("course Type", api.CourseType(expect.Type), actual.Type) ||
@@ -223,7 +238,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	activeStudents := s.activeStudents
 	users := make(map[string]*model.Student, len(activeStudents))
 	for _, activeStudent := range activeStudents {
-		if len(activeStudent.Courses()) > 0 {
+		if activeStudent.HasFinishedCourse() {
 			users[activeStudent.Code] = activeStudent
 		}
 	}
@@ -443,7 +458,9 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 
 	gpas := make([]float64, 0, n)
 	for _, student := range students {
-		gpas = append(gpas, student.GPA())
+		if student.HasFinishedCourse() {
+			gpas = append(gpas, student.GPA())
+		}
 	}
 
 	targetUserGpa := students[userCode].GPA()

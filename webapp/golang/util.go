@@ -2,7 +2,12 @@ package main
 
 import (
 	"math"
+	"math/rand"
 	"os"
+	"sync"
+	"time"
+
+	"github.com/oklog/ulid/v2"
 )
 
 func GetEnv(key, val string) string {
@@ -20,6 +25,17 @@ func contains(arr []DayOfWeek, day DayOfWeek) bool {
 		}
 	}
 	return false
+}
+
+var (
+	entropy     = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+	entropyLock sync.Mutex
+)
+
+func newULID() string {
+	entropyLock.Lock()
+	defer entropyLock.Unlock()
+	return ulid.MustNew(ulid.Now(), entropy).String()
 }
 
 // ----- int -----

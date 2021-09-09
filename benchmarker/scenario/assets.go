@@ -5,8 +5,8 @@ var (
 		"": "a6b916cd8476a3f58456120208f0ea2f",
 		"/200.html": "a6b916cd8476a3f58456120208f0ea2f",
 		"/README.md": "5034cfd9edf3fa7d7d23589ecb2488f9",
-		"/_nuxt/app.js": "603553e8041eee083877c5d7dffdb7f0",
-		"/_nuxt/css/app.css": "5554c6c640b8f4a73957293e51e9dd1e",
+		"/_nuxt/app.js": "150b0e4a0594d582a408f6aeafceb478",
+		"/_nuxt/css/app.css": "6856b014f9bad32ac2373390cad921b7",
 		"/_nuxt/runtime.js": "c51ffc86f28b62f78d641758e2dab72e",
 		"/announce": "a6b916cd8476a3f58456120208f0ea2f",
 		"/favicon.svg": "90e6fef8cbe03a77db6897a45514d54f",
@@ -16,6 +16,6 @@ var (
 		"/image/hero_logo_green.svg": "3a3703936abe5ca096a0d4a4145c65ce",
 		"/mypage": "a6b916cd8476a3f58456120208f0ea2f",
 		"/register": "a6b916cd8476a3f58456120208f0ea2f",
-		"/teacherpage": "a6b916cd8476a3f58456120208f0ea2f",
+		"/teacher/courses": "a6b916cd8476a3f58456120208f0ea2f",
 	}
 )

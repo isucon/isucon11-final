@@ -44,6 +44,7 @@ var (
 	exitStatusOnFail bool
 	noLoad           bool
 	noPrepare        bool
+	noResource       bool
 	isDebug          bool
 	showVersion      bool
 	timeoutDuration  string
@@ -70,6 +71,7 @@ func init() {
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
 	flag.BoolVar(&noPrepare, "no-prepare", false, "only load and validation step")
+	flag.BoolVar(&noResource, "no-resource", false, "do not verify page resource")
 	flag.BoolVar(&isDebug, "is-debug", false, "silence debug log")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
@@ -130,14 +132,15 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		}
 	}
 
-	scenario.ContestantLogger.Printf("score: %d(%d - %d) : %s", totalScore, rawScore, deductScore, reason)
+	scenario.ContestantLogger.Printf("score: %d (= %d - %d) : %s", totalScore, rawScore, deductScore, reason)
 	scenario.ContestantLogger.Printf("deductionCount: %d, timeoutCount: %d", deductionCount, timeoutCount)
 
-	// 競技者には最終的なScoreTagの統計のみ見せる
+	// 競技者には最終的な raw score の内訳のみ見せる
 	if finish {
-		tagFormat := fmt.Sprintf("tag: %%-%ds : %%d", score.MaxTagLengthForContestant)
+		scenario.ContestantLogger.Printf("raw score (%d) breakdown:", rawScore)
+		tagFormat := fmt.Sprintf("%%-%ds : %%d 回 (%%d 点)", score.MaxTagLengthForContestant)
 		for _, tag := range score.TagsForContestant {
-			scenario.ContestantLogger.Printf(tagFormat, tag, scoreTable[tag])
+			scenario.ContestantLogger.Printf(tagFormat, tag, scoreTable[tag], rawBreakdown[tag])
 		}
 	}
 
@@ -239,11 +242,12 @@ func main() {
 		panic(err)
 	}
 	config := &scenario.Config{
-		BaseURL:   baseURL,
-		UseTLS:    useTLS,
-		NoLoad:    noLoad,
-		NoPrepare: noPrepare,
-		IsDebug:   isDebug,
+		BaseURL:          baseURL,
+		UseTLS:           useTLS,
+		NoLoad:           noLoad,
+		NoPrepare:        noPrepare,
+		NoVerifyResource: noResource,
+		IsDebug:          isDebug,
 	}
 
 	s, err := scenario.NewScenario(config)

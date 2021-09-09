@@ -24,8 +24,8 @@
             <div class="flex flex-auto gap-1">
               <TextField
                 id="params-teacher"
-                class="flex-1"
                 v-model="params.teacher"
+                class="flex-1"
                 label="担当教員"
                 label-direction="vertical"
                 type="text"
@@ -33,8 +33,8 @@
               />
               <TextField
                 id="params-credit"
-                class="flex-1"
                 v-model="params.credit"
+                class="flex-1"
                 label="単位数"
                 label-direction="vertical"
                 type="number"
@@ -43,8 +43,8 @@
               />
               <Select
                 id="params-type"
-                class="flex-1"
                 v-model="params.type"
+                class="flex-1"
                 label="科目種別"
                 :options="[
                   { text: '一般教養', value: 'liberal-arts' },
@@ -148,7 +148,7 @@
                   <td>{{ c.teacher }}</td>
                   <td>
                     <a
-                      :href="`/courses/${c.id}`"
+                      :href="`/syllabus/${c.id}`"
                       target="_blank"
                       class="text-primary-500"
                       >詳細を見る
@@ -175,6 +175,14 @@
               <span class="opacity-0 w-28"></span>
             </div>
           </div>
+        </template>
+        <template v-else-if="courses && !hasError">
+          <hr class="my-6" />
+          <div class="">検索条件にマッチする科目がありませんでした。</div>
+        </template>
+        <template v-else-if="hasError">
+          <hr class="my-6" />
+          <div class="">検索結果を取得できませんでした。</div>
         </template>
       </div>
     </div>
@@ -206,10 +214,11 @@ type Selected = {
 }
 
 type DataType = {
-  courses: SyllabusCourse[]
+  courses: SyllabusCourse[] | null
   checkedCourses: SyllabusCourse[]
   params: SearchCourseRequest
   link: Partial<Link>
+  hasError: boolean
 }
 
 const initParams = {
@@ -242,15 +251,19 @@ export default Vue.extend({
   },
   data(): DataType {
     return {
-      courses: [],
+      courses: null,
       checkedCourses: this.value,
       params: Object.assign({}, initParams),
       link: { prev: undefined, next: undefined },
+      hasError: false,
     }
   },
   computed: {
     isShowSearchResult(): boolean {
-      return this.courses.length > 0
+      if (this.courses) {
+        return this.courses.length > 0
+      }
+      return false
     },
     periods() {
       return new Array(PeriodCount).fill(undefined).map((_, i) => {
@@ -276,6 +289,7 @@ export default Vue.extend({
       this.reset()
     },
     async onSubmitSearch(query?: Record<string, any>): Promise<void> {
+      this.hasError = false
       const params = this.filterParams(this.params)
       try {
         const res = await this.$axios.get<SyllabusCourse[]>('/api/courses', {
@@ -293,6 +307,8 @@ export default Vue.extend({
           )
         }
       } catch (e) {
+        this.hasError = true
+        this.courses = null
         notify('検索結果を取得できませんでした')
       }
     },
@@ -326,7 +342,8 @@ export default Vue.extend({
         )
     },
     reset(): void {
-      this.courses = []
+      this.hasError = false
+      this.courses = null
       this.params = Object.assign({}, this.params, initParams)
     },
   },

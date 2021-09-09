@@ -147,6 +147,7 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 			Teacher:  param.Teacher,
 			Period:   uint8(param.Period + 1),
 			Keywords: strings.Join(param.Keywords, " "),
+			Status:   api.CourseStatus(param.Status),
 		}
 		if param.DayOfWeek != -1 {
 			req.DayOfWeek = api.DayOfWeekTable[param.DayOfWeek]
@@ -230,7 +231,7 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 	if next == "" {
 		next = "/api/announcements"
 	}
-	hres, err := api.GetAnnouncementList(ctx, agent, next, nil)
+	hres, err := api.GetAnnouncementList(ctx, agent, next, "")
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
@@ -270,31 +271,26 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	return hres, res, nil
 }
 
-func SendAnnouncementAction(ctx context.Context, agent *agent.Agent, announcement *model.Announcement) (*http.Response, api.AddAnnouncementResponse, error) {
+func SendAnnouncementAction(ctx context.Context, agent *agent.Agent, announcement *model.Announcement) (*http.Response, error) {
 	req := &api.AddAnnouncementRequest{
-		CourseID:  announcement.CourseID,
-		Title:     announcement.Title,
-		Message:   announcement.Message,
-		CreatedAt: announcement.CreatedAt,
+		ID:       announcement.ID,
+		CourseID: announcement.CourseID,
+		Title:    announcement.Title,
+		Message:  announcement.Message,
 	}
 
-	res := api.AddAnnouncementResponse{}
 	hres, err := api.AddAnnouncement(ctx, agent, *req)
 	if err != nil {
-		return hres, res, failure.NewError(fails.ErrHTTP, err)
+		return hres, failure.NewError(fails.ErrHTTP, err)
 	}
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusCreated})
 	if err != nil {
-		return hres, res, err
+		return hres, err
 	}
 
-	err = json.NewDecoder(hres.Body).Decode(&res)
-	if err != nil {
-		return hres, res, failure.NewError(fails.ErrHTTP, err)
-	}
-	return hres, res, nil
+	return hres, nil
 }
 
 func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, []*api.GetClassResponse, error) {

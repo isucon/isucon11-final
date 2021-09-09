@@ -1,24 +1,25 @@
 require 'forgery_ja'
 require 'securerandom'
 require 'bcrypt'
+require 'ulid'
+
+srand(100)
 
 ForgeryJa.dictionaries.reset!
 ForgeryJa.load_paths << __dir__
 
-def gen_user_data(max, is_teacher)
-  users = []
-  (0..max-1).each { |i|
+def gen_user_data(code_min, code_max, is_teacher)
+  (code_min..code_max).map { |i|
     first_name = ForgeryJa(:name).first_name(to: ForgeryJa::ARRAY)
     last_name = ForgeryJa(:name).last_name(to: ForgeryJa::ARRAY)
 
-    uuid = SecureRandom.uuid
+    id = ULID.generate
     code = sprintf("%s%05d", is_teacher ? "T" : "S", i)
     full_name = last_name[ForgeryJa::KANJI] + " " + first_name[ForgeryJa::KANJI]
     password = SecureRandom.alphanumeric(10)
 
-    users.push({ uuid: uuid, code: code, full_name: full_name, password: password })
+    { id: id, code: code, full_name: full_name, password: password }
   }
-  users
 end
 
 def save_tsv(users, file_name)
@@ -35,7 +36,7 @@ def save_sql(users, file_name, is_teacher)
     s = users.map{|user|
       sprintf(
         "('%s','%s','%s','%s','%s')",
-        user[:uuid],
+        user[:id],
         user[:code],
         user[:full_name],
         BCrypt::Password.create(user[:password], :cost => 4),
@@ -50,13 +51,12 @@ if File.exist?("init.sql")
   File.delete("init.sql")
 end
 
-save_sql([{ uuid: SecureRandom.uuid, code: "isuT", full_name: "isucon(教員)", password: "isucon" }], "init.sql", true)
-save_sql([{ uuid: SecureRandom.uuid, code: "isucon", full_name: "isucon(学生)", password: "isucon" }], "init.sql", false)
+teachers = [{ id: ULID.generate, code: "T00000", full_name: "isucon(教員)", password: "isucon" }]
+teachers.concat(gen_user_data(1, 49, true))
+students = [{ id: ULID.generate, code: "S00000", full_name: "isucon(学生)", password: "isucon" }]
+students.concat(gen_user_data(1, 4999, false))
 
-teachers = gen_user_data(50, true)
-save_tsv(teachers, "teacher.tsv")
+save_tsv(teachers[1..], "teacher.tsv")
+save_tsv(students[1..], "student.tsv")
 save_sql(teachers, "init.sql", true)
-
-students = gen_user_data(5000, false)
-save_tsv(students, "student.tsv")
 save_sql(students, "init.sql", false)

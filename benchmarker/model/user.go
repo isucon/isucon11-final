@@ -7,6 +7,8 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
+
+	"github.com/isucon/isucon11-final/benchmarker/api"
 )
 
 type UserAccount struct {
@@ -20,7 +22,7 @@ type Student struct {
 	Agent *agent.Agent
 
 	registeredCourses     []*Course
-	announcements         []*AnnouncementStatus
+	announcements         []*AnnouncementStatus // announcements は生成順でソートされている保証はない
 	announcementIndexByID map[string]int
 	readAnnouncementCond  *sync.Cond // おしらせの既読を監視するCond
 	addAnnouncementCond   *sync.Cond // おしらせの追加を監視するCond
@@ -268,6 +270,18 @@ func (s *Student) Courses() []*Course {
 	return res
 }
 
+func (s *Student) HasFinishedCourse() bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	for _, course := range s.registeredCourses {
+		if course.Status() == api.StatusClosed {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Student) RegisteredSchedule() [5][6]*Course {
 	s.scheduleMutex.RLock()
 	defer s.scheduleMutex.RUnlock()
@@ -306,12 +320,18 @@ func (s *Student) GPA() float64 {
 
 	tmp := 0
 	for _, course := range s.registeredCourses {
-		tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
+		if course.Status() == api.StatusClosed {
+			tmp += course.GetTotalScoreByStudentCode(s.Code) * course.Credit
+		}
 	}
 
 	gpt := float64(tmp) / 100.0
+	credits := s.TotalCredit()
 
-	return gpt / float64(s.TotalCredit())
+	if credits == 0 {
+		return 0
+	}
+	return gpt / float64(credits)
 }
 
 func (s *Student) TotalCredit() int {
@@ -320,7 +340,9 @@ func (s *Student) TotalCredit() int {
 
 	res := 0
 	for _, course := range s.registeredCourses {
-		res += course.Credit
+		if course.Status() == api.StatusClosed {
+			res += course.Credit
+		}
 	}
 
 	return res

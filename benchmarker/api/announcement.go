@@ -10,19 +10,15 @@ import (
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
+
 	"github.com/isucon/isucon11-final/benchmarker/fails"
-	"github.com/pborman/uuid"
 )
 
 type AddAnnouncementRequest struct {
-	CourseID  string `json:"course_id"`
-	Title     string `json:"title"`
-	Message   string `json:"message"`
-	CreatedAt int64  `json:"created_at"`
-}
-
-type AddAnnouncementResponse struct {
-	ID string `json:"id"`
+	ID       string `json:"id"`
+	CourseID string `json:"course_id"`
+	Title    string `json:"title"`
+	Message  string `json:"message"`
 }
 
 func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnouncementRequest) (*http.Response, error) {
@@ -41,28 +37,28 @@ func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnoun
 	return a.Do(ctx, req)
 }
 
+type GetAnnouncementsResponse struct {
+	UnreadCount   int                    `json:"unread_count"`
+	Announcements []AnnouncementResponse `json:"announcements"`
+}
+
 type AnnouncementResponse struct {
 	ID         string `json:"id"`
 	CourseID   string `json:"course_id"`
 	CourseName string `json:"course_name"`
 	Title      string `json:"title"`
 	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
-}
-type GetAnnouncementsResponse struct {
-	UnreadCount   int                    `json:"unread_count"`
-	Announcements []AnnouncementResponse `json:"announcements"`
 }
 
-func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID uuid.UUID) (*http.Response, error) {
+func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID string) (*http.Response, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, failure.NewError(fails.ErrHTTP, err)
 	}
 	q := u.Query()
 
-	if courseID != nil {
-		q.Set("course_id", courseID.String())
+	if courseID != "" {
+		q.Set("course_id", courseID)
 		u.RawQuery = q.Encode()
 	}
 
@@ -81,7 +77,6 @@ type GetAnnouncementDetailResponse struct {
 	Title      string `json:"title"`
 	Message    string `json:"message"`
 	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
 }
 
 func GetAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*http.Response, error) {
