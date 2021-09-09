@@ -65,7 +65,7 @@
                         text-black text-sm
                         hover:bg-primary-300 hover:text-white
                       "
-                      @click.stop=""
+                      @click.stop="closeDropdown()"
                       >シラバスを確認
                     </a>
                     <a
@@ -78,7 +78,7 @@
                         text-black text-sm
                         hover:bg-primary-300 hover:text-white
                       "
-                      @click.stop=""
+                      @click.stop="closeDropdown()"
                       >講義一覧を確認
                     </a>
                     <a
@@ -164,10 +164,10 @@ export default Vue.extend({
     },
   },
   beforeMount() {
-    document.addEventListener('click', this.outsideClick)
+    document.addEventListener('click', this.closeDropdown)
   },
   beforeDestroy() {
-    document.removeEventListener('click', this.outsideClick)
+    document.removeEventListener('click', this.closeDropdown)
   },
   methods: {
     formatType(type: CourseType): string {
@@ -184,16 +184,16 @@ export default Vue.extend({
     },
     onClickCourseDropdown(courseIdx: number): void {
       if (this.openDropdownIdx !== null && this.openDropdownIdx === courseIdx) {
-        this.openDropdownIdx = null
+        this.closeDropdown()
         return
       }
       this.openDropdownIdx = courseIdx
     },
     onClickSetStatus(courseIdx: number): void {
       this.$emit('setStatus', courseIdx)
-      this.openDropdownIdx = null
+      this.closeDropdown()
     },
-    outsideClick() {
+    closeDropdown() {
       this.openDropdownIdx = null
     },
   },

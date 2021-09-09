@@ -123,28 +123,28 @@ export default Vue.extend({
     },
   },
   beforeMount() {
-    document.addEventListener('click', this.outsideClick)
+    document.addEventListener('click', this.closeDropdown)
   },
   beforeDestroy() {
-    document.removeEventListener('click', this.outsideClick)
+    document.removeEventListener('click', this.closeDropdown)
   },
   methods: {
     onClickClassDropdown(classIdx: number): void {
       if (this.openDropdownIdx !== null && this.openDropdownIdx === classIdx) {
-        this.openDropdownIdx = null
+        this.closeDropdown()
         return
       }
       this.openDropdownIdx = classIdx
     },
     onClickDownloadSubmissions(classIdx: number): void {
       this.$emit('downloadSubmissions', classIdx)
-      this.openDropdownIdx = null
+      this.closeDropdown()
     },
     onClickRegisterScores(classIdx: number): void {
       this.$emit('registerScores', classIdx)
-      this.openDropdownIdx = null
+      this.closeDropdown()
     },
-    outsideClick() {
+    closeDropdown() {
       this.openDropdownIdx = null
     },
   },
