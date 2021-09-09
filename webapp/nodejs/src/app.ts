@@ -10,19 +10,20 @@ import express from "express";
 import morgan from "morgan";
 import multer from "multer";
 import mysql, { ResultSetHeader, RowDataPacket } from "mysql2/promise";
-import { v4 as uuid } from "uuid";
 
 import {
   averageFloat,
   averageInt,
   max,
   min,
+  newUlid,
   tScoreFloat,
   tScoreInt,
 } from "./util";
 
 const SqlDirectory = "../sql/";
 const AssignmentsDirectory = "../assignments/";
+const InitDataDirectory = "../data/";
 const SessionName = "isucholar_nodejs";
 
 const dbinfo: mysql.PoolOptions = {
@@ -71,7 +72,7 @@ app.post("/initialize", async (_, res) => {
     multipleStatements: true,
   });
   try {
-    const files = ["1_schema.sql", "2_init.sql"];
+    const files = ["1_schema.sql", "2_init.sql", "3_sample.sql"];
     for (const file of files) {
       const data = await readFile(SqlDirectory + file);
       db.query(data.toString());
@@ -85,7 +86,7 @@ app.post("/initialize", async (_, res) => {
 
   try {
     await exec(`rm -rf '${AssignmentsDirectory}'`);
-    await exec(`mkdir '${AssignmentsDirectory}'`);
+    await exec(`cp -r '${InitDataDirectory}' '${AssignmentsDirectory}'`);
   } catch (err) {
     console.error(err);
     return res.status(500).send();
@@ -900,7 +901,7 @@ coursesApi.post("", isAdmin, async (req, res) => {
   try {
     await db.beginTransaction();
 
-    const courseId = uuid();
+    const courseId = newUlid();
     try {
       db.query(
         "INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1148,7 +1149,7 @@ coursesApi.post(
         return res.status(400).send("This course is not in-progress.");
       }
 
-      const classId = uuid();
+      const classId = newUlid();
       try {
         await db.query(
           "INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
@@ -1417,10 +1418,10 @@ async function createSubmissionsZip(
 }
 
 interface AddAnnouncementRequest {
+  id: string;
   course_id: string;
   title: string;
   message: string;
-  created_at: number;
 }
 
 function isValidAddAnnouncementRequest(
@@ -1428,15 +1429,11 @@ function isValidAddAnnouncementRequest(
 ): body is AddAnnouncementRequest {
   return (
     typeof body === "object" &&
+    typeof body.id === "string" &&
     typeof body.course_id === "string" &&
     typeof body.title === "string" &&
-    typeof body.message === "string" &&
-    typeof body.created_at === "number"
+    typeof body.message === "string"
   );
-}
-
-interface AddAnnouncementResponse {
-  id: string;
 }
 
 // POST /api/announcements 新規お知らせ追加
@@ -1464,18 +1461,10 @@ announcementsApi.post("", isAdmin, async (req, res) => {
   try {
     await db.beginTransaction();
 
-    const announcementId = uuid();
-    const createdAt = new Date(request.created_at * 1000);
     try {
       await db.query(
-        "INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`, `created_at`) VALUES (?, ?, ?, ?, ?)",
-        [
-          announcementId,
-          request.course_id,
-          request.title,
-          request.message,
-          createdAt,
-        ]
+        "INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`) VALUES (?, ?, ?, ?)",
+        [request.id, request.course_id, request.title, request.message]
       );
     } catch (err) {
       await db.rollback();
@@ -1495,14 +1484,13 @@ announcementsApi.post("", isAdmin, async (req, res) => {
     for (const user of targets) {
       await db.query(
         "INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)",
-        [announcementId, user.id]
+        [request.id, user.id]
       );
     }
 
     await db.commit();
 
-    const response: AddAnnouncementResponse = { id: announcementId };
-    return res.status(201).json(response);
+    return res.status(201).send();
   } catch (err) {
     console.error(err);
     await db.rollback();

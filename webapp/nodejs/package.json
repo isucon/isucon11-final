@@ -16,7 +16,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.3",
     "mysql2": "^2.3.0",
-    "uuid": "^8.3.2"
+    "ulid": "^2.3.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",

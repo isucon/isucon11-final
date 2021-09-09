@@ -1,3 +1,11 @@
+import { monotonicFactory } from "ulid";
+
+const ulid = monotonicFactory();
+
+export function newUlid(): string {
+  return ulid();
+}
+
 export function max(arr: number[], or: number): number {
   if (arr.length === 0) {
     return or;
