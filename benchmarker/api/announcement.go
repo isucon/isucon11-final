@@ -15,14 +15,10 @@ import (
 )
 
 type AddAnnouncementRequest struct {
-	CourseID  string `json:"course_id"`
-	Title     string `json:"title"`
-	Message   string `json:"message"`
-	CreatedAt int64  `json:"created_at"`
-}
-
-type AddAnnouncementResponse struct {
-	ID string `json:"id"`
+	ID       string `json:"id"`
+	CourseID string `json:"course_id"`
+	Title    string `json:"title"`
+	Message  string `json:"message"`
 }
 
 func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnouncementRequest) (*http.Response, error) {
@@ -52,7 +48,6 @@ type AnnouncementResponse struct {
 	CourseName string `json:"course_name"`
 	Title      string `json:"title"`
 	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
 }
 
 func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID string) (*http.Response, error) {
@@ -82,7 +77,6 @@ type GetAnnouncementDetailResponse struct {
 	Title      string `json:"title"`
 	Message    string `json:"message"`
 	Unread     bool   `json:"unread"`
-	CreatedAt  int64  `json:"created_at"`
 }
 
 func GetAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*http.Response, error) {

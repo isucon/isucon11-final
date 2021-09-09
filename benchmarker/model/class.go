@@ -52,13 +52,6 @@ func (c *Class) Submissions() map[string]*Submission {
 	return res
 }
 
-func (c *Class) GetSubmittedCount() int {
-	c.rmu.RLock()
-	defer c.rmu.RUnlock()
-
-	return len(c.submissions)
-}
-
 func (c *Class) IntoSimpleClassScore(userCode string) *SimpleClassScore {
 	c.rmu.RLock()
 	defer c.rmu.RUnlock()

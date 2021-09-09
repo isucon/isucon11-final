@@ -63,99 +63,103 @@
             <div class="px-4 py-2 border bg-gray-300">最高点</div>
             <div class="px-4 py-2 border bg-gray-300">各講義成績</div>
 
-            <template v-for="(r, i) in grades.courses">
-              <div
-                :key="`course${i}-code${r.code}`"
-                class="px-4 py-2 border break-words"
-              >
-                {{ r.code }}
-              </div>
-              <div :key="`course${i}-name${r.name}`" class="px-4 py-2 border">
-                {{ r.name }}
-              </div>
-              <div
-                :key="`course${i}-totalScore${r.totalScore}`"
-                class="px-4 py-2 border break-words"
-              >
-                {{ r.totalScore }}
-              </div>
-              <div
-                :key="`course${i}-totalScoreAvg${r.totalScoreAvg}`"
-                class="px-4 py-2 border break-words"
-              >
-                {{ round(r.totalScoreAvg, digits) }}
-              </div>
-              <div
-                :key="`course${i}-totalScoreTScore${r.totalScoreTScore}`"
-                class="px-4 py-2 border break-words"
-              >
-                {{ round(r.totalScoreTScore, digits) }}
-              </div>
-              <div
-                :key="`course${i}-totalScoreMin${r.totalScoreMin}`"
-                class="px-4 py-2 border break-words"
-              >
-                {{ r.totalScoreMin }}
-              </div>
-              <div
-                :key="`course${i}-totalScoreMax${r.totalScoreMax}`"
-                class="px-4 py-2 border break-words"
-              >
-                {{ r.totalScoreMax }}
-              </div>
-              <div :key="`button${i}`" class="px-2 py-2 border">
-                <Button
-                  color="plain"
-                  size="mini"
-                  @click="onClickClassDetail(i)"
-                >
-                  <template v-if="includeOpenedIndex(i)">閉じる</template>
-                  <template v-else>開く</template>
-                </Button>
-              </div>
-              <template v-if="includeOpenedIndex(i)">
+            <template v-if="grades.courses">
+              <template v-for="(r, i) in grades.courses">
                 <div
-                  :key="`courseScore${i}`"
-                  class="
-                    px-4
-                    pt-2
-                    pb-6
-                    col-start-1 col-end-9
-                    grid grid-cols-4
-                    bg-gray-100
-                  "
+                  :key="`course${i}-code${r.code}`"
+                  class="px-4 py-2 border break-words"
                 >
-                  <div class="px-4 py-2 bg-gray-300">講義回</div>
-                  <div class="px-4 py-2 bg-gray-300">講義名</div>
-                  <div class="px-4 py-2 bg-gray-300">成績</div>
-                  <div class="px-4 py-2 bg-gray-300">課題提出者数</div>
-                  <template v-for="(s, j) in r.classScores">
-                    <div
-                      :key="`courseScore${j}-part${s.part}`"
-                      class="px-4 py-2 border bg-white"
-                    >
-                      {{ s.part }}
-                    </div>
-                    <div
-                      :key="`courseScore${j}-title${s.title}`"
-                      class="px-4 py-2 border bg-white"
-                    >
-                      {{ s.title }}
-                    </div>
-                    <div
-                      :key="`courseScore${j}-score${s.score}`"
-                      class="px-4 py-2 border bg-white"
-                    >
-                      {{ s.score }}
-                    </div>
-                    <div
-                      :key="`courseScore${j}-submitters${s.submitters}`"
-                      class="px-4 py-2 border bg-white"
-                    >
-                      {{ s.submitters }}
-                    </div>
-                  </template>
+                  {{ r.code }}
                 </div>
+                <div :key="`course${i}-name${r.name}`" class="px-4 py-2 border">
+                  {{ r.name }}
+                </div>
+                <div
+                  :key="`course${i}-totalScore${r.totalScore}`"
+                  class="px-4 py-2 border break-words"
+                >
+                  {{ r.totalScore }}
+                </div>
+                <div
+                  :key="`course${i}-totalScoreAvg${r.totalScoreAvg}`"
+                  class="px-4 py-2 border break-words"
+                >
+                  {{ round(r.totalScoreAvg, digits) }}
+                </div>
+                <div
+                  :key="`course${i}-totalScoreTScore${r.totalScoreTScore}`"
+                  class="px-4 py-2 border break-words"
+                >
+                  {{ round(r.totalScoreTScore, digits) }}
+                </div>
+                <div
+                  :key="`course${i}-totalScoreMin${r.totalScoreMin}`"
+                  class="px-4 py-2 border break-words"
+                >
+                  {{ r.totalScoreMin }}
+                </div>
+                <div
+                  :key="`course${i}-totalScoreMax${r.totalScoreMax}`"
+                  class="px-4 py-2 border break-words"
+                >
+                  {{ r.totalScoreMax }}
+                </div>
+                <div :key="`button${i}`" class="px-2 py-2 border">
+                  <Button
+                    color="plain"
+                    size="mini"
+                    @click="onClickClassDetail(i)"
+                  >
+                    <template v-if="includeOpenedIndex(i)">閉じる</template>
+                    <template v-else>開く</template>
+                  </Button>
+                </div>
+                <template v-if="includeOpenedIndex(i)">
+                  <div
+                    :key="`courseScore${i}`"
+                    class="
+                      px-4
+                      pt-2
+                      pb-6
+                      col-start-1 col-end-9
+                      grid grid-cols-4
+                      bg-gray-100
+                    "
+                  >
+                    <div class="px-4 py-2 bg-gray-300">講義回</div>
+                    <div class="px-4 py-2 bg-gray-300">講義名</div>
+                    <div class="px-4 py-2 bg-gray-300">成績</div>
+                    <div class="px-4 py-2 bg-gray-300">課題提出者数</div>
+                    <template v-if="r.classScores">
+                      <template v-for="(s, j) in r.classScores">
+                        <div
+                          :key="`courseScore${j}-part${s.part}`"
+                          class="px-4 py-2 border bg-white"
+                        >
+                          {{ s.part }}
+                        </div>
+                        <div
+                          :key="`courseScore${j}-title${s.title}`"
+                          class="px-4 py-2 border bg-white"
+                        >
+                          {{ s.title }}
+                        </div>
+                        <div
+                          :key="`courseScore${j}-score${s.score}`"
+                          class="px-4 py-2 border bg-white"
+                        >
+                          {{ s.score }}
+                        </div>
+                        <div
+                          :key="`courseScore${j}-submitters${s.submitters}`"
+                          class="px-4 py-2 border bg-white"
+                        >
+                          {{ s.submitters }}
+                        </div>
+                      </template>
+                    </template>
+                  </div>
+                </template>
               </template>
             </template>
           </div>

@@ -15,6 +15,7 @@ type UserAccount struct {
 	Code        string
 	Name        string
 	RawPassword string
+	IsAdmin     bool
 }
 
 type Student struct {
@@ -22,7 +23,7 @@ type Student struct {
 	Agent *agent.Agent
 
 	registeredCourses     []*Course
-	announcements         []*AnnouncementStatus
+	announcements         []*AnnouncementStatus // announcements は生成順でソートされている保証はない
 	announcementIndexByID map[string]int
 	readAnnouncementCond  *sync.Cond // おしらせの既読を監視するCond
 	addAnnouncementCond   *sync.Cond // おしらせの追加を監視するCond
