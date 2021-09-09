@@ -760,21 +760,20 @@ final class GetAnnouncementsResponse implements JsonSerializable
     }
 }
 
-final class AnnouncementDetail
+final class AnnouncementDetail implements JsonSerializable
 {
     public function __construct(
         public ?string $id,
-        public ?string $courseID,
+        public ?string $courseId,
         public ?string $courseName,
         public ?string $title,
         public ?string $message,
         public ?bool $unread,
-        public ?DateTimeInterface $createdAt,
     ) {
     }
 
     /**
-     * @param array{id?: string, course_id?: string, course_name?: string, title?: string, message?: string, unread?: int, created_at?: string} $dbRow
+     * @param array{id?: string, course_id?: string, course_name?: string, title?: string, message?: string, unread?: int} $dbRow
      */
     public static function fromDbRow(array $dbRow): self
     {
@@ -785,38 +784,31 @@ final class AnnouncementDetail
             $dbRow['title'] ?? null,
             $dbRow['message'] ?? null,
             isset($dbRow['unread']) ? (bool)$dbRow['unread'] : null,
-            isset($dbRow['created_at']) ? new DateTimeImmutable($dbRow['created_at']) : null,
         );
-    }
-}
-
-final class GetAnnouncementDetailResponse implements JsonSerializable
-{
-    public function __construct(
-        public string $id,
-        public string $courseId,
-        public string $courseName,
-        public string $title,
-        public string $message,
-        public bool $unread,
-        public int $createdAt,
-    ) {
     }
 
     /**
-     * @return array{id: string, course_id: string, course_name: string, title: string, message: string, unread: bool, created_at: int}
+     * @return array{id: string, course_id: string, course_name: string, title: string, message: string, unread: bool}
+     * @throws UnexpectedValueException
      */
     public function jsonSerialize(): array
     {
-        return [
+        $data = [
             'id' => $this->id,
             'course_id' => $this->courseId,
             'course_name' => $this->courseName,
             'title' => $this->title,
             'message' => $this->message,
             'unread' => $this->unread,
-            'created_at' => $this->createdAt,
         ];
+
+        foreach ($data as $value) {
+            if (is_null($value)) {
+                throw new UnexpectedValueException();
+            }
+        }
+
+        return $data;
     }
 }
 

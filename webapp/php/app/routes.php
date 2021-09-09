@@ -1485,11 +1485,65 @@ final class Handler
     /**
      * getAnnouncementDetail GET /api/announcements/:announcementId お知らせ詳細取得
      */
-    public function getAnnouncementDetail(Request $request, Response $response): Response
+    public function getAnnouncementDetail(Request $request, Response $response, array $params): Response
     {
-        // TODO: 実装
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
 
-        return $response;
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $announcementId = $params['announcementId'];
+
+        $query = 'SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`' .
+            ' FROM `announcements`' .
+            ' JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`' .
+            ' JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`' .
+            ' WHERE `announcements`.`id` = ?' .
+            ' AND `unread_announcements`.`user_id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$announcementId, $userId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($row === false) {
+            $response->getBody()->write('No such announcement.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+        $announcement = AnnouncementDetail::fromDbRow($row);
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?');
+            $stmt->execute([$announcement->courseId, $userId]);
+            $registrationCount = $stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($registrationCount == 0) {
+            $response->getBody()->write('No such announcement.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?');
+            $stmt->execute([$announcementId, $userId]);
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        return $this->jsonResponse($response, $announcement);
     }
 
     /**
