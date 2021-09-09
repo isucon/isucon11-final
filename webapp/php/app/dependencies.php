@@ -9,8 +9,10 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Monolog\Processor\UidProcessor;
 use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Slim\Middleware\Session;
+use Slim\Psr7\Factory\ResponseFactory;
 use SlimSession\Helper as SessionHelper;
 
 return function (ContainerBuilder $containerBuilder) {
@@ -51,6 +53,9 @@ return function (ContainerBuilder $containerBuilder) {
             ]);
 
             return $pdo;
+        },
+        ResponseFactoryInterface::class => function (ContainerInterface $c): ResponseFactoryInterface {
+            return new ResponseFactory();
         },
         Session::class => function (ContainerInterface $c): Session {
             $sessionSettings = $c->get(SettingsInterface::class)->get('session');

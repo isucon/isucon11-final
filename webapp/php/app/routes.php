@@ -99,6 +99,7 @@ final class Handler
         $files = [
             '1_schema.sql',
             '2_init.sql',
+            '3_sample.sql',
         ];
 
         foreach ($files as $file) {
@@ -181,7 +182,6 @@ final class Handler
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
-
         if ($row === false) {
             $response->getBody()->write('Code or Password is wrong.');
 
@@ -224,7 +224,6 @@ final class Handler
     public function getMe(Request $request, Response $response): Response
     {
         [$userId, $userName, $isAdmin, $err] = $this->getUserInfo();
-
         if ($err !== '') {
             $this->logger->error($err);
 
@@ -240,7 +239,6 @@ final class Handler
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
-
         if ($row === false) {
             $this->logger->error('db error: no rows');
 
@@ -307,10 +305,10 @@ final class Handler
             $teacher = User::fromDbRow($row);
 
             $res[] = new GetRegisteredCourseResponseContent(
-                id:        $course->id,
-                name:      $course->name,
-                teacher:   $teacher->name,
-                period:    $course->period,
+                id: $course->id,
+                name: $course->name,
+                teacher: $teacher->name,
+                period: $course->period,
                 dayOfWeek: $course->dayOfWeek
             );
         }
@@ -359,7 +357,6 @@ final class Handler
 
                 return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
             }
-
             if ($row === false) {
                 $errors->courseNotFound[] = $courseReq->id;
                 continue;
@@ -504,7 +501,7 @@ final class Handler
                 try {
                     $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `submissions` WHERE `class_id` = ?');
                     $stmt->execute([$class->id]);
-                    $submissionsCount = $stmt->fetch()[0];
+                    $submissionsCount = (int)$stmt->fetch()[0];
                 } catch (PDOException $e) {
                     $this->logger->error('db error: ' . $e->errorInfo[2]);
 
@@ -521,7 +518,7 @@ final class Handler
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
                 }
 
-                if ($row === false || is_null($score = $row[0])) {
+                if ($row === false || is_null($row[0])) {
                     $classScores[] = new ClassScore(
                         classId: $class->id,
                         part: $class->part,
@@ -530,6 +527,7 @@ final class Handler
                         submitters: $submissionsCount,
                     );
                 } else {
+                    $score = (int)$row[0];
                     $myTotalScore += $score;
                     $classScores[] = new ClassScore(
                         classId: $class->id,
@@ -541,6 +539,7 @@ final class Handler
                 }
             }
 
+            // この科目を受講している学生のTotalScore一覧を取得
             /** @var array<int> $totals */
             $totals = [];
             $query = 'SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`' .
@@ -554,8 +553,8 @@ final class Handler
             try {
                 $stmt = $this->dbh->prepare($query);
                 $stmt->execute([$course->id]);
-                while ($row = $stmt->fetch) {
-                    $totals[] = $row['total_score'];
+                while ($row = $stmt->fetch()) {
+                    $totals[] = (int)$row['total_score'];
                 }
             } catch (PDOException $e) {
                 $this->logger->error('db error: ' . $e->errorInfo[2]);
@@ -608,7 +607,7 @@ final class Handler
             $stmt = $this->dbh->prepare($query);
             $stmt->execute([self::COURSE_STATUS_CLOSED, self::COURSE_STATUS_CLOSED, self::USER_TYPE_STUDENT]);
             while ($row = $stmt->fetch()) {
-                $gpas[] = $row['gpa'];
+                $gpas[] = (float)$row['gpa'];
             }
         } catch (PDOException $e) {
             $this->logger->error('db error: ' . $e->errorInfo[2]);
@@ -825,7 +824,17 @@ final class Handler
         $courseId = util\newUlid();
         try {
             $stmt = $this->dbh->prepare('INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt->execute([$courseId, $req->code, $req->type, $req->name, $req->description, $req->credit, $req->period, $req->dayOfWeek, $userId, $req->keywords]);
+            $stmt->bindValue(1, $courseId);
+            $stmt->bindValue(2, $req->code);
+            $stmt->bindValue(3, $req->type);
+            $stmt->bindValue(4, $req->name);
+            $stmt->bindValue(5, $req->description);
+            $stmt->bindValue(6, $req->credit, PDO::PARAM_INT);
+            $stmt->bindValue(7, $req->period, PDO::PARAM_INT);
+            $stmt->bindValue(8, $req->dayOfWeek);
+            $stmt->bindValue(9, $userId);
+            $stmt->bindValue(10, $req->keywords);
+            $stmt->execute();
         } catch (PDOException $exception) {
             $this->dbh->rollBack();
             if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
@@ -838,7 +847,6 @@ final class Handler
 
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
                 }
-
                 if ($row === false) {
                     $this->logger->error('db error: no rows');
 
@@ -1072,7 +1080,7 @@ final class Handler
         }
 
         // TODO: stream の扱いについて要検証
-        if (file_put_contents(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . 'pdf', $file->getStream()) === false) {
+        if (file_put_contents(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . '.pdf', $file->getStream()) === false) {
             $this->dbh->rollBack();
             $this->logger->error('failed to create file: ' . self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . 'pdf');
 
@@ -1103,12 +1111,11 @@ final class Handler
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
-
         if ($row === false) {
             $this->dbh->rollBack();
             $response->getBody()->write('No such class.');
 
-            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
         }
         if (!$row['submission_closed']) {
             $this->dbh->rollBack();
@@ -1129,7 +1136,10 @@ final class Handler
         foreach ($req as $score) {
             try {
                 $stmt = $this->dbh->prepare('UPDATE `submissions` JOIN `users` ON `users`.`id` = `submissions`.`user_id` SET `score` = ? WHERE `users`.`code` = ? AND `class_id` = ?');
-                $stmt->execute([$score->score, $score->userCode, $classId]);
+                $stmt->bindValue(1, $score->score, PDO::PARAM_INT);
+                $stmt->bindValue(2, $score->userCode);
+                $stmt->bindValue(3, $classId);
+                $stmt->execute();
             } catch (PDOException $e) {
                 $this->dbh->rollBack();
                 $this->logger->error('db error: ' . $e->errorInfo[2]);
@@ -1166,7 +1176,7 @@ final class Handler
             $this->dbh->rollBack();
             $response->getBody()->write('No such class.');
 
-            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
         }
 
         /** @var array<Submission> $submissions */
@@ -1232,11 +1242,11 @@ final class Handler
             if (
                 exec(sprintf(
                     'cp %s %s',
-                    escapeshellarg(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . 'pdf'),
+                    escapeshellarg(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf'),
                     escapeshellarg($tmpDir . $submission->userCode . '-' . $submission->fileName),
                 )) === false
             ) {
-                return 'failed to copy file: ' . $classId . '-' . $submission->userId . 'pdf';
+                return 'failed to copy file: ' . $classId . '-' . $submission->userId . '.pdf';
             }
         }
 
@@ -1292,20 +1302,26 @@ final class Handler
         $classId = util\newUlid();
         try {
             $stmt = $this->dbh->prepare('INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)');
-            $stmt->execute([$classId, $courseId, $req->part, $req->title, $req->description]);
+            $stmt->bindValue(1, $classId);
+            $stmt->bindValue(2, $courseId);
+            $stmt->bindValue(3, $req->part, PDO::PARAM_INT);
+            $stmt->bindValue(4, $req->title);
+            $stmt->bindValue(5, $req->description);
+            $stmt->execute();
         } catch (PDOException $exception) {
             $this->dbh->rollBack();
             if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
                 try {
                     $stmt = $this->dbh->prepare('SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?');
-                    $stmt->execute([$courseId, $req->part]);
+                    $stmt->bindValue(1, $courseId);
+                    $stmt->bindValue(2, $req->part, PDO::PARAM_INT);
+                    $stmt->execute();
                     $row = $stmt->fetch();
                 } catch (PDOException $e) {
                     $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
                 }
-
                 if ($row === false) {
                     $this->logger->error('db error: no rows');
 
@@ -1427,9 +1443,9 @@ final class Handler
             array_pop($announcements);
         }
 
-        // 対象になっているお知らせが0件の時は空配列を返却
         return $this->jsonResponse($response, new GetAnnouncementsResponse(
             unreadCount: $unreadCount,
+            // 対象になっているお知らせが0件の時は空配列を返却
             announcements: $announcements,
         ));
     }
@@ -1521,7 +1537,7 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
         if ($count == 0) {
-            $response->getBody()->write('No such courese.');
+            $response->getBody()->write('No such course.');
 
             return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
         }
@@ -1543,7 +1559,6 @@ final class Handler
 
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
                 }
-
                 if ($row === false) {
                     $this->logger->error('db error: no rows');
 
@@ -1556,6 +1571,8 @@ final class Handler
 
                     return $response->withStatus(StatusCodeInterface::STATUS_CONFLICT);
                 }
+
+                return $response->withStatus(StatusCodeInterface::STATUS_CREATED);
             }
 
             $this->logger->error('db error: ' . $exception->errorInfo[2]);
