@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Application\Middleware\IsAdmin;
+use App\Application\Middleware\IsLoggedIn;
 use Fig\Http\Message\StatusCodeInterface;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 use Psr\Log\LoggerInterface;
 use Slim\App;
 use Slim\Psr7\Stream;
@@ -25,56 +26,7 @@ return function (App $app) {
 
     $app->post('/login', Handler::class . ':login');
     $app->post('/logout', Handler::class . ':logout');
-
-    /**
-     * isLoggedIn ログイン確認用middleware
-     */
-    $isLoggedIn = function (Request $request, RequestHandler $handler) use ($app): Response {
-        /** @var \Psr\Container\ContainerInterface $container */
-        $container = $app->getContainer();
-        /** @var SessionHelper $session */
-        $session = $container->get(SessionHelper::class);
-
-        if (!$session->exists('userID')) {
-            $response = $app->getResponseFactory()->createResponse();
-            $response->getBody()->write('You are not logged in.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_UNAUTHORIZED);
-        }
-
-        return $handler->handle($request);
-    };
-
-    /**
-     * isAdmin admin確認用middleware
-     */
-    $isAdmin = function (Request $request, RequestHandler $handler) use ($app): Response {
-        /** @var \Psr\Container\ContainerInterface $container */
-        $container = $app->getContainer();
-        /** @var SessionHelper $session */
-        $session = $container->get(SessionHelper::class);
-        /** @var LoggerInterface $logger */
-        $logger = $container->get(LoggerInterface::class);
-
-        if (!$session->exists('isAdmin')) {
-            $logger->error('failed to get isAdmin from session');
-
-            return $app->getResponseFactory()
-                ->createResponse()
-                ->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-
-        if (!$session->get('isAdmin')) {
-            $response = $app->getResponseFactory()->createResponse();
-            $response->getBody()->write('You are not admin user.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_FORBIDDEN);
-        }
-
-        return $handler->handle($request);
-    };
-
-    $app->group('/api', function (RouteCollectorProxy $api) use ($isAdmin) {
+    $app->group('/api', function (RouteCollectorProxy $api) {
         $api->group('/users', function (RouteCollectorProxy $usersApi) {
             $usersApi->get('/me', Handler::class . ':getMe');
             $usersApi->get('/me/courses', Handler::class . ':getRegisteredCourses');
@@ -82,24 +34,24 @@ return function (App $app) {
             $usersApi->get('/me/grades', Handler::class . ':getGrades');
         });
 
-        $api->group('/courses', function (RouteCollectorProxy $coursesApi) use ($isAdmin) {
+        $api->group('/courses', function (RouteCollectorProxy $coursesApi) {
             $coursesApi->get('', Handler::class . ':searchCourses');
-            $coursesApi->post('', Handler::class . ':addCourse')->add($isAdmin);
+            $coursesApi->post('', Handler::class . ':addCourse')->add(IsAdmin::class);
             $coursesApi->get("/{courseId}", Handler::class . ':getCourseDetail');
-            $coursesApi->put('/{courseId}/status', Handler::class . ':setCourseStatus')->add($isAdmin);
+            $coursesApi->put('/{courseId}/status', Handler::class . ':setCourseStatus')->add(IsAdmin::class);
             $coursesApi->get('/{courseId}/classes', Handler::class . ':getClasses');
-            $coursesApi->post('/{courseId}/classes', Handler::class . ':addClass')->add($isAdmin);
+            $coursesApi->post('/{courseId}/classes', Handler::class . ':addClass')->add(IsAdmin::class);
             $coursesApi->post('/{courseId}/classes/{classId}/assignments', Handler::class . ':submitAssignment');
-            $coursesApi->put('/{courseId}/classes/{classId}/assignments/scores', Handler::class . ':registerScores')->add($isAdmin);
-            $coursesApi->get('/{courseId}/classes/{classId}/assignments/export', Handler::class . ':downloadSubmittedAssignments')->add($isAdmin);
+            $coursesApi->put('/{courseId}/classes/{classId}/assignments/scores', Handler::class . ':registerScores')->add(IsAdmin::class);
+            $coursesApi->get('/{courseId}/classes/{classId}/assignments/export', Handler::class . ':downloadSubmittedAssignments')->add(IsAdmin::class);
         });
 
-        $api->group('/announcements', function (RouteCollectorProxy $announcementsApi) use ($isAdmin) {
+        $api->group('/announcements', function (RouteCollectorProxy $announcementsApi) {
             $announcementsApi->get('', Handler::class . ':getAnnouncementList');
-            $announcementsApi->post('', Handler::class . ':addAnnouncement')->add($isAdmin);
+            $announcementsApi->post('', Handler::class . ':addAnnouncement')->add(IsAdmin::class);
             $announcementsApi->get('/{announcementId}', Handler::class . ':getAnnouncementDetail');
         });
-    })->add($isLoggedIn);
+    })->add(IsLoggedIn::class);
 };
 
 final class Handler
