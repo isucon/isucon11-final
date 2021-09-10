@@ -173,6 +173,7 @@
     $.common_provisioners.apt_source_ec2,
     $.common_provisioners.apt_upgrade,
     $.common_provisioners.install_ansible,
+    $.common_provisioners.configurate_ansible,
     $.common_provisioners.run_ansible,
   ] + $.provisioners_plus + [
     $.common_provisioners.remove_ansible,

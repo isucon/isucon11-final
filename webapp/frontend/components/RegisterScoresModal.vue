@@ -4,20 +4,10 @@
       <p class="text-2xl text-black font-bold justify-center mb-4">成績登録</p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
-          <Select
-            id="params-courseId"
-            v-model="courseId"
-            label="科目"
-            :options="courseOptions"
-          />
+          <LabeledText label="科目名" :value="courseName" />
         </div>
         <div class="flex-1">
-          <Select
-            id="params-classId"
-            v-model="classId"
-            label="講義"
-            :options="classOptions"
-          />
+          <LabeledText label="講義タイトル" :value="classTitle" />
         </div>
         <div>
           <div class="flex flex-row space-x-2">
@@ -123,15 +113,11 @@ import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
-import Select, { Option } from '~/components/common/Select.vue'
-import { Course, RegisterScoreRequest, ClassInfo, User } from '~/types/courses'
+import LabeledText from '~/components/common/LabeledText.vue'
+import { RegisterScoreRequest } from '~/types/courses'
 
 type SubmitFormData = {
   failed: boolean
-  courseId: string
-  classId: string
-  courses: Course[]
-  classes: ClassInfo[]
   params: RegisterScoreRequest
 }
 
@@ -148,9 +134,25 @@ export default Vue.extend({
     Modal,
     CloseIcon,
     Button,
-    Select,
+    LabeledText,
   },
   props: {
+    courseId: {
+      type: String,
+      required: true,
+    },
+    courseName: {
+      type: String,
+      required: true,
+    },
+    classId: {
+      type: String,
+      required: true,
+    },
+    classTitle: {
+      type: String,
+      required: true,
+    },
     isShown: {
       type: Boolean,
       default: false,
@@ -160,66 +162,10 @@ export default Vue.extend({
   data(): SubmitFormData {
     return {
       failed: false,
-      courseId: '',
-      classId: '',
-      courses: [],
-      classes: [],
       params: initParams.map((o) => Object.assign({}, o)),
     }
   },
-  computed: {
-    courseOptions(): Option[] {
-      return this.courses.map((course) => {
-        return {
-          text: course.name,
-          value: course.id,
-        }
-      })
-    },
-    classOptions(): Option[] {
-      return this.classes.map((cls) => {
-        return {
-          text: `第${cls.part}回 ${cls.title}`,
-          value: cls.id,
-        }
-      })
-    },
-  },
-  watch: {
-    async isShown(newval: boolean) {
-      if (newval) {
-        await this.loadCourses()
-      }
-    },
-    async courseId(newval: string) {
-      if (newval) {
-        await this.loadClasses()
-      }
-    },
-  },
   methods: {
-    async loadCourses() {
-      try {
-        const resUser = await this.$axios.get<User>(`/api/users/me`)
-        const user = resUser.data
-        const resCourses = await this.$axios.get<Course[]>(
-          `/api/courses?teacher=${user.name}`
-        )
-        this.courses = resCourses.data
-      } catch (e) {
-        notify('科目の読み込みに失敗しました')
-      }
-    },
-    async loadClasses() {
-      try {
-        const res = await this.$axios.get<ClassInfo[]>(
-          `/api/courses/${this.courseId}/classes`
-        )
-        this.classes = res.data
-      } catch (e) {
-        notify('講義の読み込みに失敗しました')
-      }
-    },
     async submit() {
       try {
         await this.$axios.put(

@@ -21,7 +21,7 @@ func SubmissionData(course *model.Course, class *model.Class, user *model.UserAc
 		title = fmt.Sprintf("%s.pdf", user.Code)
 	}
 
-	return PDF(genSubmissionContents()), title
+	return PDF(genSubmissionContents(), cyclicGetImage()), title
 }
 
 // TODO: いい感じにする

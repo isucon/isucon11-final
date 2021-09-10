@@ -6,12 +6,7 @@
       </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
-          <Select
-            id="params-courseId"
-            v-model="courseId"
-            label="科目"
-            :options="courseOptions"
-          />
+          <LabeledText label="科目名" :value="courseName"> </LabeledText>
         </div>
         <div class="flex-1">
           <Select
@@ -50,19 +45,18 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue'
+import Vue, { PropType } from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
-import Select, { Option } from '~/components/common/Select.vue'
-import { Course, SetCourseStatusRequest, User } from '~/types/courses'
+import Select from '~/components/common/Select.vue'
+import LabeledText from '~/components/common/LabeledText.vue'
+import { CourseStatus, SetCourseStatusRequest } from '~/types/courses'
 
 type SubmitFormData = {
   failed: boolean
-  courseId: string
-  courses: Course[]
   params: SetCourseStatusRequest
 }
 
@@ -92,8 +86,21 @@ export default Vue.extend({
     CloseIcon,
     Button,
     Select,
+    LabeledText,
   },
   props: {
+    courseName: {
+      type: String,
+      required: true,
+    },
+    courseId: {
+      type: String,
+      required: true,
+    },
+    courseStatus: {
+      type: String as PropType<CourseStatus>,
+      required: true,
+    },
     isShown: {
       type: Boolean,
       default: false,
@@ -103,8 +110,6 @@ export default Vue.extend({
   data(): SubmitFormData {
     return {
       failed: false,
-      courseId: '',
-      courses: [],
       params: Object.assign({}, initParams),
     }
   },
@@ -112,35 +117,13 @@ export default Vue.extend({
     statusOptions() {
       return statusOptions
     },
-    courseOptions(): Option[] {
-      return this.courses.map((course) => {
-        return {
-          text: course.name,
-          value: course.id,
-        }
-      })
-    },
   },
   watch: {
-    async isShown(newval: boolean) {
-      if (newval) {
-        await this.loadCourses()
-      }
+    courseStatus(newval) {
+      this.params.status = newval
     },
   },
   methods: {
-    async loadCourses() {
-      try {
-        const resUser = await this.$axios.get<User>(`/api/users/me`)
-        const user = resUser.data
-        const resCourses = await this.$axios.get<Course[]>(
-          `/api/courses?teacher=${user.name}`
-        )
-        this.courses = resCourses.data
-      } catch (e) {
-        notify('科目の読み込みに失敗しました')
-      }
-    },
     async submit() {
       try {
         await this.$axios.put(
@@ -148,6 +131,7 @@ export default Vue.extend({
           this.params
         )
         notify('ステータス変更が完了しました')
+        this.$emit('completed')
         this.close()
       } catch (e) {
         notify('ステータス変更に失敗しました')
