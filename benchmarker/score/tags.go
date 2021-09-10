@@ -11,12 +11,13 @@ const (
 
 	// other
 	ActiveStudents           score.ScoreTag = "_O1.ActiveStudents"
-	FinishCourses            score.ScoreTag = "_O2.FinishCourses"
-	FinishCourseStudents     score.ScoreTag = "_O3.FinishCourseStudents"
-	GetAnnouncementsDetail   score.ScoreTag = "_O4.GetAnnouncementDetail"
-	CourseStartCourseUnder50 score.ScoreTag = "_O5.StartCourseUnder50"
-	CourseStartCourseFull    score.ScoreTag = "_O6.StartCourseFull"
-	CourseStartCourseOver50  score.ScoreTag = "!O7.StartCourseOver50"
+	StartCourseStudents      score.ScoreTag = "_O2.StartCourseStudents"
+	FinishCourses            score.ScoreTag = "_O3.FinishCourses"
+	FinishCourseStudents     score.ScoreTag = "_O4.FinishCourseStudents"
+	GetAnnouncementsDetail   score.ScoreTag = "_O5.GetAnnouncementDetail"
+	CourseStartCourseUnder50 score.ScoreTag = "_O6.StartCourseUnder50"
+	CourseStartCourseFull    score.ScoreTag = "_O7.StartCourseFull"
+	CourseStartCourseOver50  score.ScoreTag = "!O8.StartCourseOver50"
 
 	// registration scenario
 	RegGetGrades                    score.ScoreTag = "_R1.GetGrades"
@@ -54,9 +55,14 @@ var Tags = []score.ScoreTag{
 
 	// other
 	ActiveStudents,
+	StartCourseStudents,
 	FinishCourses,
 	FinishCourseStudents,
 	GetAnnouncementsDetail,
+
+	CourseStartCourseUnder50,
+	CourseStartCourseFull,
+	CourseStartCourseOver50,
 
 	// registration scenario
 	RegGetGrades,
@@ -83,10 +89,6 @@ var Tags = []score.ScoreTag{
 	CourseSubmitAssignment,
 	CourseDownloadSubmissions,
 	CourseRegisterScore,
-
-	CourseStartCourseUnder50,
-	CourseStartCourseFull,
-	CourseStartCourseOver50,
 }
 
 var (

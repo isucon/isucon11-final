@@ -603,6 +603,9 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		case studentLen > 50:
 			step.AddScore(score.CourseStartCourseOver50)
 		}
+		for i := 0; i < studentLen; i++ {
+			step.AddScore(score.StartCourseStudents)
+		}
 
 		var classTimes [ClassCountPerCourse]int64
 
