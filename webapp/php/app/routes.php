@@ -167,8 +167,7 @@ final class Handler
         try {
             $req = LoginRequest::fromJson((string)$request->getBody());
         } catch (UnexpectedValueException) {
-            // TODO: エラーハンドリング方法の統一待ち
-            $response->getBody()->write('bind request: ');
+            $response->getBody()->write('Invalid format.');
 
             return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
         }
