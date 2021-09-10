@@ -17,7 +17,7 @@ setlocale(LC_ALL, 'ja_JP.UTF-8');
 // Instantiate PHP-DI ContainerBuilder
 $containerBuilder = new ContainerBuilder();
 
-if (true) { // Should be set to true in production
+if (getenv('DEBUG') !== 'true') { // Should be set to true in production
     $containerBuilder->enableCompilation(__DIR__ . '/../var/cache');
 }
 
