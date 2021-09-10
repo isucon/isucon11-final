@@ -1,0 +1,57 @@
+name: Go
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - benchmarker/**
+      - webapp/golang/**
+      - webapp/frontend/**  # bench/assets.go の更新検知のために回す
+      - dev/frontend/Dockerfile
+      - dev/golang/Dockerfile
+      - dev/nginx/default.conf
+      - dev/Makefile
+      - dev/compose.yaml
+      - .github/workflows/golang.yml
+  pull_request:
+    paths:
+      - benchmarker/**
+      - webapp/golang/**
+      - webapp/frontend/**  # bench/assets.go の更新検知のために回す
+      - dev/frontend/Dockerfile
+      - dev/golang/Dockerfile
+      - dev/nginx/default.conf
+      - dev/Makefile
+      - dev/compose.yaml
+      - .github/workflows/golang.yml
+
+jobs:
+  lint:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          working-directory: ./webapp/golang
+          args: "-c ../../.github/.golangci.yaml"
+  test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup environments
+        run: make up
+        working-directory: ./dev
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: run -no-load
+        run: |
+          make
+          ./bin/benchmarker -no-load
+        working-directory: ./benchmarker
+      - name: teardown environments
+        run: make down
+        working-directory: ./dev
