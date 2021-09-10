@@ -423,6 +423,11 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
+	if _, err := tx.Exec("SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE", userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	var errors RegisterCoursesErrorResponse
 	var newlyAdded []Course
 	for _, courseReq := range req {
