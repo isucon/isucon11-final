@@ -330,3 +330,15 @@ func (c *Course) calcTotalScores() map[string]int {
 
 	return res
 }
+
+func NewCourseParam() *SearchCourseParam {
+	return &SearchCourseParam{
+		Type:      "",
+		Credit:    0,
+		Teacher:   "",
+		Period:    -1, // 0-5, -1で指定なし
+		DayOfWeek: -1, // 0-4, -1で指定なし
+		Keywords:  []string{},
+		Status:    "",
+	}
+}
