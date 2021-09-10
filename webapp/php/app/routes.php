@@ -1081,10 +1081,11 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
-        // TODO: stream の扱いについて要検証
-        if (file_put_contents(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . '.pdf', $file->getStream()) === false) {
+        try {
+            $file->moveTo(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . '.pdf');
+        } catch (Exception $e) {
             $this->dbh->rollBack();
-            $this->logger->error('failed to create file: ' . self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . 'pdf');
+            $this->logger->error('failed to move file: ' . $e->getMessage());
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
