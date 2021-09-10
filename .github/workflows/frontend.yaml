@@ -1,0 +1,60 @@
+name: Frontend
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    paths:
+      - 'webapp/frontend/**'
+
+defaults:
+  run:
+    working-directory: ./webapp/frontend
+
+jobs:
+  packages:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+          check-latest: true
+          cache: npm
+          cache-dependency-path: ./webapp/frontend/package-lock.json
+      - name: install dependencies
+        run: npm ci
+  lint:
+    runs-on: self-hosted
+    needs: [packages]
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+          check-latest: true
+          cache: npm
+          cache-dependency-path: ./webapp/frontend/package-lock.json
+      - name: install dependencies
+        run: npm ci
+      - name: run lint
+        run: npm run lint
+  build:
+    runs-on: self-hosted
+    needs: [packages]
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+          check-latest: true
+          cache: npm
+          cache-dependency-path: ./webapp/frontend/package-lock.json
+      - name: install dependencies
+        run: npm ci
+      - name: run build
+        run: npm run build

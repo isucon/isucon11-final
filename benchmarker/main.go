@@ -126,7 +126,7 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 	totalScore, rawScore, deductScore, rawBreakdown := score.Calc(scoreTable, deductionCount, timeoutCount)
 	if totalScore <= 0 {
 		totalScore = 0
-		if passed {
+		if passed && !noLoad {
 			passed = false
 			reason = "スコアが0点以下でした"
 		}
