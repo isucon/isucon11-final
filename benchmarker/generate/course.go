@@ -1,13 +1,68 @@
 package generate
 
 import (
+	"bufio"
+	"bytes"
+	_ "embed"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 )
+
+var (
+	//go:embed data/course.tsv
+	coursesData []byte
+)
+
+func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacityPerCourse int) ([]*model.Course, error) {
+	courses := make([]*model.Course, 0)
+	s := bufio.NewScanner(bytes.NewReader(coursesData))
+	for s.Scan() {
+		line := strings.Split(s.Text(), "\t")
+		credit, err := strconv.Atoi(line[5])
+		if err != nil {
+			panic(err)
+		}
+		period, err := strconv.Atoi(line[6])
+		if err != nil {
+			panic(err)
+		}
+		dayOfWeek, err := strconv.Atoi(line[7])
+		if err != nil {
+			panic(err)
+		}
+		teacher, ok := teacherMap[line[8]]
+		if !ok {
+			panic("unknown teacher")
+		}
+		param := &model.CourseParam{
+			Code:        line[1],
+			Type:        line[2],
+			Name:        line[3],
+			Description: line[4],
+			Credit:      credit,
+			Teacher:     teacher.Name,
+			Period:      period,
+			DayOfWeek:   dayOfWeek,
+			Keywords:    line[9],
+		}
+		course := model.NewCourse(param, line[0], teacher, studentCapacityPerCourse)
+		switch line[10] {
+		case "in-progress":
+			course.SetStatusToInProgress()
+		case "closed":
+			course.SetStatusToClosed()
+		default:
+			// registration なので変更しなくて良い
+		}
+		courses = append(courses, course)
+	}
+	return courses, nil
+}
 
 const (
 	majorCourseProb = 0.7

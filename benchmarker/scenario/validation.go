@@ -178,7 +178,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
-	for _, c := range s.initCourse {
+	for _, c := range s.initCourses {
 		expectCourses[c.ID] = c
 	}
 
