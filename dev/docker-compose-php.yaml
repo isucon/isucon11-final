@@ -3,17 +3,18 @@ version: '3'
 services:
   frontend:
     build:
-      context: ../frontend
+      context: ../webapp/frontend
       dockerfile: ../../dev/frontend/Dockerfile
     volumes:
-      - ../../dev/nginx:/etc/nginx/conf.d
+      - ./nginx:/etc/nginx/conf.d
     ports:
       - "8080:80"
     depends_on:
       - backend
-
   backend:
-    build: .
+    build:
+      context: ../webapp/php
+      dockerfile: ../../dev/php/Dockerfile
     restart: always
     environment:
       MYSQL_HOSTNAME: mysql
@@ -23,8 +24,10 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ../:/webapp
-
+      - ../webapp/data:/webapp/data:ro
+      - ../webapp/php:/webapp/php
+      - ../webapp/sql:/webapp/sql:ro
+      - ./php/php.ini:/usr/local/etc/php/php.ini
   mysql:
     image: mysql
     restart: always
@@ -41,7 +44,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql:/var/lib/mysql
-
   adminer:
     image: adminer:latest
     restart: always

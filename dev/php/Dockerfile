@@ -21,7 +21,6 @@ RUN ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
     locale-gen && \
     update-locale LANG=ja_JP.UTF-8
 
-COPY ./php.ini /usr/local/etc/php/php.ini
 COPY . .
 
 RUN ./composer.phar install
