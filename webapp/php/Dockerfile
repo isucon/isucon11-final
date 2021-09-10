@@ -3,7 +3,7 @@ FROM php:8.0.9
 WORKDIR /webapp/php
 
 RUN apt-get update && \
-    apt-get install -y wget libzip-dev unzip default-mysql-client zip && \
+    apt-get install -y wget libzip-dev unzip default-mysql-client zip locales && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -16,7 +16,10 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-RUN ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
+RUN ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
+    sed -i -E 's/# (ja_JP.UTF-8)/\1/' /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=ja_JP.UTF-8
 
 COPY ./php.ini /usr/local/etc/php/php.ini
 COPY . .
