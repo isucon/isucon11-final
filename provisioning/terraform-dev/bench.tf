@@ -75,6 +75,7 @@ resource "aws_instance" "bench-test" {
 
   tags = {
     Name = format("final-dev-bench-test-%02d", count.index + 1)
+    Role = "bench"
   }
 
   root_block_device {
