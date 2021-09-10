@@ -9,7 +9,6 @@
           <th>時間</th>
           <th>単位数</th>
           <th>ステータス</th>
-          <th>担当</th>
           <th></th>
         </tr>
       </thead>
@@ -27,7 +26,6 @@
               <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
               <td>{{ c.credit }}</td>
               <td>{{ formatStatus(c.status) }}</td>
-              <td>{{ c.teacher }}</td>
               <td>
                 <div class="relative">
                   <fa-icon
