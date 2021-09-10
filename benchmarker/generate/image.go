@@ -35,6 +35,9 @@ func init() {
 		}
 		r := bytes.NewReader(data)
 		config, format, err := image.DecodeConfig(r)
+		if err != nil {
+			panic(err)
+		}
 		images = append(images, &Image{
 			format:     format,
 			colorModel: config.ColorModel,
