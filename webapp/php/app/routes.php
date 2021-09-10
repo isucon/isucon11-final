@@ -1089,6 +1089,13 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
+        if (chmod(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . '.pdf', 0666) === false) {
+            $this->dbh->rollBack();
+            $this->logger->error('failed to change file permission: ' . self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $userId . 'pdf');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
         $this->dbh->commit();
 
         return $response->withStatus(StatusCodeInterface::STATUS_NO_CONTENT);
