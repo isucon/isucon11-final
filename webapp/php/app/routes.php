@@ -1396,7 +1396,7 @@ final class Handler
         $limit = 20;
         $offset = $limit * ($page - 1);
         // limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
-        $args = [$args, [$limit + 1, PDO::PARAM_INT], [$offset, PDO::PARAM_INT]];
+        $args = [...$args, [$limit + 1, PDO::PARAM_INT], [$offset, PDO::PARAM_INT]];
 
         try {
             $stmt = $this->dbh->prepare($query);
@@ -1520,7 +1520,7 @@ final class Handler
     public function addAnnouncement(Request $request, Response $response): Response
     {
         try {
-            $req = AddAnnouncementRequest::fromJson((string)$response->getBody());
+            $req = AddAnnouncementRequest::fromJson((string)$request->getBody());
         } catch (UnexpectedValueException) {
             $response->getBody()->write('Invalid format.');
 

@@ -610,7 +610,7 @@ final class Score
                 throw new UnexpectedValueException();
             }
 
-            $list[] = new self($data['user_code'], $data['score']);
+            $list[] = new self($score['user_code'], $score['score']);
         }
 
         return $list;
