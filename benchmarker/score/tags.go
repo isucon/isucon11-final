@@ -6,14 +6,14 @@ const (
 	// score
 	ScoreRegisterCourseStudents score.ScoreTag = "RegisterCourseStudents"
 	ScoreSubmitAssignment       score.ScoreTag = "SubmitAssignment"
-	ScoreFinishCourseStudents    score.ScoreTag = "FinishCourseStudents"
-	ScoreGetAnnouncementList     score.ScoreTag = "GetAnnouncementList"
+	ScoreFinishCourseStudents   score.ScoreTag = "FinishCourseStudents"
+	ScoreGetAnnouncementList    score.ScoreTag = "GetAnnouncementList"
 
 	// other
 	ActiveStudents           score.ScoreTag = "_O1.ActiveStudents"
-	FinishCourses          score.ScoreTag = "_O2.FinishCourses"
-	FinishCourseStudents   score.ScoreTag = "_O3.FinishCourseStudents"
-	GetAnnouncementsDetail score.ScoreTag = "_O4.GetAnnouncementDetail"
+	FinishCourses            score.ScoreTag = "_O2.FinishCourses"
+	FinishCourseStudents     score.ScoreTag = "_O3.FinishCourseStudents"
+	GetAnnouncementsDetail   score.ScoreTag = "_O4.GetAnnouncementDetail"
 	CourseStartCourseUnder50 score.ScoreTag = "_O5.StartCourseUnder50"
 	CourseStartCourseFull    score.ScoreTag = "_O6.StartCourseFull"
 	CourseStartCourseOver50  score.ScoreTag = "!O7.StartCourseOver50"
@@ -24,8 +24,8 @@ const (
 	RegGetCourseDetail              score.ScoreTag = "_R3.GetCourseDetail"
 	RegGetCourseDetailVerifySkipped score.ScoreTag = "_R4.GetCourseDetailVerifySkipped"
 	RegGetRegisteredCourses         score.ScoreTag = "_R5.GetRegisteredCourses"
-	RegRegisterCourses        score.ScoreTag = "_R6.RegisterCourses"
-	RegRegisterCourseStudents score.ScoreTag = "_R7.RegisterCourseStudents"
+	RegRegisterCourses              score.ScoreTag = "_R6.RegisterCourses"
+	RegRegisterCourseStudents       score.ScoreTag = "_R7.RegisterCourseStudents"
 
 	// read announcement scenario
 	UnreadGetAnnouncementList   score.ScoreTag = "_U1.GetAnnouncementList"
