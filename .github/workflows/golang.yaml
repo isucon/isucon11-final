@@ -53,5 +53,6 @@ jobs:
           ./bin/benchmarker -no-load -exit-status
         working-directory: ./benchmarker
       - name: teardown environments
+        if: ${{ always() }}
         run: make down
         working-directory: ./dev
