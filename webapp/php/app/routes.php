@@ -1249,7 +1249,8 @@ final class Handler
 
         // ファイル名を指定の形式に変更
         foreach ($submissions as $submission) {
-            if (exec(sprintf(
+            if (
+                exec(sprintf(
                     'cp %s %s',
                     escapeshellarg(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf'),
                     escapeshellarg($tmpDir . $submission->userCode . '-' . $submission->fileName),
@@ -1260,7 +1261,8 @@ final class Handler
         }
 
         // -i 'tmpDir/*': 空zipを許す
-        if (exec(sprintf(
+        if (
+            exec(sprintf(
                 'zip -j -r %s %s -i %s',
                 escapeshellarg($zipFilePath),
                 escapeshellarg($tmpDir),
