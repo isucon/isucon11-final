@@ -5,6 +5,7 @@ use futures::TryStreamExt as _;
 use num_traits::ToPrimitive as _;
 use sqlx::Arguments as _;
 use sqlx::Executor as _;
+use tokio::io::AsyncWriteExt as _;
 
 const SQL_DIRECTORY: &str = "../sql/";
 const ASSIGNMENTS_DIRECTORY: &str = "../assignments/";
@@ -1308,12 +1309,19 @@ async fn submit_assignment(
     .await
     .map_err(SqlxError)?;
 
-    let data = file
+    let mut data = file
         .map_ok(|b| web::BytesMut::from(&b[..]))
         .try_concat()
         .await?;
     let dst = format!("{}{}-{}.pdf", ASSIGNMENTS_DIRECTORY, class_id, user_id);
-    tokio::fs::write(&dst, data).await?;
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o666)
+        .open(&dst)
+        .await?;
+    file.write_all_buf(&mut data).await?;
 
     tx.commit().await.map_err(SqlxError)?;
 
