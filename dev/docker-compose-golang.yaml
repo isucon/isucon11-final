@@ -26,7 +26,8 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ../webapp:/webapp
+      - ../webapp/data:/webapp/data:ro
+      - ../webapp/sql:/webapp/sql:ro
   mysql:
     image: mysql
     restart: always
