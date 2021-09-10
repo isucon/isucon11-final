@@ -95,19 +95,17 @@ export default Vue.extend({
       ])
       const responseBody: GetAnnouncementResponse = announcementResult.data
       const link = announcementResult.headers.link
-      const announcements = Object.values(responseBody.announcements ?? []).map(
-        (item) => {
-          const announce: Announcement = {
-            id: item.id,
-            courseId: item.courseId,
-            courseName: item.courseName,
-            title: item.title,
-            unread: item.unread,
-            createdAt: new Date(item.createdAt * 1000).toLocaleString(),
-          }
-          return announce
+      const announcements: Announcement[] = Object.values(
+        responseBody.announcements ?? []
+      ).map((item) => {
+        return {
+          id: item.id,
+          courseId: item.courseId,
+          courseName: item.courseName,
+          title: item.title,
+          unread: item.unread,
         }
-      )
+      })
       return {
         course: course.data,
         announcements,

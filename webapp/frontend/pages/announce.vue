@@ -62,11 +62,7 @@
 <script lang="ts">
 import Vue from 'vue'
 import { Context } from '@nuxt/types'
-import {
-  Announcement,
-  AnnouncementResponse,
-  GetAnnouncementResponse,
-} from '~/types/courses'
+import { Announcement, GetAnnouncementResponse } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
 import TextField from '~/components/common/TextField.vue'
 import AnnouncementList from '~/components/AnnouncementList.vue'
@@ -99,19 +95,18 @@ export default Vue.extend({
       const response = await $axios.get('/api/announcements', { params: query })
       const responseBody: GetAnnouncementResponse = response.data
       const link = response.headers.link
-      const announcements = Object.values(responseBody.announcements ?? []).map(
-        (item: AnnouncementResponse): Announcement => {
-          return {
-            id: item.id,
-            courseId: item.courseId,
-            courseName: item.courseName,
-            title: item.title,
-            unread: item.unread,
-            createdAt: new Date(item.createdAt * 1000).toLocaleString(),
-            hasError: false,
-          }
+      const announcements: Announcement[] = Object.values(
+        responseBody.announcements ?? []
+      ).map((item) => {
+        return {
+          id: item.id,
+          courseId: item.courseId,
+          courseName: item.courseName,
+          title: item.title,
+          unread: item.unread,
+          hasError: false,
         }
-      )
+      })
       const count = responseBody.unreadCount
       return {
         innerAnnouncements: announcements,

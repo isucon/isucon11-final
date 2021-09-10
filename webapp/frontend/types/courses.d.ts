@@ -54,7 +54,6 @@ export type Announcement = {
   courseName: string
   title: string
   unread: boolean
-  createdAt: string
   message?: string
   hasError?: boolean
 }
@@ -65,7 +64,6 @@ export type AnnouncementResponse = {
   courseName: string
   title: string
   unread: boolean
-  createdAt: number
 }
 
 export type GetAnnouncementResponse = {
