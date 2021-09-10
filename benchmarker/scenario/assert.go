@@ -38,14 +38,6 @@ func AssertGreaterOrEqual(msg string, expectMin, actual int) bool {
 	return r
 }
 
-func AssertInRange(msg string, expectMin, expectMax, actual int) bool {
-	r := expectMin <= actual && actual <= expectMax
-	if !r {
-		AdminLogger.Printf("%s: expected: %d ~ %d / actual: %d", msg, expectMin, expectMax, actual)
-	}
-	return r
-}
-
 func AssertWithinTolerance(msg string, expect, actual, tolerance float64) bool {
 	r := math.Abs(expect-actual) <= tolerance
 	if !r {

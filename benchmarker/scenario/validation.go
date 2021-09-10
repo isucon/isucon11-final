@@ -162,12 +162,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				step.AddError(errNotMatchOver)
 				return
 			}
-
-			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
-			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
-				step.AddError(errNotMatchUnreadCount)
-				return
-			}
 		}()
 	}
 	wg.Wait()
