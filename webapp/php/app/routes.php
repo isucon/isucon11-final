@@ -365,6 +365,7 @@ final class Handler
 
             if ($course->status !== self::COURSE_STATUS_REGISTRATION) {
                 $errors->notRegistrableStatus[] = $course->id;
+                continue;
             }
 
             // すでに履修登録済みの科目は無視する
@@ -410,6 +411,7 @@ final class Handler
             foreach ($alreadyRegistered as $course2) {
                 if ($course1->id !== $course2->id && $course1->period === $course2->period && $course1->dayOfWeek === $course2->dayOfWeek) {
                     $errors->scheduleConflict[] = $course1->id;
+                    break;
                 }
             }
         }
@@ -1051,7 +1053,7 @@ final class Handler
             $this->dbh->rollBack();
             $response->getBody()->write('No such class.');
 
-            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
         }
         if ($row['submission_closed']) {
             $this->dbh->rollBack();
@@ -1239,8 +1241,7 @@ final class Handler
 
         // ファイル名を指定の形式に変更
         foreach ($submissions as $submission) {
-            if (
-                exec(sprintf(
+            if (exec(sprintf(
                     'cp %s %s',
                     escapeshellarg(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf'),
                     escapeshellarg($tmpDir . $submission->userCode . '-' . $submission->fileName),
@@ -1251,7 +1252,13 @@ final class Handler
         }
 
         // -i 'tmpDir/*': 空zipを許す
-        if (exec(sprintf('zip -j -r %s  %s -i %s*', $zipFilePath, $tmpDir, $tmpDir)) === false) {
+        if (exec(sprintf(
+                'zip -j -r %s %s -i %s',
+                escapeshellarg($zipFilePath),
+                escapeshellarg($tmpDir),
+                escapeshellarg($tmpDir . '*'),
+            )) === false
+        ) {
             return 'failed to zip';
         }
 

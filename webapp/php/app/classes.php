@@ -212,11 +212,11 @@ final class RegisterCoursesErrorResponse implements JsonSerializable
         }
 
         if (!empty($this->notRegistrableStatus)) {
-            $data['not_registrable_status'] = $this->courseNotFound;
+            $data['not_registrable_status'] = $this->notRegistrableStatus;
         }
 
         if (!empty($this->scheduleConflict)) {
-            $data['schedule_conflict'] = $this->courseNotFound;
+            $data['schedule_conflict'] = $this->scheduleConflict;
         }
 
         return $data;
