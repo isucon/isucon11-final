@@ -25,6 +25,7 @@ const SqlDirectory = "../sql/";
 const AssignmentsDirectory = "../assignments/";
 const InitDataDirectory = "../data/";
 const SessionName = "isucholar_nodejs";
+const MysqlErrNumDuplicateEntry = 1062;
 
 const dbinfo: mysql.PoolOptions = {
   host: process.env["MYSQL_HOSTNAME"] ?? "127.0.0.1",
@@ -920,9 +921,31 @@ coursesApi.post("", isAdmin, async (req, res) => {
       );
     } catch (err) {
       await db.rollback();
-
-      // TODO
-
+      if (
+        err &&
+        typeof err === "object" &&
+        (err as { errno: number }).errno === MysqlErrNumDuplicateEntry
+      ) {
+        const [[course]] = await db.query<Course[]>(
+          "SELECT * FROM `courses` WHERE `code` = ?",
+          [request.code]
+        );
+        if (
+          request.type !== course.type ||
+          request.name !== course.name ||
+          request.description !== course.description ||
+          request.credit !== course.credit ||
+          request.period !== course.period ||
+          request.day_of_week !== course.day_of_week ||
+          request.keywords !== course.keywords
+        ) {
+          return res
+            .status(409)
+            .send("A course with the same code already exists.");
+        }
+        const response: AddCourseResponse = { id: course.id };
+        return res.status(201).json(response);
+      }
       console.error(err);
       return res.status(500).send();
     }
@@ -1157,9 +1180,26 @@ coursesApi.post(
         );
       } catch (err) {
         await db.rollback();
-
-        // TODO
-
+        if (
+          err &&
+          typeof err === "object" &&
+          (err as { errno: number }).errno === MysqlErrNumDuplicateEntry
+        ) {
+          const [[cls]] = await db.query<Class[]>(
+            "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?",
+            [courseId, request.part]
+          );
+          if (
+            request.title !== cls.title ||
+            request.description !== cls.description
+          ) {
+            return res
+              .status(409)
+              .send("A class with the same part already exists.");
+          }
+          const response: AddClassResponse = { class_id: cls.id };
+          return res.status(201).json(response);
+        }
         console.error(err);
         return res.status(500).send();
       }
@@ -1554,6 +1594,13 @@ announcementsApi.get(
   }
 );
 
+interface Announcement extends RowDataPacket {
+  id: string;
+  course_id: string;
+  title: string;
+  message: string;
+}
+
 interface AddAnnouncementRequest {
   id: string;
   course_id: string;
@@ -1605,9 +1652,26 @@ announcementsApi.post("", isAdmin, async (req, res) => {
       );
     } catch (err) {
       await db.rollback();
-
-      // TODO
-
+      if (
+        err &&
+        typeof err === "object" &&
+        (err as { errno: number }).errno === MysqlErrNumDuplicateEntry
+      ) {
+        const [[announcement]] = await db.query<Announcement[]>(
+          "SELECT * FROM `announcements` WHERE `id` = ?",
+          [request.id]
+        );
+        if (
+          request.course_id !== announcement.course_id ||
+          request.title !== announcement.title ||
+          request.message !== announcement.message
+        ) {
+          return res
+            .status(409)
+            .send("An announcement with the same id already exists.");
+        }
+        return res.status(201).send();
+      }
       console.error(err);
       return res.status(500).send();
     }
