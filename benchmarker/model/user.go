@@ -89,21 +89,6 @@ func (s *Student) AnnouncementsMap() map[string]*AnnouncementStatus {
 	return result
 }
 
-func (s *Student) ExpectUnreadRange() (min, max int) {
-	s.rmu.RLock()
-	defer s.rmu.RUnlock()
-
-	for _, a := range s.announcements {
-		if a.Unread {
-			if !a.Dirty {
-				min++
-			}
-			max++
-		}
-	}
-	return
-}
-
 func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
