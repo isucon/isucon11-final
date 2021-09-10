@@ -50,7 +50,7 @@ jobs:
       - name: run -no-load
         run: |
           make
-          ./bin/benchmarker -no-load
+          ./bin/benchmarker -no-load -exit-status
         working-directory: ./benchmarker
       - name: teardown environments
         run: make down
