@@ -3,7 +3,7 @@ FROM php:8.0.9
 WORKDIR /webapp/php
 
 RUN apt-get update && \
-    apt-get install -y wget libzip-dev unzip default-mysql-client && \
+    apt-get install -y wget libzip-dev unzip default-mysql-client zip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
