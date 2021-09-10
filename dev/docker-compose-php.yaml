@@ -25,7 +25,6 @@ services:
       - mysql
     volumes:
       - ../webapp/data:/webapp/data:ro
-      - ../webapp/php:/webapp/php
       - ../webapp/sql:/webapp/sql:ro
       - ./php/php.ini:/usr/local/etc/php/php.ini
   mysql:
