@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,6 +25,7 @@ import (
 const (
 	SQLDirectory              = "../sql/"
 	AssignmentsDirectory      = "../assignments/"
+	InitDataDirectory         = "../data/"
 	SessionName               = "isucholar_go"
 	mysqlErrNumDuplicateEntry = 1062
 )
@@ -98,9 +98,10 @@ func (h *handlers) Initialize(c echo.Context) error {
 	files := []string{
 		"1_schema.sql",
 		"2_init.sql",
+		"3_sample.sql",
 	}
 	for _, file := range files {
-		data, err := ioutil.ReadFile(SQLDirectory + file)
+		data, err := os.ReadFile(SQLDirectory + file)
 		if err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
@@ -115,7 +116,7 @@ func (h *handlers) Initialize(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	if err := exec.Command("mkdir", AssignmentsDirectory).Run(); err != nil {
+	if err := exec.Command("cp", "-r", InitDataDirectory, AssignmentsDirectory).Run(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
@@ -1048,14 +1049,14 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	dst, err := os.Create(AssignmentsDirectory + classID + "-" + userID + ".pdf")
+	data, err := io.ReadAll(file)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	defer dst.Close()
 
-	if _, err = io.Copy(dst, file); err != nil {
+	dst := AssignmentsDirectory + classID + "-" + userID + ".pdf"
+	if err := os.WriteFile(dst, data, 0644); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}

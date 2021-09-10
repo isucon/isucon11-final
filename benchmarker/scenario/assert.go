@@ -1,6 +1,9 @@
 package scenario
 
-import "reflect"
+import (
+	"math"
+	"reflect"
+)
 
 func AssertEqual(msg string, expected interface{}, actual interface{}) bool {
 	r := assertEqual(expected, actual)
@@ -27,10 +30,26 @@ func assertEqual(expected interface{}, actual interface{}) bool {
 	return false
 }
 
+func AssertGreaterOrEqual(msg string, expectMin, actual int) bool {
+	r := expectMin <= actual
+	if !r {
+		AdminLogger.Printf("%s: expected: >= %d / actual: %d", msg, expectMin, actual)
+	}
+	return r
+}
+
 func AssertInRange(msg string, expectMin, expectMax, actual int) bool {
 	r := expectMin <= actual && actual <= expectMax
 	if !r {
 		AdminLogger.Printf("%s: expected: %d ~ %d / actual: %d", msg, expectMin, expectMax, actual)
+	}
+	return r
+}
+
+func AssertWithinTolerance(msg string, expect, actual, tolerance float64) bool {
+	r := math.Abs(expect-actual) <= tolerance
+	if !r {
+		AdminLogger.Printf("%s: expected: %f ± %.2f / actual: %f", msg, expect, tolerance, actual)
 	}
 	return r
 }
