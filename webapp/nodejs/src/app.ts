@@ -1768,6 +1768,8 @@ announcementsApi.get(
     } catch (err) {
       console.error(err);
       return res.status(500).send();
+    } finally {
+      db.release();
     }
   }
 );
