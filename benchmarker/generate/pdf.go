@@ -371,7 +371,7 @@ func (tc *textContents) write(w io.Writer, _ int) error {
 
 	content.WriteString("\tBT\n")
 	content.WriteString(fmt.Sprintf("\t\t%0.2f %0.2f Td\n", tc.x, tc.y))
-	content.WriteString(fmt.Sprintf("\t\t%s %0.2f Tf\n", tc.fontID, tc.fontSize))
+	content.WriteString(fmt.Sprintf("\t\t/%s %0.2f Tf\n", tc.fontID, tc.fontSize))
 	content.WriteString(fmt.Sprintf("\t\t%0.2f TL\n", tc.fontSize*1.1))
 	for _, line := range strings.Split(tc.text, "\n") {
 		content.WriteString(fmt.Sprintf("\t\t(%s) Tj T*\n", line))
