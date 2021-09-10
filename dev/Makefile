@@ -1,10 +1,12 @@
+TARGET ?= golang
+
 .PHONY: up
 up: ## prepare dev environment
-	@docker-compose up -d --build
+	@docker-compose -f docker-compose-$(TARGET).yaml up -d --build
 
 .PHONY: down
 down: ## destroy dev environment
-	@docker-compose down -v
+	@docker-compose -f docker-compose-$(TARGET).yaml down -v
 
 .PHONY: help
 help: ## Show help
