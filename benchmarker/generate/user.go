@@ -30,9 +30,10 @@ func loadUserAccountData(data []byte, isAdmin bool) ([]*model.UserAccount, error
 	for s.Scan() {
 		line := strings.Split(s.Text(), "\t")
 		account := &model.UserAccount{
-			Code:        line[0],
-			Name:        line[1],
-			RawPassword: line[2],
+			ID:          line[0],
+			Code:        line[1],
+			Name:        line[2],
+			RawPassword: line[3],
 			IsAdmin:     isAdmin,
 		}
 		userDataSet = append(userDataSet, account)

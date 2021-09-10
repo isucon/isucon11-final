@@ -12,6 +12,7 @@ import (
 )
 
 type UserAccount struct {
+	ID          string // for generate course
 	Code        string
 	Name        string
 	RawPassword string

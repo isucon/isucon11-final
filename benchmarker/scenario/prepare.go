@@ -1074,7 +1074,6 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 	// 存在しないユーザでのログイン
 	hres, err := LoginAction(ctx, student.Agent, &model.UserAccount{
 		Code:        "X12345",
-		Name:        "unknown",
 		RawPassword: "password",
 		IsAdmin:     false,
 	})
@@ -1088,7 +1087,6 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 	// 間違ったパスワードでのログイン
 	hres, err = LoginAction(ctx, student.Agent, &model.UserAccount{
 		Code:        student.Code,
-		Name:        student.Name,
 		RawPassword: student.RawPassword + "abc",
 		IsAdmin:     false,
 	})
