@@ -51,14 +51,8 @@ type Config struct {
 }
 
 func NewScenario(config *Config) (*Scenario, error) {
-	studentsData, err := generate.LoadStudentsData()
-	if err != nil {
-		return nil, err
-	}
-	teachersData, err := generate.LoadTeachersData()
-	if err != nil {
-		return nil, err
-	}
+	studentsData := generate.LoadStudentsData()
+	teachersData := generate.LoadTeachersData()
 
 	teachers := make([]*model.Teacher, len(teachersData))
 	teachersMap := make(map[string]*model.Teacher, len(teachersData))
@@ -81,10 +75,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 
 	teachersMap[testTeacher.ID] = testTeacher
 
-	initCourses, err := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse)
-	if err != nil {
-		return nil, err
-	}
+	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse)
 
 	return &Scenario{
 		Config:        *config,
@@ -128,14 +119,8 @@ func (s *Scenario) Reset() {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	studentsData, err := generate.LoadStudentsData()
-	if err != nil {
-		panic(err)
-	}
-	teachersData, err := generate.LoadTeachersData()
-	if err != nil {
-		panic(err)
-	}
+	studentsData := generate.LoadStudentsData()
+	teachersData := generate.LoadTeachersData()
 
 	teachers := make([]*model.Teacher, len(teachersData))
 	teachersMap := make(map[string]*model.Teacher, len(teachersData))
@@ -156,10 +141,7 @@ func (s *Scenario) Reset() {
 
 	teachersMap[testTeacher.ID] = testTeacher
 
-	initCourses, err := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse)
-	if err != nil {
-		panic(err)
-	}
+	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse)
 
 	s.CourseManager = model.NewCourseManager()
 	s.sPubSub = pubsub.NewPubSub()

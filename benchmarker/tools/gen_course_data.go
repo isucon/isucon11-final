@@ -18,10 +18,7 @@ const (
 )
 
 func main() {
-	teachersData, err := generate.LoadTeachersData()
-	if err != nil {
-		log.Fatal(err)
-	}
+	teachersData := generate.LoadTeachersData()
 	teachers := make([]*model.Teacher, teacherCount)
 	for i, account := range teachersData[:teacherCount] {
 		teachers[i] = model.NewTeacher(account, nil)

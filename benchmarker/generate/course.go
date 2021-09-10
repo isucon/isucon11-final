@@ -18,11 +18,14 @@ var (
 	coursesData []byte
 )
 
-func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacityPerCourse int) ([]*model.Course, error) {
+func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacityPerCourse int) []*model.Course {
 	courses := make([]*model.Course, 0)
 	s := bufio.NewScanner(bytes.NewReader(coursesData))
 	for s.Scan() {
 		line := strings.Split(s.Text(), "\t")
+		if len(line) != 11 {
+			panic("invalid course data")
+		}
 		credit, err := strconv.Atoi(line[5])
 		if err != nil {
 			panic(err)
@@ -61,7 +64,7 @@ func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacity
 		}
 		courses = append(courses, course)
 	}
-	return courses, nil
+	return courses
 }
 
 const (
