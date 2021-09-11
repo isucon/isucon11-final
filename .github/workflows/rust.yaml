@@ -37,6 +37,7 @@ jobs:
           args: --manifest-path webapp/rust/Cargo.toml
 
   test:
+    name: Test
     runs-on: self-hosted
     timeout-minutes: 15
     steps:
