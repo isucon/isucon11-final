@@ -107,10 +107,10 @@ async function isLoggedIn(
     return res.status(500).send();
   }
   if (req.session.isNew) {
-    return res.status(401).json({ message: "You are not logged in." });
+    return res.status(401).type("text").send("You are not logged in.");
   }
   if (!("userID" in req.session)) {
-    return res.status(401).json({ message: "You are not logged in." });
+    return res.status(401).type("text").send("You are not logged in.");
   }
   next();
 }
@@ -129,7 +129,7 @@ async function isAdmin(
     return res.status(500).send();
   }
   if (!req.session["isAdmin"]) {
-    return res.status(403).json({ message: "You are not admin user." });
+    return res.status(403).type("text").send("You are not admin user.");
   }
   next();
 }
@@ -227,7 +227,7 @@ function isValidLoginRequest(body: LoginRequest): body is LoginRequest {
 app.post("/login", async (req, res) => {
   const request = req.body;
   if (!isValidLoginRequest(request)) {
-    return res.status(400).json({ message: "Invalid format." });
+    return res.status(400).type("text").send("Invalid format.");
   }
 
   const db = await pool.getConnection();
@@ -237,17 +237,17 @@ app.post("/login", async (req, res) => {
       [request.code]
     );
     if (!user) {
-      return res.status(401).json({ message: "Code or Password is wrong." });
+      return res.status(401).type("text").send("Code or Password is wrong.");
     }
 
     if (
       !(await bcrypt.compare(request.password, user.hashed_password.toString()))
     ) {
-      return res.status(401).json({ message: "Code or Password is wrong." });
+      return res.status(401).type("text").send("Code or Password is wrong.");
     }
 
     if (req.session && req.session["userID"] === user.id) {
-      return res.status(400).json({ message: "You are already logged in." });
+      return res.status(400).type("text").send("You are already logged in.");
     }
 
     req.session = {
@@ -405,7 +405,7 @@ usersApi.put("/me/courses", async (req, res) => {
 
   const request = req.body;
   if (!isValidRegisterCourseRequest(request)) {
-    return res.status(400).json({ message: "Invalid format." });
+    return res.status(400).type("text").send("Invalid format.");
   }
   request.sort((a, b) => {
     if (a.id < b.id) {
@@ -786,7 +786,7 @@ coursesApi.get(
     } else {
       page = parseInt(req.query.page, 10);
       if (isNaN(page) || page <= 0) {
-        return res.status(400).json({ message: "Invalid page." });
+        return res.status(400).type("text").send("Invalid page.");
       }
     }
     const limit = 20;
@@ -885,17 +885,17 @@ coursesApi.post("", isAdmin, async (req, res) => {
 
   const request = req.body;
   if (!isValidAddCourseRequest(request)) {
-    return res.status(400).json({ message: "Invalid format." });
+    return res.status(400).type("text").send("Invalid format.");
   }
 
   if (
     request.type !== CourseType.LiberalArts &&
     request.type !== CourseType.MajorSubjects
   ) {
-    return res.status(400).json({ message: "Invalid course type." });
+    return res.status(400).type("text").send("Invalid course type.");
   }
   if (!DaysOfWeek.includes(request.day_of_week)) {
-    return res.status(400).json({ message: "Invalid day of week." });
+    return res.status(400).type("text").send("Invalid day of week.");
   }
 
   const db = await pool.getConnection();
@@ -941,7 +941,8 @@ coursesApi.post("", isAdmin, async (req, res) => {
         ) {
           return res
             .status(409)
-            .json({ message: "A course with the same code already exists." });
+            .type("text")
+            .send("A course with the same code already exists.");
         }
         const response: AddCourseResponse = { id: course.id };
         return res.status(201).json(response);
@@ -994,7 +995,7 @@ coursesApi.get(
         [courseId]
       );
       if (!response) {
-        return res.status(404).json({ message: "No such course." });
+        return res.status(404).type("text").send("No such course.");
       }
 
       return res.status(200).json({ ...response, teacher_id: undefined });
@@ -1026,7 +1027,7 @@ coursesApi.put(
 
     const request = req.body;
     if (!isValidSetCourseStatusRequest(request)) {
-      return res.status(400).json({ message: "Invalid format." });
+      return res.status(400).type("text").send("Invalid format.");
     }
 
     const db = await pool.getConnection();
@@ -1036,7 +1037,7 @@ coursesApi.put(
         [courseId]
       );
       if (cnt === 0) {
-        return res.status(404).json({ message: "No such course." });
+        return res.status(404).type("text").send("No such course.");
       }
 
       await db.query<ResultSetHeader>(
@@ -1088,7 +1089,7 @@ coursesApi.get(
         [courseId]
       );
       if (cnt === 0) {
-        return res.status(404).json({ message: "No such course." });
+        return res.status(404).type("text").send("No such course.");
       }
 
       const [classes] = await db.query<ClassWithSubmitted[]>(
@@ -1152,7 +1153,7 @@ coursesApi.post(
 
     const request = req.body;
     if (!isValidAddClassRequest(request)) {
-      return res.status(400).json({ message: "Invalid format." });
+      return res.status(400).type("text").send("Invalid format.");
     }
 
     const db = await pool.getConnection();
@@ -1165,13 +1166,14 @@ coursesApi.post(
       );
       if (!course) {
         await db.rollback();
-        return res.status(404).json({ message: "No such course." });
+        return res.status(404).type("text").send("No such course.");
       }
       if (course.status !== CourseStatus.StatusInProgress) {
         await db.rollback();
         return res
           .status(400)
-          .json({ message: "This course is not in-progress." });
+          .type("text")
+          .send("This course is not in-progress.");
       }
 
       const classId = newUlid();
@@ -1197,7 +1199,8 @@ coursesApi.post(
           ) {
             return res
               .status(409)
-              .json({ message: "A class with the same part already exists." });
+              .type("text")
+              .send("A class with the same part already exists.");
           }
           const response: AddClassResponse = { class_id: cls.id };
           return res.status(201).json(response);
@@ -1246,13 +1249,14 @@ coursesApi.post(
       );
       if (!course) {
         await db.rollback();
-        return res.status(404).json({ message: "No such course." });
+        return res.status(404).type("text").send("No such course.");
       }
       if (course.status !== CourseStatus.StatusInProgress) {
         await db.rollback();
         return res
           .status(400)
-          .json({ message: "This course is not in-progress." });
+          .type("text")
+          .send("This course is not in-progress.");
       }
 
       const [[{ registrationCount }]] = await db.query<
@@ -1265,7 +1269,8 @@ coursesApi.post(
         await db.rollback();
         return res
           .status(400)
-          .json({ message: "You have not taken this course." });
+          .type("text")
+          .send("You have not taken this course.");
       }
 
       const [[row]] = await db.query<
@@ -1275,18 +1280,19 @@ coursesApi.post(
       ]);
       if (!row) {
         await db.rollback();
-        return res.status(404).json({ message: "No such class." });
+        return res.status(404).type("text").send("No such class.");
       }
       if (row.submission_closed) {
         await db.rollback();
         return res
           .status(400)
-          .json({ message: "Submission has been closed for this class." });
+          .type("text")
+          .send("Submission has been closed for this class.");
       }
 
       if (!req.file) {
         await db.rollback();
-        return res.status(400).json({ message: "Invalid file." });
+        return res.status(400).type("text").send("Invalid file.");
       }
       await db.query(
         "INSERT INTO `submissions` (`user_id`, `class_id`, `file_name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `file_name` = VALUES(`file_name`)",
@@ -1351,19 +1357,20 @@ coursesApi.put(
       ]);
       if (!row) {
         await db.rollback();
-        return res.status(404).json({ message: "No such class." });
+        return res.status(404).type("text").send("No such class.");
       }
       if (!row.submission_closed) {
         await db.rollback();
         return res
           .status(400)
-          .json({ message: "This assignment is not closed yet." });
+          .type("text")
+          .send("This assignment is not closed yet.");
       }
 
       const request = req.body;
       if (!isValidRegisterScoresRequest(request)) {
         await db.rollback();
-        return res.status(400).json({ message: "Invalid format." });
+        return res.status(400).type("text").send("Invalid format.");
       }
 
       for (const score of request) {
@@ -1411,7 +1418,7 @@ coursesApi.get(
       );
       if (classCount === 0) {
         await db.rollback();
-        return res.status(404).json({ message: "No such class." });
+        return res.status(404).type("text").send("No such class.");
       }
 
       const [submissions] = await db.query<Submission[]>(
@@ -1536,7 +1543,7 @@ announcementsApi.get(
     } else {
       page = parseInt(req.query.page, 10);
       if (isNaN(page) || page <= 0) {
-        return res.status(400).json({ message: "Invalid page." });
+        return res.status(400).type("text").send("Invalid page.");
       }
     }
     const limit = 20;
@@ -1632,7 +1639,7 @@ function isValidAddAnnouncementRequest(
 announcementsApi.post("", isAdmin, async (req, res) => {
   const request = req.body;
   if (!isValidAddAnnouncementRequest(request)) {
-    return res.status(400).json({ message: "Invalid format." });
+    return res.status(400).type("text").send("Invalid format.");
   }
 
   const db = await pool.getConnection();
@@ -1642,7 +1649,7 @@ announcementsApi.post("", isAdmin, async (req, res) => {
       [request.course_id]
     );
     if (cnt === 0) {
-      return res.status(404).json({ message: "No such course." });
+      return res.status(404).type("text").send("No such course.");
     }
   } catch (err) {
     console.error(err);
@@ -1750,7 +1757,7 @@ announcementsApi.get(
         [announcementId, userId]
       );
       if (!announcement) {
-        return res.status(404).json({ message: "No such announcement." });
+        return res.status(404).type("text").send("No such announcement.");
       }
 
       const [[{ registrationCount }]] = await db.query<
@@ -1760,7 +1767,7 @@ announcementsApi.get(
         [announcement.course_id, userId]
       );
       if (registrationCount === 0) {
-        return res.status(404).json({ message: "No such announcement." });
+        return res.status(404).type("text").send("No such announcement.");
       }
 
       await db.query(
