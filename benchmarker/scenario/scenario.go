@@ -20,7 +20,8 @@ var (
 
 type Scenario struct {
 	Config
-	CourseManager *model.CourseManager
+	CapacityCounter *model.CapacityCounter
+	CourseManager   *model.CourseManager
 
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
@@ -60,9 +61,11 @@ func NewScenario(config *Config) (*Scenario, error) {
 		return nil, err
 	}
 
+	cc := model.NewCapacityCounter()
 	return &Scenario{
-		Config:        *config,
-		CourseManager: model.NewCourseManager(),
+		Config:          *config,
+		CapacityCounter: cc,
+		CourseManager:   model.NewCourseManager(cc),
 
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
@@ -111,7 +114,8 @@ func (s *Scenario) Reset() {
 		panic(err)
 	}
 
-	s.CourseManager = model.NewCourseManager()
+	s.CapacityCounter = model.NewCapacityCounter()
+	s.CourseManager = model.NewCourseManager(s.CapacityCounter)
 	s.sPubSub = pubsub.NewPubSub()
 	s.cPubSub = pubsub.NewPubSub()
 	s.userPool = NewUserPool(studentsData, teachersData, s.BaseURL)

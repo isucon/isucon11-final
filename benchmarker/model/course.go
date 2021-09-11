@@ -40,6 +40,7 @@ type Course struct {
 	registeredStudents map[string]*Student
 	reservations       int
 	capacity           int // 登録学生上限
+	capacityCounter    *CapacityCounter
 	classes            []*Class
 	status             api.CourseStatus
 
@@ -59,13 +60,14 @@ type SearchCourseParam struct {
 	Status    string
 }
 
-func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *Course {
+func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int, capacityCounter *CapacityCounter) *Course {
 	c := &Course{
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
 		registeredStudents: make(map[string]*Student, capacity),
 		capacity:           capacity,
+		capacityCounter:    capacityCounter,
 		classes:            make([]*Class, 0, ClassCountPerCourse),
 		status:             api.StatusRegistration,
 
@@ -188,6 +190,15 @@ func (c *Course) CommitReservation(s *Student) {
 			close(c.closer)
 		}
 	}
+	// 仮登録者数がゼロで履修する可能性のある学生がいない時、履修を締め切る
+	if c.reservations == 0 && c.capacityCounter.Get(c.DayOfWeek, c.Period) == 0 {
+		select {
+		case <-c.closer:
+			// close済み
+		default:
+			close(c.closer)
+		}
+	}
 }
 
 func (c *Course) RollbackReservation() {
@@ -197,6 +208,16 @@ func (c *Course) RollbackReservation() {
 	c.reservations--
 	if c.reservations == 0 {
 		c.zeroReservationCond.Broadcast()
+	}
+
+	// 仮登録者数がゼロで履修する可能性のある学生がいない時、履修を締め切る
+	if c.reservations == 0 && c.capacityCounter.Get(c.DayOfWeek, c.Period) == 0 {
+		select {
+		case <-c.closer:
+			// close済み
+		default:
+			close(c.closer)
+		}
 	}
 }
 
