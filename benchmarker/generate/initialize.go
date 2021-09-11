@@ -34,7 +34,7 @@ func init() {
 			Period:      0,
 			DayOfWeek:   0,
 			Keywords:    "ISUCON SpeedUP",
-		}, "01FF4RXEKS0DG2EG20CWPQ60M3", testTeacher, 50)
+		}, "01FF4RXEKS0DG2EG20CWPQ60M3", testTeacher, 50, model.NewCapacityCounter())
 	testCourse1.SetStatusToInProgress()
 
 	testCourse2 := model.NewCourse(
@@ -48,7 +48,7 @@ func init() {
 			Period:      0,
 			DayOfWeek:   1,
 			Keywords:    "ISUCON SpeedUP",
-		}, "01FF4RXEKS0DG2EG20CYAYCCGM", testTeacher, 50)
+		}, "01FF4RXEKS0DG2EG20CYAYCCGM", testTeacher, 50, model.NewCapacityCounter())
 	testCourse2.SetStatusToInProgress()
 
 	testCourse3 := model.NewCourse(
@@ -62,7 +62,7 @@ func init() {
 			Period:      0,
 			DayOfWeek:   2,
 			Keywords:    "ISUCON SpeedUP",
-		}, "01FF4RXEKS0DG2EG20D23EQZRY", testTeacher, 50)
+		}, "01FF4RXEKS0DG2EG20D23EQZRY", testTeacher, 50, model.NewCapacityCounter())
 
 	initCourses = []*model.Course{testCourse1, testCourse2, testCourse3}
 }

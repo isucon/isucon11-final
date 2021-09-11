@@ -119,3 +119,13 @@
     repo: https://github.com/tagomoris/xbuild.git
     dest: /tmp/xbuild
     version: master
+
+- name: "Purge snapd"
+  become: yes
+  become_user: root
+  apt:
+    name:
+    - snap
+    - snapd
+    state: absent
+    purge: yes

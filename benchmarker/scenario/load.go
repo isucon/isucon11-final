@@ -170,6 +170,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 			studentLoadWorker.Do(s.readAnnouncementPagingScenario(student, step))
 		}
 
+		s.CapacityCounter.IncAll()
+
 		// 同時実行可能数を制限する際には注意
 		// 成績確認 + (空きがあれば履修登録)
 		studentLoadWorker.Do(s.registrationScenario(student, step))
@@ -346,6 +348,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					for _, c := range temporaryReservedCourses {
 						c.RollbackReservation()
 						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
+						s.CapacityCounter.Inc(c.DayOfWeek, c.Period)
 					}
 				}
 			} else {
@@ -559,6 +562,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		defer func() {
 			for _, student := range course.Students() {
 				student.ReleaseTimeslot(course.DayOfWeek, course.Period)
+				s.CapacityCounter.Inc(course.DayOfWeek, course.Period)
 			}
 		}()
 
@@ -898,7 +902,7 @@ L:
 		step.AddScore(score.CourseAddCourse)
 	}
 
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, StudentCapacityPerCourse)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, StudentCapacityPerCourse, s.CapacityCounter)
 	s.CourseManager.AddNewCourse(course)
 	s.cPubSub.Publish(course)
 }
