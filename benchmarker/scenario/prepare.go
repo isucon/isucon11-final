@@ -798,17 +798,21 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 }
 
 func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, expected []*model.Course) error {
-	errHttp := failure.NewError(fails.ErrApplication, fmt.Errorf("/api/courses へのリクエストが失敗しました"))
-	errEmpty := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の最初以外のページで空の検索結果が返却されました"))
-	errDuplicated := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索結果に重複した id の科目が存在します"))
-	errLack := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索で条件にヒットするはずの科目が見つかりませんでした"))
-	errExcess := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索で条件にヒットしない科目が見つかりました"))
-	errInvalidContent := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索結果に含まれる科目の内容が不正です"))
-	errNotSorted := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索結果の順序が code の昇順になっていません"))
-	errNotMatchCountPerPage := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索のページごとの件数が不正です"))
-	errExistPrevFirstPage := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の最初のページの link header に prev が存在しました"))
-	errNotExistPrevOtherThanFirstPage := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の最初以外のページの link header に prev が存在しませんでした"))
-	errInvalidPrev := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の link header の prev で前のページに正しく戻ることができませんでした"))
+	errWithParamInfo := func(reason string) error {
+		return failure.NewError(fails.ErrApplication, fmt.Errorf("%s (param: %s)", reason, param.GetParamString()))
+	}
+
+	reasonHttp := "/api/courses へのリクエストが失敗しました"
+	reasonEmpty := "科目検索の最初以外のページで空の検索結果が返却されました"
+	reasonDuplicated := "科目検索結果に重複した id の科目が存在します"
+	reasonLack := "科目検索で条件にヒットするはずの科目が見つかりませんでした"
+	reasonExcess := "科目検索で条件にヒットしない科目が見つかりました"
+	reasonInvalidContent := "科目検索結果に含まれる科目の内容が不正です"
+	reasonNotSorted := "科目検索結果の順序が code の昇順になっていません"
+	reasonNotMatchCountPerPage := "科目検索のページごとの件数が不正です"
+	reasonExistPrevFirstPage := "科目検索の最初のページの link header に prev が存在しました"
+	reasonNotExistPrevOtherThanFirstPage := "科目検索の最初以外のページの link header に prev が存在しませんでした"
+	reasonInvalidPrev := "科目検索の link header の prev で前のページに正しく戻ることができませんでした"
 
 	var path string
 	actual := make([]*api.GetCourseDetailResponse, 0)
@@ -818,19 +822,19 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for {
 		hres, res, err := SearchCourseAction(ctx, a, param, path)
 		if err != nil {
-			return errHttp
+			return errWithParamInfo(reasonHttp)
 		}
 
 		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
 		if path != "" && len(res) == 0 {
-			return errEmpty
+			return errWithParamInfo(reasonEmpty)
 		}
 
 		for _, course := range res {
 			_, exists := actualByID[course.ID]
 			// IDが重複していたらエラーにする
 			if exists {
-				return errDuplicated
+				return errWithParamInfo(reasonDuplicated)
 			}
 			actualByID[course.ID] = course
 			actual = append(actual, course)
@@ -839,7 +843,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 
 		// 期待する件数よりも多かったら少なくとも1件ヒットすべきでない科目がヒットしている
 		if len(actual) > len(expected) {
-			return errExcess
+			return errWithParamInfo(reasonExcess)
 		}
 
 		prev, next := parseLinkHeader(hres)
@@ -857,18 +861,18 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 		actualCourse, exists := actualByID[expectCourse.ID]
 		// 同じIDの科目がなかったらその科目は見つからなかった扱いにする
 		if !exists {
-			return errLack
+			return errWithParamInfo(reasonLack)
 		}
 		// 同じIDでも内容が違っていたら科目自体は見つかったが内容が不正という扱いにする
 		if !AssertEqualCourse(expectCourse, actualCourse, true) {
-			return errInvalidContent
+			return errWithParamInfo(reasonInvalidContent)
 		}
 	}
 
 	// 順序の検証
 	for i := 0; i < len(actual)-1; i++ {
 		if actual[i].Code > actual[i+1].Code {
-			return errNotSorted
+			return errWithParamInfo(reasonNotSorted)
 		}
 	}
 
@@ -885,16 +889,16 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 		}
 	}
 	if !AssertEqual("search count per page", expectResCountList, actualResCountList) {
-		return errNotMatchCountPerPage
+		return errWithParamInfo(reasonNotMatchCountPerPage)
 	}
 
 	// prev の存在検証
 	for i := 0; i < len(prevList); i++ {
 		if i == 0 && prevList[i] != "" {
-			return errExistPrevFirstPage
+			return errWithParamInfo(reasonExistPrevFirstPage)
 		}
 		if i > 0 && prevList[i] == "" {
-			return errNotExistPrevOtherThanFirstPage
+			return errWithParamInfo(reasonNotExistPrevOtherThanFirstPage)
 		}
 	}
 
@@ -902,18 +906,18 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for page := len(prevList) - 1; page >= 1; page-- {
 		_, res, err := SearchCourseAction(ctx, a, param, prevList[page])
 		if err != nil {
-			return errHttp
+			return errWithParamInfo(reasonHttp)
 		}
 
 		// prev でのアクセスなので1ページあたりの最大件数が取れるはず
 		if len(res) != SearchCourseCountPerPage {
-			return errInvalidPrev
+			return errWithParamInfo(reasonInvalidPrev)
 		}
 
 		// リストの内容の検証
 		for i, course := range res {
 			if !AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, true) {
-				return errInvalidContent
+				return errWithParamInfo(reasonInvalidContent)
 			}
 		}
 	}

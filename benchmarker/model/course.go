@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -340,5 +342,36 @@ func NewCourseParam() *SearchCourseParam {
 		DayOfWeek: -1, // 0-4, -1で指定なし
 		Keywords:  []string{},
 		Status:    "",
+	}
+}
+
+func (p *SearchCourseParam) GetParamString() string {
+	paramStrings := make([]string, 0)
+	if p.Type != "" {
+		paramStrings = append(paramStrings, fmt.Sprintf("type = %s", p.Type))
+	}
+	if p.Credit != 0 {
+		paramStrings = append(paramStrings, fmt.Sprintf("credit = %d", p.Credit))
+	}
+	if p.Teacher != "" {
+		paramStrings = append(paramStrings, fmt.Sprintf("teacher = %s", p.Teacher))
+	}
+	if p.Period != -1 {
+		paramStrings = append(paramStrings, fmt.Sprintf("period = %d", p.Period+1))
+	}
+	if p.DayOfWeek != -1 {
+		paramStrings = append(paramStrings, fmt.Sprintf("day_of_week = %s", api.DayOfWeekTable[p.DayOfWeek]))
+	}
+	if len(p.Keywords) != 0 {
+		paramStrings = append(paramStrings, fmt.Sprintf("keywords = %s", strings.Join(p.Keywords, " ")))
+	}
+	if p.Status != "" {
+		paramStrings = append(paramStrings, fmt.Sprintf("status = %s", p.Status))
+	}
+
+	if len(paramStrings) == 0 {
+		return "empty"
+	} else {
+		return strings.Join(paramStrings, ", ")
 	}
 }
