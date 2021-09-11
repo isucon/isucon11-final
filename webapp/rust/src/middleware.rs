@@ -45,7 +45,7 @@ where
 
         match req.get_session().get::<String>("userID") {
             Ok(Some(_)) => self.service.call(req).left_future(),
-            Ok(None) => future::err(actix_web::error::ErrorUnauthorized(
+            Ok(None) => future::err(crate::IsucholarError::unauthorized(
                 "You are not logged in.",
             ))
             .right_future(),
@@ -98,7 +98,7 @@ where
         match req.get_session().get::<bool>("isAdmin") {
             Ok(Some(true)) => self.service.call(req).left_future(),
             Ok(Some(false)) | Ok(None) => {
-                future::err(actix_web::error::ErrorForbidden("You are not admin user."))
+                future::err(crate::IsucholarError::forbidden("You are not admin user."))
                     .right_future()
             }
             Err(e) => future::err(e).right_future(),

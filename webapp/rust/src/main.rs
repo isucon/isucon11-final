@@ -2,6 +2,7 @@ use actix_web::web;
 use actix_web::HttpResponse;
 use futures::StreamExt as _;
 use futures::TryStreamExt as _;
+use isucholar::IsucholarError;
 use num_traits::ToPrimitive as _;
 use sqlx::Arguments as _;
 use sqlx::Executor as _;
@@ -191,7 +192,7 @@ async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpR
         .await?
         .success()
     {
-        return Err(actix_web::error::ErrorInternalServerError(""));
+        return Err(IsucholarError::internal_server_error(""));
     }
     if !tokio::process::Command::new("cp")
         .arg("-r")
@@ -201,7 +202,7 @@ async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpR
         .await?
         .success()
     {
-        return Err(actix_web::error::ErrorInternalServerError(""));
+        return Err(IsucholarError::internal_server_error(""));
     }
 
     Ok(HttpResponse::Ok().json(InitializeResponse { language: "rust" }))
@@ -210,19 +211,19 @@ async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpR
 fn get_user_info(session: actix_session::Session) -> actix_web::Result<(String, String, bool)> {
     let user_id = session.get("userID")?;
     if user_id.is_none() {
-        return Err(actix_web::error::ErrorInternalServerError(
+        return Err(IsucholarError::internal_server_error(
             "failed to get userID from session",
         ));
     }
     let user_name = session.get("userName")?;
     if user_name.is_none() {
-        return Err(actix_web::error::ErrorInternalServerError(
+        return Err(IsucholarError::internal_server_error(
             "failed to get userName from session",
         ));
     }
     let is_admin = session.get("isAdmin")?;
     if is_admin.is_none() {
-        return Err(actix_web::error::ErrorInternalServerError(
+        return Err(IsucholarError::internal_server_error(
             "failed to get isAdmin from session",
         ));
     }
@@ -428,9 +429,7 @@ async fn login(
         .await
         .map_err(SqlxError)?;
     if user.is_none() {
-        return Err(actix_web::error::ErrorUnauthorized(
-            "Code or Password is wrong.",
-        ));
+        return Err(IsucholarError::unauthorized("Code or Password is wrong."));
     }
     let user = user.unwrap();
 
@@ -438,18 +437,14 @@ async fn login(
         &req.password,
         &String::from_utf8_lossy(&user.hashed_password),
     )
-    .map_err(actix_web::error::ErrorInternalServerError)?
+    .map_err(|_| IsucholarError::internal_server_error("bcrypt::verify() failed"))?
     {
-        return Err(actix_web::error::ErrorUnauthorized(
-            "Code or Password is wrong.",
-        ));
+        return Err(IsucholarError::unauthorized("Code or Password is wrong."));
     }
 
     if let Some(user_id) = session.get::<String>("userID")? {
         if user_id == user.id {
-            return Err(actix_web::error::ErrorBadRequest(
-                "You are already logged in.",
-            ));
+            return Err(IsucholarError::bad_request("You are already logged in."));
         }
     }
 
@@ -942,7 +937,7 @@ async fn search_courses(
     let page = if let Some(ref page_str) = params.page {
         match page_str.parse() {
             Ok(page) if page > 0 => page,
-            _ => return Err(actix_web::error::ErrorBadRequest("Invalid page.")),
+            _ => return Err(IsucholarError::bad_request("Invalid page.")),
         }
     } else {
         1
@@ -1033,7 +1028,7 @@ async fn get_course_detail(
     if let Some(res) = res {
         Ok(HttpResponse::Ok().json(res))
     } else {
-        Err(actix_web::error::ErrorNotFound("No such course."))
+        Err(IsucholarError::not_found("No such course."))
     }
 }
 
@@ -1096,7 +1091,7 @@ async fn add_course(
                     || req.day_of_week != course.day_of_week
                     || req.keywords != course.keywords
                 {
-                    return Err(actix_web::error::ErrorConflict(
+                    return Err(IsucholarError::conflict(
                         "A course with the same code already exists.",
                     ));
                 } else {
@@ -1131,7 +1126,7 @@ async fn set_course_status(
         .await
         .map_err(SqlxError)?;
     if count == 0 {
-        return Err(actix_web::error::ErrorNotFound("No such course."));
+        return Err(IsucholarError::not_found("No such course."));
     }
 
     sqlx::query("UPDATE `courses` SET `status` = ? WHERE `id` = ?")
@@ -1181,7 +1176,7 @@ async fn get_classes(
         .await
         .map_err(SqlxError)?;
     if count == 0 {
-        return Err(actix_web::error::ErrorNotFound("No such course."));
+        return Err(IsucholarError::not_found("No such course."));
     }
 
     let classes: Vec<ClassWithSubmitted> = sqlx::query_as(concat!(
@@ -1241,12 +1236,12 @@ async fn submit_assignment(
     .map_err(SqlxError)?;
     if let Some(status) = status {
         if status != CourseStatus::InProgress {
-            return Err(actix_web::error::ErrorBadRequest(
+            return Err(IsucholarError::bad_request(
                 "This course is not in progress.",
             ));
         }
     } else {
-        return Err(actix_web::error::ErrorNotFound("No such course."));
+        return Err(IsucholarError::not_found("No such course."));
     }
 
     let registration_count: i64 = isucholar::db::fetch_one_scalar(
@@ -1260,7 +1255,7 @@ async fn submit_assignment(
     .await
     .map_err(SqlxError)?;
     if registration_count == 0 {
-        return Err(actix_web::error::ErrorBadRequest(
+        return Err(IsucholarError::bad_request(
             "You have not taken this course.",
         ));
     }
@@ -1274,17 +1269,17 @@ async fn submit_assignment(
     .map_err(SqlxError)?;
     if let Some(submission_closed) = submission_closed {
         if submission_closed {
-            return Err(actix_web::error::ErrorBadRequest(
+            return Err(IsucholarError::bad_request(
                 "Submission has been closed for this class.",
             ));
         }
     } else {
-        return Err(actix_web::error::ErrorNotFound("No such class."));
+        return Err(IsucholarError::not_found("No such class."));
     }
 
     let mut file = None;
     while let Some(field) = payload.next().await {
-        let field = field.map_err(|_| actix_web::error::ErrorBadRequest("Invalid file."))?;
+        let field = field.map_err(|_| IsucholarError::bad_request("Invalid file."))?;
         if let Some(content_disposition) = field.content_disposition() {
             if let Some(name) = content_disposition.get_name() {
                 if name == "file" {
@@ -1295,7 +1290,7 @@ async fn submit_assignment(
         }
     }
     if file.is_none() {
-        return Err(actix_web::error::ErrorBadRequest("Invalid file."));
+        return Err(IsucholarError::bad_request("Invalid file."));
     }
     let file = file.unwrap();
 
@@ -1353,12 +1348,12 @@ async fn register_scores(
     .map_err(SqlxError)?;
     if let Some(submission_closed) = submission_closed {
         if !submission_closed {
-            return Err(actix_web::error::ErrorBadRequest(
+            return Err(IsucholarError::bad_request(
                 "This assignment is not closed yet.",
             ));
         }
     } else {
-        return Err(actix_web::error::ErrorNotFound("No such class."));
+        return Err(IsucholarError::not_found("No such class."));
     }
 
     for score in req.into_inner() {
@@ -1400,7 +1395,7 @@ async fn download_submitted_assignments(
     .await
     .map_err(SqlxError)?;
     if class_count == 0 {
-        return Err(actix_web::error::ErrorNotFound("No such class."));
+        return Err(IsucholarError::not_found("No such class."));
     }
     let submissions: Vec<Submission> = sqlx::query_as(concat!(
         "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`",
@@ -1500,11 +1495,11 @@ async fn add_class(
     .await
     .map_err(SqlxError)?;
     if course.is_none() {
-        return Err(actix_web::error::ErrorNotFound("No such course."));
+        return Err(IsucholarError::not_found("No such course."));
     }
     let course = course.unwrap();
     if course.status != CourseStatus::InProgress {
-        return Err(actix_web::error::ErrorBadRequest(
+        return Err(IsucholarError::bad_request(
             "This course is not in-progress.",
         ));
     }
@@ -1530,7 +1525,7 @@ async fn add_class(
                 .await
                 .map_err(SqlxError)?;
                 if req.title != class.title || req.description != class.description {
-                    return Err(actix_web::error::ErrorConflict(
+                    return Err(IsucholarError::conflict(
                         "A class with the same part already exists.",
                     ));
                 } else {
@@ -1605,7 +1600,7 @@ async fn get_announcement_list(
     let page = if let Some(ref page_str) = params.page {
         match page_str.parse() {
             Ok(page) if page > 0 => page,
-            _ => return Err(actix_web::error::ErrorBadRequest("Invalid page.")),
+            _ => return Err(IsucholarError::bad_request("Invalid page.")),
         }
     } else {
         1
@@ -1699,7 +1694,7 @@ async fn get_announcement_detail(
         .await
         .map_err(SqlxError)?;
     if announcement.is_none() {
-        return Err(actix_web::error::ErrorNotFound("No such announcement."));
+        return Err(IsucholarError::not_found("No such announcement."));
     }
     let announcement = announcement.unwrap();
 
@@ -1712,7 +1707,7 @@ async fn get_announcement_detail(
     .await
     .map_err(SqlxError)?;
     if registration_count == 0 {
-        return Err(actix_web::error::ErrorNotFound("No such announcement."));
+        return Err(IsucholarError::not_found("No such announcement."));
     }
 
     sqlx::query("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?")
@@ -1752,7 +1747,7 @@ async fn add_announcement(
         .await
         .map_err(SqlxError)?;
     if count == 0 {
-        return Err(actix_web::error::ErrorNotFound("No such course."));
+        return Err(IsucholarError::not_found("No such course."));
     }
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
@@ -1779,7 +1774,7 @@ async fn add_announcement(
                     || announcement.title != req.title
                     || announcement.message != req.message
                 {
-                    return Err(actix_web::error::ErrorConflict(
+                    return Err(IsucholarError::conflict(
                         "An announcement with the same id already exists.",
                     ));
                 } else {
