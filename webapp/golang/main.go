@@ -136,11 +136,11 @@ func (h *handlers) IsLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 		if sess.IsNew {
-			return echo.NewHTTPError(http.StatusUnauthorized, "You are not logged in.")
+			return c.String(http.StatusUnauthorized, "You are not logged in.")
 		}
 		_, ok := sess.Values["userID"]
 		if !ok {
-			return echo.NewHTTPError(http.StatusUnauthorized, "You are not logged in.")
+			return c.String(http.StatusUnauthorized, "You are not logged in.")
 		}
 
 		return next(c)
@@ -161,7 +161,7 @@ func (h *handlers) IsAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 		if !isAdmin.(bool) {
-			return echo.NewHTTPError(http.StatusForbidden, "You are not admin user.")
+			return c.String(http.StatusForbidden, "You are not admin user.")
 		}
 
 		return next(c)
@@ -253,7 +253,7 @@ type LoginRequest struct {
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+		return c.String(http.StatusBadRequest, "Invalid format.")
 	}
 
 	var user User
@@ -261,11 +261,11 @@ func (h *handlers) Login(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
+		return c.String(http.StatusUnauthorized, "Code or Password is wrong.")
 	}
 
 	if bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(req.Password)) != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Code or Password is wrong.")
+		return c.String(http.StatusUnauthorized, "Code or Password is wrong.")
 	}
 
 	sess, err := session.Get(SessionName, c)
@@ -275,7 +275,7 @@ func (h *handlers) Login(c echo.Context) error {
 	}
 
 	if userID, ok := sess.Values["userID"].(string); ok && userID == user.ID {
-		return echo.NewHTTPError(http.StatusBadRequest, "You are already logged in.")
+		return c.String(http.StatusBadRequest, "You are already logged in.")
 	}
 
 	sess.Values["userID"] = user.ID
@@ -409,7 +409,7 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 
 	var req []RegisterCourseRequestContent
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+		return c.String(http.StatusBadRequest, "Invalid format.")
 	}
 	sort.Slice(req, func(i, j int) bool {
 		return req[i].ID < req[j].ID
@@ -748,7 +748,7 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 		var err error
 		page, err = strconv.Atoi(c.QueryParam("page"))
 		if err != nil || page <= 0 {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid page.")
+			return c.String(http.StatusBadRequest, "Invalid page.")
 		}
 	}
 	limit := 20
@@ -822,7 +822,7 @@ func (h *handlers) GetCourseDetail(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+		return c.String(http.StatusNotFound, "No such course.")
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -853,14 +853,14 @@ func (h *handlers) AddCourse(c echo.Context) error {
 
 	var req AddCourseRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+		return c.String(http.StatusBadRequest, "Invalid format.")
 	}
 
 	if req.Type != LiberalArts && req.Type != MajorSubjects {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid course type.")
+		return c.String(http.StatusBadRequest, "Invalid course type.")
 	}
 	if !contains(daysOfWeek, req.DayOfWeek) {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid day of week.")
+		return c.String(http.StatusBadRequest, "Invalid day of week.")
 	}
 
 	tx, err := h.DB.Beginx()
@@ -882,7 +882,7 @@ func (h *handlers) AddCourse(c echo.Context) error {
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			if req.Type != course.Type || req.Name != course.Name || req.Description != course.Description || req.Credit != int(course.Credit) || req.Period != int(course.Period) || req.DayOfWeek != course.DayOfWeek || req.Keywords != course.Keywords {
-				return echo.NewHTTPError(http.StatusConflict, "A course with the same code already exists.")
+				return c.String(http.StatusConflict, "A course with the same code already exists.")
 			}
 			return c.JSON(http.StatusCreated, AddCourseResponse{ID: course.ID})
 		}
@@ -908,7 +908,7 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 
 	var req SetCourseStatusRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+		return c.String(http.StatusBadRequest, "Invalid format.")
 	}
 
 	var count int
@@ -917,7 +917,7 @@ func (h *handlers) SetCourseStatus(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if count == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+		return c.String(http.StatusNotFound, "No such course.")
 	}
 
 	if _, err := h.DB.Exec("UPDATE `courses` SET `status` = ? WHERE `id` = ?", req.Status, courseID); err != nil {
@@ -963,7 +963,7 @@ func (h *handlers) GetClasses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if count == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+		return c.String(http.StatusNotFound, "No such course.")
 	}
 
 	var classes []ClassWithSubmitted
@@ -1016,10 +1016,10 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+		return c.String(http.StatusNotFound, "No such course.")
 	}
 	if status != StatusInProgress {
-		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in progress.")
+		return c.String(http.StatusBadRequest, "This course is not in progress.")
 	}
 
 	var registrationCount int
@@ -1028,7 +1028,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if registrationCount == 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "You have not taken this course.")
+		return c.String(http.StatusBadRequest, "You have not taken this course.")
 	}
 
 	var submissionClosed bool
@@ -1036,15 +1036,15 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
+		return c.String(http.StatusNotFound, "No such class.")
 	}
 	if submissionClosed {
-		return echo.NewHTTPError(http.StatusBadRequest, "Submission has been closed for this class.")
+		return c.String(http.StatusBadRequest, "Submission has been closed for this class.")
 	}
 
 	file, header, err := c.Request().FormFile("file")
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid file.")
+		return c.String(http.StatusBadRequest, "Invalid file.")
 	}
 	defer file.Close()
 
@@ -1094,16 +1094,16 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
+		return c.String(http.StatusNotFound, "No such class.")
 	}
 
 	if !submissionClosed {
-		return echo.NewHTTPError(http.StatusBadRequest, "This assignment is not closed yet.")
+		return c.String(http.StatusBadRequest, "This assignment is not closed yet.")
 	}
 
 	var req []Score
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+		return c.String(http.StatusBadRequest, "Invalid format.")
 	}
 
 	for _, score := range req {
@@ -1144,7 +1144,7 @@ func (h *handlers) DownloadSubmittedAssignments(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if classCount == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such class.")
+		return c.String(http.StatusNotFound, "No such class.")
 	}
 	var submissions []Submission
 	query := "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +
@@ -1215,7 +1215,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 
 	var req AddClassRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+		return c.String(http.StatusBadRequest, "Invalid format.")
 	}
 
 	tx, err := h.DB.Beginx()
@@ -1230,10 +1230,10 @@ func (h *handlers) AddClass(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+		return c.String(http.StatusNotFound, "No such course.")
 	}
 	if course.Status != StatusInProgress {
-		return echo.NewHTTPError(http.StatusBadRequest, "This course is not in-progress.")
+		return c.String(http.StatusBadRequest, "This course is not in-progress.")
 	}
 
 	classID := newULID()
@@ -1247,7 +1247,7 @@ func (h *handlers) AddClass(c echo.Context) error {
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			if req.Title != class.Title || req.Description != class.Description {
-				return echo.NewHTTPError(http.StatusConflict, "A class with the same part already exists.")
+				return c.String(http.StatusConflict, "A class with the same part already exists.")
 			}
 			return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
 		}
@@ -1310,7 +1310,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	} else {
 		page, err = strconv.Atoi(c.QueryParam("page"))
 		if err != nil || page <= 0 {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid page.")
+			return c.String(http.StatusBadRequest, "Invalid page.")
 		}
 	}
 	limit := 20
@@ -1394,7 +1394,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
-		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
+		return c.String(http.StatusNotFound, "No such announcement.")
 	}
 
 	var registrationCount int
@@ -1403,7 +1403,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if registrationCount == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such announcement.")
+		return c.String(http.StatusNotFound, "No such announcement.")
 	}
 
 	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
@@ -1432,7 +1432,7 @@ type AddAnnouncementRequest struct {
 func (h *handlers) AddAnnouncement(c echo.Context) error {
 	var req AddAnnouncementRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
+		return c.String(http.StatusBadRequest, "Invalid format.")
 	}
 
 	var count int
@@ -1441,7 +1441,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	if count == 0 {
-		return echo.NewHTTPError(http.StatusNotFound, "No such course.")
+		return c.String(http.StatusNotFound, "No such course.")
 	}
 
 	tx, err := h.DB.Beginx()
@@ -1461,7 +1461,7 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 				return c.NoContent(http.StatusInternalServerError)
 			}
 			if announcement.CourseID != req.CourseID || announcement.Title != req.Title || announcement.Message != req.Message {
-				return echo.NewHTTPError(http.StatusConflict, "An announcement with the same id already exists.")
+				return c.String(http.StatusConflict, "An announcement with the same id already exists.")
 			}
 			return c.NoContent(http.StatusCreated)
 		}
