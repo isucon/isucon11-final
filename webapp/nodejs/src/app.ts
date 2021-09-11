@@ -421,6 +421,8 @@ usersApi.put("/me/courses", async (req, res) => {
   try {
     await db.beginTransaction();
 
+    await db.query("SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE", [userId]);
+
     const errors: RegisterCoursesErrorResponse = {
       course_not_found: [],
       not_registrable_status: [],
