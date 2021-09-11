@@ -766,7 +766,7 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 	}
 
 	param = model.NewCourseParam()
-	param.Keywords = strings.Split(courses[rand.Intn(len(courses))].Keywords, " ")
+	param.Keywords = strings.Split(courses[rand.Intn(len(courses))].Keywords, " ")[:1]
 	expected = searchCourseLocal(courses, param)
 	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
 		return err
