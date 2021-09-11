@@ -253,8 +253,7 @@ type LoginRequest struct {
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
 	}
 
 	var user User
