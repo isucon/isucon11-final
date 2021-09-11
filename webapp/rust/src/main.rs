@@ -564,6 +564,12 @@ async fn register_courses(
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
 
+    sqlx::query("SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE")
+        .bind(&user_id)
+        .execute(&mut tx)
+        .await
+        .map_err(SqlxError)?;
+
     let mut errors = RegisterCoursesErrorResponse::default();
     let mut newly_added = Vec::new();
     for course_req in req {
