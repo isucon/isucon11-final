@@ -139,7 +139,6 @@ func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucand
 		}
 
 		for i := 0; i < count; i++ {
-			step.AddScore(score.ScoreFinishCourseStudents)
 			step.AddScore(score.FinishCourseStudents)
 			result := atomic.AddInt64(&s.finishCourseStudentsCount, 1)
 			if result%StudentCapacityPerCourse == 0 {
@@ -354,7 +353,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 				for _, c := range temporaryReservedCourses {
 					if !isExtendRequest {
-						step.AddScore(score.ScoreRegisterCourseStudents)
 						step.AddScore(score.RegRegisterCourseStudents)
 					}
 					c.CommitReservation(student)

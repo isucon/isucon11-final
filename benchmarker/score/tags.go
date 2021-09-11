@@ -4,10 +4,8 @@ import "github.com/isucon/isucandar/score"
 
 const (
 	// score
-	ScoreRegisterCourseStudents score.ScoreTag = "RegisterCourseStudents"
-	ScoreSubmitAssignment       score.ScoreTag = "SubmitAssignment"
-	ScoreFinishCourseStudents   score.ScoreTag = "FinishCourseStudents"
-	ScoreGetAnnouncementList    score.ScoreTag = "GetAnnouncementList"
+	ScoreSubmitAssignment    score.ScoreTag = "SubmitAssignment"
+	ScoreGetAnnouncementList score.ScoreTag = "GetAnnouncementList"
 
 	// other
 	ActiveStudents           score.ScoreTag = "_O1.ActiveStudents"
@@ -48,9 +46,7 @@ const (
 
 var Tags = []score.ScoreTag{
 	// score
-	ScoreRegisterCourseStudents,
 	ScoreSubmitAssignment,
-	ScoreFinishCourseStudents,
 	ScoreGetAnnouncementList,
 
 	// other
