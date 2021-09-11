@@ -1,6 +1,6 @@
 module github.com/isucon/isucon11-final/benchmarker
 
-go 1.16
+go 1.17
 
 require (
 	github.com/isucon/isucandar v0.0.0-20210516110136-4274ebbe6701
