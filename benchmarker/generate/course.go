@@ -18,7 +18,7 @@ var (
 	coursesData []byte
 )
 
-func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacityPerCourse int) []*model.Course {
+func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacityPerCourse int, cc *model.CapacityCounter) []*model.Course {
 	courses := make([]*model.Course, 0)
 	s := bufio.NewScanner(bytes.NewReader(coursesData))
 	for s.Scan() {
@@ -53,7 +53,7 @@ func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacity
 			DayOfWeek:   dayOfWeek,
 			Keywords:    line[9],
 		}
-		course := model.NewCourse(param, line[0], teacher, studentCapacityPerCourse)
+		course := model.NewCourse(param, line[0], teacher, studentCapacityPerCourse, cc)
 		switch line[10] {
 		case "in-progress":
 			course.SetStatusToInProgress()

@@ -151,7 +151,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			step.AddError(err)
 			return
 		}
-		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity)
+		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 		mu.Lock()
 		courses = append(courses, course)
 		mu.Unlock()
@@ -488,7 +488,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 			step.AddError(err)
 			return
 		}
-		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity)
+		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 		mu.Lock()
 		courses = append(courses, course)
 		mu.Unlock()
@@ -818,7 +818,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 科目のステータス更新
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
@@ -986,7 +986,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 	if err != nil {
 		return err
@@ -1139,7 +1139,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	registrationCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	registrationCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ステータスが in-progress の科目
 	courseParam = generate.CourseParam(0, 1, teacher)
@@ -1147,7 +1147,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, inProgressCourse.ID)
 	if err != nil {
 		return err
@@ -1160,7 +1160,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	closedCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	closedCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, closedCourse.ID)
 	if err != nil {
 		return err
@@ -1173,7 +1173,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	alreadyRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	alreadyRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, _, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{alreadyRegisteredCourse})
 	if err != nil {
 		return err
@@ -1185,7 +1185,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	conflictedCourse1 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	conflictedCourse1 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 時間割がコンフリクトする2つの科目
 	courseParam = generate.CourseParam(1, 1, teacher)
@@ -1193,18 +1193,18 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	conflictedCourse2 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	conflictedCourse2 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	courseParam = generate.CourseParam(1, 1, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
 	}
-	conflictedCourse3 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	conflictedCourse3 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(2, 0, teacher)
-	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1297,7 +1297,7 @@ func (s *Scenario) prepareCheckAddCourseAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1407,11 +1407,11 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(0, 1, teacher)
-	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1516,7 +1516,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
-	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, _, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{inProgressCourse})
 	if err != nil {
 		return err
@@ -1533,7 +1533,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
-	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, notRegisteredCourse.ID)
 	if err != nil {
 		return err
@@ -1658,7 +1658,7 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 	if err != nil {
 		return err
@@ -1720,7 +1720,7 @@ func (s *Scenario) prepareCheckDownloadSubmissionsAbnormal(ctx context.Context) 
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1749,7 +1749,7 @@ func (s *Scenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) err
 
 	// 存在しない科目
 	courseParam := generate.CourseParam(0, 0, teacher)
-	notRegisteredCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 存在しない講義
 	classParam := generate.ClassParam(notRegisteredCourse, 1)
@@ -1794,7 +1794,7 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 	if err != nil {
 		return err
 	}
-	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, notRegisteredCourse.ID)
 	if err != nil {
 		return err

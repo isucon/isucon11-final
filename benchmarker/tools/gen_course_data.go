@@ -34,7 +34,7 @@ func main() {
 		teacher := teachers[i%teacherCount]
 		param := generate.CourseParam(dayOfWeek, period, teacher)
 		param.Code = fmt.Sprintf("A%04d", i+1)
-		course := model.NewCourse(param, generate.GenULID(), teacher, 50)
+		course := model.NewCourse(param, generate.GenULID(), teacher, 50, model.NewCapacityCounter())
 		courses = append(courses, course)
 		course.SetStatusToClosed()
 	}
@@ -63,7 +63,7 @@ func main() {
 			Period:      0,
 			DayOfWeek:   0,
 			Keywords:    "ISUCON SpeedUP",
-		}, "01FF4RXEKS0DG2EG20CWPQ60M3", testTeacher, 50)
+		}, "01FF4RXEKS0DG2EG20CWPQ60M3", testTeacher, 50, model.NewCapacityCounter())
 	testCourse1.SetStatusToInProgress()
 
 	testCourse2 := model.NewCourse(
@@ -77,7 +77,7 @@ func main() {
 			Period:      0,
 			DayOfWeek:   1,
 			Keywords:    "ISUCON SpeedUP",
-		}, "01FF4RXEKS0DG2EG20CYAYCCGM", testTeacher, 50)
+		}, "01FF4RXEKS0DG2EG20CYAYCCGM", testTeacher, 50, model.NewCapacityCounter())
 	testCourse2.SetStatusToInProgress()
 
 	testCourse3 := model.NewCourse(
@@ -91,7 +91,7 @@ func main() {
 			Period:      0,
 			DayOfWeek:   2,
 			Keywords:    "ISUCON SpeedUP",
-		}, "01FF4RXEKS0DG2EG20D23EQZRY", testTeacher, 50)
+		}, "01FF4RXEKS0DG2EG20D23EQZRY", testTeacher, 50, model.NewCapacityCounter())
 
 	courses = append(courses, testCourse1, testCourse2, testCourse3)
 

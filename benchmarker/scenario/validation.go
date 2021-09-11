@@ -33,12 +33,13 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errTimeout := failure.NewError(fails.ErrCritical, fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
+	errNotMatchUnreadCountAmongPages := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の各ページの unread_count の値が一致しません"))
 	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
-	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複した内容の Announcement が見つかりました"))
+	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複したIDの Announcement が見つかりました"))
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
@@ -89,7 +90,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 			for _, unreadCount := range responseUnreadCounts {
 				if responseUnreadCounts[0] != unreadCount {
-					step.AddError(errNotMatchUnreadCount)
+					step.AddError(errNotMatchUnreadCountAmongPages)
 					return
 				}
 			}
@@ -159,12 +160,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
 				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
 				step.AddError(errNotMatchOver)
-				return
-			}
-
-			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
-			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
-				step.AddError(errNotMatchUnreadCount)
 				return
 			}
 		}()

@@ -174,6 +174,7 @@ export default Vue.extend({
       try {
         await this.$axios.post(`/api/courses`, this.params)
         notify('科目の登録が完了しました')
+        this.$emit('completed')
         this.close()
       } catch (e) {
         notify('科目の登録に失敗しました')

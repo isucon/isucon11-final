@@ -11,7 +11,6 @@ services:
       - "8080:80"
     depends_on:
       - backend
-
   backend:
     build:
       context: ../webapp/golang
@@ -27,8 +26,8 @@ services:
     depends_on:
       - mysql
     volumes:
-      - ../webapp:/webapp
-
+      - ../webapp/data:/webapp/data:ro
+      - ../webapp/sql:/webapp/sql:ro
   mysql:
     image: mysql
     restart: always
@@ -45,7 +44,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql:/var/lib/mysql
-
   adminer:
     image: adminer:latest
     restart: always

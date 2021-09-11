@@ -208,7 +208,7 @@ const initCourse: SyllabusCourse = {
 
 export default Vue.extend({
   components: { InlineNotification },
-  middleware: 'is_student',
+  middleware: 'is_logged_in',
   async asyncData(ctx: Context): Promise<SyllabusData> {
     try {
       const id = ctx.params.id

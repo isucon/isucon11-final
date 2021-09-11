@@ -60,7 +60,7 @@ export default Vue.extend({
       const res = await context.$axios.get<User>(`/api/users/me`)
       const { isAdmin } = res.data
       if (isAdmin) {
-        return context.redirect('/teacherpage')
+        return context.redirect('/teacher/courses')
       } else {
         return context.redirect('/mypage')
       }
@@ -92,7 +92,7 @@ export default Vue.extend({
         const res = await this.$axios.get(`/api/users/me`)
         const user: User = res.data
         if (user.isAdmin) {
-          return this.$router.push('/teacherpage')
+          return this.$router.push('/teacher/courses')
         } else {
           return this.$router.push('/mypage')
         }

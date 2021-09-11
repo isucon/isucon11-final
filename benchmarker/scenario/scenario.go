@@ -20,7 +20,8 @@ var (
 
 type Scenario struct {
 	Config
-	CourseManager *model.CourseManager
+	CapacityCounter *model.CapacityCounter
+	CourseManager   *model.CourseManager
 
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
@@ -72,14 +73,15 @@ func NewScenario(config *Config) (*Scenario, error) {
 			RawPassword: "isucon",
 		},
 	}
-
 	teachersMap[testTeacher.ID] = testTeacher
 
-	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse)
+	cc := model.NewCapacityCounter()
+	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse, cc)
 
 	return &Scenario{
-		Config:        *config,
-		CourseManager: model.NewCourseManager(),
+		Config:          *config,
+		CapacityCounter: cc,
+		CourseManager:   model.NewCourseManager(cc),
 
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
@@ -138,12 +140,13 @@ func (s *Scenario) Reset() {
 			RawPassword: "isucon",
 		},
 	}
-
 	teachersMap[testTeacher.ID] = testTeacher
 
-	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse)
+	cc := model.NewCapacityCounter()
+	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse, cc)
 
-	s.CourseManager = model.NewCourseManager()
+	s.CapacityCounter = cc
+	s.CourseManager = model.NewCourseManager(s.CapacityCounter)
 	s.sPubSub = pubsub.NewPubSub()
 	s.cPubSub = pubsub.NewPubSub()
 	s.userPool = NewUserPool(studentsData, teachers, s.BaseURL)

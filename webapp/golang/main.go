@@ -253,8 +253,7 @@ type LoginRequest struct {
 func (h *handlers) Login(c echo.Context) error {
 	var req LoginRequest
 	if err := c.Bind(&req); err != nil {
-		c.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("bind request: %v", err))
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid format.")
 	}
 
 	var user User
@@ -422,6 +421,11 @@ func (h *handlers) RegisterCourses(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
+
+	if _, err := tx.Exec("SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE", userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
 	var errors RegisterCoursesErrorResponse
 	var newlyAdded []Course
@@ -1056,7 +1060,7 @@ func (h *handlers) SubmitAssignment(c echo.Context) error {
 	}
 
 	dst := AssignmentsDirectory + classID + "-" + userID + ".pdf"
-	if err := os.WriteFile(dst, data, 0644); err != nil {
+	if err := os.WriteFile(dst, data, 0666); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
