@@ -24,11 +24,10 @@ import (
 )
 
 const (
-	prepareTimeout                   = 20
-	SearchCourseCountPerPage         = 20
-	AnnouncementCountPerPage         = 20
-	prepareCourseCapacity            = 50
-	prepareCompoundSearchSampleCount = 10
+	prepareTimeout           = 20
+	SearchCourseCountPerPage = 20
+	AnnouncementCountPerPage = 20
+	prepareCourseCapacity    = 50
 )
 
 func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) error {
@@ -781,21 +780,18 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 	}
 
 	// 複合条件クエリの検証
-	sampleIndices := generate.ShuffledInts(len(courses))[:prepareCompoundSearchSampleCount]
-	for _, sampleIndex := range sampleIndices {
-		target := courses[sampleIndex]
-		param = model.NewCourseParam()
-		param.Type = target.Type
-		param.Credit = target.Credit
-		param.Teacher = target.Teacher().Name
-		param.Period = target.Period
-		param.DayOfWeek = target.DayOfWeek
-		param.Keywords = strings.Split(target.Keywords, " ")[:1]
-		param.Status = string(target.Status())
-		expected = searchCourseLocal(courses, param)
-		if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
-			return err
-		}
+	target := courses[rand.Intn(len(courses))]
+	param = model.NewCourseParam()
+	param.Type = target.Type
+	param.Credit = target.Credit
+	param.Teacher = target.Teacher().Name
+	param.Period = target.Period
+	param.DayOfWeek = target.DayOfWeek
+	param.Keywords = strings.Split(target.Keywords, " ")[:1]
+	param.Status = string(target.Status())
+	expected = searchCourseLocal(courses, param)
+	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+		return err
 	}
 
 	return nil
