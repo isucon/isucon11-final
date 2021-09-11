@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      # TODO: Add benchmarker/**/*
+      - benchmarker/**/*
       - webapp/rust/**/*
-      - .github/workflows/ci-rust.yaml
+      - .github/workflows/rust.yaml
   pull_request:
     paths:
-      # TODO: Add benchmarker/**/*
+      - benchmarker/**/*
       - webapp/rust/**/*
-      - .github/workflows/ci-rust.yaml
+      - .github/workflows/rust.yaml
 
 jobs:
   lint:
@@ -36,4 +36,20 @@ jobs:
           command: clippy
           args: --manifest-path webapp/rust/Cargo.toml
 
-  # TODO: Run benchmarker with -no-load
+  test:
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environment
+        run: make -C dev up TARGET=rust
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: Run benchmarker with -no-load
+        run: |
+          make -C benchmarker
+          benchmarker/bin/benchmarker -no-load -exit-status
+      - name: Teardown environment
+        if: ${{ always() }}
+        run: make -C dev down TARGET=rust

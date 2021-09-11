@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  frontend:
+    build:
+      context: ../webapp/frontend
+      dockerfile: ../../dev/frontend/Dockerfile
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+  backend:
+    build:
+      context: ../webapp/rust
+      dockerfile: ../../dev/rust/Dockerfile
+    restart: always
+    environment:
+      MYSQL_HOSTNAME: mysql
+      DEBUG: "true"
+    entrypoint: dockerize -timeout 60s -wait tcp://mysql:3306
+    command: /webapp/rust/target/debug/isucholar
+    ports:
+      - "7000:7000"
+    depends_on:
+      - mysql
+    volumes:
+      - ../webapp/data:/webapp/data:ro
+      - ../webapp/sql:/webapp/sql:ro
+  mysql:
+    image: mysql
+    restart: always
+    # setup.sqlの代替
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: isucon
+      MYSQL_PASSWORD: isucon
+      MYSQL_DATABASE: isucholar
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+    expose:
+      - "3306"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql:/var/lib/mysql
+
+volumes:
+  mysql:
