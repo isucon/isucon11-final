@@ -725,7 +725,7 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 	// 全検索の検証
 	param := model.NewCourseParam()
 	expected := searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
@@ -733,49 +733,49 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 	param = model.NewCourseParam()
 	param.Type = "major-subjects"
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
 	param = model.NewCourseParam()
 	param.Credit = 1
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
 	param = model.NewCourseParam()
 	param.Teacher = courses[rand.Intn(len(courses))].Teacher().Name
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
 	param = model.NewCourseParam()
 	param.Period = 0
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
 	param = model.NewCourseParam()
 	param.DayOfWeek = 0
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
 	param = model.NewCourseParam()
 	param.Keywords = strings.Split(courses[rand.Intn(len(courses))].Keywords, " ")[:1]
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
 	param = model.NewCourseParam()
 	param.Status = "closed"
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
@@ -790,76 +790,80 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 	param.Keywords = strings.Split(target.Keywords, " ")[:1]
 	param.Status = string(target.Status())
 	expected = searchCourseLocal(courses, param)
-	if _, err := prepareCheckSearchCourse(ctx, student.Agent, param, "", expected); err != nil {
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, path string, expected []*model.Course) (prev string, err error) {
+func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, expected []*model.Course) error {
 	errHttp := failure.NewError(fails.ErrApplication, fmt.Errorf("/api/courses へのリクエストが失敗しました"))
-	errInvalidNext := failure.NewError(fails.ErrApplication, fmt.Errorf("link header の next によってページングできる回数が不正です"))
-	errInvalidPrev := failure.NewError(fails.ErrApplication, fmt.Errorf("link header の prev によってページングできる回数が不正です"))
+	errEmpty := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の最初以外のページで空の検索結果が返却されました"))
+	errDuplicated := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索結果に重複した id の科目が存在します"))
+	errLack := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索で条件にヒットするはずの科目が見つかりませんでした"))
+	errExcess := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索で条件にヒットしない科目が見つかりました"))
+	errInvalidContent := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索結果に含まれる科目の内容が不正です"))
+	errNotSorted := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索結果の順序が code の昇順になっていません"))
+	errNotMatchCountPerPage := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索のページごとの件数が不正です"))
+	errExistPrevFirstPage := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の最初のページの link header に prev が存在しました"))
+	errNotExistPrevOtherThanFirstPage := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の最初以外のページの link header に prev が存在しませんでした"))
+	errInvalidPrev := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の link header の prev で前のページに正しく戻ることができませんでした"))
 
-	hres, res, err := SearchCourseAction(ctx, a, param, path)
-	if err != nil {
-		return "", errHttp
-	}
-	prev, next := parseLinkHeader(hres)
-
-	// 「期待する取得件数がページあたりの件数より多い」と「nextが空でない」の真偽値が一致することを検証
-	// そうでない場合、「全件取得し終わったのにnextが空でない」または「全件取得し終わっていないのにnextが空」なので不正
-	if !AssertEqual("search course has_next", len(expected) > SearchCourseCountPerPage, next != "") {
-		return "", errInvalidNext
-	}
-
-	// 次のページが存在しない
-	if next == "" {
-		// このページの内容検証
-		err = prepareCheckSearchCourseContent(expected, res)
+	var path string
+	actual := make([]*api.GetCourseDetailResponse, 0)
+	actualByID := make(map[string]*api.GetCourseDetailResponse)
+	actualResCountList := make([]int, 0)
+	prevList := make([]string, 0)
+	for {
+		hres, res, err := SearchCourseAction(ctx, a, param, path)
 		if err != nil {
-			return "", err
+			return errHttp
 		}
-		return prev, nil
+
+		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
+		if path != "" && len(res) == 0 {
+			return errEmpty
+		}
+
+		for _, course := range res {
+			_, exists := actualByID[course.ID]
+			// IDが重複していたらエラーにする
+			if exists {
+				return errDuplicated
+			}
+			actualByID[course.ID] = course
+			actual = append(actual, course)
+		}
+		actualResCountList = append(actualResCountList, len(res))
+
+		// 期待する件数よりも多かったら少なくとも1件ヒットすべきでない科目がヒットしている
+		if len(actual) > len(expected) {
+			return errExcess
+		}
+
+		prev, next := parseLinkHeader(hres)
+		prevList = append(prevList, prev)
+		path = next
+
+		if path == "" {
+			break
+		}
 	}
 
-	// next以降のページを再帰的に検証
-	nextPrev, err := prepareCheckSearchCourse(ctx, a, param, next, expected[SearchCourseCountPerPage:])
-	if err != nil {
-		return "", err
+	// 順序は無視して期待するコースがすべて検索結果に含まれていることを検証
+	// len(actual) <= len(expected) であり、actual には重複がないことが保証されているので expected の科目がすべて actual に含まれていれば両者は順序を除いて等しい
+	for _, expectCourse := range expected {
+		actualCourse, exists := actualByID[expectCourse.ID]
+		// 同じIDの科目がなかったらその科目は見つからなかった扱いにする
+		if !exists {
+			return errLack
+		}
+		// 同じIDでも内容が違っていたら科目自体は見つかったが内容が不正という扱いにする
+		if !AssertEqualCourse(expectCourse, actualCourse, true) {
+			return errInvalidContent
+		}
 	}
-
-	// nextのprevなので空だと不正
-	if nextPrev == "" {
-		return "", errInvalidPrev
-	}
-
-	// このページの内容検証
-	err = prepareCheckSearchCourseContent(expected[:SearchCourseCountPerPage], res)
-	if err != nil {
-		return "", err
-	}
-
-	// nextのprevを指定して取得
-	// pathを指定したときと同じものが取得できることを検証（path=""で開始するので、pathとnextPrevが同じ文字列であるとは限らない）
-	_, res, err = SearchCourseAction(ctx, a, param, nextPrev)
-	if err != nil {
-		return "", errHttp
-	}
-
-	err = prepareCheckSearchCourseContent(expected[:SearchCourseCountPerPage], res)
-	if err != nil {
-		return "", err
-	}
-
-	return prev, nil
-}
-
-func prepareCheckSearchCourseContent(expected []*model.Course, actual []*api.GetCourseDetailResponse) error {
-	errNotSorted := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の順序が不正です"))
-	errNotMatchCount := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索のヒット件数が期待する値と一致しません"))
-	errNotMatch := failure.NewError(fails.ErrApplication, fmt.Errorf("科目検索の内容が不正です"))
 
 	// 順序の検証
 	for i := 0; i < len(actual)-1; i++ {
@@ -868,16 +872,49 @@ func prepareCheckSearchCourseContent(expected []*model.Course, actual []*api.Get
 		}
 	}
 
-	// 件数の検証
-	if !AssertEqual("search course count", len(expected), len(actual)) {
-		return errNotMatchCount
+	// 各ページの件数の検証
+	expectResCountList := make([]int, 0)
+	rest := len(expected)
+	for {
+		if rest <= SearchCourseCountPerPage {
+			expectResCountList = append(expectResCountList, rest)
+			break
+		} else {
+			expectResCountList = append(expectResCountList, SearchCourseCountPerPage)
+			rest -= SearchCourseCountPerPage
+		}
+	}
+	if !AssertEqual("search count per page", expectResCountList, actualResCountList) {
+		return errNotMatchCountPerPage
 	}
 
-	// 内容の検証
-	for i, actual := range actual {
-		expected := expected[i]
-		if !AssertEqualCourse(expected, actual, true) {
-			return errNotMatch
+	// prev の存在検証
+	for i := 0; i < len(prevList); i++ {
+		if i == 0 && prevList[i] != "" {
+			return errExistPrevFirstPage
+		}
+		if i > 0 && prevList[i] == "" {
+			return errNotExistPrevOtherThanFirstPage
+		}
+	}
+
+	// prev で前のページに正しく戻れることの検証（最終ページから戻るように見ていく）
+	for page := len(prevList) - 1; page >= 1; page-- {
+		_, res, err := SearchCourseAction(ctx, a, param, prevList[page])
+		if err != nil {
+			return errHttp
+		}
+
+		// prev でのアクセスなので1ページあたりの最大件数が取れるはず
+		if len(res) != SearchCourseCountPerPage {
+			return errInvalidPrev
+		}
+
+		// リストの内容の検証
+		for i, course := range res {
+			if !AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, true) {
+				return errInvalidContent
+			}
 		}
 	}
 
