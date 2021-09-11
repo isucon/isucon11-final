@@ -244,6 +244,8 @@ type Course struct {
 	Status      CourseStatus `db:"status"`
 }
 
+// ---------- Public API ----------
+
 type LoginRequest struct {
 	Code     string `json:"code"`
 	Password string `json:"password"`
@@ -314,6 +316,8 @@ func (h *handlers) Logout(c echo.Context) error {
 
 	return c.NoContent(http.StatusOK)
 }
+
+// ---------- Users API ----------
 
 type GetMeResponse struct {
 	Code    string `json:"code"`
@@ -684,6 +688,8 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+// ---------- Courses API ----------
+
 // SearchCourses GET /api/courses 科目検索
 func (h *handlers) SearchCourses(c echo.Context) error {
 	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
@@ -794,40 +800,6 @@ func (h *handlers) SearchCourses(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-type GetCourseDetailResponse struct {
-	ID          string       `json:"id" db:"id"`
-	Code        string       `json:"code" db:"code"`
-	Type        string       `json:"type" db:"type"`
-	Name        string       `json:"name" db:"name"`
-	Description string       `json:"description" db:"description"`
-	Credit      uint8        `json:"credit" db:"credit"`
-	Period      uint8        `json:"period" db:"period"`
-	DayOfWeek   string       `json:"day_of_week" db:"day_of_week"`
-	TeacherID   string       `json:"-" db:"teacher_id"`
-	Keywords    string       `json:"keywords" db:"keywords"`
-	Status      CourseStatus `json:"status" db:"status"`
-	Teacher     string       `json:"teacher" db:"teacher"`
-}
-
-// GetCourseDetail GET /api/courses/:courseID 科目詳細の取得
-func (h *handlers) GetCourseDetail(c echo.Context) error {
-	courseID := c.Param("courseID")
-
-	var res GetCourseDetailResponse
-	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
-		" FROM `courses`" +
-		" JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
-		" WHERE `courses`.`id` = ?"
-	if err := h.DB.Get(&res, query, courseID); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == sql.ErrNoRows {
-		return c.String(http.StatusNotFound, "No such course.")
-	}
-
-	return c.JSON(http.StatusOK, res)
-}
-
 type AddCourseRequest struct {
 	Code        string     `json:"code"`
 	Type        CourseType `json:"type"`
@@ -896,6 +868,40 @@ func (h *handlers) AddCourse(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, AddCourseResponse{ID: courseID})
+}
+
+type GetCourseDetailResponse struct {
+	ID          string       `json:"id" db:"id"`
+	Code        string       `json:"code" db:"code"`
+	Type        string       `json:"type" db:"type"`
+	Name        string       `json:"name" db:"name"`
+	Description string       `json:"description" db:"description"`
+	Credit      uint8        `json:"credit" db:"credit"`
+	Period      uint8        `json:"period" db:"period"`
+	DayOfWeek   string       `json:"day_of_week" db:"day_of_week"`
+	TeacherID   string       `json:"-" db:"teacher_id"`
+	Keywords    string       `json:"keywords" db:"keywords"`
+	Status      CourseStatus `json:"status" db:"status"`
+	Teacher     string       `json:"teacher" db:"teacher"`
+}
+
+// GetCourseDetail GET /api/courses/:courseID 科目詳細の取得
+func (h *handlers) GetCourseDetail(c echo.Context) error {
+	courseID := c.Param("courseID")
+
+	var res GetCourseDetailResponse
+	query := "SELECT `courses`.*, `users`.`name` AS `teacher`" +
+		" FROM `courses`" +
+		" JOIN `users` ON `courses`.`teacher_id` = `users`.`id`" +
+		" WHERE `courses`.`id` = ?"
+	if err := h.DB.Get(&res, query, courseID); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return c.String(http.StatusNotFound, "No such course.")
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 type SetCourseStatusRequest struct {
@@ -991,6 +997,70 @@ func (h *handlers) GetClasses(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, res)
+}
+
+type AddClassRequest struct {
+	Part        uint8  `json:"part"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type AddClassResponse struct {
+	ClassID string `json:"class_id"`
+}
+
+// AddClass POST /api/courses/:courseID/classes 新規講義(&課題)追加
+func (h *handlers) AddClass(c echo.Context) error {
+	courseID := c.Param("courseID")
+
+	var req AddClassRequest
+	if err := c.Bind(&req); err != nil {
+		return c.String(http.StatusBadRequest, "Invalid format.")
+	}
+
+	tx, err := h.DB.Beginx()
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	defer tx.Rollback()
+
+	var course Course
+	if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return c.String(http.StatusNotFound, "No such course.")
+	}
+	if course.Status != StatusInProgress {
+		return c.String(http.StatusBadRequest, "This course is not in-progress.")
+	}
+
+	classID := newULID()
+	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
+		classID, courseID, req.Part, req.Title, req.Description); err != nil {
+		_ = tx.Rollback()
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
+			var class Class
+			if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if req.Title != class.Title || req.Description != class.Description {
+				return c.String(http.StatusConflict, "A class with the same part already exists.")
+			}
+			return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
+		}
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusCreated, AddClassResponse{ClassID: classID})
 }
 
 // SubmitAssignment POST /api/courses/:courseID/classes/:classID/assignments 課題の提出
@@ -1199,69 +1269,7 @@ func createSubmissionsZip(zipFilePath string, classID string, submissions []Subm
 	return exec.Command("zip", "-j", "-r", zipFilePath, tmpDir, "-i", tmpDir+"*").Run()
 }
 
-type AddClassRequest struct {
-	Part        uint8  `json:"part"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-}
-
-type AddClassResponse struct {
-	ClassID string `json:"class_id"`
-}
-
-// AddClass POST /api/courses/:courseID/classes 新規講義(&課題)追加
-func (h *handlers) AddClass(c echo.Context) error {
-	courseID := c.Param("courseID")
-
-	var req AddClassRequest
-	if err := c.Bind(&req); err != nil {
-		return c.String(http.StatusBadRequest, "Invalid format.")
-	}
-
-	tx, err := h.DB.Beginx()
-	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
-	var course Course
-	if err := tx.Get(&course, "SELECT * FROM `courses` WHERE `id` = ? FOR SHARE", courseID); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == sql.ErrNoRows {
-		return c.String(http.StatusNotFound, "No such course.")
-	}
-	if course.Status != StatusInProgress {
-		return c.String(http.StatusBadRequest, "This course is not in-progress.")
-	}
-
-	classID := newULID()
-	if _, err := tx.Exec("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)",
-		classID, courseID, req.Part, req.Title, req.Description); err != nil {
-		_ = tx.Rollback()
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == uint16(mysqlErrNumDuplicateEntry) {
-			var class Class
-			if err := h.DB.Get(&class, "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?", courseID, req.Part); err != nil {
-				c.Logger().Error(err)
-				return c.NoContent(http.StatusInternalServerError)
-			}
-			if req.Title != class.Title || req.Description != class.Description {
-				return c.String(http.StatusConflict, "A class with the same part already exists.")
-			}
-			return c.JSON(http.StatusCreated, AddClassResponse{ClassID: class.ID})
-		}
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	if err := tx.Commit(); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	return c.JSON(http.StatusCreated, AddClassResponse{ClassID: classID})
-}
+// ---------- Announcement API ----------
 
 type AnnouncementWithoutDetail struct {
 	ID         string `json:"id" db:"id"`
@@ -1364,56 +1372,6 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	})
 }
 
-type AnnouncementDetail struct {
-	ID         string `json:"id" db:"id"`
-	CourseID   string `json:"course_id" db:"course_id"`
-	CourseName string `json:"course_name" db:"course_name"`
-	Title      string `json:"title" db:"title"`
-	Message    string `json:"message" db:"message"`
-	Unread     bool   `json:"unread" db:"unread"`
-}
-
-// GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
-func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
-	userID, _, _, err := getUserInfo(c)
-	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	announcementID := c.Param("announcementID")
-
-	var announcement AnnouncementDetail
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
-		" FROM `announcements`" +
-		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
-		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
-		" WHERE `announcements`.`id` = ?" +
-		" AND `unread_announcements`.`user_id` = ?"
-	if err := h.DB.Get(&announcement, query, announcementID, userID); err != nil && err != sql.ErrNoRows {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	} else if err == sql.ErrNoRows {
-		return c.String(http.StatusNotFound, "No such announcement.")
-	}
-
-	var registrationCount int
-	if err := h.DB.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", announcement.CourseID, userID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if registrationCount == 0 {
-		return c.String(http.StatusNotFound, "No such announcement.")
-	}
-
-	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	return c.JSON(http.StatusOK, announcement)
-}
-
 type Announcement struct {
 	ID       string `db:"id"`
 	CourseID string `db:"course_id"`
@@ -1491,4 +1449,54 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+type AnnouncementDetail struct {
+	ID         string `json:"id" db:"id"`
+	CourseID   string `json:"course_id" db:"course_id"`
+	CourseName string `json:"course_name" db:"course_name"`
+	Title      string `json:"title" db:"title"`
+	Message    string `json:"message" db:"message"`
+	Unread     bool   `json:"unread" db:"unread"`
+}
+
+// GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
+func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
+	userID, _, _, err := getUserInfo(c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	announcementID := c.Param("announcementID")
+
+	var announcement AnnouncementDetail
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
+		" FROM `announcements`" +
+		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
+		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
+		" WHERE `announcements`.`id` = ?" +
+		" AND `unread_announcements`.`user_id` = ?"
+	if err := h.DB.Get(&announcement, query, announcementID, userID); err != nil && err != sql.ErrNoRows {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	} else if err == sql.ErrNoRows {
+		return c.String(http.StatusNotFound, "No such announcement.")
+	}
+
+	var registrationCount int
+	if err := h.DB.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", announcement.CourseID, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if registrationCount == 0 {
+		return c.String(http.StatusNotFound, "No such announcement.")
+	}
+
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, announcement)
 }
