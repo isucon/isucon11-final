@@ -271,7 +271,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			}
 		})
 		if err != nil {
-			panic(fmt.Errorf("unreachable! %w", err))
+			AdminLogger.Println("info: cannot start parallel: %w", err)
 		}
 	}
 
