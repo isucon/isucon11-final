@@ -139,7 +139,7 @@ func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucand
 		}
 
 		for i := 0; i < count; i++ {
-			step.AddScore(score.FinishCoursesStudents)
+			step.AddScore(score.FinishCourseStudents)
 			result := atomic.AddInt64(&s.finishCourseStudentsCount, 1)
 			if result%StudentCapacityPerCourse == 0 {
 				s.addActiveStudentLoads(ctx, step, 1)
@@ -205,14 +205,13 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
-					time.Sleep(1 * time.Millisecond)
+					time.Sleep(waitGradeTimeout)
 					continue
 				}
 				err = verifyGrades(expected, &getGradeRes)
 				if err != nil {
 					step.AddError(err)
 				} else {
-					step.AddScore(score.ScoreGetGrades)
 					step.AddScore(score.RegGetGrades)
 				}
 			}
@@ -356,7 +355,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.RegRegisterCourses)
 				}
 				for _, c := range temporaryReservedCourses {
-					step.AddScore(score.RegRegisterCourseByStudent)
+					step.AddScore(score.RegRegisterCourseStudents)
 					c.CommitReservation(student)
 					student.AddCourse(c)
 					c.StartTimer(waitCourseFullTimeout)
@@ -606,12 +605,23 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 
 		studentLen := len(course.Students())
 		switch {
+		case studentLen < 10:
+			step.AddScore(score.CourseStartCourseUnder10)
+		case studentLen < 20:
+			step.AddScore(score.CourseStartCourseUnder20)
+		case studentLen < 30:
+			step.AddScore(score.CourseStartCourseUnder30)
+		case studentLen < 40:
+			step.AddScore(score.CourseStartCourseUnder40)
 		case studentLen < 50:
 			step.AddScore(score.CourseStartCourseUnder50)
 		case studentLen == 50:
 			step.AddScore(score.CourseStartCourseFull)
 		case studentLen > 50:
 			step.AddScore(score.CourseStartCourseOver50)
+		}
+		for i := 0; i < studentLen; i++ {
+			step.AddScore(score.StartCourseStudents)
 		}
 
 		var classTimes [ClassCountPerCourse]int64

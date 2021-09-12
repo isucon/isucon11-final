@@ -22,6 +22,8 @@ const (
 	waitCourseFullTimeout = 2 * time.Second
 	// waitReadClassAnnouncementTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
 	waitReadClassAnnouncementTimeout = 5 * time.Second
+	// waitGradeTimeout は成績確認がタイムアウトした際に再度確認しに行くまでの待ち
+	waitGradeTimeout = 10 * time.Second
 	// loadRequestTime はLoadシナリオ内でリクエストを送り続ける時間(Load自体のTimeoutより早めに終わらせる)
 	loadRequestTime = 60 * time.Second
 )
