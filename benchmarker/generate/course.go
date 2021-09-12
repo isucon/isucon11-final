@@ -200,15 +200,7 @@ var keywordList = append(majorMid2, liberalMid1...)
 var popularTeacherName = []string{"橋本 陸", "金城 奈菜", "山下 篤", "森 奏太", "山口 和希", "高嶺 空", "池田 大地", "石川 楓花", "高橋 華子", "佐々木 諒", "荒井 優希", "加藤 海斗", "相澤 悠太", "近藤 太郎", "伊藤 千晶", "佐々木 翼", "佐藤 大樹"}
 
 func SearchCourseParam() *model.SearchCourseParam {
-	param := model.SearchCourseParam{
-		Type:      "",
-		Credit:    0,
-		Teacher:   "",
-		Period:    -1, // 0-5, -1で指定なし
-		DayOfWeek: -1, // 0-4, -1で指定なし
-		Keywords:  []string{},
-		Status:    "",
-	}
+	param := model.NewCourseParam()
 
 	if percentage(searchRandEngine, 1, 2) {
 		// 1/2の確率でTimeSlot指定
@@ -228,7 +220,7 @@ func SearchCourseParam() *model.SearchCourseParam {
 		// 1/8の確率でKeyword指定
 		param.Keywords = []string{randElt(keywordList)}
 	}
-	return &param
+	return param
 }
 
 func percentage(engine *rand.Rand, decimal int, parameter int) bool {
