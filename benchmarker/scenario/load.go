@@ -352,9 +352,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.RegRegisterCourses)
 				}
 				for _, c := range temporaryReservedCourses {
-					if !isExtendRequest {
-						step.AddScore(score.RegRegisterCourseStudents)
-					}
+					step.AddScore(score.RegRegisterCourseStudents)
 					c.CommitReservation(student)
 					student.AddCourse(c)
 					c.StartTimer(waitCourseFullTimeout)
