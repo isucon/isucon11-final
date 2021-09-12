@@ -559,13 +559,6 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 func (s *Scenario) courseScenario(course *model.Course, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
-		defer func() {
-			for _, student := range course.Students() {
-				student.ReleaseTimeslot(course.DayOfWeek, course.Period)
-				s.CapacityCounter.Inc(course.DayOfWeek, course.Period)
-			}
-		}()
-
 		waitStart := time.Now()
 
 		// 履修締め切りを待つ
@@ -761,6 +754,10 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 
 		course.SetStatusToClosed()
 		step.AddScore(score.FinishCourses)
+		for _, student := range course.Students() {
+			student.ReleaseTimeslot(course.DayOfWeek, course.Period)
+			s.CapacityCounter.Inc(course.DayOfWeek, course.Period)
+		}
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
 		s.finishCoursePubSub.Publish(len(course.Students()))
