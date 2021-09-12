@@ -27,6 +27,7 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 	s.validateAnnouncements(ctx, step)
 	s.validateCourses(ctx, step)
 	s.validateGrades(ctx, step)
+	s.validateGradeCache(ctx, step)
 
 	return nil
 }
@@ -278,6 +279,134 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	p.Wait()
 
 	return
+}
+
+func (s *Scenario) validateGradeCache(ctx context.Context, step *isucandar.BenchmarkStep) {
+	errGetGradeCached := failure.NewError(fails.ErrApplication, fmt.Errorf("成績取得(GET /api/users/me/grades)が即時反映されていません"))
+
+	activeStudents := s.activeStudents
+	users := make(map[string]*model.Student, len(activeStudents))
+	for _, activeStudent := range activeStudents {
+		if activeStudent.HasFinishedCourse() {
+			users[activeStudent.Code] = activeStudent
+		}
+	}
+
+	// 検証で使用する学生ユーザ
+	student, err := s.getLoggedInStudent(ctx)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	users[student.Code] = student
+
+	// 検証で使用する講師ユーザ
+	teacher, err := s.getLoggedInTeacher(ctx)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+
+	// student に成績のつく適当なin-progressの科目を用意
+	courseParam := generate.CourseParam(0, 0, teacher)
+	_, addCourseRes, err := AddCourseAction(ctx, teacher.Agent, courseParam)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
+	_, _, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{course})
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	course.AddStudent(student)
+	student.AddCourse(course)
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	course.SetStatusToInProgress()
+	classParam := generate.ClassParam(course, 1)
+	_, addClassRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	class := model.NewClass(addClassRes.ClassID, classParam)
+	course.AddClass(class)
+	subData, subTitle := generate.SubmissionData(course, class, student.UserAccount)
+	sub := model.NewSubmission(subTitle, subData)
+	_, err = SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, subTitle, subData)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	class.AddSubmission(student.Code, sub)
+	_, subs, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	err = verifyAssignments(subs, class)
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	_, err = PostGradeAction(ctx, teacher.Agent, course.ID, class.ID, []StudentScore{{score: 100, code: student.Code}})
+	if err != nil {
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	}
+	sub.SetScore(100)
+
+	// ======== 検証 ========
+
+	// webapp 側での何らかのキャッシュ機構を発動させるための GetGrade と、
+	// 成績を更新させるための SetCourseStatusClosed を同時に投げる
+	var wg sync.WaitGroup
+	wg.Add(2)
+	errChan := make(chan error, 2)
+	verifyGradesData := collectVerifyGradesData(student)
+	go func() {
+		defer wg.Done()
+		_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		if err := verifyGrades(verifyGradesData, &getGradeRes); err != nil {
+			errChan <- err
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		_, err := SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		// SetCourseStatusClosed が返ってきたら即 GetGrade を投げ、
+		// 成績が即時反映されているかをチェック
+		course.SetStatusToClosed()
+		_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		expected := calculateGradeRes(student, users)
+		if err := validateUserGrade(&expected, &getGradeRes); err != nil {
+			errChan <- errGetGradeCached
+		}
+	}()
+	wg.Wait()
+	select {
+	case err := <-errChan:
+		step.AddError(failure.NewError(fails.ErrCritical, err))
+		return
+	default:
+	}
 }
 
 func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
