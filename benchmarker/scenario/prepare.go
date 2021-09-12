@@ -304,7 +304,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 					class.AddSubmission(student.Code, submissionSummary)
 				})
 				if err != nil {
-					panic(fmt.Errorf("unreachable! %w", err))
+					AdminLogger.Println("info: cannot start parallel: %w", err)
 				}
 			}
 			p.Wait()
@@ -590,7 +590,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 					}
 				})
 				if err != nil {
-					panic(fmt.Errorf("unreachable! %w", err))
+					AdminLogger.Println("info: cannot start parallel: %w", err)
 				}
 			}
 			p.Wait()
