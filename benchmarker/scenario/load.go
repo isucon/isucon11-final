@@ -577,12 +577,28 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		s.CourseManager.RemoveRegistrationClosedCourse(course)
 
 		teacher := course.Teacher()
+
 		// 科目ステータスをin-progressにする
+		isExtendRequest := false
+	statusStartLoop:
+		if s.isNoRetryTime(ctx) {
+			return
+		}
 		_, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 		if err != nil {
-			step.AddError(err)
-			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
-			return
+			if !isExtendRequest {
+				step.AddError(err)
+			}
+			var urlError *url.Error
+			if errors.As(err, &urlError) && urlError.Timeout() {
+				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto statusStartLoop
+			} else {
+				AdminLogger.Printf("%vのコースステータスを in-progress に変更するのが失敗しました", course.Name)
+				return
+			}
 		}
 		course.SetStatusToInProgress()
 		s.debugData.AddInt("waitCourseTime", time.Since(waitStart).Milliseconds())
@@ -730,7 +746,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		}
 
 		// 科目ステータスをclosedにする
-		isExtendRequest := false
+		isExtendRequest = false
 	statusLoop:
 		if s.isNoRetryTime(ctx) {
 			return
