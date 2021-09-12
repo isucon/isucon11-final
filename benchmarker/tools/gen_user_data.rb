@@ -25,7 +25,7 @@ end
 def save_tsv(users, file_name)
   File.open(file_name, mode = "w") do |f|
     users.each do |user|
-      f.write(user[:code], "\t", user[:full_name], "\t", user[:password], "\n")
+      f.write(user[:id], "\t", user[:code], "\t", user[:full_name], "\t", user[:password], "\n")
     end
   end
 end

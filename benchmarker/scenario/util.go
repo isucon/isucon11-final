@@ -28,3 +28,13 @@ func parseLinkHeader(hres *http.Response) (prev string, next string) {
 	}
 	return
 }
+
+// keysの要素がすべてsの部分文字列であればtrue
+func containsAll(s string, keys []string) bool {
+	for _, key := range keys {
+		if !strings.Contains(s, key) {
+			return false
+		}
+	}
+	return true
+}

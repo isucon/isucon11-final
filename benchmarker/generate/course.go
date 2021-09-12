@@ -1,13 +1,71 @@
 package generate
 
 import (
+	"bufio"
+	"bytes"
+	_ "embed"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 )
+
+var (
+	//go:embed data/course.tsv
+	coursesData []byte
+)
+
+func LoadInitialCourseData(teacherMap map[string]*model.Teacher, studentCapacityPerCourse int, cc *model.CapacityCounter) []*model.Course {
+	courses := make([]*model.Course, 0)
+	s := bufio.NewScanner(bytes.NewReader(coursesData))
+	for s.Scan() {
+		line := strings.Split(s.Text(), "\t")
+		if len(line) != 11 {
+			panic("invalid course data")
+		}
+		credit, err := strconv.Atoi(line[5])
+		if err != nil {
+			panic(err)
+		}
+		period, err := strconv.Atoi(line[6])
+		if err != nil {
+			panic(err)
+		}
+		dayOfWeek, err := strconv.Atoi(line[7])
+		if err != nil {
+			panic(err)
+		}
+		teacher, ok := teacherMap[line[8]]
+		if !ok {
+			panic("unknown teacher")
+		}
+		param := &model.CourseParam{
+			Code:        line[1],
+			Type:        line[2],
+			Name:        line[3],
+			Description: line[4],
+			Credit:      credit,
+			Teacher:     teacher.Name,
+			Period:      period,
+			DayOfWeek:   dayOfWeek,
+			Keywords:    line[9],
+		}
+		course := model.NewCourse(param, line[0], teacher, studentCapacityPerCourse, cc)
+		switch line[10] {
+		case "in-progress":
+			course.SetStatusToInProgress()
+		case "closed":
+			course.SetStatusToClosed()
+		default:
+			// registration なので変更しなくて良い
+		}
+		courses = append(courses, course)
+	}
+	return courses
+}
 
 const (
 	majorCourseProb = 0.7
@@ -142,15 +200,7 @@ var keywordList = append(majorMid2, liberalMid1...)
 var popularTeacherName = []string{"橋本 陸", "金城 奈菜", "山下 篤", "森 奏太", "山口 和希", "高嶺 空", "池田 大地", "石川 楓花", "高橋 華子", "佐々木 諒", "荒井 優希", "加藤 海斗", "相澤 悠太", "近藤 太郎", "伊藤 千晶", "佐々木 翼", "佐藤 大樹"}
 
 func SearchCourseParam() *model.SearchCourseParam {
-	param := model.SearchCourseParam{
-		Type:      "",
-		Credit:    0,
-		Teacher:   "",
-		Period:    -1, // 0-5, -1で指定なし
-		DayOfWeek: -1, // 0-4, -1で指定なし
-		Keywords:  []string{},
-		Status:    "",
-	}
+	param := model.NewCourseParam()
 
 	if percentage(searchRandEngine, 1, 2) {
 		// 1/2の確率でTimeSlot指定
@@ -170,7 +220,7 @@ func SearchCourseParam() *model.SearchCourseParam {
 		// 1/8の確率でKeyword指定
 		param.Keywords = []string{randElt(keywordList)}
 	}
-	return &param
+	return param
 }
 
 func percentage(engine *rand.Rand, decimal int, parameter int) bool {
