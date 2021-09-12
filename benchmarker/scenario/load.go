@@ -592,6 +592,14 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 
 		studentLen := len(course.Students())
 		switch {
+		case studentLen < 10:
+			step.AddScore(score.CourseStartCourseUnder10)
+		case studentLen < 20:
+			step.AddScore(score.CourseStartCourseUnder20)
+		case studentLen < 30:
+			step.AddScore(score.CourseStartCourseUnder30)
+		case studentLen < 40:
+			step.AddScore(score.CourseStartCourseUnder40)
 		case studentLen < 50:
 			step.AddScore(score.CourseStartCourseUnder50)
 		case studentLen == 50:

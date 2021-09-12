@@ -13,9 +13,13 @@ const (
 	FinishCourses            score.ScoreTag = "_O3.FinishCourses"
 	FinishCourseStudents     score.ScoreTag = "_O4.FinishCourseStudents"
 	GetAnnouncementsDetail   score.ScoreTag = "_O5.GetAnnouncementDetail"
-	CourseStartCourseUnder50 score.ScoreTag = "_O6.StartCourseUnder50"
-	CourseStartCourseFull    score.ScoreTag = "_O7.StartCourseFull"
-	CourseStartCourseOver50  score.ScoreTag = "!O8.StartCourseOver50"
+	CourseStartCourseUnder10 score.ScoreTag = "_O6.StartCourseUnder10"
+	CourseStartCourseUnder20 score.ScoreTag = "_O7.StartCourseUnder20"
+	CourseStartCourseUnder30 score.ScoreTag = "_O8.StartCourseUnder30"
+	CourseStartCourseUnder40 score.ScoreTag = "_O9.StartCourseUnder40"
+	CourseStartCourseUnder50 score.ScoreTag = "_10.StartCourseUnder50"
+	CourseStartCourseFull    score.ScoreTag = "_11.StartCourseFull"
+	CourseStartCourseOver50  score.ScoreTag = "!12.StartCourseOver50"
 
 	// registration scenario
 	RegGetGrades                    score.ScoreTag = "_R1.GetGrades"
@@ -56,6 +60,10 @@ var Tags = []score.ScoreTag{
 	FinishCourseStudents,
 	GetAnnouncementsDetail,
 
+	CourseStartCourseUnder10,
+	CourseStartCourseUnder20,
+	CourseStartCourseUnder30,
+	CourseStartCourseUnder40,
 	CourseStartCourseUnder50,
 	CourseStartCourseFull,
 	CourseStartCourseOver50,
