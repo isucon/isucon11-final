@@ -210,6 +210,8 @@ interface Course extends RowDataPacket {
   status: CourseStatus;
 }
 
+// ---------- Public API ----------
+
 interface LoginRequest {
   code: string;
   password: string;
@@ -271,6 +273,8 @@ app.post("/logout", (req, res) => {
   req.session = null;
   return res.status(200).send();
 });
+
+// ---------- Users API ----------
 
 interface GetMeResponse {
   code: string;
@@ -334,6 +338,8 @@ usersApi.get("/me/courses", async (req, res) => {
 
   const db = await pool.getConnection();
   try {
+    await db.beginTransaction();
+
     const [courses] = await db.query<Course[]>(
       "SELECT `courses`.*" +
         " FROM `courses`" +
@@ -361,9 +367,12 @@ usersApi.get("/me/courses", async (req, res) => {
       });
     }
 
+    await db.commit();
+
     return res.status(200).json(response);
   } catch (err) {
     console.error(err);
+    await db.rollback();
     return res.status(500).send();
   } finally {
     db.release();
@@ -420,8 +429,6 @@ usersApi.put("/me/courses", async (req, res) => {
   const db = await pool.getConnection();
   try {
     await db.beginTransaction();
-
-    await db.query("SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE", [userId]);
 
     const errors: RegisterCoursesErrorResponse = {
       course_not_found: [],
@@ -489,7 +496,7 @@ usersApi.put("/me/courses", async (req, res) => {
 
     for (const course of newlyAdded) {
       await db.query(
-        "INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)",
+        "INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `course_id` = VALUES(`course_id`), `user_id` = VALUES(`user_id`)",
         [course.id, userId]
       );
     }
@@ -560,6 +567,8 @@ usersApi.get("/me/grades", async (req, res) => {
 
   const db = await pool.getConnection();
   try {
+    await db.beginTransaction();
+
     // 履修している科目一覧取得
     const [registeredCourses] = await db.query<Course[]>(
       "SELECT `courses`.*" +
@@ -677,6 +686,8 @@ usersApi.get("/me/grades", async (req, res) => {
     );
     const gpas = rows.map((row) => row.gpa);
 
+    await db.commit();
+
     const response: GetGradeResponse = {
       summary: {
         credits: myCredits,
@@ -691,11 +702,14 @@ usersApi.get("/me/grades", async (req, res) => {
     return res.status(200).json(response);
   } catch (err) {
     console.error(err);
+    await db.rollback();
     return res.status(500).send();
   } finally {
     db.release();
   }
 });
+
+// ---------- Courses API ----------
 
 interface SearchCoursesQuery {
   type: string;
@@ -902,8 +916,6 @@ coursesApi.post("", isAdmin, async (req, res) => {
 
   const db = await pool.getConnection();
   try {
-    await db.beginTransaction();
-
     const courseId = newUlid();
     try {
       await db.query(
@@ -922,7 +934,6 @@ coursesApi.post("", isAdmin, async (req, res) => {
         ]
       );
     } catch (err) {
-      await db.rollback();
       if (
         err &&
         typeof err === "object" &&
@@ -953,13 +964,10 @@ coursesApi.post("", isAdmin, async (req, res) => {
       return res.status(500).send();
     }
 
-    await db.commit();
-
     const response: AddCourseResponse = { id: courseId };
     return res.status(201).json(response);
   } catch (err) {
     console.error(err);
-    await db.rollback();
     return res.status(500).send();
   } finally {
     db.release();
@@ -1034,11 +1042,14 @@ coursesApi.put(
 
     const db = await pool.getConnection();
     try {
+      await db.beginTransaction();
+
       const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
         "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
         [courseId]
       );
       if (cnt === 0) {
+        await db.rollback();
         return res.status(404).type("text").send("No such course.");
       }
 
@@ -1047,9 +1058,12 @@ coursesApi.put(
         [request.status, courseId]
       );
 
+      await db.commit();
+
       return res.status(200).send();
     } catch (err) {
       console.error(err);
+      await db.rollback();
       return res.status(500).send();
     } finally {
       db.release();
@@ -1086,11 +1100,14 @@ coursesApi.get(
 
     const db = await pool.getConnection();
     try {
+      await db.beginTransaction();
+
       const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
         "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
         [courseId]
       );
       if (cnt === 0) {
+        await db.rollback();
         return res.status(404).type("text").send("No such course.");
       }
 
@@ -1102,6 +1119,8 @@ coursesApi.get(
           " ORDER BY `classes`.`part`",
         [userId, courseId]
       );
+
+      await db.commit();
 
       // 結果が0件の時は空配列を返却
       const response: GetClassResponse[] = classes.map((cls) => {
@@ -1118,6 +1137,7 @@ coursesApi.get(
       return res.status(200).json(response);
     } catch (err) {
       console.error(err);
+      await db.rollback();
       return res.status(500).send();
     } finally {
       db.release();
@@ -1427,7 +1447,7 @@ coursesApi.get(
         "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`" +
           " FROM `submissions`" +
           " JOIN `users` ON `users`.`id` = `submissions`.`user_id`" +
-          " WHERE `class_id` = ? FOR SHARE",
+          " WHERE `class_id` = ?",
         [classId]
       );
 
@@ -1473,6 +1493,8 @@ async function createSubmissionsZip(
   // -i 'tmpDir/*': 空zipを許す
   await exec(`zip -j -r '${zipFilePath}' '${tmpDir}' -i '${tmpDir + "*"}'`);
 }
+
+// ---------- Announcement API ----------
 
 interface AnnouncementWithoutDetail {
   id: string;
@@ -1555,6 +1577,8 @@ announcementsApi.get(
 
     const db = await pool.getConnection();
     try {
+      await db.beginTransaction();
+
       let [announcements] = await db.query<AnnouncementWithoutDetailRow[]>(
         query,
         args
@@ -1566,6 +1590,8 @@ announcementsApi.get(
         "SELECT COUNT(*) AS `unreadCount` FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`",
         [userId]
       );
+
+      await db.commit();
 
       const links = [];
       const linkUrl = new URL(
@@ -1604,6 +1630,7 @@ announcementsApi.get(
       return res.status(200).json(response);
     } catch (err) {
       console.error(err);
+      await db.rollback();
       return res.status(500).send();
     } finally {
       db.release();
@@ -1646,21 +1673,16 @@ announcementsApi.post("", isAdmin, async (req, res) => {
 
   const db = await pool.getConnection();
   try {
+    await db.beginTransaction();
+
     const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
       "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
       [request.course_id]
     );
     if (cnt === 0) {
+      await db.rollback();
       return res.status(404).type("text").send("No such course.");
     }
-  } catch (err) {
-    console.error(err);
-    db.release();
-    return res.status(500).send();
-  }
-
-  try {
-    await db.beginTransaction();
 
     try {
       await db.query(
@@ -1749,6 +1771,8 @@ announcementsApi.get(
 
     const db = await pool.getConnection();
     try {
+      await db.beginTransaction();
+
       const [[announcement]] = await db.query<AnnouncementDetailRow[]>(
         "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
           " FROM `announcements`" +
@@ -1759,6 +1783,7 @@ announcementsApi.get(
         [announcementId, userId]
       );
       if (!announcement) {
+        await db.rollback();
         return res.status(404).type("text").send("No such announcement.");
       }
 
@@ -1769,6 +1794,7 @@ announcementsApi.get(
         [announcement.course_id, userId]
       );
       if (registrationCount === 0) {
+        await db.rollback();
         return res.status(404).type("text").send("No such announcement.");
       }
 
@@ -1777,6 +1803,8 @@ announcementsApi.get(
         [announcementId, userId]
       );
 
+      await db.commit();
+
       const response: AnnouncementDetail = {
         ...announcement,
         unread: !!announcement.unread,
@@ -1784,6 +1812,7 @@ announcementsApi.get(
       return res.status(200).json(response);
     } catch (err) {
       console.error(err);
+      await db.rollback();
       return res.status(500).send();
     } finally {
       db.release();
