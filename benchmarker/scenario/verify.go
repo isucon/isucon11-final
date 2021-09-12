@@ -112,7 +112,7 @@ func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse) er
 				return err
 			}
 		case *model.CourseResult:
-			err := validateCourseResult(v, &resCourseResult)
+			err := assertEqualCourseResult(v, &resCourseResult)
 			if err != nil {
 				return err
 			}
