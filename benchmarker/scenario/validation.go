@@ -297,9 +297,9 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) e
 		}
 
 		expected := expected.CourseResults[courseResult.Code]
-		err := validateCourseResult(expected, &courseResult)
+		err := assertEqualCourseResult(expected, &courseResult)
 		if err != nil {
-			return err
+			return failure.NewError(fails.ErrCritical, err)
 		}
 	}
 
@@ -329,74 +329,6 @@ func validateSummary(expected *model.Summary, actual *api.Summary) error {
 
 	if !AssertWithinTolerance("grade summary gpa_t_score", expected.GpaTScore, actual.GpaTScore, validateGPAErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_t_scoreが一致しません"))
-	}
-
-	return nil
-}
-
-func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult) error {
-	if !AssertEqual("grade courses name", expected.Name, actual.Name) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースの名前が一致しません"))
-	}
-
-	if !AssertEqual("grade courses code", expected.Code, actual.Code) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのコードが一致しません"))
-	}
-
-	if !AssertEqual("grade courses total_score", expected.TotalScore, actual.TotalScore) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreが一致しません"))
-	}
-
-	if !AssertEqual("grade courses total_score_max", expected.TotalScoreMax, actual.TotalScoreMax) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません"))
-	}
-
-	if !AssertEqual("grade courses total_score_min", expected.TotalScoreMin, actual.TotalScoreMin) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade courses total_score_avg", expected.TotalScoreAvg, actual.TotalScoreAvg, validateTotalScoreErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade courses total_score_t_score", expected.TotalScoreTScore, actual.TotalScoreTScore, validateTotalScoreErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores length", len(expected.ClassScores), len(actual.ClassScores)) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のClassScoresの数が一致しません"))
-	}
-
-	for i := 0; i < len(expected.ClassScores); i++ {
-		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
-		err := validateClassScore(expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1])
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) error {
-	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのIDが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのpartが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores title", expected.Title, actual.Title) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores score", expected.Score, actual.Score) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores submitters", expected.SubmitterCount, actual.Submitters) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題提出者の数が一致しません"))
 	}
 
 	return nil
