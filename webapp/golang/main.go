@@ -1002,13 +1002,6 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	tx, err := h.DB.Beginx()
-	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
 	before := c.QueryParam("before")
 
 	var announcements []AnnouncementWithoutDetail
@@ -1034,12 +1027,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		" LIMIT ?"
 	args = append(args, userID, limit+1)
 
-	if err := tx.Select(&announcements, query, args...); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	if err := tx.Commit(); err != nil {
+	if err := h.DB.Select(&announcements, query, args...); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
