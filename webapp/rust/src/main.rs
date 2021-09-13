@@ -512,6 +512,8 @@ async fn get_registered_courses(
 ) -> actix_web::Result<HttpResponse> {
     let (user_id, _, _) = get_user_info(session)?;
 
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
     let courses: Vec<Course> = sqlx::query_as(concat!(
         "SELECT `courses`.*",
         " FROM `courses`",
@@ -520,18 +522,19 @@ async fn get_registered_courses(
     ))
     .bind(CourseStatus::Closed)
     .bind(&user_id)
-    .fetch_all(pool.as_ref())
+    .fetch_all(&mut tx)
     .await
     .map_err(SqlxError)?;
 
     // 履修科目が0件の時は空配列を返却
     let mut res = Vec::with_capacity(courses.len());
     for course in courses {
-        let teacher: User = sqlx::query_as("SELECT * FROM `users` WHERE `id` = ?")
-            .bind(&course.teacher_id)
-            .fetch_one(pool.as_ref())
-            .await
-            .map_err(SqlxError)?;
+        let teacher: User = isucholar::db::fetch_one_as(
+            sqlx::query_as("SELECT * FROM `users` WHERE `id` = ?").bind(&course.teacher_id),
+            &mut tx,
+        )
+        .await
+        .map_err(SqlxError)?;
 
         res.push(GetRegisteredCourseResponseContent {
             id: course.id,
@@ -541,6 +544,8 @@ async fn get_registered_courses(
             day_of_week: course.day_of_week,
         });
     }
+
+    tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Ok().json(res))
 }
@@ -717,6 +722,8 @@ async fn get_grades(
 ) -> actix_web::Result<HttpResponse> {
     let (user_id, _, _) = get_user_info(session)?;
 
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
     // 履修している科目一覧取得
     let registered_courses: Vec<Course> = sqlx::query_as(concat!(
         "SELECT `courses`.*",
@@ -725,7 +732,7 @@ async fn get_grades(
         " WHERE `user_id` = ?",
     ))
     .bind(&user_id)
-    .fetch_all(pool.as_ref())
+    .fetch_all(&mut tx)
     .await
     .map_err(SqlxError)?;
 
@@ -742,7 +749,7 @@ async fn get_grades(
             " ORDER BY `part` DESC",
         ))
         .bind(&course.id)
-        .fetch_all(pool.as_ref())
+        .fetch_all(&mut tx)
         .await
         .map_err(SqlxError)?;
 
@@ -750,19 +757,25 @@ async fn get_grades(
         let mut class_scores = Vec::with_capacity(classes.len());
         let mut my_total_score = 0;
         for class in classes {
-            let submissions_count: i64 =
+            let submissions_count: i64 = isucholar::db::fetch_one_scalar(
                 sqlx::query_scalar("SELECT COUNT(*) FROM `submissions` WHERE `class_id` = ?")
-                    .bind(&class.id)
-                    .fetch_one(pool.as_ref())
-                    .await
-                    .map_err(SqlxError)?;
+                    .bind(&class.id),
+                &mut tx,
+            )
+            .await
+            .map_err(SqlxError)?;
 
-            let my_score: Option<Option<u8>> = sqlx::query_scalar("SELECT `submissions`.`score` FROM `submissions` WHERE `user_id` = ? AND `class_id` = ?")
+            let my_score: Option<Option<u8>> = isucholar::db::fetch_optional_scalar(
+                sqlx::query_scalar(concat!(
+                    "SELECT `submissions`.`score` FROM `submissions`",
+                    " WHERE `user_id` = ? AND `class_id` = ?"
+                ))
                 .bind(&user_id)
-                .bind(&class.id)
-                .fetch_optional(pool.as_ref())
-                .await
-                .map_err(SqlxError)?;
+                .bind(&class.id),
+                &mut tx,
+            )
+            .await
+            .map_err(SqlxError)?;
             if let Some(Some(my_score)) = my_score {
                 let my_score = my_score as i64;
                 my_total_score += my_score;
@@ -796,7 +809,7 @@ async fn get_grades(
             " GROUP BY `users`.`id`",
         ))
         .bind(&course.id)
-        .fetch(pool.as_ref());
+        .fetch(&mut tx);
         let mut totals = Vec::new();
         while let Some(row) = rows.next().await {
             let total_score: sqlx::types::Decimal = row.map_err(SqlxError)?;
@@ -826,32 +839,37 @@ async fn get_grades(
 
     // GPAの統計値
     // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
-    let mut rows = sqlx::query_scalar(concat!(
-        "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`",
-        " FROM `users`",
-        " JOIN (",
-        "     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`",
-        "     FROM `users`",
-        "     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`",
-        "     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?",
-        "     GROUP BY `users`.`id`",
-        " ) AS `credits` ON `credits`.`user_id` = `users`.`id`",
-        " JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`",
-        " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?",
-        " LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`",
-        " LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`",
-        " WHERE `users`.`type` = ?",
-        " GROUP BY `users`.`id`",
-    ))
-    .bind(CourseStatus::Closed)
-    .bind(CourseStatus::Closed)
-    .bind(UserType::Student)
-    .fetch(pool.as_ref());
-    let mut gpas = Vec::new();
-    while let Some(row) = rows.next().await {
-        let gpa: sqlx::types::Decimal = row.map_err(SqlxError)?;
-        gpas.push(gpa.to_f64().unwrap());
-    }
+    let gpas = {
+        let mut rows = sqlx::query_scalar(concat!(
+            "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`",
+            " FROM `users`",
+            " JOIN (",
+            "     SELECT `users`.`id` AS `user_id`, SUM(`courses`.`credit`) AS `credits`",
+            "     FROM `users`",
+            "     JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`",
+            "     JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?",
+            "     GROUP BY `users`.`id`",
+            " ) AS `credits` ON `credits`.`user_id` = `users`.`id`",
+            " JOIN `registrations` ON `users`.`id` = `registrations`.`user_id`",
+            " JOIN `courses` ON `registrations`.`course_id` = `courses`.`id` AND `courses`.`status` = ?",
+            " LEFT JOIN `classes` ON `courses`.`id` = `classes`.`course_id`",
+            " LEFT JOIN `submissions` ON `users`.`id` = `submissions`.`user_id` AND `submissions`.`class_id` = `classes`.`id`",
+            " WHERE `users`.`type` = ?",
+            " GROUP BY `users`.`id`",
+        ))
+        .bind(CourseStatus::Closed)
+        .bind(CourseStatus::Closed)
+        .bind(UserType::Student)
+        .fetch(&mut tx);
+        let mut gpas = Vec::new();
+        while let Some(row) = rows.next().await {
+            let gpa: sqlx::types::Decimal = row.map_err(SqlxError)?;
+            gpas.push(gpa.to_f64().unwrap());
+        }
+        gpas
+    };
+
+    tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Ok().json(GetGradeResponse {
         course_results,
@@ -1031,8 +1049,6 @@ async fn add_course(
 ) -> actix_web::Result<HttpResponse> {
     let (user_id, _, _) = get_user_info(session)?;
 
-    let mut tx = pool.begin().await.map_err(SqlxError)?;
-
     let course_id = isucholar::util::new_ulid().await;
     let result = sqlx::query("INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(&course_id)
@@ -1045,17 +1061,16 @@ async fn add_course(
         .bind(&req.day_of_week)
         .bind(&user_id)
         .bind(&req.keywords)
-        .execute(&mut tx)
+        .execute(pool.as_ref())
         .await;
     if let Err(sqlx::Error::Database(ref db_error)) = result {
         if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
             if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
-                let course: Course = isucholar::db::fetch_one_as(
-                    sqlx::query_as("SELECT * FROM `courses` WHERE `code` = ?").bind(&req.code),
-                    &mut tx,
-                )
-                .await
-                .map_err(SqlxError)?;
+                let course: Course = sqlx::query_as("SELECT * FROM `courses` WHERE `code` = ?")
+                    .bind(&req.code)
+                    .fetch_one(pool.as_ref())
+                    .await
+                    .map_err(SqlxError)?;
                 if req.type_ != course.type_
                     || req.name != course.name
                     || req.description != course.description
@@ -1074,8 +1089,6 @@ async fn add_course(
         }
     }
     result.map_err(SqlxError)?;
-
-    tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Created().json(AddCourseResponse { id: course_id }))
 }
@@ -1137,11 +1150,15 @@ async fn set_course_status(
 ) -> actix_web::Result<HttpResponse> {
     let course_id = &course_id.0;
 
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM `courses` WHERE `id` = ?")
-        .bind(course_id)
-        .fetch_one(pool.as_ref())
-        .await
-        .map_err(SqlxError)?;
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
+    let count: i64 = isucholar::db::fetch_one_scalar(
+        sqlx::query_scalar("SELECT COUNT(*) FROM `courses` WHERE `id` = ? FOR UPDATE")
+            .bind(course_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if count == 0 {
         return Err(actix_web::error::ErrorNotFound("No such course."));
     }
@@ -1149,9 +1166,11 @@ async fn set_course_status(
     sqlx::query("UPDATE `courses` SET `status` = ? WHERE `id` = ?")
         .bind(&req.status)
         .bind(course_id)
-        .execute(pool.as_ref())
+        .execute(&mut tx)
         .await
         .map_err(SqlxError)?;
+
+    tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Ok().finish())
 }
@@ -1187,11 +1206,14 @@ async fn get_classes(
 
     let course_id = &course_id.0;
 
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM `courses` WHERE `id` = ?")
-        .bind(course_id)
-        .fetch_one(pool.as_ref())
-        .await
-        .map_err(SqlxError)?;
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
+    let count: i64 = isucholar::db::fetch_one_scalar(
+        sqlx::query_scalar("SELECT COUNT(*) FROM `courses` WHERE `id` = ?").bind(course_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if count == 0 {
         return Err(actix_web::error::ErrorNotFound("No such course."));
     }
@@ -1205,9 +1227,11 @@ async fn get_classes(
     ))
     .bind(&user_id)
     .bind(course_id)
-    .fetch_all(pool.as_ref())
+    .fetch_all(&mut tx)
     .await
     .map_err(SqlxError)?;
+
+    tx.commit().await.map_err(SqlxError)?;
 
     // 結果が0件の時は空配列を返却
     let res = classes
@@ -1495,7 +1519,7 @@ async fn download_submitted_assignments(
         "SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`",
         " FROM `submissions`",
         " JOIN `users` ON `users`.`id` = `submissions`.`user_id`",
-        " WHERE `class_id` = ? FOR SHARE",
+        " WHERE `class_id` = ?",
     ))
     .bind(class_id)
     .fetch_all(&mut tx)
@@ -1592,6 +1616,8 @@ async fn get_announcement_list(
 ) -> actix_web::Result<HttpResponse> {
     let (user_id, _, _) = get_user_info(session)?;
 
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
     let mut query = concat!(
         "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`",
         " FROM `announcements`",
@@ -1631,17 +1657,21 @@ async fn get_announcement_list(
     args.add(offset);
 
     let mut announcements: Vec<AnnouncementWithoutDetail> = sqlx::query_as_with(&query, args)
-        .fetch_all(pool.as_ref())
+        .fetch_all(&mut tx)
         .await
         .map_err(SqlxError)?;
 
-    let unread_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`",
+    let unread_count: i64 = isucholar::db::fetch_one_scalar(
+        sqlx::query_scalar(
+            "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`",
+        )
+        .bind(&user_id),
+        &mut tx,
     )
-    .bind(&user_id)
-    .fetch_one(pool.as_ref())
     .await
     .map_err(SqlxError)?;
+
+    tx.commit().await.map_err(SqlxError)?;
 
     let uri = request.uri();
     let mut params = params.into_inner();
@@ -1700,16 +1730,17 @@ async fn add_announcement(
     pool: web::Data<sqlx::MySqlPool>,
     req: web::Json<AddAnnouncementRequest>,
 ) -> actix_web::Result<HttpResponse> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM `courses` WHERE `id` = ?")
-        .bind(&req.course_id)
-        .fetch_one(pool.as_ref())
-        .await
-        .map_err(SqlxError)?;
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
+    let count: i64 = isucholar::db::fetch_one_scalar(
+        sqlx::query_scalar("SELECT COUNT(*) FROM `courses` WHERE `id` = ?").bind(&req.course_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
     if count == 0 {
         return Err(actix_web::error::ErrorNotFound("No such course."));
     }
-
-    let mut tx = pool.begin().await.map_err(SqlxError)?;
 
     let result = sqlx::query(
         "INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`) VALUES (?, ?, ?, ?)",
@@ -1790,30 +1821,34 @@ async fn get_announcement_detail(
 
     let announcement_id = &announcement_id.0;
 
-    let announcement: Option<AnnouncementDetail> = sqlx::query_as(concat!(
-            "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`",
-            " FROM `announcements`",
-            " JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`",
-            " JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`",
-            " WHERE `announcements`.`id` = ?",
-            " AND `unread_announcements`.`user_id` = ?",
-    ))
-        .bind(announcement_id)
-        .bind(&user_id)
-        .fetch_optional(pool.as_ref())
-        .await
-        .map_err(SqlxError)?;
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
+    let announcement: Option<AnnouncementDetail> = isucholar::db::fetch_optional_as(
+        sqlx::query_as(concat!(
+                "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`",
+                " FROM `announcements`",
+                " JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`",
+                " JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`",
+                " WHERE `announcements`.`id` = ?",
+                " AND `unread_announcements`.`user_id` = ?",
+        )).bind(announcement_id).bind(&user_id),
+        &mut tx
+    )
+    .await
+    .map_err(SqlxError)?;
     if announcement.is_none() {
         return Err(actix_web::error::ErrorNotFound("No such announcement."));
     }
     let announcement = announcement.unwrap();
 
-    let registration_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+    let registration_count: i64 = isucholar::db::fetch_one_scalar(
+        sqlx::query_scalar(
+            "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+        )
+        .bind(&announcement.course_id)
+        .bind(&user_id),
+        &mut tx,
     )
-    .bind(&announcement.course_id)
-    .bind(&user_id)
-    .fetch_one(pool.as_ref())
     .await
     .map_err(SqlxError)?;
     if registration_count == 0 {
@@ -1823,9 +1858,11 @@ async fn get_announcement_detail(
     sqlx::query("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?")
         .bind(announcement_id)
         .bind(&user_id)
-        .execute(pool.as_ref())
+        .execute(&mut tx)
         .await
         .map_err(SqlxError)?;
+
+    tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Ok().json(announcement))
 }
