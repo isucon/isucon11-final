@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -1107,7 +1108,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 			CourseID:   announcement.CourseID,
 			CourseName: announcement.CourseName,
 			Title:      announcement.Title,
-			Unread:     unreadMap[userID][announcement.ID],
+			Unread:     !unreadMap.Get(userID, announcement.ID),
 		})
 	}
 
@@ -1207,10 +1208,33 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	}
 	announcementID := c.Param("announcementID")
 
-	unreadMap[userID][announcementID] = true
+	unreadMap.Read(userID, announcementID)
 
 	var announcement AnnouncementDetail
 	return c.JSON(http.StatusOK, announcement)
 }
 
-var unreadMap = map[string]map[string]bool{}
+var unreadMap = Unreads{
+	unreadMap: map[string]map[string]bool{},
+	mu: sync.RWMutex{},
+}
+
+type Unreads struct {
+	unreadMap map[string]map[string]bool
+	mu sync.RWMutex
+}
+
+func (u *Unreads) Read(sID, aID string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	u.unreadMap[sID][aID] = true
+}
+
+
+func (u *Unreads) Get(sID, aID string) bool {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+
+	return u.unreadMap[sID][aID]
+}
