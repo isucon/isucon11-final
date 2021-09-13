@@ -1226,7 +1226,17 @@ type AnnouncementDetail struct {
 
 // GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
 func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
-	time.Sleep(60 * time.Millisecond)
+	userID, _, _, err := getUserInfo(c)
+	if err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	announcementID := c.Param("announcementID")
+
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
 
 	var announcement AnnouncementDetail
 	return c.JSON(http.StatusOK, announcement)
