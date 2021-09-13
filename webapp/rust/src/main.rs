@@ -578,12 +578,6 @@ async fn register_courses(
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
 
-    sqlx::query("SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE")
-        .bind(&user_id)
-        .execute(&mut tx)
-        .await
-        .map_err(SqlxError)?;
-
     let mut errors = RegisterCoursesErrorResponse::default();
     let mut newly_added = Vec::new();
     for course_req in req {
@@ -654,7 +648,7 @@ async fn register_courses(
     }
 
     for course in newly_added {
-        sqlx::query("INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)")
+        sqlx::query("INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `course_id` = VALUES(`course_id`), `user_id` = VALUES(`user_id`)")
             .bind(course.id)
             .bind(&user_id)
             .execute(&mut tx)
