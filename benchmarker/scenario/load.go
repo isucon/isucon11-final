@@ -432,29 +432,29 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 				startGetAnnouncementDetail := time.Now()
 				// お知らせの詳細を取得する
-				_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
-				if err != nil {
-					var urlError *url.Error
-					if errors.As(err, &urlError) && urlError.Timeout() {
-						student.MarkAnnouncementReadDirty(ans.ID)
-					}
-					step.AddError(err)
-					continue // 次の未読おしらせの確認へ
-				}
-				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
-
-
-				if s.NoVerify {
-					step.AddScore(score.GetAnnouncementsDetail)
-					step.AddScore(score.UnreadGetAnnouncementDetail)
-				} else {
-					if err := verifyAnnouncementDetail(expectStatus, &res); err != nil && !s.NoVerify {
+				go func() {
+					_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+					if err != nil {
+						var urlError *url.Error
+						if errors.As(err, &urlError) && urlError.Timeout() {
+							student.MarkAnnouncementReadDirty(ans.ID)
+						}
 						step.AddError(err)
-					} else {
+					}
+					s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
+
+					if s.NoVerify {
 						step.AddScore(score.GetAnnouncementsDetail)
 						step.AddScore(score.UnreadGetAnnouncementDetail)
+					} else {
+						if err := verifyAnnouncementDetail(expectStatus, &res); err != nil && !s.NoVerify {
+							step.AddError(err)
+						} else {
+							step.AddScore(score.GetAnnouncementsDetail)
+							step.AddScore(score.UnreadGetAnnouncementDetail)
+						}
 					}
-				}
+				}()
 
 				student.ReadAnnouncement(ans.ID)
 			}
