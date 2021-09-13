@@ -173,7 +173,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
-	for _, c := range s.initCourse {
+	for _, c := range s.initCourses {
 		expectCourses[c.ID] = c
 	}
 
@@ -212,18 +212,9 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			return
 		}
 
-		if !AssertEqual("course ID", expect.ID, actual.ID) ||
-			!AssertEqual("course Code", expect.Code, actual.Code) ||
-			!AssertEqual("course Name", expect.Name, actual.Name) ||
-			!AssertEqual("course Type", api.CourseType(expect.Type), actual.Type) ||
-			!AssertEqual("course Credit", uint8(expect.Credit), actual.Credit) ||
-			!AssertEqual("course Teacher", expect.Teacher().Name, actual.Teacher) ||
-			// webappは1-6, benchは0-5
-			!AssertEqual("course Period", uint8(expect.Period+1), actual.Period) ||
-			// webappはMonday..., benchは0-4
-			!AssertEqual("course DayOfWeek", api.DayOfWeekTable[expect.DayOfWeek], actual.DayOfWeek) ||
-			!AssertEqual("course Keywords", expect.Keywords, actual.Keywords) ||
-			!AssertEqual("course Description", expect.Description, actual.Description) {
+		// TODO: statusもdirtyフラグで検証する？
+		if !AssertEqualCourse(expect, actual, false) {
+			AdminLogger.Printf("name: %v", expect.Name)
 			step.AddError(errNotMatch)
 			return
 		}

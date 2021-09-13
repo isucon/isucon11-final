@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -239,48 +238,37 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 	return nil
 }
 
-func verifySearchCourseResult(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
-	if param.Type != "" && !AssertEqual("course type", api.CourseType(param.Type), res.Type) {
+func verifyMatchCourse(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
+	if param.Type != "" && !AssertEqual("search type", api.CourseType(param.Type), res.Type) {
 		return errInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています")
 	}
 
-	if param.Credit != 0 && !AssertEqual("course credit", uint8(param.Credit), res.Credit) {
+	if param.Credit != 0 && !AssertEqual("search credit", uint8(param.Credit), res.Credit) {
 		return errInvalidResponse("科目検索結果に検索条件の単位数と一致しない科目が含まれています")
 	}
 
-	if param.Teacher != "" && !AssertEqual("course teacher", param.Teacher, res.Teacher) {
+	if param.Teacher != "" && !AssertEqual("search teacher", param.Teacher, res.Teacher) {
 		return errInvalidResponse("科目検索結果に検索条件の講師と一致しない科目が含まれています")
 	}
 
 	// resは1-6, paramは0-5
-	if param.Period != -1 && !AssertEqual("course period", uint8(param.Period+1), res.Period) {
+	if param.Period != -1 && !AssertEqual("search period", uint8(param.Period+1), res.Period) {
 		return errInvalidResponse("科目検索結果に検索条件の時限と一致しない科目が含まれています")
 	}
 
-	if param.DayOfWeek != -1 && !AssertEqual("course DoW", api.DayOfWeekTable[param.DayOfWeek], res.DayOfWeek) {
+	if param.DayOfWeek != -1 && !AssertEqual("search day_of_week", api.DayOfWeekTable[param.DayOfWeek], res.DayOfWeek) {
 		return errInvalidResponse("科目検索結果に検索条件の曜日と一致しない科目が含まれています")
 	}
 
 	// 以下の条件のいずれかを満たしたものがヒットする
 	// - Nameに指定キーワードがすべて含まれている
-	// - Keywordに指定キーワードがすべて含まれている
-	isNameHit := true
-	isKeywordsHit := true
-	for _, keyword := range param.Keywords {
-		if !strings.Contains(res.Name, keyword) {
-			isNameHit = false
-		}
-		if !strings.Contains(res.Keywords, keyword) {
-			isKeywordsHit = false
-		}
-	}
-
-	if !isNameHit && !isKeywordsHit {
-		AdminLogger.Printf("name / keyword not match: expect: %v, acutual: %s", param.Keywords, res.Keywords)
+	// - Keywordsに指定キーワードがすべて含まれている
+	if !containsAll(res.Name, param.Keywords) && !containsAll(res.Keywords, param.Keywords) {
+		AdminLogger.Printf("search keywords: keywords: %v / actual name: %s, actual keywords: %s", param.Keywords, res.Name, res.Keywords)
 		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
 	}
 
-	if param.Status != "" && !AssertEqual("course status", param.Status, res.Status) {
+	if param.Status != "" && !AssertEqual("search status", param.Status, res.Status) {
 		return errInvalidResponse("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています")
 	}
 
@@ -295,10 +283,10 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 		}
 	}
 
-	// 取得されたものが検索条件にマッチするか
+	// 取得されたものが検索条件にヒットするか
 	for _, course := range res {
 		if rand.Float64() < searchCourseVerifyRate {
-			if err := verifySearchCourseResult(course, param); err != nil {
+			if err := verifyMatchCourse(course, param); err != nil {
 				return err
 			}
 		}
