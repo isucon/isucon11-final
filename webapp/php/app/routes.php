@@ -341,6 +341,16 @@ final class Handler
 
         $this->dbh->beginTransaction();
 
+        try {
+            $stmt = $this->dbh->prepare('SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE');
+            $stmt->execute([$userId]);
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
         $errors = new RegisterCoursesErrorResponse();
         /** @var array<Course> $newlyAdded */
         $newlyAdded = [];
