@@ -410,6 +410,8 @@ struct Course {
     status: CourseStatus,
 }
 
+// ---------- Public API ----------
+
 #[derive(Debug, serde::Deserialize)]
 struct LoginRequest {
     code: String,
@@ -464,6 +466,8 @@ async fn logout(session: actix_session::Session) -> actix_web::Result<HttpRespon
     session.purge();
     Ok(HttpResponse::Ok().finish())
 }
+
+// ---------- Users API ----------
 
 #[derive(Debug, serde::Serialize)]
 struct GetMeResponse {
@@ -862,6 +866,8 @@ async fn get_grades(
     }))
 }
 
+// ---------- Courses API ----------
+
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct SearchCoursesQuery {
     #[serde(rename = "type")]
@@ -999,50 +1005,6 @@ async fn search_courses(
     Ok(builder.json(res))
 }
 
-#[derive(Debug, serde::Serialize, sqlx::FromRow)]
-struct GetCourseDetailResponse {
-    id: String,
-    code: String,
-    #[serde(rename = "type")]
-    #[sqlx(rename = "type")]
-    type_: String,
-    name: String,
-    description: String,
-    credit: u8,
-    period: u8,
-    day_of_week: DayOfWeek,
-    #[serde(skip)]
-    teacher_id: String,
-    keywords: String,
-    status: CourseStatus,
-    teacher: String,
-}
-
-// GET /api/courses/{course_id} 科目詳細の取得
-async fn get_course_detail(
-    pool: web::Data<sqlx::MySqlPool>,
-    course_id: web::Path<(String,)>,
-) -> actix_web::Result<HttpResponse> {
-    let course_id = &course_id.0;
-
-    let res: Option<GetCourseDetailResponse> = sqlx::query_as(concat!(
-        "SELECT `courses`.*, `users`.`name` AS `teacher`",
-        " FROM `courses`",
-        " JOIN `users` ON `courses`.`teacher_id` = `users`.`id`",
-        " WHERE `courses`.`id` = ?",
-    ))
-    .bind(course_id)
-    .fetch_optional(pool.as_ref())
-    .await
-    .map_err(SqlxError)?;
-
-    if let Some(res) = res {
-        Ok(HttpResponse::Ok().json(res))
-    } else {
-        Err(actix_web::error::ErrorNotFound("No such course."))
-    }
-}
-
 #[derive(Debug, serde::Deserialize)]
 struct AddCourseRequest {
     code: String,
@@ -1116,6 +1078,50 @@ async fn add_course(
     tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Created().json(AddCourseResponse { id: course_id }))
+}
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+struct GetCourseDetailResponse {
+    id: String,
+    code: String,
+    #[serde(rename = "type")]
+    #[sqlx(rename = "type")]
+    type_: String,
+    name: String,
+    description: String,
+    credit: u8,
+    period: u8,
+    day_of_week: DayOfWeek,
+    #[serde(skip)]
+    teacher_id: String,
+    keywords: String,
+    status: CourseStatus,
+    teacher: String,
+}
+
+// GET /api/courses/{course_id} 科目詳細の取得
+async fn get_course_detail(
+    pool: web::Data<sqlx::MySqlPool>,
+    course_id: web::Path<(String,)>,
+) -> actix_web::Result<HttpResponse> {
+    let course_id = &course_id.0;
+
+    let res: Option<GetCourseDetailResponse> = sqlx::query_as(concat!(
+        "SELECT `courses`.*, `users`.`name` AS `teacher`",
+        " FROM `courses`",
+        " JOIN `users` ON `courses`.`teacher_id` = `users`.`id`",
+        " WHERE `courses`.`id` = ?",
+    ))
+    .bind(course_id)
+    .fetch_optional(pool.as_ref())
+    .await
+    .map_err(SqlxError)?;
+
+    if let Some(res) = res {
+        Ok(HttpResponse::Ok().json(res))
+    } else {
+        Err(actix_web::error::ErrorNotFound("No such course."))
+    }
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -1217,6 +1223,83 @@ async fn get_classes(
         .collect::<Vec<_>>();
 
     Ok(HttpResponse::Ok().json(res))
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct AddClassRequest {
+    part: u8,
+    title: String,
+    description: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct AddClassResponse {
+    class_id: String,
+}
+
+// POST /api/courses/{course_id}/classes 新規講義(&課題)追加
+async fn add_class(
+    pool: web::Data<sqlx::MySqlPool>,
+    course_id: web::Path<(String,)>,
+    req: web::Json<AddClassRequest>,
+) -> actix_web::Result<HttpResponse> {
+    let course_id = &course_id.0;
+
+    let mut tx = pool.begin().await.map_err(SqlxError)?;
+
+    let course: Option<Course> = isucholar::db::fetch_optional_as(
+        sqlx::query_as("SELECT * FROM `courses` WHERE `id` = ? FOR SHARE").bind(course_id),
+        &mut tx,
+    )
+    .await
+    .map_err(SqlxError)?;
+    if course.is_none() {
+        return Err(actix_web::error::ErrorNotFound("No such course."));
+    }
+    let course = course.unwrap();
+    if course.status != CourseStatus::InProgress {
+        return Err(actix_web::error::ErrorBadRequest(
+            "This course is not in-progress.",
+        ));
+    }
+
+    let class_id = isucholar::util::new_ulid().await;
+    let result = sqlx::query("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)")
+        .bind(&class_id)
+        .bind(course_id)
+        .bind(&req.part)
+        .bind(&req.title)
+        .bind(&req.description)
+        .execute(&mut tx)
+        .await;
+    if let Err(sqlx::error::Error::Database(ref db_error)) = result {
+        if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
+            if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
+                let class: Class = isucholar::db::fetch_one_as(
+                    sqlx::query_as("SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?")
+                        .bind(course_id)
+                        .bind(&req.part),
+                    &mut tx,
+                )
+                .await
+                .map_err(SqlxError)?;
+                if req.title != class.title || req.description != class.description {
+                    return Err(actix_web::error::ErrorConflict(
+                        "A class with the same part already exists.",
+                    ));
+                } else {
+                    return Ok(
+                        HttpResponse::Created().json(AddClassResponse { class_id: class.id })
+                    );
+                }
+            }
+        }
+    }
+    result.map_err(SqlxError)?;
+
+    tx.commit().await.map_err(SqlxError)?;
+
+    Ok(HttpResponse::Created().json(AddClassResponse { class_id }))
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -1477,82 +1560,7 @@ async fn create_submissions_zip(
     Ok(())
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct AddClassRequest {
-    part: u8,
-    title: String,
-    description: String,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct AddClassResponse {
-    class_id: String,
-}
-
-// POST /api/courses/{course_id}/classes 新規講義(&課題)追加
-async fn add_class(
-    pool: web::Data<sqlx::MySqlPool>,
-    course_id: web::Path<(String,)>,
-    req: web::Json<AddClassRequest>,
-) -> actix_web::Result<HttpResponse> {
-    let course_id = &course_id.0;
-
-    let mut tx = pool.begin().await.map_err(SqlxError)?;
-
-    let course: Option<Course> = isucholar::db::fetch_optional_as(
-        sqlx::query_as("SELECT * FROM `courses` WHERE `id` = ? FOR SHARE").bind(course_id),
-        &mut tx,
-    )
-    .await
-    .map_err(SqlxError)?;
-    if course.is_none() {
-        return Err(actix_web::error::ErrorNotFound("No such course."));
-    }
-    let course = course.unwrap();
-    if course.status != CourseStatus::InProgress {
-        return Err(actix_web::error::ErrorBadRequest(
-            "This course is not in-progress.",
-        ));
-    }
-
-    let class_id = isucholar::util::new_ulid().await;
-    let result = sqlx::query("INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)")
-        .bind(&class_id)
-        .bind(course_id)
-        .bind(&req.part)
-        .bind(&req.title)
-        .bind(&req.description)
-        .execute(&mut tx)
-        .await;
-    if let Err(sqlx::error::Error::Database(ref db_error)) = result {
-        if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
-            if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
-                let class: Class = isucholar::db::fetch_one_as(
-                    sqlx::query_as("SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?")
-                        .bind(course_id)
-                        .bind(&req.part),
-                    &mut tx,
-                )
-                .await
-                .map_err(SqlxError)?;
-                if req.title != class.title || req.description != class.description {
-                    return Err(actix_web::error::ErrorConflict(
-                        "A class with the same part already exists.",
-                    ));
-                } else {
-                    return Ok(
-                        HttpResponse::Created().json(AddClassResponse { class_id: class.id })
-                    );
-                }
-            }
-        }
-    }
-    result.map_err(SqlxError)?;
-
-    tx.commit().await.map_err(SqlxError)?;
-
-    Ok(HttpResponse::Created().json(AddClassResponse { class_id }))
-}
+// ---------- Announcement API ----------
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
 struct AnnouncementWithoutDetail {
@@ -1671,66 +1679,6 @@ async fn get_announcement_list(
     }))
 }
 
-#[derive(Debug, sqlx::FromRow, serde::Serialize)]
-struct AnnouncementDetail {
-    id: String,
-    course_id: String,
-    course_name: String,
-    title: String,
-    message: String,
-    unread: bool,
-}
-
-// GET /api/announcements/{announcement_id} お知らせ詳細取得
-async fn get_announcement_detail(
-    pool: web::Data<sqlx::MySqlPool>,
-    session: actix_session::Session,
-    announcement_id: web::Path<(String,)>,
-) -> actix_web::Result<HttpResponse> {
-    let (user_id, _, _) = get_user_info(session)?;
-
-    let announcement_id = &announcement_id.0;
-
-    let announcement: Option<AnnouncementDetail> = sqlx::query_as(concat!(
-            "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`",
-            " FROM `announcements`",
-            " JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`",
-            " JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`",
-            " WHERE `announcements`.`id` = ?",
-            " AND `unread_announcements`.`user_id` = ?",
-    ))
-        .bind(announcement_id)
-        .bind(&user_id)
-        .fetch_optional(pool.as_ref())
-        .await
-        .map_err(SqlxError)?;
-    if announcement.is_none() {
-        return Err(actix_web::error::ErrorNotFound("No such announcement."));
-    }
-    let announcement = announcement.unwrap();
-
-    let registration_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
-    )
-    .bind(&announcement.course_id)
-    .bind(&user_id)
-    .fetch_one(pool.as_ref())
-    .await
-    .map_err(SqlxError)?;
-    if registration_count == 0 {
-        return Err(actix_web::error::ErrorNotFound("No such announcement."));
-    }
-
-    sqlx::query("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?")
-        .bind(announcement_id)
-        .bind(&user_id)
-        .execute(pool.as_ref())
-        .await
-        .map_err(SqlxError)?;
-
-    Ok(HttpResponse::Ok().json(announcement))
-}
-
 #[derive(Debug, sqlx::FromRow)]
 struct Announcement {
     id: String,
@@ -1820,4 +1768,64 @@ async fn add_announcement(
     tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Created().finish())
+}
+
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+struct AnnouncementDetail {
+    id: String,
+    course_id: String,
+    course_name: String,
+    title: String,
+    message: String,
+    unread: bool,
+}
+
+// GET /api/announcements/{announcement_id} お知らせ詳細取得
+async fn get_announcement_detail(
+    pool: web::Data<sqlx::MySqlPool>,
+    session: actix_session::Session,
+    announcement_id: web::Path<(String,)>,
+) -> actix_web::Result<HttpResponse> {
+    let (user_id, _, _) = get_user_info(session)?;
+
+    let announcement_id = &announcement_id.0;
+
+    let announcement: Option<AnnouncementDetail> = sqlx::query_as(concat!(
+            "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`",
+            " FROM `announcements`",
+            " JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`",
+            " JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`",
+            " WHERE `announcements`.`id` = ?",
+            " AND `unread_announcements`.`user_id` = ?",
+    ))
+        .bind(announcement_id)
+        .bind(&user_id)
+        .fetch_optional(pool.as_ref())
+        .await
+        .map_err(SqlxError)?;
+    if announcement.is_none() {
+        return Err(actix_web::error::ErrorNotFound("No such announcement."));
+    }
+    let announcement = announcement.unwrap();
+
+    let registration_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?",
+    )
+    .bind(&announcement.course_id)
+    .bind(&user_id)
+    .fetch_one(pool.as_ref())
+    .await
+    .map_err(SqlxError)?;
+    if registration_count == 0 {
+        return Err(actix_web::error::ErrorNotFound("No such announcement."));
+    }
+
+    sqlx::query("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?")
+        .bind(announcement_id)
+        .bind(&user_id)
+        .execute(pool.as_ref())
+        .await
+        .map_err(SqlxError)?;
+
+    Ok(HttpResponse::Ok().json(announcement))
 }
