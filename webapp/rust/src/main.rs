@@ -1498,7 +1498,7 @@ struct Submission {
 async fn download_submitted_assignments(
     pool: web::Data<sqlx::MySqlPool>,
     path: web::Path<AssignmentPath>,
-) -> actix_web::Result<actix_files::NamedFile> {
+) -> actix_web::Result<HttpResponse> {
     let class_id = &path.class_id;
 
     let mut tx = pool.begin().await.map_err(SqlxError)?;
@@ -1524,8 +1524,7 @@ async fn download_submitted_assignments(
     .await
     .map_err(SqlxError)?;
 
-    let zip_file_path = format!("{}{}.zip", ASSIGNMENTS_DIRECTORY, class_id);
-    create_submissions_zip(&zip_file_path, class_id, &submissions).await?;
+    let zip_buf = create_submissions_zip(class_id, &submissions).await?;
 
     sqlx::query("UPDATE `classes` SET `submission_closed` = true WHERE `id` = ?")
         .bind(class_id)
@@ -1535,63 +1534,42 @@ async fn download_submitted_assignments(
 
     tx.commit().await.map_err(SqlxError)?;
 
-    Ok(actix_files::NamedFile::open(&zip_file_path)?)
+    Ok(HttpResponse::Ok().body(zip_buf))
 }
 
 async fn create_submissions_zip(
-    zip_file_path: &str,
     class_id: &str,
     submissions: &[Submission],
-) -> std::io::Result<()> {
-    let tmp_dir = format!("{}{}/", ASSIGNMENTS_DIRECTORY, class_id);
-    tokio::process::Command::new("rm")
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .arg("-rf")
-        .arg(&tmp_dir)
-        .status()
-        .await?;
-    tokio::process::Command::new("mkdir")
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .arg(&tmp_dir)
-        .status()
-        .await?;
+) -> actix_web::Result<Vec<u8>> {
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    // The default compression method is "Stored" because default-features are disabled in
+    // Cargo.toml.
+    let options = zip::write::FileOptions::default();
 
     // ファイル名を指定の形式に変更
     for submission in submissions {
-        tokio::process::Command::new("cp")
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .arg(&format!(
-                "{}{}-{}.pdf",
-                ASSIGNMENTS_DIRECTORY, class_id, submission.user_id
-            ))
-            .arg(&format!(
-                "{}{}-{}",
-                tmp_dir, submission.user_code, submission.file_name
-            ))
-            .status()
-            .await?;
+        zip.start_file(
+            format!("{}-{}", submission.user_code, submission.file_name),
+            options,
+        )
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+        let path = format!(
+            "{}{}-{}.pdf",
+            ASSIGNMENTS_DIRECTORY, class_id, submission.user_id
+        );
+        zip = tokio::task::spawn_blocking::<_, std::io::Result<_>>(|| {
+            let mut file = std::fs::File::open(path)?;
+            std::io::copy(&mut file, &mut zip)?;
+            Ok(zip)
+        })
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)??;
     }
 
-    // -i 'tmp_dir/*': 空zipを許す
-    tokio::process::Command::new("zip")
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .arg("-j")
-        .arg("-r")
-        .arg(zip_file_path)
-        .arg(&tmp_dir)
-        .arg("-i")
-        .arg(&format!("{}*", tmp_dir))
-        .status()
-        .await?;
-    Ok(())
+    let cursor = zip
+        .finish()
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    Ok(cursor.into_inner())
 }
 
 // ---------- Announcement API ----------
