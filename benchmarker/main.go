@@ -249,7 +249,7 @@ func main() {
 		NoLoad:           noLoad,
 		NoPrepare:        noPrepare,
 		NoVerifyResource: noResource,
-		NoVerify:
+		NoVerify:         noVerify,
 		IsDebug:          isDebug,
 	}
 
