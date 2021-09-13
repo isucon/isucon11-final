@@ -1034,6 +1034,46 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 
 	var links []string
 
+	// beforeがnilのときはprevはない
+	if before != "" {
+		var args []interface{}
+		query := "SELECT `announcements`.`id`" +
+			" FROM `announcements`" +
+			" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
+			" WHERE 1=1"
+		if courseID := c.QueryParam("course_id"); courseID != "" {
+			query += " AND `announcements`.`course_id` = ?"
+			args = append(args, courseID)
+		}
+		query += " AND `announcements`.`id` > ?" +
+			" AND `unread_announcements`.`user_id` = ?" +
+			" ORDER BY `announcements`.`id` ASC" +
+			" LIMIT ?"
+		args = append(args, before, userID, limit)
+
+		var ids []string
+		if err := h.DB.Select(&ids, query, args...); err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		// idsが0件のときはprevはない
+		if len(ids) > 0 {
+			prevAfterID := ids[len(ids)-1]
+
+			linkURL, err := createLinkURL(c)
+			if err != nil {
+				c.Logger().Error(err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+
+			q := linkURL.Query()
+			q.Set("before", prevAfterID)
+			linkURL.RawQuery = q.Encode()
+			links = append(links, fmt.Sprintf("<%v>; rel=\"prev\"", linkURL))
+		}
+	}
+
 	if len(announcements) > limit {
 		linkURL, err := createLinkURL(c)
 		if err != nil {
