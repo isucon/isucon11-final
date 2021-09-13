@@ -990,10 +990,14 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				step.AddError(err)
 				return
 			}
-			if err := verifyClasses(course.Classes(), res); err != nil {
-				step.AddError(err)
-			} else {
+			if s.NoVerify {
 				step.AddScore(score.CourseGetClasses)
+			} else {
+				if err := verifyClasses(course.Classes(), res); err != nil {
+					step.AddError(err)
+				} else {
+					step.AddScore(score.CourseGetClasses)
+				}
 			}
 
 			// 課題を提出する
