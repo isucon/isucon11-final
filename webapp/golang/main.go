@@ -1114,7 +1114,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
-		UnreadCount:   unreadCount,
+		UnreadCount:   0,
 		Announcements: announcementsRes,
 	})
 }
