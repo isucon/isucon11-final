@@ -1046,14 +1046,12 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		var args []interface{}
 		query := "SELECT `announcements`.`id`" +
 			" FROM `announcements`" +
-			" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
 			" WHERE 1=1"
 		if courseID := c.QueryParam("course_id"); courseID != "" {
 			query += " AND `announcements`.`course_id` = ?"
 			args = append(args, courseID)
 		}
 		query += " AND `announcements`.`id` > ?" +
-			" AND `unread_announcements`.`user_id` = ?" +
 			" ORDER BY `announcements`.`id` ASC" +
 			" LIMIT ?"
 		args = append(args, before, userID, limit)
@@ -1109,7 +1107,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 			CourseID:   announcement.CourseID,
 			CourseName: announcement.CourseName,
 			Title:      announcement.Title,
-			Unread:     announcement.Unread,
+			Unread:     unreadMap[userID][announcement.ID],
 		})
 	}
 
@@ -1183,13 +1181,6 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", req.ID, user.ID); err != nil {
-			c.Logger().Error(err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
@@ -1216,11 +1207,10 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	}
 	announcementID := c.Param("announcementID")
 
-	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ? AND NOT `is_deleted`", announcementID, userID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
+	unreadMap[userID][announcementID] = true
 
 	var announcement AnnouncementDetail
 	return c.JSON(http.StatusOK, announcement)
 }
+
+var unreadMap = map[string]map[string]bool{}
