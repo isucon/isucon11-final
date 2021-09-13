@@ -49,6 +49,7 @@ type Config struct {
 	NoPrepare        bool
 	NoVerifyResource bool
 	IsDebug          bool
+	NoVerify		 bool
 }
 
 func NewScenario(config *Config) (*Scenario, error) {

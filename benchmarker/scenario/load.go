@@ -208,11 +208,15 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					time.Sleep(waitGradeTimeout)
 					continue
 				}
-				err = verifyGrades(expected, &getGradeRes)
-				if err != nil {
-					step.AddError(err)
-				} else {
+				if s.NoVerify {
 					step.AddScore(score.RegGetGrades)
+				} else {
+					err = verifyGrades(expected, &getGradeRes)
+					if err != nil {
+						step.AddError(err)
+					} else {
+						step.AddScore(score.RegGetGrades)
+					}
 				}
 			}
 
@@ -236,9 +240,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 						step.AddError(err)
 						continue
 					}
-					if err := verifySearchCourseResults(res, param); err != nil {
-						step.AddError(err)
-						continue
+					if !s.NoVerify {
+						if err := verifySearchCourseResults(res, param); err != nil {
+							step.AddError(err)
+							continue
+						}
 					}
 					step.AddScore(score.RegSearchCourses)
 
@@ -432,12 +438,12 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				}
 				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
-				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
+
+				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil && !s.NoVerify {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
 					step.AddScore(score.UnreadGetAnnouncementDetail)
-
 				}
 
 				student.ReadAnnouncement(ans.ID)
@@ -525,7 +531,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 					continue
 				}
 
-				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil && !s.NoVerify {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)

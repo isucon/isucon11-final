@@ -44,6 +44,7 @@ var (
 	exitStatusOnFail bool
 	noLoad           bool
 	noPrepare        bool
+	noVerify         bool
 	noResource       bool
 	isDebug          bool
 	showVersion      bool
@@ -72,6 +73,7 @@ func init() {
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
 	flag.BoolVar(&noPrepare, "no-prepare", false, "only load and validation step")
 	flag.BoolVar(&noResource, "no-resource", false, "do not verify page resource")
+	flag.BoolVar(&noVerify, "no-verify", false, "do not verify")
 	flag.BoolVar(&isDebug, "is-debug", false, "silence debug log")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
@@ -247,6 +249,7 @@ func main() {
 		NoLoad:           noLoad,
 		NoPrepare:        noPrepare,
 		NoVerifyResource: noResource,
+		NoVerify:
 		IsDebug:          isDebug,
 	}
 
