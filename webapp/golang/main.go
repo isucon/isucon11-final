@@ -1056,7 +1056,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		q := linkURL.Query()
 		q.Set("before", announcements[limit].ID)
 		linkURL.RawQuery = q.Encode()
-		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", announcements[limit].ID))
+		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", linkURL))
 	}
 	if len(links) > 0 {
 		c.Response().Header().Set("Link", strings.Join(links, ","))
@@ -1067,7 +1067,16 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	// 対象になっているお知らせが0件の時は空配列を返却
-	announcementsRes := append(make([]AnnouncementWithoutDetail, 0, len(announcements)), announcements...)
+	announcementsRes := make([]AnnouncementWithoutDetail, 0, len(announcements))
+	for _, announcement := range announcements {
+		announcementsRes = append(announcementsRes, AnnouncementWithoutDetail{
+			ID:         announcement.ID,
+			CourseID:   announcement.CourseID,
+			CourseName: announcement.CourseName,
+			Title:      announcement.Title,
+			Unread:     announcement.Unread,
+		})
+	}
 
 	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
 		UnreadCount:   0,
