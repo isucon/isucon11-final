@@ -1032,6 +1032,12 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	var unreadCount int
+	if err := h.DB.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`", userID); err != nil {
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	var links []string
 
 	// beforeがnilのときはprevはない
@@ -1107,7 +1113,7 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
-		UnreadCount:   0,
+		UnreadCount:   unreadCount,
 		Announcements: announcementsRes,
 	})
 }
