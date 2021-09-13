@@ -947,10 +947,6 @@ func (h *handlers) RegisterScores(c echo.Context) error {
 		return c.String(http.StatusNotFound, "No such class.")
 	}
 
-	if !submissionClosed {
-		return c.String(http.StatusBadRequest, "This assignment is not closed yet.")
-	}
-
 	var req []Score
 	if err := c.Bind(&req); err != nil {
 		return c.String(http.StatusBadRequest, "Invalid format.")
