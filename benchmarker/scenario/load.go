@@ -737,10 +737,14 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				step.AddError(err)
 				continue
 			}
-			if err := verifyAssignments(assignmentsData, class); err != nil {
-				step.AddError(err)
-			} else {
+			if s.NoVerify {
 				step.AddScore(score.CourseDownloadSubmissions)
+			} else {
+				if err := verifyAssignments(assignmentsData, class); err != nil {
+					step.AddError(err)
+				} else {
+					step.AddScore(score.CourseDownloadSubmissions)
+				}
 			}
 
 			if s.isNoRequestTime(ctx) {
