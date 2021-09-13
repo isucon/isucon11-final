@@ -1023,9 +1023,10 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	query += " AND `unread_announcements`.`user_id` = ?" +
+		" AND `registrations`.`user_id` = ?" +
 		" ORDER BY `announcements`.`id` DESC" +
 		" LIMIT ?"
-	args = append(args, userID, limit+1)
+	args = append(args, userID, userID, limit+1)
 
 	if err := h.DB.Select(&announcements, query, args...); err != nil {
 		c.Logger().Error(err)
