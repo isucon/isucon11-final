@@ -268,6 +268,8 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
+        $this->dbh->beginTransaction();
+
         /** @var array<Course> $courses */
         $courses = [];
         $query = 'SELECT `courses`.*' .
@@ -281,6 +283,7 @@ final class Handler
                 $courses[] = Course::fromDbRow($row);
             }
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -295,12 +298,14 @@ final class Handler
                 $stmt->execute([$course->teacherId]);
                 $row = $stmt->fetch();
             } catch (PDOException $e) {
+                $this->dbh->rollBack();
                 $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                 return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
             }
 
             if ($row === false) {
+                $this->dbh->rollBack();
                 $this->logger->error('db error: no rows');
 
                 return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -315,6 +320,8 @@ final class Handler
                 dayOfWeek: $course->dayOfWeek
             );
         }
+
+        $this->dbh->commit();
 
         return $this->jsonResponse($response, $res);
     }
@@ -344,16 +351,6 @@ final class Handler
         });
 
         $this->dbh->beginTransaction();
-
-        try {
-            $stmt = $this->dbh->prepare('SELECT 1 FROM `users` WHERE `id` = ? FOR UPDATE');
-            $stmt->execute([$userId]);
-        } catch (PDOException $e) {
-            $this->dbh->rollBack();
-            $this->logger->error('db error: ' . $e->errorInfo[2]);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
 
         $errors = new RegisterCoursesErrorResponse();
         /** @var array<Course> $newlyAdded */
@@ -437,7 +434,7 @@ final class Handler
 
         foreach ($newlyAdded as $course) {
             try {
-                $stmt = $this->dbh->prepare('INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?)');
+                $stmt = $this->dbh->prepare('INSERT INTO `registrations` (`course_id`, `user_id`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `course_id` = VALUES(`course_id`), `user_id` = VALUES(`user_id`)');
                 $stmt->execute([$course->id, $userId]);
             } catch (PDOException $e) {
                 $this->dbh->rollBack();
@@ -464,6 +461,8 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
+        $this->dbh->beginTransaction();
+
         // 履修している科目一覧取得
         /** @var array<Course> $registeredCourses */
         $registeredCourses = [];
@@ -478,6 +477,7 @@ final class Handler
                 $registeredCourses[] = Course::fromDbRow($row);
             }
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -503,6 +503,7 @@ final class Handler
                     $classes[] = Klass::fromDbRow($row);
                 }
             } catch (PDOException $e) {
+                $this->dbh->rollBack();
                 $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                 return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -518,6 +519,7 @@ final class Handler
                     $stmt->execute([$class->id]);
                     $submissionsCount = (int)$stmt->fetch()[0];
                 } catch (PDOException $e) {
+                    $this->dbh->rollBack();
                     $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -528,6 +530,7 @@ final class Handler
                     $stmt->execute([$userId, $class->id]);
                     $row = $stmt->fetch();
                 } catch (PDOException $e) {
+                    $this->dbh->rollBack();
                     $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -572,6 +575,7 @@ final class Handler
                     $totals[] = (int)$row['total_score'];
                 }
             } catch (PDOException $e) {
+                $this->dbh->rollBack();
                 $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                 return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -625,6 +629,7 @@ final class Handler
                 $gpas[] = (float)$row['gpa'];
             }
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -641,6 +646,8 @@ final class Handler
             ),
             courseResults: $courseResults
         );
+
+        $this->dbh->commit();
 
         return $this->jsonResponse($response, $res);
     }
@@ -805,8 +812,6 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
         }
 
-        $this->dbh->beginTransaction();
-
         $courseId = util\newUlid();
         try {
             $stmt = $this->dbh->prepare('INSERT INTO `courses` (`id`, `code`, `type`, `name`, `description`, `credit`, `period`, `day_of_week`, `teacher_id`, `keywords`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -822,7 +827,6 @@ final class Handler
             $stmt->bindValue(10, $req->keywords);
             $stmt->execute();
         } catch (PDOException $exception) {
-            $this->dbh->rollBack();
             if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
                 try {
                     $stmt = $this->dbh->prepare('SELECT * FROM `courses` WHERE `code` = ?');
@@ -851,8 +855,6 @@ final class Handler
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
-
-        $this->dbh->commit();
 
         return $this->jsonResponse($response, new AddCourseResponse(id: $courseId), StatusCodeInterface::STATUS_CREATED);
     }
@@ -903,17 +905,21 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
         }
 
+        $this->dbh->beginTransaction();
+
         try {
             $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ?');
             $stmt->execute([$courseId]);
             $count = $stmt->fetch()[0];
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
         if ($count == 0) {
+            $this->dbh->rollBack();
             $response->getBody()->write('No such course.');
 
             return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
@@ -923,10 +929,13 @@ final class Handler
             $stmt = $this->dbh->prepare('UPDATE `courses` SET `status` = ? WHERE `id` = ?');
             $stmt->execute([$req->status, $courseId]);
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
+
+        $this->dbh->commit();
 
         return $response;
     }
@@ -945,17 +954,21 @@ final class Handler
 
         $courseId = $params['courseId'];
 
+        $this->dbh->beginTransaction();
+
         try {
             $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ?');
             $stmt->execute([$courseId]);
             $count = $stmt->fetch()[0];
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
         if ($count == 0) {
+            $this->dbh->rollBack();
             $response->getBody()->write('No such course.');
 
             return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
@@ -975,10 +988,13 @@ final class Handler
                 $classes[] = ClassWithSubmitted::fromDbRow($row);
             }
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
+
+        $this->dbh->commit();
 
         // 結果が0件の時は空配列を返却
         /** @var array<GetClassResponse> $res */
@@ -1299,7 +1315,7 @@ final class Handler
         $query = 'SELECT `submissions`.`user_id`, `submissions`.`file_name`, `users`.`code` AS `user_code`' .
             ' FROM `submissions`' .
             ' JOIN `users` ON `users`.`id` = `submissions`.`user_id`' .
-            ' WHERE `class_id` = ? FOR SHARE';
+            ' WHERE `class_id` = ?';
         try {
             $stmt = $this->dbh->prepare($query);
             $stmt->execute([$classId]);
@@ -1394,6 +1410,8 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
+        $this->dbh->beginTransaction();
+
         /** @var array<AnnouncementWithoutDetail $announcements */
         $announcements = [];
         $args = [];
@@ -1422,6 +1440,7 @@ final class Handler
         } else {
             $page = filter_var($pageStr, FILTER_VALIDATE_INT);
             if (!is_int($page) || $page <= 0) {
+                $this->dbh->rollBack();
                 $response->getBody()->write('Invalid page.');
 
                 return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
@@ -1442,6 +1461,7 @@ final class Handler
                 $announcements[] = AnnouncementWithoutDetail::fromDbRow($row);
             }
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -1452,10 +1472,13 @@ final class Handler
             $stmt->execute([$userId]);
             $unreadCount = (int)$stmt->fetch()[0];
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
+
+        $this->dbh->commit();
 
         /** @var array<string> $links */
         $links = [];
@@ -1497,22 +1520,24 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
         }
 
+        $this->dbh->beginTransaction();
+
         try {
             $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ?');
             $stmt->execute([$req->courseId]);
             $count = $stmt->fetch()[0];
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
         if ($count == 0) {
+            $this->dbh->rollBack();
             $response->getBody()->write('No such course.');
 
             return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
         }
-
-        $this->dbh->beginTransaction();
 
         try {
             $stmt = $this->dbh->prepare('INSERT INTO `announcements` (`id`, `course_id`, `title`, `message`) VALUES (?, ?, ?, ?)');
@@ -1599,6 +1624,8 @@ final class Handler
 
         $announcementId = $params['announcementId'];
 
+        $this->dbh->beginTransaction();
+
         $query = 'SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`' .
             ' FROM `announcements`' .
             ' JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`' .
@@ -1610,11 +1637,13 @@ final class Handler
             $stmt->execute([$announcementId, $userId]);
             $row = $stmt->fetch();
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
         if ($row === false) {
+            $this->dbh->rollBack();
             $response->getBody()->write('No such announcement.');
 
             return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
@@ -1632,6 +1661,7 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
         if ($registrationCount == 0) {
+            $this->dbh->rollBack();
             $response->getBody()->write('No such announcement.');
 
             return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
@@ -1641,10 +1671,13 @@ final class Handler
             $stmt = $this->dbh->prepare('UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?');
             $stmt->execute([$announcementId, $userId]);
         } catch (PDOException $e) {
+            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
+
+        $this->dbh->commit();
 
         return $this->jsonResponse($response, $announcement);
     }
