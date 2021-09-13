@@ -79,6 +79,8 @@ final class Course
     }
 }
 
+// ---------- Public API ----------
+
 final class LoginRequest
 {
     public function __construct(
@@ -105,6 +107,8 @@ final class LoginRequest
         return new self($data['code'], $data['password']);
     }
 }
+
+// ---------- Users API ----------
 
 final class GetMeResponse implements JsonSerializable
 {
@@ -363,74 +367,7 @@ final class ClassScore implements JsonSerializable
     }
 }
 
-final class GetCourseDetailResponse implements JsonSerializable
-{
-    public function __construct(
-        public ?string $id,
-        public ?string $code,
-        public ?string $type,
-        public ?string $name,
-        public ?string $description,
-        public ?int $credit,
-        public ?int $period,
-        public ?string $dayOfWeek,
-        public ?string $teacherId,
-        public ?string $keywords,
-        public ?string $status,
-        public ?string $teacher,
-    ) {
-    }
-
-    /**
-     * @param array{id?: string, code?: string, type?: string, name?: string, description?: string, credit?: int, period?: int, day_of_week?: string, teacher_id?: string, keywords?: string, status?: string, teacher?: string} $dbRow
-     */
-    public static function fromDbRow(array $dbRow): self
-    {
-        return new self(
-            $dbRow['id'] ?? null,
-            $dbRow['code'] ?? null,
-            $dbRow['type'] ?? null,
-            $dbRow['name'] ?? null,
-            $dbRow['description'] ?? null,
-            $dbRow['credit'] ?? null,
-            $dbRow['period'] ?? null,
-            $dbRow['day_of_week'] ?? null,
-            $dbRow['teacher_id'] ?? null,
-            $dbRow['keywords'] ?? null,
-            $dbRow['status'] ?? null,
-            $dbRow['teacher'] ?? null,
-        );
-    }
-
-    /**
-     * @return array{id: string, code: string, type: string, name: string, description: string, credit: int, period: int, day_of_week: string, keywords: string, status: string, teacher: string}
-     * @throws UnexpectedValueException
-     */
-    public function jsonSerialize(): array
-    {
-        $data = [
-            'id' => $this->id,
-            'code' => $this->code,
-            'type' => $this->type,
-            'name' => $this->name,
-            'description' => $this->description,
-            'credit' => $this->credit,
-            'period' => $this->period,
-            'day_of_week' => $this->dayOfWeek,
-            'keywords' => $this->keywords,
-            'status' => $this->status,
-            'teacher' => $this->teacher,
-        ];
-
-        foreach ($data as $value) {
-            if (is_null($value)) {
-                throw new UnexpectedValueException();
-            }
-        }
-
-        return $data;
-    }
-}
+// ---------- Courses API ----------
 
 final class AddCourseRequest
 {
@@ -497,6 +434,75 @@ final class AddCourseResponse implements JsonSerializable
     public function jsonSerialize(): array
     {
         return ['id' => $this->id];
+    }
+}
+
+final class GetCourseDetailResponse implements JsonSerializable
+{
+    public function __construct(
+        public ?string $id,
+        public ?string $code,
+        public ?string $type,
+        public ?string $name,
+        public ?string $description,
+        public ?int $credit,
+        public ?int $period,
+        public ?string $dayOfWeek,
+        public ?string $teacherId,
+        public ?string $keywords,
+        public ?string $status,
+        public ?string $teacher,
+    ) {
+    }
+
+    /**
+     * @param array{id?: string, code?: string, type?: string, name?: string, description?: string, credit?: int, period?: int, day_of_week?: string, teacher_id?: string, keywords?: string, status?: string, teacher?: string} $dbRow
+     */
+    public static function fromDbRow(array $dbRow): self
+    {
+        return new self(
+            $dbRow['id'] ?? null,
+            $dbRow['code'] ?? null,
+            $dbRow['type'] ?? null,
+            $dbRow['name'] ?? null,
+            $dbRow['description'] ?? null,
+            $dbRow['credit'] ?? null,
+            $dbRow['period'] ?? null,
+            $dbRow['day_of_week'] ?? null,
+            $dbRow['teacher_id'] ?? null,
+            $dbRow['keywords'] ?? null,
+            $dbRow['status'] ?? null,
+            $dbRow['teacher'] ?? null,
+        );
+    }
+
+    /**
+     * @return array{id: string, code: string, type: string, name: string, description: string, credit: int, period: int, day_of_week: string, keywords: string, status: string, teacher: string}
+     * @throws UnexpectedValueException
+     */
+    public function jsonSerialize(): array
+    {
+        $data = [
+            'id' => $this->id,
+            'code' => $this->code,
+            'type' => $this->type,
+            'name' => $this->name,
+            'description' => $this->description,
+            'credit' => $this->credit,
+            'period' => $this->period,
+            'day_of_week' => $this->dayOfWeek,
+            'keywords' => $this->keywords,
+            'status' => $this->status,
+            'teacher' => $this->teacher,
+        ];
+
+        foreach ($data as $value) {
+            if (is_null($value)) {
+                throw new UnexpectedValueException();
+            }
+        }
+
+        return $data;
     }
 }
 
@@ -583,6 +589,55 @@ final class GetClassResponse implements JsonSerializable
     }
 }
 
+final class AddClassRequest
+{
+    public function __construct(
+        public int $part,
+        public string $title,
+        public string $description,
+    ) {
+    }
+
+    /**
+     * @throws UnexpectedValueException
+     */
+    public static function fromJson(string $json): self
+    {
+        try {
+            $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new UnexpectedValueException();
+        }
+
+        if (
+            !(
+                isset($data['part']) &&
+                isset($data['title']) &&
+                isset($data['description'])
+            )
+        ) {
+            throw new UnexpectedValueException();
+        }
+
+        return new self($data['part'], $data['title'], $data['description']);
+    }
+}
+
+final class AddClassResponse implements JsonSerializable
+{
+    public function __construct(public string $classId)
+    {
+    }
+
+    /**
+     * @return array{class_id: string}
+     */
+    public function jsonSerialize(): array
+    {
+        return ['class_id' => $this->classId];
+    }
+}
+
 final class Score
 {
     public function __construct(
@@ -639,54 +694,7 @@ final class Submission
     }
 }
 
-final class AddClassRequest
-{
-    public function __construct(
-        public int $part,
-        public string $title,
-        public string $description,
-    ) {
-    }
-
-    /**
-     * @throws UnexpectedValueException
-     */
-    public static function fromJson(string $json): self
-    {
-        try {
-            $data = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            throw new UnexpectedValueException();
-        }
-
-        if (
-            !(
-                isset($data['part']) &&
-                isset($data['title']) &&
-                isset($data['description'])
-            )
-        ) {
-            throw new UnexpectedValueException();
-        }
-
-        return new self($data['part'], $data['title'], $data['description']);
-    }
-}
-
-final class AddClassResponse implements JsonSerializable
-{
-    public function __construct(public string $classId)
-    {
-    }
-
-    /**
-     * @return array{class_id: string}
-     */
-    public function jsonSerialize(): array
-    {
-        return ['class_id' => $this->classId];
-    }
-}
+// ---------- Announcement API ----------
 
 final class AnnouncementWithoutDetail implements JsonSerializable
 {
@@ -760,58 +768,6 @@ final class GetAnnouncementsResponse implements JsonSerializable
     }
 }
 
-final class AnnouncementDetail implements JsonSerializable
-{
-    public function __construct(
-        public ?string $id,
-        public ?string $courseId,
-        public ?string $courseName,
-        public ?string $title,
-        public ?string $message,
-        public ?bool $unread,
-    ) {
-    }
-
-    /**
-     * @param array{id?: string, course_id?: string, course_name?: string, title?: string, message?: string, unread?: int} $dbRow
-     */
-    public static function fromDbRow(array $dbRow): self
-    {
-        return new self(
-            $dbRow['id'] ?? null,
-            $dbRow['course_id'] ?? null,
-            $dbRow['course_name'] ?? null,
-            $dbRow['title'] ?? null,
-            $dbRow['message'] ?? null,
-            isset($dbRow['unread']) ? (bool)$dbRow['unread'] : null,
-        );
-    }
-
-    /**
-     * @return array{id: string, course_id: string, course_name: string, title: string, message: string, unread: bool}
-     * @throws UnexpectedValueException
-     */
-    public function jsonSerialize(): array
-    {
-        $data = [
-            'id' => $this->id,
-            'course_id' => $this->courseId,
-            'course_name' => $this->courseName,
-            'title' => $this->title,
-            'message' => $this->message,
-            'unread' => $this->unread,
-        ];
-
-        foreach ($data as $value) {
-            if (is_null($value)) {
-                throw new UnexpectedValueException();
-            }
-        }
-
-        return $data;
-    }
-}
-
 final class Announcement
 {
     public function __construct(
@@ -874,5 +830,57 @@ final class AddAnnouncementRequest
             $data['title'],
             $data['message'],
         );
+    }
+}
+
+final class AnnouncementDetail implements JsonSerializable
+{
+    public function __construct(
+        public ?string $id,
+        public ?string $courseId,
+        public ?string $courseName,
+        public ?string $title,
+        public ?string $message,
+        public ?bool $unread,
+    ) {
+    }
+
+    /**
+     * @param array{id?: string, course_id?: string, course_name?: string, title?: string, message?: string, unread?: int} $dbRow
+     */
+    public static function fromDbRow(array $dbRow): self
+    {
+        return new self(
+            $dbRow['id'] ?? null,
+            $dbRow['course_id'] ?? null,
+            $dbRow['course_name'] ?? null,
+            $dbRow['title'] ?? null,
+            $dbRow['message'] ?? null,
+            isset($dbRow['unread']) ? (bool)$dbRow['unread'] : null,
+        );
+    }
+
+    /**
+     * @return array{id: string, course_id: string, course_name: string, title: string, message: string, unread: bool}
+     * @throws UnexpectedValueException
+     */
+    public function jsonSerialize(): array
+    {
+        $data = [
+            'id' => $this->id,
+            'course_id' => $this->courseId,
+            'course_name' => $this->courseName,
+            'title' => $this->title,
+            'message' => $this->message,
+            'unread' => $this->unread,
+        ];
+
+        foreach ($data as $value) {
+            if (is_null($value)) {
+                throw new UnexpectedValueException();
+            }
+        }
+
+        return $data;
     }
 }

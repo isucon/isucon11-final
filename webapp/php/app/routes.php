@@ -159,6 +159,8 @@ final class Handler
         return [$userId, $userName, $isAdmin, ''];
     }
 
+    // ---------- Public API ----------
+
     /**
      * login POST /login ログイン
      */
@@ -216,6 +218,8 @@ final class Handler
 
         return $response;
     }
+
+    // ---------- Users API ----------
 
     /**
      * getMe GET /api/users/me 自身の情報を取得
@@ -641,6 +645,8 @@ final class Handler
         return $this->jsonResponse($response, $res);
     }
 
+    // ---------- Courses API ----------
+
     /**
      * searchCourses GET /api/courses 科目検索
      */
@@ -768,37 +774,6 @@ final class Handler
     }
 
     /**
-     * getCourseDetail GET /api/courses/:courseId 科目詳細の取得
-     */
-    public function getCourseDetail(Request $request, Response $response, array $params): Response
-    {
-        $courseId = $params['courseId'];
-
-        $query = 'SELECT `courses`.*, `users`.`name` AS `teacher`' .
-            ' FROM `courses`' .
-            ' JOIN `users` ON `courses`.`teacher_id` = `users`.`id`' .
-            ' WHERE `courses`.`id` = ?';
-        try {
-            $stmt = $this->dbh->prepare($query);
-            $stmt->execute([$courseId]);
-            $row = $stmt->fetch();
-        } catch (PDOException $e) {
-            $this->logger->error('db error: ' . $e->errorInfo[2]);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-
-        if ($row === false) {
-            $response->getBody()->write('No such course.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
-        }
-        $res = GetCourseDetailResponse::fromDbRow($row);
-
-        return $this->jsonResponse($response, $res);
-    }
-
-    /**
      * addCourse POST /api/courses 新規科目登録
      */
     public function addCourse(Request $request, Response $response): Response
@@ -880,6 +855,37 @@ final class Handler
         $this->dbh->commit();
 
         return $this->jsonResponse($response, new AddCourseResponse(id: $courseId), StatusCodeInterface::STATUS_CREATED);
+    }
+
+    /**
+     * getCourseDetail GET /api/courses/:courseId 科目詳細の取得
+     */
+    public function getCourseDetail(Request $request, Response $response, array $params): Response
+    {
+        $courseId = $params['courseId'];
+
+        $query = 'SELECT `courses`.*, `users`.`name` AS `teacher`' .
+            ' FROM `courses`' .
+            ' JOIN `users` ON `courses`.`teacher_id` = `users`.`id`' .
+            ' WHERE `courses`.`id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$courseId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        if ($row === false) {
+            $response->getBody()->write('No such course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+        $res = GetCourseDetailResponse::fromDbRow($row);
+
+        return $this->jsonResponse($response, $res);
     }
 
     /**
@@ -989,6 +995,96 @@ final class Handler
         }
 
         return $this->jsonResponse($response, $res);
+    }
+
+    /**
+     * addClass POST /api/courses/:courseId/classes 新規講義(&課題)追加
+     */
+    public function addClass(Request $request, Response $response, array $params): Response
+    {
+        $courseId = $params['courseId'];
+
+        try {
+            $req = AddClassRequest::fromJson((string)$request->getBody());
+        } catch (UnexpectedValueException) {
+            $response->getBody()->write('Invalid format.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        $this->dbh->beginTransaction();
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT * FROM `courses` WHERE `id` = ? FOR SHARE');
+            $stmt->execute([$courseId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($row === false) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('No such course.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+        $course = Course::fromDbRow($row);
+        if ($course->status !== self::COURSE_STATUS_IN_PROGRESS) {
+            $this->dbh->rollBack();
+            $response->getBody()->write('This course is not in-progress.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
+        }
+
+        $classId = util\newUlid();
+        try {
+            $stmt = $this->dbh->prepare('INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)');
+            $stmt->bindValue(1, $classId);
+            $stmt->bindValue(2, $courseId);
+            $stmt->bindValue(3, $req->part, PDO::PARAM_INT);
+            $stmt->bindValue(4, $req->title);
+            $stmt->bindValue(5, $req->description);
+            $stmt->execute();
+        } catch (PDOException $exception) {
+            $this->dbh->rollBack();
+            if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
+                try {
+                    $stmt = $this->dbh->prepare('SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?');
+                    $stmt->bindValue(1, $courseId);
+                    $stmt->bindValue(2, $req->part, PDO::PARAM_INT);
+                    $stmt->execute();
+                    $row = $stmt->fetch();
+                } catch (PDOException $e) {
+                    $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+                if ($row === false) {
+                    $this->logger->error('db error: no rows');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+                }
+                $class = Klass::fromDbRow($row);
+
+                if ($req->title !== $class->title || $req->description !== $class->description) {
+                    $response->getBody()->write('A class with the same part already exists.');
+
+                    return $response->withStatus(StatusCodeInterface::STATUS_CONFLICT);
+                }
+
+                return $this->jsonResponse($response, new AddClassResponse(classId: $class->id), StatusCodeInterface::STATUS_CREATED);
+            }
+
+            $this->logger->error('db error: ' . $exception->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $this->dbh->commit();
+
+        return $this->jsonResponse($response, new AddClassResponse(classId: $classId), StatusCodeInterface::STATUS_CREATED);
     }
 
     /**
@@ -1284,95 +1380,7 @@ final class Handler
         return '';
     }
 
-    /**
-     * addClass POST /api/courses/:courseId/classes 新規講義(&課題)追加
-     */
-    public function addClass(Request $request, Response $response, array $params): Response
-    {
-        $courseId = $params['courseId'];
-
-        try {
-            $req = AddClassRequest::fromJson((string)$request->getBody());
-        } catch (UnexpectedValueException) {
-            $response->getBody()->write('Invalid format.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
-        }
-
-        $this->dbh->beginTransaction();
-
-        try {
-            $stmt = $this->dbh->prepare('SELECT * FROM `courses` WHERE `id` = ? FOR SHARE');
-            $stmt->execute([$courseId]);
-            $row = $stmt->fetch();
-        } catch (PDOException $e) {
-            $this->dbh->rollBack();
-            $this->logger->error('db error: ' . $e->errorInfo[2]);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-        if ($row === false) {
-            $this->dbh->rollBack();
-            $response->getBody()->write('No such course.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
-        }
-        $course = Course::fromDbRow($row);
-        if ($course->status !== self::COURSE_STATUS_IN_PROGRESS) {
-            $this->dbh->rollBack();
-            $response->getBody()->write('This course is not in-progress.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_BAD_REQUEST);
-        }
-
-        $classId = util\newUlid();
-        try {
-            $stmt = $this->dbh->prepare('INSERT INTO `classes` (`id`, `course_id`, `part`, `title`, `description`) VALUES (?, ?, ?, ?, ?)');
-            $stmt->bindValue(1, $classId);
-            $stmt->bindValue(2, $courseId);
-            $stmt->bindValue(3, $req->part, PDO::PARAM_INT);
-            $stmt->bindValue(4, $req->title);
-            $stmt->bindValue(5, $req->description);
-            $stmt->execute();
-        } catch (PDOException $exception) {
-            $this->dbh->rollBack();
-            if ($exception->errorInfo[1] === self::MYSQL_ERR_NUM_DUPLICATE_ENTRY) {
-                try {
-                    $stmt = $this->dbh->prepare('SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?');
-                    $stmt->bindValue(1, $courseId);
-                    $stmt->bindValue(2, $req->part, PDO::PARAM_INT);
-                    $stmt->execute();
-                    $row = $stmt->fetch();
-                } catch (PDOException $e) {
-                    $this->logger->error('db error: ' . $e->errorInfo[2]);
-
-                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-                }
-                if ($row === false) {
-                    $this->logger->error('db error: no rows');
-
-                    return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-                }
-                $class = Klass::fromDbRow($row);
-
-                if ($req->title !== $class->title || $req->description !== $class->description) {
-                    $response->getBody()->write('A class with the same part already exists.');
-
-                    return $response->withStatus(StatusCodeInterface::STATUS_CONFLICT);
-                }
-
-                return $this->jsonResponse($response, new AddClassResponse(classId: $class->id), StatusCodeInterface::STATUS_CREATED);
-            }
-
-            $this->logger->error('db error: ' . $exception->errorInfo[2]);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-
-        $this->dbh->commit();
-
-        return $this->jsonResponse($response, new AddClassResponse(classId: $classId), StatusCodeInterface::STATUS_CREATED);
-    }
+    // ---------- Announcement API ----------
 
     /**
      * getAnnouncementList GET /api/announcements お知らせ一覧取得
@@ -1477,70 +1485,6 @@ final class Handler
     }
 
     /**
-     * getAnnouncementDetail GET /api/announcements/:announcementId お知らせ詳細取得
-     */
-    public function getAnnouncementDetail(Request $request, Response $response, array $params): Response
-    {
-        [$userId, , , $err] = $this->getUserInfo();
-        if ($err !== '') {
-            $this->logger->error($err);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-
-        $announcementId = $params['announcementId'];
-
-        $query = 'SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`' .
-            ' FROM `announcements`' .
-            ' JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`' .
-            ' JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`' .
-            ' WHERE `announcements`.`id` = ?' .
-            ' AND `unread_announcements`.`user_id` = ?';
-        try {
-            $stmt = $this->dbh->prepare($query);
-            $stmt->execute([$announcementId, $userId]);
-            $row = $stmt->fetch();
-        } catch (PDOException $e) {
-            $this->logger->error('db error: ' . $e->errorInfo[2]);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-        if ($row === false) {
-            $response->getBody()->write('No such announcement.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
-        }
-        $announcement = AnnouncementDetail::fromDbRow($row);
-
-        try {
-            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?');
-            $stmt->execute([$announcement->courseId, $userId]);
-            $registrationCount = $stmt->fetch()[0];
-        } catch (PDOException $e) {
-            $this->dbh->rollBack();
-            $this->logger->error('db error: ' . $e->errorInfo[2]);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-        if ($registrationCount == 0) {
-            $response->getBody()->write('No such announcement.');
-
-            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
-        }
-
-        try {
-            $stmt = $this->dbh->prepare('UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?');
-            $stmt->execute([$announcementId, $userId]);
-        } catch (PDOException $e) {
-            $this->logger->error('db error: ' . $e->errorInfo[2]);
-
-            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
-        }
-
-        return $this->jsonResponse($response, $announcement);
-    }
-
-    /**
      * addAnnouncement POST /api/announcements 新規お知らせ追加
      */
     public function addAnnouncement(Request $request, Response $response): Response
@@ -1639,6 +1583,70 @@ final class Handler
         $this->dbh->commit();
 
         return $response->withStatus(StatusCodeInterface::STATUS_CREATED);
+    }
+
+    /**
+     * getAnnouncementDetail GET /api/announcements/:announcementId お知らせ詳細取得
+     */
+    public function getAnnouncementDetail(Request $request, Response $response, array $params): Response
+    {
+        [$userId, , , $err] = $this->getUserInfo();
+        if ($err !== '') {
+            $this->logger->error($err);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        $announcementId = $params['announcementId'];
+
+        $query = 'SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`' .
+            ' FROM `announcements`' .
+            ' JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`' .
+            ' JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`' .
+            ' WHERE `announcements`.`id` = ?' .
+            ' AND `unread_announcements`.`user_id` = ?';
+        try {
+            $stmt = $this->dbh->prepare($query);
+            $stmt->execute([$announcementId, $userId]);
+            $row = $stmt->fetch();
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($row === false) {
+            $response->getBody()->write('No such announcement.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+        $announcement = AnnouncementDetail::fromDbRow($row);
+
+        try {
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?');
+            $stmt->execute([$announcement->courseId, $userId]);
+            $registrationCount = $stmt->fetch()[0];
+        } catch (PDOException $e) {
+            $this->dbh->rollBack();
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+        if ($registrationCount == 0) {
+            $response->getBody()->write('No such announcement.');
+
+            return $response->withStatus(StatusCodeInterface::STATUS_NOT_FOUND);
+        }
+
+        try {
+            $stmt = $this->dbh->prepare('UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?');
+            $stmt->execute([$announcementId, $userId]);
+        } catch (PDOException $e) {
+            $this->logger->error('db error: ' . $e->errorInfo[2]);
+
+            return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
+        return $this->jsonResponse($response, $announcement);
     }
 
     /**
