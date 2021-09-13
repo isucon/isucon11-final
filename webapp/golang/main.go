@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -986,6 +985,8 @@ type GetAnnouncementsResponse struct {
 	Announcements []AnnouncementWithoutDetail `json:"announcements"`
 }
 
+const limit = 20
+
 // GetAnnouncementList GET /api/announcements お知らせ一覧取得
 func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	userID, _, _, err := getUserInfo(c)
@@ -1001,6 +1002,8 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
+	before := c.QueryParam("before")
+
 	var announcements []AnnouncementWithoutDetail
 	var args []interface{}
 	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
@@ -1014,26 +1017,16 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 		query += " AND `announcements`.`course_id` = ?"
 		args = append(args, courseID)
 	}
+	if before != "" {
+		query += " AND `announcements`.`id` <= ?"
+		args = append(args, before)
+	}
 
 	query += " AND `unread_announcements`.`user_id` = ?" +
 		" AND `registrations`.`user_id` = ?" +
 		" ORDER BY `announcements`.`id` DESC" +
-		" LIMIT ? OFFSET ?"
-	args = append(args, userID, userID)
-
-	var page int
-	if c.QueryParam("page") == "" {
-		page = 1
-	} else {
-		page, err = strconv.Atoi(c.QueryParam("page"))
-		if err != nil || page <= 0 {
-			return c.String(http.StatusBadRequest, "Invalid page.")
-		}
-	}
-	limit := 20
-	offset := limit * (page - 1)
-	// limitより多く上限を設定し、実際にlimitより多くレコードが取得できた場合は次のページが存在する
-	args = append(args, limit+1, offset)
+		" LIMIT ?"
+	args = append(args, userID, limit+1)
 
 	if err := tx.Select(&announcements, query, args...); err != nil {
 		c.Logger().Error(err)
@@ -1053,15 +1046,9 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	q := linkURL.Query()
-	if page > 1 {
-		q.Set("page", strconv.Itoa(page-1))
-		linkURL.RawQuery = q.Encode()
-		links = append(links, fmt.Sprintf("<%v>; rel=\"prev\"", linkURL))
-	}
 	if len(announcements) > limit {
-		q.Set("page", strconv.Itoa(page+1))
 		linkURL.RawQuery = q.Encode()
-		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", linkURL))
+		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", announcements[limit+1].ID))
 	}
 	if len(links) > 0 {
 		c.Response().Header().Set("Link", strings.Join(links, ","))
