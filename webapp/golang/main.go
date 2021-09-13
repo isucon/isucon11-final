@@ -985,6 +985,13 @@ type GetAnnouncementsResponse struct {
 	Announcements []AnnouncementWithoutDetail `json:"announcements"`
 }
 
+func createLinkURL(c echo.Context) (*url.URL, error) {
+	originalQuery := c.Request().URL.Query()
+	originalQuery.Del("before")
+
+	return url.Parse(c.Request().URL.Path + "?" + originalQuery.Encode())
+}
+
 const limit = 20
 
 // GetAnnouncementList GET /api/announcements お知らせ一覧取得
@@ -1023,7 +1030,6 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	query += " AND `unread_announcements`.`user_id` = ?" +
-		" AND `registrations`.`user_id` = ?" +
 		" ORDER BY `announcements`.`id` DESC" +
 		" LIMIT ?"
 	args = append(args, userID, limit+1)
@@ -1039,16 +1045,18 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	var links []string
-	linkURL, err := url.Parse(c.Request().URL.Path + "?" + c.Request().URL.RawQuery)
-	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
 
-	q := linkURL.Query()
 	if len(announcements) > limit {
+		linkURL, err := createLinkURL(c)
+		if err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		q := linkURL.Query()
+		q.Set("before", announcements[limit].ID)
 		linkURL.RawQuery = q.Encode()
-		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", announcements[limit+1].ID))
+		links = append(links, fmt.Sprintf("<%v>; rel=\"next\"", announcements[limit].ID))
 	}
 	if len(links) > 0 {
 		c.Response().Header().Set("Link", strings.Join(links, ","))
