@@ -1216,7 +1216,7 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	}
 	announcementID := c.Param("announcementID")
 
-	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+	if _, err := h.DB.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ? AND NOT `is_deleted`", announcementID, userID); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
