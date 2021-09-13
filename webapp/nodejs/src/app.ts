@@ -1,9 +1,11 @@
 import { exec as _exec } from "child_process";
+import { createWriteStream } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
 import { promisify } from "util";
 
+import archiver from "archiver";
 import bcrypt from "bcrypt";
 import session from "cookie-session";
 import express from "express";
@@ -1476,22 +1478,23 @@ async function createSubmissionsZip(
   zipFilePath: string,
   classId: string,
   submissions: Submission[]
-) {
-  const tmpDir = AssignmentsDirectory + classId + "/";
-  await exec(`rm -rf '${tmpDir}'`);
-  await exec(`mkdir '${tmpDir}'`);
-
-  // ファイル名を指定の形式に変更
-  for (const submission of submissions) {
-    await exec(
-      `cp '${
-        AssignmentsDirectory + classId + "-" + submission.user_id + ".pdf"
-      }' '${tmpDir + submission.user_code + "-" + submission.file_name}'`
-    );
-  }
-
-  // -i 'tmpDir/*': 空zipを許す
-  await exec(`zip -j -r '${zipFilePath}' '${tmpDir}' -i '${tmpDir + "*"}'`);
+): Promise<void> {
+  const output = createWriteStream(zipFilePath);
+  return new Promise((resolve) => {
+    const archive = archiver("zip");
+    output.on("close", () => {
+      console.log(archive.pointer() + " total bytes");
+      resolve();
+    });
+    archive.pipe(output);
+    submissions.forEach((submission) => {
+      archive.file(
+        AssignmentsDirectory + classId + "-" + submission.user_id + ".pdf",
+        { name: submission.user_code + "-" + submission.file_name }
+      );
+    });
+    archive.finalize();
+  });
 }
 
 // ---------- Announcement API ----------
