@@ -723,59 +723,9 @@ type GetClassResponse struct {
 
 // GetClasses GET /api/courses/:courseID/classes 科目に紐づく講義一覧の取得
 func (h *handlers) GetClasses(c echo.Context) error {
-	userID, _, _, err := getUserInfo(c)
-	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	courseID := c.Param("courseID")
-
-	tx, err := h.DB.Beginx()
-	if err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	defer tx.Rollback()
-
-	var count int
-	if err := tx.Get(&count, "SELECT COUNT(*) FROM `courses` WHERE `id` = ?", courseID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-	if count == 0 {
-		return c.String(http.StatusNotFound, "No such course.")
-	}
-
-	var classes []ClassWithSubmitted
-	query := "SELECT `classes`.*, `submissions`.`user_id` IS NOT NULL AS `submitted`" +
-		" FROM `classes`" +
-		" LEFT JOIN `submissions` ON `classes`.`id` = `submissions`.`class_id` AND `submissions`.`user_id` = ?" +
-		" WHERE `classes`.`course_id` = ?" +
-		" ORDER BY `classes`.`part`"
-	if err := tx.Select(&classes, query, userID, courseID); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
-	if err := tx.Commit(); err != nil {
-		c.Logger().Error(err)
-		return c.NoContent(http.StatusInternalServerError)
-	}
-
+	time.Sleep(50 * time.Millisecond)
 	// 結果が0件の時は空配列を返却
-	res := make([]GetClassResponse, 0, len(classes))
-	for _, class := range classes {
-		res = append(res, GetClassResponse{
-			ID:               class.ID,
-			Part:             class.Part,
-			Title:            class.Title,
-			Description:      class.Description,
-			SubmissionClosed: class.SubmissionClosed,
-			Submitted:        class.Submitted,
-		})
-	}
-
+	res := make([]GetClassResponse, 0)
 	return c.JSON(http.StatusOK, res)
 }
 
