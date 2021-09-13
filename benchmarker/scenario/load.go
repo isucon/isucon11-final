@@ -396,11 +396,16 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
-			if err := verifyAnnouncementsList(expectAnnouncementMap, &res, true); err != nil {
-				step.AddError(err)
-			} else {
+			if s.NoVerify {
 				step.AddScore(score.ScoreGetAnnouncementList)
 				step.AddScore(score.UnreadGetAnnouncementList)
+			} else {
+				if err := verifyAnnouncementsList(expectAnnouncementMap, &res, true); err != nil {
+					step.AddError(err)
+				} else {
+					step.AddScore(score.ScoreGetAnnouncementList)
+					step.AddScore(score.UnreadGetAnnouncementList)
+				}
 			}
 
 			// このページに存在する未読お知らせ数（ページングするかどうかの判定用）
@@ -439,11 +444,16 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
 
-				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil && !s.NoVerify {
-					step.AddError(err)
-				} else {
+				if s.NoVerify {
 					step.AddScore(score.GetAnnouncementsDetail)
 					step.AddScore(score.UnreadGetAnnouncementDetail)
+				} else {
+					if err := verifyAnnouncementDetail(expectStatus, &res); err != nil && !s.NoVerify {
+						step.AddError(err)
+					} else {
+						step.AddScore(score.GetAnnouncementsDetail)
+						step.AddScore(score.UnreadGetAnnouncementDetail)
+					}
 				}
 
 				student.ReadAnnouncement(ans.ID)
@@ -531,11 +541,16 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 					continue
 				}
 
-				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil && !s.NoVerify {
-					step.AddError(err)
-				} else {
+				if s.NoVerify {
 					step.AddScore(score.GetAnnouncementsDetail)
 					step.AddScore(score.PagingGetAnnouncementDetail)
+				} else {
+					if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
+						step.AddError(err)
+					} else {
+						step.AddScore(score.GetAnnouncementsDetail)
+						step.AddScore(score.PagingGetAnnouncementDetail)
+					}
 				}
 			}
 
