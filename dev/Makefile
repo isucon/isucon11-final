@@ -1,13 +1,13 @@
-TBLS_VERSION := 1.50.0
+TARGET ?= golang
 
 .PHONY: up
 up: ## prepare dev environment
-	@docker compose up -d --build
-	@until (curl -X POST --silent http://localhost:7000/initialize) do sleep 1;done; echo initialized
+	@docker-compose -f docker-compose-$(TARGET).yaml up -d --build
+	@until (curl --silent http://localhost:7000/api/users/me) do sleep 1;done; echo ready
 
 .PHONY: down
 down: ## destroy dev environment
-	@docker compose down -v
+	@docker-compose -f docker-compose-$(TARGET).yaml down -v
 
 .PHONY: help
 help: ## Show help

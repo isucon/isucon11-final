@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 
 const (
 	prepareTimeout           = 20
+	SearchCourseCountPerPage = 20
 	AnnouncementCountPerPage = 20
 	prepareCourseCapacity    = 50
 )
@@ -57,6 +59,13 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 
 	if s.NoPrepare {
 		return nil
+	}
+
+	// 検索の検証
+	// 初期科目を対象に検索したいので最初に検証する
+	err = s.prepareSearchCourse(ctx)
+	if err != nil {
+		return failure.NewError(fails.ErrCritical, err)
 	}
 
 	err = s.prepareNormal(ctx, step)
@@ -151,7 +160,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			step.AddError(err)
 			return
 		}
-		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity)
+		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 		mu.Lock()
 		courses = append(courses, course)
 		mu.Unlock()
@@ -295,7 +304,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 					class.AddSubmission(student.Code, submissionSummary)
 				})
 				if err != nil {
-					panic(fmt.Errorf("unreachable! %w", err))
+					AdminLogger.Println("info: cannot start parallel: %w", err)
 				}
 			}
 			p.Wait()
@@ -488,7 +497,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 			step.AddError(err)
 			return
 		}
-		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity)
+		course := model.NewCourse(param, res.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 		mu.Lock()
 		courses = append(courses, course)
 		mu.Unlock()
@@ -581,7 +590,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 					}
 				})
 				if err != nil {
-					panic(fmt.Errorf("unreachable! %w", err))
+					AdminLogger.Println("info: cannot start parallel: %w", err)
 				}
 			}
 			p.Wait()
@@ -698,6 +707,234 @@ func prepareCheckAnnouncementDetailContent(expected *model.AnnouncementStatus, a
 	}
 
 	return nil
+}
+
+func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
+	// 検証で使用する学生ユーザ
+	student, err := s.getLoggedInStudent(ctx)
+	if err != nil {
+		return err
+	}
+
+	courses := s.initCourses
+	// code の昇順にソート
+	sort.Slice(courses, func(i, j int) bool {
+		return courses[i].Code < courses[j].Code
+	})
+
+	// 全検索の検証
+	param := model.NewCourseParam()
+	expected := searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	// 単体条件クエリの検証
+	param = model.NewCourseParam()
+	param.Type = "major-subjects"
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	param = model.NewCourseParam()
+	param.Credit = 1
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	param = model.NewCourseParam()
+	param.Teacher = courses[rand.Intn(len(courses))].Teacher().Name
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	param = model.NewCourseParam()
+	param.Period = 0
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	param = model.NewCourseParam()
+	param.DayOfWeek = 0
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	param = model.NewCourseParam()
+	param.Keywords = strings.Split(courses[rand.Intn(len(courses))].Keywords, " ")[:1]
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	param = model.NewCourseParam()
+	param.Status = "closed"
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	// 複合条件クエリの検証
+	target := courses[rand.Intn(len(courses))]
+	param = model.NewCourseParam()
+	param.Type = target.Type
+	param.Credit = target.Credit
+	param.Teacher = target.Teacher().Name
+	param.Period = target.Period
+	param.DayOfWeek = target.DayOfWeek
+	param.Keywords = strings.Split(target.Keywords, " ")[:1]
+	param.Status = string(target.Status())
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, expected []*model.Course) error {
+	errWithParamInfo := func(reason string) error {
+		return failure.NewError(fails.ErrApplication, fmt.Errorf("%s (param: %s)", reason, param.GetParamString()))
+	}
+
+	reasonHttp := "/api/courses へのリクエストが失敗しました"
+	reasonEmpty := "科目検索の最初以外のページで空の検索結果が返却されました"
+	reasonDuplicated := "科目検索結果に重複した id の科目が存在します"
+	reasonLack := "科目検索で条件にヒットするはずの科目が見つかりませんでした"
+	reasonExcess := "科目検索で条件にヒットしない科目が見つかりました"
+	reasonInvalidContent := "科目検索結果に含まれる科目の内容が不正です"
+	reasonNotSorted := "科目検索結果の順序が code の昇順になっていません"
+	reasonNotMatchCountPerPage := "科目検索のページごとの件数が不正です"
+	reasonExistPrevFirstPage := "科目検索の最初のページの link header に prev が存在しました"
+	reasonNotExistPrevOtherThanFirstPage := "科目検索の最初以外のページの link header に prev が存在しませんでした"
+	reasonInvalidPrev := "科目検索の link header の prev で前のページに正しく戻ることができませんでした"
+
+	var path string
+	actual := make([]*api.GetCourseDetailResponse, 0)
+	actualByID := make(map[string]*api.GetCourseDetailResponse)
+	actualResCountList := make([]int, 0)
+	prevList := make([]string, 0)
+	for {
+		hres, res, err := SearchCourseAction(ctx, a, param, path)
+		if err != nil {
+			return errWithParamInfo(reasonHttp)
+		}
+
+		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
+		if path != "" && len(res) == 0 {
+			return errWithParamInfo(reasonEmpty)
+		}
+
+		for _, course := range res {
+			_, exists := actualByID[course.ID]
+			// IDが重複していたらエラーにする
+			if exists {
+				return errWithParamInfo(reasonDuplicated)
+			}
+			actualByID[course.ID] = course
+			actual = append(actual, course)
+		}
+		actualResCountList = append(actualResCountList, len(res))
+
+		// 期待する件数よりも多かったら少なくとも1件ヒットすべきでない科目がヒットしている
+		if len(actual) > len(expected) {
+			return errWithParamInfo(reasonExcess)
+		}
+
+		prev, next := parseLinkHeader(hres)
+		prevList = append(prevList, prev)
+		path = next
+
+		if path == "" {
+			break
+		}
+	}
+
+	// 順序は無視して期待するコースがすべて検索結果に含まれていることを検証
+	// len(actual) <= len(expected) であり、actual には重複がないことが保証されているので expected の科目がすべて actual に含まれていれば両者は順序を除いて等しい
+	for _, expectCourse := range expected {
+		actualCourse, exists := actualByID[expectCourse.ID]
+		// 同じIDの科目がなかったらその科目は見つからなかった扱いにする
+		if !exists {
+			return errWithParamInfo(reasonLack)
+		}
+		// 同じIDでも内容が違っていたら科目自体は見つかったが内容が不正という扱いにする
+		if !AssertEqualCourse(expectCourse, actualCourse, true) {
+			return errWithParamInfo(reasonInvalidContent)
+		}
+	}
+
+	// 順序の検証
+	for i := 0; i < len(actual)-1; i++ {
+		if actual[i].Code > actual[i+1].Code {
+			return errWithParamInfo(reasonNotSorted)
+		}
+	}
+
+	// 各ページの件数の検証
+	expectResCountList := make([]int, 0)
+	rest := len(expected)
+	for {
+		if rest <= SearchCourseCountPerPage {
+			expectResCountList = append(expectResCountList, rest)
+			break
+		} else {
+			expectResCountList = append(expectResCountList, SearchCourseCountPerPage)
+			rest -= SearchCourseCountPerPage
+		}
+	}
+	if !AssertEqual("search count per page", expectResCountList, actualResCountList) {
+		return errWithParamInfo(reasonNotMatchCountPerPage)
+	}
+
+	// prev の存在検証
+	for i := 0; i < len(prevList); i++ {
+		if i == 0 && prevList[i] != "" {
+			return errWithParamInfo(reasonExistPrevFirstPage)
+		}
+		if i > 0 && prevList[i] == "" {
+			return errWithParamInfo(reasonNotExistPrevOtherThanFirstPage)
+		}
+	}
+
+	// prev で前のページに正しく戻れることの検証（最終ページから戻るように見ていく）
+	for page := len(prevList) - 1; page >= 1; page-- {
+		_, res, err := SearchCourseAction(ctx, a, param, prevList[page])
+		if err != nil {
+			return errWithParamInfo(reasonHttp)
+		}
+
+		// prev でのアクセスなので1ページあたりの最大件数が取れるはず
+		if len(res) != SearchCourseCountPerPage {
+			return errWithParamInfo(reasonInvalidPrev)
+		}
+
+		// リストの内容の検証
+		for i, course := range res {
+			if !AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, true) {
+				return errWithParamInfo(reasonInvalidContent)
+			}
+		}
+	}
+
+	return nil
+}
+
+func searchCourseLocal(courses []*model.Course, param *model.SearchCourseParam) []*model.Course {
+	matchCourses := make([]*model.Course, 0)
+
+	for _, course := range courses {
+		if MatchCourse(course, param) {
+			matchCourses = append(matchCourses, course)
+		}
+	}
+
+	return matchCourses
 }
 
 func (s *Scenario) prepareAbnormal(ctx context.Context) error {
@@ -818,7 +1055,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 科目のステータス更新
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
@@ -986,7 +1223,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 	if err != nil {
 		return err
@@ -1074,7 +1311,6 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 	// 存在しないユーザでのログイン
 	hres, err := LoginAction(ctx, student.Agent, &model.UserAccount{
 		Code:        "X12345",
-		Name:        "unknown",
 		RawPassword: "password",
 		IsAdmin:     false,
 	})
@@ -1088,7 +1324,6 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 	// 間違ったパスワードでのログイン
 	hres, err = LoginAction(ctx, student.Agent, &model.UserAccount{
 		Code:        student.Code,
-		Name:        student.Name,
 		RawPassword: student.RawPassword + "abc",
 		IsAdmin:     false,
 	})
@@ -1141,7 +1376,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	registrationCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	registrationCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ステータスが in-progress の科目
 	courseParam = generate.CourseParam(0, 1, teacher)
@@ -1149,7 +1384,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, inProgressCourse.ID)
 	if err != nil {
 		return err
@@ -1162,7 +1397,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	closedCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	closedCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, closedCourse.ID)
 	if err != nil {
 		return err
@@ -1175,7 +1410,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	alreadyRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	alreadyRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, _, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{alreadyRegisteredCourse})
 	if err != nil {
 		return err
@@ -1187,7 +1422,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	conflictedCourse1 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	conflictedCourse1 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 時間割がコンフリクトする2つの科目
 	courseParam = generate.CourseParam(1, 1, teacher)
@@ -1195,18 +1430,18 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
-	conflictedCourse2 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	conflictedCourse2 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	courseParam = generate.CourseParam(1, 1, teacher)
 	_, addCourseRes, err = AddCourseAction(ctx, teacher.Agent, courseParam)
 	if err != nil {
 		return err
 	}
-	conflictedCourse3 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	conflictedCourse3 := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(2, 0, teacher)
-	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1299,7 +1534,7 @@ func (s *Scenario) prepareCheckAddCourseAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1409,11 +1644,11 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 存在しない科目
 	courseParam = generate.CourseParam(0, 1, teacher)
-	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
+	unknownCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1518,7 +1753,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
-	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	inProgressCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, _, err = TakeCoursesAction(ctx, student.Agent, []*model.Course{inProgressCourse})
 	if err != nil {
 		return err
@@ -1535,7 +1770,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
-	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, notRegisteredCourse.ID)
 	if err != nil {
 		return err
@@ -1660,7 +1895,7 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 	if err != nil {
 		return err
@@ -1722,7 +1957,7 @@ func (s *Scenario) prepareCheckDownloadSubmissionsAbnormal(ctx context.Context) 
 	if err != nil {
 		return err
 	}
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// ======== 検証 ========
 
@@ -1751,7 +1986,7 @@ func (s *Scenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) err
 
 	// 存在しない科目
 	courseParam := generate.CourseParam(0, 0, teacher)
-	notRegisteredCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, generate.GenULID(), teacher, prepareCourseCapacity, model.NewCapacityCounter())
 
 	// 存在しない講義
 	classParam := generate.ClassParam(notRegisteredCourse, 1)
@@ -1796,7 +2031,7 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 	if err != nil {
 		return err
 	}
-	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity)
+	notRegisteredCourse := model.NewCourse(courseParam, addCourseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
 	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, notRegisteredCourse.ID)
 	if err != nil {
 		return err

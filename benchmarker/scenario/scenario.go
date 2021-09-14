@@ -20,7 +20,8 @@ var (
 
 type Scenario struct {
 	Config
-	CourseManager *model.CourseManager
+	CapacityCounter *model.CapacityCounter
+	CourseManager   *model.CourseManager
 
 	sPubSub             *pubsub.PubSub
 	cPubSub             *pubsub.PubSub
@@ -31,9 +32,9 @@ type Scenario struct {
 	loadRequestEndTime  time.Time
 	debugData           *DebugData
 
-	// initCourse は/initializeで追加されるコース
+	// initCourses は/initializeで追加されるコース
 	// 中のデータの更新はしないこと
-	initCourse []*model.Course
+	initCourses []*model.Course
 
 	rmu sync.RWMutex
 
@@ -51,26 +52,44 @@ type Config struct {
 }
 
 func NewScenario(config *Config) (*Scenario, error) {
-	studentsData, err := generate.LoadStudentsData()
-	if err != nil {
-		return nil, err
-	}
-	teachersData, err := generate.LoadTeachersData()
-	if err != nil {
-		return nil, err
+	studentsData := generate.LoadStudentsData()
+	teachersData := generate.LoadTeachersData()
+
+	teachers := make([]*model.Teacher, len(teachersData))
+	teachersMap := make(map[string]*model.Teacher, len(teachersData))
+	for i, account := range teachersData {
+		teacher := model.NewTeacher(account, config.BaseURL)
+		teachers[i] = teacher
+		teachersMap[account.ID] = teacher
 	}
 
+	// 動作確認用科目の教員アカウント
+	// ベンチではこのアカウントを操作することはないためUserAccountのみを管理する
+	testTeacher := &model.Teacher{
+		UserAccount: &model.UserAccount{
+			ID:          "01FF4RXEKS0DG2EG20CKDWS7CC",
+			Code:        "T99999",
+			Name:        "isucon-teacher",
+			RawPassword: "isucon",
+		},
+	}
+	teachersMap[testTeacher.ID] = testTeacher
+
+	cc := model.NewCapacityCounter()
+	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse, cc)
+
 	return &Scenario{
-		Config:        *config,
-		CourseManager: model.NewCourseManager(),
+		Config:          *config,
+		CapacityCounter: cc,
+		CourseManager:   model.NewCourseManager(cc),
 
 		sPubSub:            pubsub.NewPubSub(),
 		cPubSub:            pubsub.NewPubSub(),
-		userPool:           NewUserPool(studentsData, teachersData, config.BaseURL),
+		userPool:           NewUserPool(studentsData, teachers, config.BaseURL),
 		activeStudents:     make([]*model.Student, 0, initialStudentsCount),
 		debugData:          NewDebugData(config.IsDebug),
 		finishCoursePubSub: pubsub.NewPubSub(),
-		initCourse:         generate.InitialCourses(),
+		initCourses:        initCourses,
 	}, nil
 }
 
@@ -102,21 +121,38 @@ func (s *Scenario) Reset() {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	studentsData, err := generate.LoadStudentsData()
-	if err != nil {
-		panic(err)
-	}
-	teachersData, err := generate.LoadTeachersData()
-	if err != nil {
-		panic(err)
+	studentsData := generate.LoadStudentsData()
+	teachersData := generate.LoadTeachersData()
+
+	teachers := make([]*model.Teacher, len(teachersData))
+	teachersMap := make(map[string]*model.Teacher, len(teachersData))
+	for i, account := range teachersData {
+		teacher := model.NewTeacher(account, s.BaseURL)
+		teachers[i] = teacher
+		teachersMap[account.ID] = teacher
 	}
 
-	s.CourseManager = model.NewCourseManager()
+	testTeacher := &model.Teacher{
+		UserAccount: &model.UserAccount{
+			ID:          "01FF4RXEKS0DG2EG20CKDWS7CC",
+			Code:        "T99999",
+			Name:        "isucon-teacher",
+			RawPassword: "isucon",
+		},
+	}
+	teachersMap[testTeacher.ID] = testTeacher
+
+	cc := model.NewCapacityCounter()
+	initCourses := generate.LoadInitialCourseData(teachersMap, StudentCapacityPerCourse, cc)
+
+	s.CapacityCounter = cc
+	s.CourseManager = model.NewCourseManager(s.CapacityCounter)
 	s.sPubSub = pubsub.NewPubSub()
 	s.cPubSub = pubsub.NewPubSub()
-	s.userPool = NewUserPool(studentsData, teachersData, s.BaseURL)
+	s.userPool = NewUserPool(studentsData, teachers, s.BaseURL)
 	s.activeStudents = make([]*model.Student, 0, initialStudentsCount)
 	s.debugData = NewDebugData(s.Config.IsDebug)
 	s.finishCoursePubSub = pubsub.NewPubSub()
 	s.finishCourseStudentsCount = 0
+	s.initCourses = initCourses
 }

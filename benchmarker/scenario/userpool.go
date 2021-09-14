@@ -22,16 +22,16 @@ type userPool struct {
 }
 
 var (
-	sampleStudentID   = "S00000"
+	sampleStudentCode = "S00000"
 	sampleStudentName = "isucon(学生)"
 	sampleStudentPass = "isucon"
 
-	sampleTeacherID   = "T00000"
+	sampleTeacherCode = "T00000"
 	sampleTeacherName = "isucon(教員)"
 	sampleTeacherPass = "isucon"
 )
 
-func NewUserPool(studentAccounts []*model.UserAccount, teacherAccounts []*model.UserAccount, baseURL *url.URL) *userPool {
+func NewUserPool(studentAccounts []*model.UserAccount, teachers []*model.Teacher, baseURL *url.URL) *userPool {
 	// shuffle studentDataSet order by Fisher–Yates shuffle
 	for i := len(studentAccounts) - 1; i >= 0; i-- {
 		j := rand.Intn(i + 1)
@@ -39,16 +39,11 @@ func NewUserPool(studentAccounts []*model.UserAccount, teacherAccounts []*model.
 	}
 
 	sampleTeacher := model.NewTeacher(&model.UserAccount{
-		Code:        sampleTeacherID,
+		Code:        sampleTeacherCode,
 		Name:        sampleTeacherName,
 		RawPassword: sampleTeacherPass,
 		IsAdmin:     true,
 	}, baseURL)
-
-	teachers := make([]*model.Teacher, len(teacherAccounts))
-	for i, account := range teacherAccounts {
-		teachers[i] = model.NewTeacher(account, baseURL)
-	}
 
 	return &userPool{
 		studentAccounts: studentAccounts,
@@ -67,7 +62,7 @@ func (p *userPool) newStudent() (*model.Student, error) {
 	if !p.useSampleStudent {
 		p.useSampleStudent = true
 		return model.NewStudent(&model.UserAccount{
-			Code:        sampleStudentID,
+			Code:        sampleStudentCode,
 			Name:        sampleStudentName,
 			RawPassword: sampleStudentPass,
 			IsAdmin:     false,

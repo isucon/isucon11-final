@@ -33,12 +33,13 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errTimeout := failure.NewError(fails.ErrCritical, fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
+	errNotMatchUnreadCountAmongPages := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の各ページの unread_count の値が一致しません"))
 	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
 	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
 	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
-	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複した内容の Announcement が見つかりました"))
+	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複したIDの Announcement が見つかりました"))
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
@@ -89,7 +90,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 			for _, unreadCount := range responseUnreadCounts {
 				if responseUnreadCounts[0] != unreadCount {
-					step.AddError(errNotMatchUnreadCount)
+					step.AddError(errNotMatchUnreadCountAmongPages)
 					return
 				}
 			}
@@ -161,12 +162,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				step.AddError(errNotMatchOver)
 				return
 			}
-
-			expectMinUnread, expectMaxUnread := student.ExpectUnreadRange()
-			if !AssertInRange("response unread count", expectMinUnread, expectMaxUnread, actualUnreadCount) {
-				step.AddError(errNotMatchUnreadCount)
-				return
-			}
 		}()
 	}
 	wg.Wait()
@@ -178,7 +173,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
-	for _, c := range s.initCourse {
+	for _, c := range s.initCourses {
 		expectCourses[c.ID] = c
 	}
 
@@ -217,18 +212,9 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			return
 		}
 
-		if !AssertEqual("course ID", expect.ID, actual.ID) ||
-			!AssertEqual("course Code", expect.Code, actual.Code) ||
-			!AssertEqual("course Name", expect.Name, actual.Name) ||
-			!AssertEqual("course Type", api.CourseType(expect.Type), actual.Type) ||
-			!AssertEqual("course Credit", uint8(expect.Credit), actual.Credit) ||
-			!AssertEqual("course Teacher", expect.Teacher().Name, actual.Teacher) ||
-			// webappは1-6, benchは0-5
-			!AssertEqual("course Period", uint8(expect.Period+1), actual.Period) ||
-			// webappはMonday..., benchは0-4
-			!AssertEqual("course DayOfWeek", api.DayOfWeekTable[expect.DayOfWeek], actual.DayOfWeek) ||
-			!AssertEqual("course Keywords", expect.Keywords, actual.Keywords) ||
-			!AssertEqual("course Description", expect.Description, actual.Description) {
+		// TODO: statusもdirtyフラグで検証する？
+		if !AssertEqualCourse(expect, actual, false) {
+			AdminLogger.Printf("name: %v", expect.Name)
 			step.AddError(errNotMatch)
 			return
 		}
@@ -276,7 +262,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			}
 		})
 		if err != nil {
-			panic(fmt.Errorf("unreachable! %w", err))
+			AdminLogger.Println("info: cannot start parallel: %w", err)
 		}
 	}
 
@@ -302,9 +288,9 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) e
 		}
 
 		expected := expected.CourseResults[courseResult.Code]
-		err := validateCourseResult(expected, &courseResult)
+		err := assertEqualCourseResult(expected, &courseResult)
 		if err != nil {
-			return err
+			return failure.NewError(fails.ErrCritical, err)
 		}
 	}
 
@@ -334,74 +320,6 @@ func validateSummary(expected *model.Summary, actual *api.Summary) error {
 
 	if !AssertWithinTolerance("grade summary gpa_t_score", expected.GpaTScore, actual.GpaTScore, validateGPAErrorTolerance) {
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_t_scoreが一致しません"))
-	}
-
-	return nil
-}
-
-func validateCourseResult(expected *model.CourseResult, actual *api.CourseResult) error {
-	if !AssertEqual("grade courses name", expected.Name, actual.Name) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースの名前が一致しません"))
-	}
-
-	if !AssertEqual("grade courses code", expected.Code, actual.Code) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのコードが一致しません"))
-	}
-
-	if !AssertEqual("grade courses total_score", expected.TotalScore, actual.TotalScore) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreが一致しません"))
-	}
-
-	if !AssertEqual("grade courses total_score_max", expected.TotalScoreMax, actual.TotalScoreMax) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません"))
-	}
-
-	if !AssertEqual("grade courses total_score_min", expected.TotalScoreMin, actual.TotalScoreMin) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade courses total_score_avg", expected.TotalScoreAvg, actual.TotalScoreAvg, validateTotalScoreErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade courses total_score_t_score", expected.TotalScoreTScore, actual.TotalScoreTScore, validateTotalScoreErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores length", len(expected.ClassScores), len(actual.ClassScores)) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のClassScoresの数が一致しません"))
-	}
-
-	for i := 0; i < len(expected.ClassScores); i++ {
-		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
-		err := validateClassScore(expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1])
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func validateClassScore(expected *model.ClassScore, actual *api.ClassScore) error {
-	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのIDが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのpartが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores title", expected.Title, actual.Title) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのタイトルが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores score", expected.Score, actual.Score) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスのスコアが一致しません"))
-	}
-
-	if !AssertEqual("grade courses class_scores submitters", expected.SubmitterCount, actual.Submitters) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のクラスの課題提出者の数が一致しません"))
 	}
 
 	return nil

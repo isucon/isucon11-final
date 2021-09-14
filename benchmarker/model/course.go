@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,6 +42,7 @@ type Course struct {
 	registeredStudents map[string]*Student
 	reservations       int
 	capacity           int // 登録学生上限
+	capacityCounter    *CapacityCounter
 	classes            []*Class
 	status             api.CourseStatus
 
@@ -59,13 +62,14 @@ type SearchCourseParam struct {
 	Status    string
 }
 
-func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int) *Course {
+func NewCourse(param *CourseParam, id string, teacher *Teacher, capacity int, capacityCounter *CapacityCounter) *Course {
 	c := &Course{
 		CourseParam:        param,
 		ID:                 id,
 		teacher:            teacher,
 		registeredStudents: make(map[string]*Student, capacity),
 		capacity:           capacity,
+		capacityCounter:    capacityCounter,
 		classes:            make([]*Class, 0, ClassCountPerCourse),
 		status:             api.StatusRegistration,
 
@@ -188,6 +192,15 @@ func (c *Course) CommitReservation(s *Student) {
 			close(c.closer)
 		}
 	}
+	// 仮登録者数がゼロで履修する可能性のある学生がいない時、履修を締め切る
+	if c.reservations == 0 && c.capacityCounter.Get(c.DayOfWeek, c.Period) == 0 {
+		select {
+		case <-c.closer:
+			// close済み
+		default:
+			close(c.closer)
+		}
+	}
 }
 
 func (c *Course) RollbackReservation() {
@@ -197,6 +210,16 @@ func (c *Course) RollbackReservation() {
 	c.reservations--
 	if c.reservations == 0 {
 		c.zeroReservationCond.Broadcast()
+	}
+
+	// 仮登録者数がゼロで履修する可能性のある学生がいない時、履修を締め切る
+	if c.reservations == 0 && c.capacityCounter.Get(c.DayOfWeek, c.Period) == 0 {
+		select {
+		case <-c.closer:
+			// close済み
+		default:
+			close(c.closer)
+		}
 	}
 }
 
@@ -329,4 +352,47 @@ func (c *Course) calcTotalScores() map[string]int {
 	}
 
 	return res
+}
+
+func NewCourseParam() *SearchCourseParam {
+	return &SearchCourseParam{
+		Type:      "",
+		Credit:    0,
+		Teacher:   "",
+		Period:    -1, // 0-5, -1で指定なし
+		DayOfWeek: -1, // 0-4, -1で指定なし
+		Keywords:  []string{},
+		Status:    "",
+	}
+}
+
+func (p *SearchCourseParam) GetParamString() string {
+	paramStrings := make([]string, 0)
+	if p.Type != "" {
+		paramStrings = append(paramStrings, fmt.Sprintf("type = %s", p.Type))
+	}
+	if p.Credit != 0 {
+		paramStrings = append(paramStrings, fmt.Sprintf("credit = %d", p.Credit))
+	}
+	if p.Teacher != "" {
+		paramStrings = append(paramStrings, fmt.Sprintf("teacher = %s", p.Teacher))
+	}
+	if p.Period != -1 {
+		paramStrings = append(paramStrings, fmt.Sprintf("period = %d", p.Period+1))
+	}
+	if p.DayOfWeek != -1 {
+		paramStrings = append(paramStrings, fmt.Sprintf("day_of_week = %s", api.DayOfWeekTable[p.DayOfWeek]))
+	}
+	if len(p.Keywords) != 0 {
+		paramStrings = append(paramStrings, fmt.Sprintf("keywords = %s", strings.Join(p.Keywords, " ")))
+	}
+	if p.Status != "" {
+		paramStrings = append(paramStrings, fmt.Sprintf("status = %s", p.Status))
+	}
+
+	if len(paramStrings) == 0 {
+		return "empty"
+	} else {
+		return strings.Join(paramStrings, ", ")
+	}
 }

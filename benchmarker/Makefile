@@ -30,6 +30,10 @@ help: ## Display this help screen
 assets: $(PUBLIC_FILES) ## regenerate checksum of assets
 	@PUBLIC_FILES_DIR="$(PUBLIC_FILES_DIR)" PUBLIC_FILES="$(PUBLIC_FILES)" go generate ./assets/gen.go
 
+.PHONY: initial_course
+initial_course: ## generate initial course data
+	@go generate ./tools/gen_course_data.go
+
 $(EXE): Makefile go.mod $(GOFILES) assets
 	@GOPRIVATE=$(GOPRIVATES) go build -ldflags "$(GOLDFLAGS)" -o $(EXE) -v github.com/isucon/isucon11-final/benchmarker
 

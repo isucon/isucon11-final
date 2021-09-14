@@ -139,7 +139,7 @@ func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucand
 		}
 
 		for i := 0; i < count; i++ {
-			step.AddScore(score.FinishCoursesStudents)
+			step.AddScore(score.FinishCourseStudents)
 			result := atomic.AddInt64(&s.finishCourseStudentsCount, 1)
 			if result%StudentCapacityPerCourse == 0 {
 				s.addActiveStudentLoads(ctx, step, 1)
@@ -169,6 +169,8 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		if activeCount%AnnouncePagingStudentInterval == 0 {
 			studentLoadWorker.Do(s.readAnnouncementPagingScenario(student, step))
 		}
+
+		s.CapacityCounter.IncAll()
 
 		// 同時実行可能数を制限する際には注意
 		// 成績確認 + (空きがあれば履修登録)
@@ -203,14 +205,13 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
-					time.Sleep(1 * time.Millisecond)
+					time.Sleep(waitGradeTimeout)
 					continue
 				}
 				err = verifyGrades(expected, &getGradeRes)
 				if err != nil {
 					step.AddError(err)
 				} else {
-					step.AddScore(score.ScoreGetGrades)
 					step.AddScore(score.RegGetGrades)
 				}
 			}
@@ -346,6 +347,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					for _, c := range temporaryReservedCourses {
 						c.RollbackReservation()
 						student.ReleaseTimeslot(c.DayOfWeek, c.Period)
+						s.CapacityCounter.Inc(c.DayOfWeek, c.Period)
 					}
 				}
 			} else {
@@ -353,7 +355,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.RegRegisterCourses)
 				}
 				for _, c := range temporaryReservedCourses {
-					step.AddScore(score.RegRegisterCourseByStudent)
+					step.AddScore(score.RegRegisterCourseStudents)
 					c.CommitReservation(student)
 					student.AddCourse(c)
 					c.StartTimer(waitCourseFullTimeout)
@@ -556,12 +558,6 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 
 func (s *Scenario) courseScenario(course *model.Course, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
-		defer func() {
-			for _, student := range course.Students() {
-				student.ReleaseTimeslot(course.DayOfWeek, course.Period)
-			}
-		}()
-
 		waitStart := time.Now()
 
 		// 履修締め切りを待つ
@@ -580,12 +576,28 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		s.CourseManager.RemoveRegistrationClosedCourse(course)
 
 		teacher := course.Teacher()
+
 		// 科目ステータスをin-progressにする
+		isExtendRequest := false
+	statusStartLoop:
+		if s.isNoRetryTime(ctx) {
+			return
+		}
 		_, err := SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
 		if err != nil {
-			step.AddError(err)
-			AdminLogger.Printf("%vのコースステータスをin-progressに変更するのが失敗しました", course.Name)
-			return
+			if !isExtendRequest {
+				step.AddError(err)
+			}
+			var urlError *url.Error
+			if errors.As(err, &urlError) && urlError.Timeout() {
+				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto statusStartLoop
+			} else {
+				AdminLogger.Printf("%vのコースステータスを in-progress に変更するのが失敗しました", course.Name)
+				return
+			}
 		}
 		course.SetStatusToInProgress()
 		s.debugData.AddInt("waitCourseTime", time.Since(waitStart).Milliseconds())
@@ -593,12 +605,23 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 
 		studentLen := len(course.Students())
 		switch {
+		case studentLen < 10:
+			step.AddScore(score.CourseStartCourseUnder10)
+		case studentLen < 20:
+			step.AddScore(score.CourseStartCourseUnder20)
+		case studentLen < 30:
+			step.AddScore(score.CourseStartCourseUnder30)
+		case studentLen < 40:
+			step.AddScore(score.CourseStartCourseUnder40)
 		case studentLen < 50:
 			step.AddScore(score.CourseStartCourseUnder50)
 		case studentLen == 50:
 			step.AddScore(score.CourseStartCourseFull)
 		case studentLen > 50:
 			step.AddScore(score.CourseStartCourseOver50)
+		}
+		for i := 0; i < studentLen; i++ {
+			step.AddScore(score.StartCourseStudents)
 		}
 
 		var classTimes [ClassCountPerCourse]int64
@@ -733,7 +756,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		}
 
 		// 科目ステータスをclosedにする
-		isExtendRequest := false
+		isExtendRequest = false
 	statusLoop:
 		if s.isNoRetryTime(ctx) {
 			return
@@ -757,6 +780,10 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 
 		course.SetStatusToClosed()
 		step.AddScore(score.FinishCourses)
+		for _, student := range course.Students() {
+			student.ReleaseTimeslot(course.DayOfWeek, course.Period)
+			s.CapacityCounter.Inc(course.DayOfWeek, course.Period)
+		}
 
 		// 科目が追加されたのでベンチのアクティブ学生も増やす
 		s.finishCoursePubSub.Publish(len(course.Students()))
@@ -898,7 +925,7 @@ L:
 		step.AddScore(score.CourseAddCourse)
 	}
 
-	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, StudentCapacityPerCourse)
+	course := model.NewCourse(courseParam, addCourseRes.ID, teacher, StudentCapacityPerCourse, s.CapacityCounter)
 	s.CourseManager.AddNewCourse(course)
 	s.cPubSub.Publish(course)
 }

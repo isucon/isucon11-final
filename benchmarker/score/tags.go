@@ -5,17 +5,21 @@ import "github.com/isucon/isucandar/score"
 const (
 	// score
 	ScoreSubmitAssignment    score.ScoreTag = "SubmitAssignment"
-	ScoreGetGrades           score.ScoreTag = "GetGrades"
 	ScoreGetAnnouncementList score.ScoreTag = "GetAnnouncementList"
 
 	// other
 	ActiveStudents           score.ScoreTag = "_O1.ActiveStudents"
-	FinishCourses            score.ScoreTag = "_O2.FinishCourses"
-	FinishCoursesStudents    score.ScoreTag = "_O3.FinishCoursesStudents"
-	GetAnnouncementsDetail   score.ScoreTag = "_O4.GetAnnouncementDetail"
-	CourseStartCourseUnder50 score.ScoreTag = "_O5.StartCourseUnder50"
-	CourseStartCourseFull    score.ScoreTag = "_O6.StartCourseFull"
-	CourseStartCourseOver50  score.ScoreTag = "!O7.StartCourseOver50"
+	StartCourseStudents      score.ScoreTag = "_O2.StartCourseStudents"
+	FinishCourses            score.ScoreTag = "_O3.FinishCourses"
+	FinishCourseStudents     score.ScoreTag = "_O4.FinishCourseStudents"
+	GetAnnouncementsDetail   score.ScoreTag = "_O5.GetAnnouncementDetail"
+	CourseStartCourseUnder10 score.ScoreTag = "_O6.StartCourseUnder10"
+	CourseStartCourseUnder20 score.ScoreTag = "_O7.StartCourseUnder20"
+	CourseStartCourseUnder30 score.ScoreTag = "_O8.StartCourseUnder30"
+	CourseStartCourseUnder40 score.ScoreTag = "_O9.StartCourseUnder40"
+	CourseStartCourseUnder50 score.ScoreTag = "_10.StartCourseUnder50"
+	CourseStartCourseFull    score.ScoreTag = "_11.StartCourseFull"
+	CourseStartCourseOver50  score.ScoreTag = "!12.StartCourseOver50"
 
 	// registration scenario
 	RegGetGrades                    score.ScoreTag = "_R1.GetGrades"
@@ -24,7 +28,7 @@ const (
 	RegGetCourseDetailVerifySkipped score.ScoreTag = "_R4.GetCourseDetailVerifySkipped"
 	RegGetRegisteredCourses         score.ScoreTag = "_R5.GetRegisteredCourses"
 	RegRegisterCourses              score.ScoreTag = "_R6.RegisterCourses"
-	RegRegisterCourseByStudent      score.ScoreTag = "_R7.RegisterCourseByStudent"
+	RegRegisterCourseStudents       score.ScoreTag = "_R7.RegisterCourseStudents"
 
 	// read announcement scenario
 	UnreadGetAnnouncementList   score.ScoreTag = "_U1.GetAnnouncementList"
@@ -47,14 +51,22 @@ const (
 var Tags = []score.ScoreTag{
 	// score
 	ScoreSubmitAssignment,
-	ScoreGetGrades,
 	ScoreGetAnnouncementList,
 
 	// other
 	ActiveStudents,
+	StartCourseStudents,
 	FinishCourses,
-	FinishCoursesStudents,
+	FinishCourseStudents,
 	GetAnnouncementsDetail,
+
+	CourseStartCourseUnder10,
+	CourseStartCourseUnder20,
+	CourseStartCourseUnder30,
+	CourseStartCourseUnder40,
+	CourseStartCourseUnder50,
+	CourseStartCourseFull,
+	CourseStartCourseOver50,
 
 	// registration scenario
 	RegGetGrades,
@@ -63,7 +75,7 @@ var Tags = []score.ScoreTag{
 	RegGetCourseDetailVerifySkipped,
 	RegGetRegisteredCourses,
 	RegRegisterCourses,
-	RegRegisterCourseByStudent,
+	RegRegisterCourseStudents,
 
 	// read announcement scenario
 	UnreadGetAnnouncementList,
@@ -81,10 +93,6 @@ var Tags = []score.ScoreTag{
 	CourseSubmitAssignment,
 	CourseDownloadSubmissions,
 	CourseRegisterScore,
-
-	CourseStartCourseUnder50,
-	CourseStartCourseFull,
-	CourseStartCourseOver50,
 }
 
 var (

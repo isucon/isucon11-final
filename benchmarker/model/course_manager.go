@@ -9,13 +9,15 @@ import (
 type CourseManager struct {
 	courses           map[string]*Course
 	waitingCourseList *courseList // 空きのある科目を優先順に並べたもの
+	capacityCounter   *CapacityCounter
 	rmu               sync.RWMutex
 }
 
-func NewCourseManager() *CourseManager {
+func NewCourseManager(cc *CapacityCounter) *CourseManager {
 	m := &CourseManager{
 		courses:           map[string]*Course{},
 		waitingCourseList: newCourseList(1000),
+		capacityCounter:   cc,
 	}
 	return m
 }
@@ -64,6 +66,7 @@ func (m *CourseManager) ReserveCoursesForStudent(student *Student, remainingRegi
 		case Succeeded:
 			temporaryReservedCourses = append(temporaryReservedCourses, target)
 			student.FillTimeslot(target)
+			m.capacityCounter.Dec(target.DayOfWeek, target.Period)
 		case NotAvailable:
 			continue
 		}
