@@ -24,9 +24,9 @@
 - name: "roles/contestant/tasks/isucholar: Include isucholar-rust.yml"
   include: isucholar-rust.yml
 - name: "roles/contestant/tasks/isucholar: Include isucholar-php.yml"
-  include: isucholar-rust.yml
+  include: isucholar-php.yml
 - name: "roles/contestant/tasks/isucholar: Include isucholar-ruby.yml"
-  include: isucholar-rust.yml
+  include: isucholar-ruby.yml
 
 
 
