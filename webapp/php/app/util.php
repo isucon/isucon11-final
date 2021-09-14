@@ -6,16 +6,6 @@ namespace util;
 
 use Ulid\Ulid;
 
-function getEnv(string $key, string $val): string
-{
-    $v = \getenv($key);
-    if ($v === false) {
-        return $val;
-    }
-
-    return $v;
-}
-
 function newUlid(): string
 {
     return (string)Ulid::generate();
