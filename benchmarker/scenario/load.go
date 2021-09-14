@@ -823,15 +823,24 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				}
 			}
 
-			if s.isNoRequestTime(ctx) {
-				return
-			}
+			for i := 0; i <= loginRetryCount; i++ {
+				if s.isNoRequestTime(ctx) {
+					return
+				}
 
-			_, err = LoginAction(ctx, student.Agent, student.UserAccount)
-			if err != nil {
-				AdminLogger.Printf("学生 %vのログインが失敗しました", student.Name)
-				step.AddError(err)
-				return
+				_, err = LoginAction(ctx, student.Agent, student.UserAccount)
+				if err != nil {
+					var urlError *url.Error
+					if i != loginRetryCount && errors.As(err, &urlError) && urlError.Timeout() {
+						time.Sleep(1000 * time.Millisecond)
+						continue
+					} else {
+						AdminLogger.Printf("学生 %vのログインが失敗しました", student.Name)
+						step.AddError(err)
+						return
+					}
+				}
+				break
 			}
 
 			if s.isNoRequestTime(ctx) {
@@ -866,12 +875,27 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 	}
 
 	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
-		_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
-		if err != nil {
-			step.AddError(err)
-			return
+
+		for i := 0; i <= loginRetryCount; i++ {
+			if s.isNoRequestTime(ctx) {
+				return
+			}
+
+			_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
+
+			if err != nil {
+				var urlError *url.Error
+				if i != loginRetryCount && errors.As(err, &urlError) && urlError.Timeout() {
+					time.Sleep(1000 * time.Millisecond)
+					continue
+				} else {
+					step.AddError(err)
+					return
+				}
+			}
+			teacher.IsLoggedIn = true
+			break
 		}
-		teacher.IsLoggedIn = true
 	})
 	if !isLoggedIn {
 		// ログインに失敗したらコース追加中断
