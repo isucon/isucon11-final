@@ -462,8 +462,6 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
-        $this->dbh->beginTransaction();
-
         // 履修している科目一覧取得
         /** @var array<Course> $registeredCourses */
         $registeredCourses = [];
@@ -478,7 +476,6 @@ final class Handler
                 $registeredCourses[] = Course::fromDbRow($row);
             }
         } catch (PDOException $e) {
-            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -504,7 +501,6 @@ final class Handler
                     $classes[] = Klass::fromDbRow($row);
                 }
             } catch (PDOException $e) {
-                $this->dbh->rollBack();
                 $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                 return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -520,7 +516,6 @@ final class Handler
                     $stmt->execute([$class->id]);
                     $submissionsCount = (int)$stmt->fetch()[0];
                 } catch (PDOException $e) {
-                    $this->dbh->rollBack();
                     $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -531,7 +526,6 @@ final class Handler
                     $stmt->execute([$userId, $class->id]);
                     $row = $stmt->fetch();
                 } catch (PDOException $e) {
-                    $this->dbh->rollBack();
                     $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                     return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -576,7 +570,6 @@ final class Handler
                     $totals[] = (int)$row['total_score'];
                 }
             } catch (PDOException $e) {
-                $this->dbh->rollBack();
                 $this->logger->error('db error: ' . $e->errorInfo[2]);
 
                 return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -630,7 +623,6 @@ final class Handler
                 $gpas[] = (float)$row['gpa'];
             }
         } catch (PDOException $e) {
-            $this->dbh->rollBack();
             $this->logger->error('db error: ' . $e->errorInfo[2]);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -647,8 +639,6 @@ final class Handler
             ),
             courseResults: $courseResults
         );
-
-        $this->dbh->commit();
 
         return $this->jsonResponse($response, $res);
     }
