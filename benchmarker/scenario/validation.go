@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"sync"
 	"time"
 
@@ -60,6 +61,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
 			timer := time.After(10 * time.Second)
+			var hresSample *http.Response
 			var next string
 			for {
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
@@ -74,6 +76,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					actualAnnouncementsMap[a.ID] = a
 				}
 
+				hresSample = hres
 				_, next = parseLinkHeader(hres)
 				if next == "" {
 					break
@@ -153,7 +156,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, !expectStatus.Dirty); err != nil {
+				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresSample, !expectStatus.Dirty); err != nil {
 					step.AddError(errNotMatch)
 					return
 				}
@@ -189,6 +192,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
+	var hresSample *http.Response
 	nextPathParam := "/api/courses"
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
@@ -198,6 +202,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		}
 		actuals = append(actuals, res...)
 
+		hresSample = hres
 		_, nextPathParam = parseLinkHeader(hres)
 	}
 
@@ -213,7 +218,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			return
 		}
 
-		if err := AssertEqualCourse(expect, actual); err != nil {
+		if err := AssertEqualCourse(expect, actual, hresSample); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
 			step.AddError(errNotMatch)
 			return
@@ -248,13 +253,13 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 
 			expected := calculateGradeRes(user, users)
 
-			_, res, err := GetGradeAction(ctx, user.Agent)
+			hres, res, err := GetGradeAction(ctx, user.Agent)
 			if err != nil {
 				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
 
-			err = validateUserGrade(&expected, &res)
+			err = validateUserGrade(&expected, &res, hres)
 			if err != nil {
 				step.AddError(err)
 				return
@@ -268,12 +273,12 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	p.Wait()
 }
 
-func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
+func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hres *http.Response) error {
 	if !AssertEqual("grade courses length", len(expected.CourseResults), len(actual.CourseResults)) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません"))
+		return failure.NewError(fails.ErrCritical, fails.ErrorInvalidResponse("成績確認の courses の数が一致しません", hres))
 	}
 
-	err := AssertEqualSummary(&expected.Summary, &actual.Summary)
+	err := AssertEqualSummary(&expected.Summary, &actual.Summary, hres)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
@@ -281,11 +286,11 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) e
 	for _, courseResult := range actual.CourseResults {
 		if _, ok := expected.CourseResults[courseResult.Code]; !ok {
 			AdminLogger.Println(courseResult.Code, "は予期せぬコースです")
-			return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認に意図しないcourseの結果が含まれています"))
+			return failure.NewError(fails.ErrCritical, fails.ErrorInvalidResponse("成績確認に意図しないcourseの結果が含まれています", hres))
 		}
 
 		expected := expected.CourseResults[courseResult.Code]
-		err := AssertEqualCourseResult(expected, &courseResult)
+		err := AssertEqualCourseResult(expected, &courseResult, hres)
 		if err != nil {
 			return failure.NewError(fails.ErrCritical, err)
 		}

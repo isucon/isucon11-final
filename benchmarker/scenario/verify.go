@@ -38,10 +38,6 @@ func errInvalidStatusCode(res *http.Response, expected []int) error {
 		str, res.StatusCode))
 }
 
-func errInvalidResponse(message string, args ...interface{}) error {
-	return failure.NewError(fails.ErrApplication, fmt.Errorf(message, args...))
-}
-
 func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	for _, code := range allowedStatusCodes {
 		if res.StatusCode == code {
@@ -51,16 +47,16 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	return errInvalidStatusCode(res, allowedStatusCodes)
 }
 
-func verifyInitialize(res api.InitializeResponse) error {
+func verifyInitialize(res api.InitializeResponse, hres *http.Response) error {
 	if res.Language == "" {
-		return errInvalidResponse("initialize のレスポンスに利用言語が設定されていません")
+		return fails.ErrorInvalidResponse("initialize のレスポンスに利用言語が設定されていません", hres)
 	}
 
 	return nil
 }
 
-func verifyMe(expected *model.UserAccount, res *api.GetMeResponse) error {
-	return AssertEqualUserAccount(expected, res)
+func verifyMe(expected *model.UserAccount, res *api.GetMeResponse, hres *http.Response) error {
+	return AssertEqualUserAccount(expected, res, hres)
 }
 
 // この返り値の map の value の interfaceは
@@ -81,25 +77,25 @@ func collectVerifyGradesData(student *model.Student) map[string]interface{} {
 	return courseResults
 }
 
-func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse) error {
+func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse, hres *http.Response) error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 	if !AssertEqual("grade courses length", len(expected), len(res.CourseResults)) {
-		return errInvalidResponse("成績確認でのコース結果の数が一致しません")
+		return fails.ErrorInvalidResponse("成績確認でのコース結果の数が一致しません", hres)
 	}
 
 	for _, resCourseResult := range res.CourseResults {
 		if _, ok := expected[resCourseResult.Code]; !ok {
-			return errInvalidResponse("成績確認で期待しないコースが含まれています")
+			return fails.ErrorInvalidResponse("成績確認で期待しないコースが含まれています", hres)
 		}
 
 		switch v := expected[resCourseResult.Code].(type) {
 		case *model.SimpleCourseResult:
-			err := verifySimpleCourseResult(v, &resCourseResult)
+			err := verifySimpleCourseResult(v, &resCourseResult, hres)
 			if err != nil {
 				return err
 			}
 		case *model.CourseResult:
-			err := AssertEqualCourseResult(v, &resCourseResult)
+			err := AssertEqualCourseResult(v, &resCourseResult, hres)
 			if err != nil {
 				return err
 			}
@@ -111,19 +107,19 @@ func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse) er
 	return nil
 }
 
-func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult) error {
+func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult, hres *http.Response) error {
 	if !AssertEqual("grade courses name", expected.Name, res.Name) {
-		return errInvalidResponse("成績確認結果のコース名が違います")
+		return fails.ErrorInvalidResponse("成績確認結果のコース名が違います", hres)
 	}
 
 	if !AssertEqual("grade courses code", expected.Code, res.Code) {
-		return errInvalidResponse("成績確認の科目コードが一致しません")
+		return fails.ErrorInvalidResponse("成績確認の科目コードが一致しません", hres)
 	}
 
 	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
 	// そのため、追加済みクラスのスコアの数よりレスポンス内クラスのスコアの数が少ない場合はエラーとなる
 	if !AssertGreaterOrEqual("grade courses class_scores length", len(expected.SimpleClassScores), len(res.ClassScores)) {
-		return errInvalidResponse("成績確認のクラスのスコアの数が正しくありません")
+		return fails.ErrorInvalidResponse("成績確認のクラスのスコアの数が正しくありません", hres)
 	}
 
 	// 最新のクラスの成績はまだ更新されているか判断できない
@@ -132,7 +128,7 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
 	for i := 0; i < len(expected.SimpleClassScores)-1; i++ {
 		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
-		err := AssertEqualSimpleClassScore(expected.SimpleClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
+		err := AssertEqualSimpleClassScore(expected.SimpleClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1], hres)
 		if err != nil {
 			return err
 		}
@@ -141,7 +137,7 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	return nil
 }
 
-func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.GetRegisteredCourseResponseContent) error {
+func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.GetRegisteredCourseResponseContent, hres *http.Response) error {
 	// DayOfWeekの逆引きテーブル（string -> int）
 	dayOfWeekIndexTable := map[api.DayOfWeek]int{
 		"monday":    0,
@@ -155,14 +151,14 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 	for _, resContent := range res {
 		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
 		if !ok {
-			return errInvalidResponse("科目の開講曜日が不正です")
+			return fails.ErrorInvalidResponse("科目の開講曜日が不正です", hres)
 		}
 		periodIndex := int(resContent.Period) - 1
 		if periodIndex < 0 || periodIndex >= 6 {
-			return errInvalidResponse("科目の開講時限が不正です")
+			return fails.ErrorInvalidResponse("科目の開講時限が不正です", hres)
 		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
-			return errInvalidResponse("履修済み科目のリストに時限の重複が存在します")
+			return fails.ErrorInvalidResponse("履修済み科目のリストに時限の重複が存在します", hres)
 		}
 
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
@@ -175,11 +171,11 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 		for p := 0; p < 6; p++ {
 			if actualSchedule[d][p] != nil {
 				if expectedSchedule[d][p] != nil {
-					if err := AssertEqualRegisteredCourse(expectedSchedule[d][p], actualSchedule[d][p]); err != nil {
+					if err := AssertEqualRegisteredCourse(expectedSchedule[d][p], actualSchedule[d][p], hres); err != nil {
 						return err
 					}
 				} else {
-					return errInvalidResponse("履修済み科目のリストに期待しない科目が含まれています")
+					return fails.ErrorInvalidResponse("履修済み科目のリストに期待しない科目が含まれています", hres)
 				}
 			}
 		}
@@ -188,26 +184,26 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 	return nil
 }
 
-func verifyMatchCourse(res *api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
+func verifyMatchCourse(res *api.GetCourseDetailResponse, param *model.SearchCourseParam, hres *http.Response) error {
 	if param.Type != "" && !AssertEqual("search type", api.CourseType(param.Type), res.Type) {
-		return errInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています")
+		return fails.ErrorInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています", hres)
 	}
 
 	if param.Credit != 0 && !AssertEqual("search credit", uint8(param.Credit), res.Credit) {
-		return errInvalidResponse("科目検索結果に検索条件の単位数と一致しない科目が含まれています")
+		return fails.ErrorInvalidResponse("科目検索結果に検索条件の単位数と一致しない科目が含まれています", hres)
 	}
 
 	if param.Teacher != "" && !AssertEqual("search teacher", param.Teacher, res.Teacher) {
-		return errInvalidResponse("科目検索結果に検索条件の教員名と一致しない科目が含まれています")
+		return fails.ErrorInvalidResponse("科目検索結果に検索条件の教員名と一致しない科目が含まれています", hres)
 	}
 
 	// resは1-6, paramは0-5
 	if param.Period != -1 && !AssertEqual("search period", uint8(param.Period+1), res.Period) {
-		return errInvalidResponse("科目検索結果に検索条件の時限と一致しない科目が含まれています")
+		return fails.ErrorInvalidResponse("科目検索結果に検索条件の時限と一致しない科目が含まれています", hres)
 	}
 
 	if param.DayOfWeek != -1 && !AssertEqual("search day_of_week", api.DayOfWeekTable[param.DayOfWeek], res.DayOfWeek) {
-		return errInvalidResponse("科目検索結果に検索条件の曜日と一致しない科目が含まれています")
+		return fails.ErrorInvalidResponse("科目検索結果に検索条件の曜日と一致しない科目が含まれています", hres)
 	}
 
 	// 以下の条件のいずれかを満たしたものがヒットする
@@ -215,28 +211,28 @@ func verifyMatchCourse(res *api.GetCourseDetailResponse, param *model.SearchCour
 	// - Keywordsに指定キーワードがすべて含まれている
 	if !containsAll(res.Name, param.Keywords) && !containsAll(res.Keywords, param.Keywords) {
 		AdminLogger.Printf("search keywords: keywords: %v / actual name: %s, actual keywords: %s", param.Keywords, res.Name, res.Keywords)
-		return errInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています")
+		return fails.ErrorInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています", hres)
 	}
 
 	if param.Status != "" && !AssertEqual("search status", param.Status, res.Status) {
-		return errInvalidResponse("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています")
+		return fails.ErrorInvalidResponse("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています", hres)
 	}
 
 	return nil
 }
 
-func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.SearchCourseParam) error {
+func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.SearchCourseParam, hres *http.Response) error {
 	// Code の昇順でソートされているか
 	for i := 0; i < len(res)-1; i++ {
 		if res[i].Code > res[i+1].Code {
-			return errInvalidResponse("科目検索結果の順序が不正です")
+			return fails.ErrorInvalidResponse("科目検索結果の順序が不正です", hres)
 		}
 	}
 
 	// 取得されたものが検索条件にヒットするか
 	for _, course := range res {
 		if rand.Float64() < searchCourseVerifyRate {
-			if err := verifyMatchCourse(course, param); err != nil {
+			if err := verifyMatchCourse(course, param, hres); err != nil {
 				return err
 			}
 		}
@@ -245,22 +241,22 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 	return nil
 }
 
-func verifyCourseDetail(expected *model.Course, actual *api.GetCourseDetailResponse) error {
-	return AssertEqualCourse(expected, actual)
+func verifyCourseDetail(expected *model.Course, actual *api.GetCourseDetailResponse, hres *http.Response) error {
+	return AssertEqualCourse(expected, actual, hres)
 }
 
-func verifyAnnouncementDetail(expected *model.AnnouncementStatus, res *api.GetAnnouncementDetailResponse) error {
+func verifyAnnouncementDetail(expected *model.AnnouncementStatus, res *api.GetAnnouncementDetailResponse, hres *http.Response) error {
 	// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-	return AssertEqualAnnouncementDetail(expected, res, !expected.Dirty)
+	return AssertEqualAnnouncementDetail(expected, res, hres, !expected.Dirty)
 }
 
 // お知らせ一覧の中身の検証
-func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, res *api.GetAnnouncementsResponse, verifyUnread bool) error {
+func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, res *api.GetAnnouncementsResponse, hres *http.Response, verifyUnread bool) error {
 	// id の降順でソートされているか
 	for i := 0; i < len(res.Announcements)-1; i++ {
 		if res.Announcements[i].ID < res.Announcements[i+1].ID {
-			return errInvalidResponse("お知らせの順序が不正です")
+			return fails.ErrorInvalidResponse("お知らせの順序が不正です", hres)
 		}
 	}
 
@@ -275,7 +271,7 @@ func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, r
 
 		// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 		// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-		if err := AssertEqualAnnouncementListContent(expectStatus, &actual, verifyUnread && !expectStatus.Dirty); err != nil {
+		if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hres, verifyUnread && !expectStatus.Dirty); err != nil {
 			return err
 		}
 	}
@@ -285,36 +281,36 @@ func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, r
 	return nil
 }
 
-func verifyClasses(expected []*model.Class, res []*api.GetClassResponse) error {
+func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, hres *http.Response) error {
 	if !AssertEqual("class_list length", len(expected), len(res)) {
-		return errInvalidResponse("講義数が期待する数と一致しません")
+		return fails.ErrorInvalidResponse("講義数が期待する数と一致しません", hres)
 	}
 
 	if len(res) > 0 {
 		// 最後に追加された講義だけ中身を検証する
-		return AssertEqualClass(expected[len(expected)-1], res[len(res)-1])
+		return AssertEqualClass(expected[len(expected)-1], res[len(res)-1], hres)
 	}
 
 	return nil
 }
 
-func verifyAssignments(assignmentsData []byte, class *model.Class) error {
+func verifyAssignments(assignmentsData []byte, class *model.Class, hres *http.Response) error {
 	if rand.Float64() < assignmentsVerifyRate {
 		r, err := zip.NewReader(bytes.NewReader(assignmentsData), int64(len(assignmentsData)))
 		if err != nil {
-			return errInvalidResponse("課題zipの展開に失敗しました")
+			return fails.ErrorInvalidResponse("課題zipの展開に失敗しました", hres)
 		}
 
 		downloadedAssignments := make(map[string]uint32)
 		for _, f := range r.File {
 			rc, err := f.Open()
 			if err != nil {
-				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
+				return fails.ErrorInvalidResponse("課題zipのデータ読み込みに失敗しました", hres)
 			}
 			assignmentData, err := ioutil.ReadAll(rc)
 			rc.Close()
 			if err != nil {
-				return errInvalidResponse("課題zipのデータ読み込みに失敗しました")
+				return fails.ErrorInvalidResponse("課題zipのデータ読み込みに失敗しました", hres)
 			}
 			downloadedAssignments[f.Name] = crc32.ChecksumIEEE(assignmentData)
 		}
@@ -323,17 +319,17 @@ func verifyAssignments(assignmentsData []byte, class *model.Class) error {
 
 		// mapのサイズが等しく、提出した課題がすべてダウンロードされた課題に含まれていれば、提出した課題とダウンロードされた課題は集合として等しい
 		if !AssertEqual("assignment length", len(expectedSubmissions), len(downloadedAssignments)) {
-			return errInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません")
+			return fails.ErrorInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません", hres)
 		}
 
 		for studentCode, expectedSubmission := range expectedSubmissions {
 			expectedFileName := studentCode + "-" + expectedSubmission.Title
 			actualChecksum, ok := downloadedAssignments[expectedFileName]
 			if !ok {
-				return errInvalidResponse("提出した課題が課題zipに含まれていないか、ファイル名が間違っています")
+				return fails.ErrorInvalidResponse("提出した課題が課題zipに含まれていないか、ファイル名が間違っています", hres)
 			}
 			if !AssertEqual("assignment checksum", expectedSubmission.Checksum, actualChecksum) {
-				return errInvalidResponse("提出した課題とダウンロードされた課題の内容が一致しません")
+				return fails.ErrorInvalidResponse("提出した課題とダウンロードされた課題の内容が一致しません", hres)
 			}
 		}
 	}

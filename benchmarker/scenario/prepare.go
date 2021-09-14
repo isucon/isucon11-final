@@ -46,12 +46,12 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	a.Name = "benchmarker-initializer"
 
 	ContestantLogger.Printf("start Initialize")
-	_, res, err := InitializeAction(ctx, a)
+	hres, res, err := InitializeAction(ctx, a)
 	if err != nil {
 		ContestantLogger.Printf("initializeが失敗しました")
 		return failure.NewError(fails.ErrCritical, err)
 	}
-	err = verifyInitialize(res)
+	err = verifyInitialize(res, hres)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
 	}
@@ -143,13 +143,13 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
+		hres, getMeRes, err := GetMeAction(ctx, teacher.Agent)
 		if err != nil {
 			AdminLogger.Printf("teacherのユーザ情報取得に失敗しました")
 			step.AddError(err)
 			return
 		}
-		if err := verifyMe(teacher.UserAccount, &getMeRes); err != nil {
+		if err := verifyMe(teacher.UserAccount, &getMeRes, hres); err != nil {
 			step.AddError(err)
 			return
 		}
@@ -187,13 +187,13 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		_, getMeRes, err := GetMeAction(ctx, student.Agent)
+		hres, getMeRes, err := GetMeAction(ctx, student.Agent)
 		if err != nil {
 			AdminLogger.Printf("studentのユーザ情報取得に失敗しました")
 			step.AddError(err)
 			return
 		}
-		if err := verifyMe(student.UserAccount, &getMeRes); err != nil {
+		if err := verifyMe(student.UserAccount, &getMeRes, hres); err != nil {
 			step.AddError(err)
 			return
 		}
@@ -278,7 +278,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				student := student
 				err := p.Do(func(ctx context.Context) {
 					if classPart == checkAnnouncementDetailPart {
-						_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, announcement.ID)
+						hres, res, err := GetAnnouncementDetailAction(ctx, student.Agent, announcement.ID)
 						if err != nil {
 							step.AddError(err)
 							return
@@ -287,7 +287,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 						if expected == nil {
 							panic("unreachable! announcementID" + announcement.ID)
 						}
-						err = AssertEqualAnnouncementDetail(expected, &res, true)
+						err = AssertEqualAnnouncementDetail(expected, &res, hres, true)
 						if err != nil {
 							AdminLogger.Printf("extra announcements ->name: %v, title:  %v", res.CourseName, res.Title)
 							step.AddError(err)
@@ -311,12 +311,12 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			p.Wait()
 
 			// 課題ダウンロード
-			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
+			hres, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
 				step.AddError(err)
 				return
 			}
-			if err := verifyAssignments(assignmentsData, class); err != nil {
+			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
 				step.AddError(err)
 				return
 			}
@@ -352,13 +352,13 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		w, err = worker.NewWorker(func(ctx context.Context, i int) {
 			student := students[i]
 			expected := calculateGradeRes(student, studentByCode)
-			_, res, err := GetGradeAction(ctx, student.Agent)
+			hres, res, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(failure.NewError(fails.ErrCritical, err))
 				return
 			}
 
-			err = validateUserGrade(&expected, &res)
+			err = validateUserGrade(&expected, &res, hres)
 			if err != nil {
 				step.AddError(err)
 				return
@@ -390,13 +390,13 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
 		expected := calculateGradeRes(student, studentByCode)
-		_, res, err := GetGradeAction(ctx, student.Agent)
+		hres, res, err := GetGradeAction(ctx, student.Agent)
 		if err != nil {
 			step.AddError(failure.NewError(fails.ErrCritical, err))
 			return
 		}
 
-		err = validateUserGrade(&expected, &res)
+		err = validateUserGrade(&expected, &res, hres)
 		if err != nil {
 			step.AddError(err)
 			return
@@ -620,14 +620,14 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 	}
 	// 次のページが存在しない
 	if next == "" {
-		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount)
+		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, hres)
 		if err != nil {
 			return "", err
 		}
 		return prev, nil
 	}
 
-	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount)
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, hres)
 	if err != nil {
 		return "", err
 	}
@@ -639,12 +639,12 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 		return "", err
 	}
 
-	_, res, err = GetAnnouncementListAction(ctx, a, _prev)
+	hres, res, err = GetAnnouncementListAction(ctx, a, _prev)
 	if err != nil {
 		return "", errHttp
 	}
 
-	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount)
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, hres)
 	if err != nil {
 		return "", err
 	}
@@ -652,7 +652,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 	return prev, nil
 }
 
-func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int) error {
+func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, hres *http.Response) error {
 	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
 	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement が期待したものと一致しませんでした"))
 	errNoCount := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement の数が期待したものと一致しませんでした"))
@@ -680,7 +680,7 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 	}
 
 	for i := 0; i < len(actual.Announcements); i++ {
-		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], true); err != nil {
+		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], hres, true); err != nil {
 			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.Announcements[i].CourseName, actual.Announcements[i].Title)
 			return errNotMatch
 		}
@@ -794,6 +794,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	reasonNotExistPrevOtherThanFirstPage := "科目検索の最初以外のページの link header に prev が存在しませんでした"
 	reasonInvalidPrev := "科目検索の link header の prev で前のページに正しく戻ることができませんでした"
 
+	var hresSample *http.Response
 	var path string
 	actual := make([]*api.GetCourseDetailResponse, 0)
 	actualByID := make(map[string]*api.GetCourseDetailResponse)
@@ -826,6 +827,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 			return errWithParamInfo(reasonExcess)
 		}
 
+		hresSample = hres
 		prev, next := parseLinkHeader(hres)
 		prevList = append(prevList, prev)
 		path = next
@@ -844,7 +846,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 			return errWithParamInfo(reasonLack)
 		}
 		// 同じIDでも内容が違っていたら科目自体は見つかったが内容が不正という扱いにする
-		if err := AssertEqualCourse(expectCourse, actualCourse); err != nil {
+		if err := AssertEqualCourse(expectCourse, actualCourse, hresSample); err != nil {
 			return errWithParamInfo(reasonInvalidContent)
 		}
 	}
@@ -884,7 +886,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 
 	// prev で前のページに正しく戻れることの検証（最終ページから戻るように見ていく）
 	for page := len(prevList) - 1; page >= 1; page-- {
-		_, res, err := SearchCourseAction(ctx, a, param, prevList[page])
+		hres, res, err := SearchCourseAction(ctx, a, param, prevList[page])
 		if err != nil {
 			return errWithParamInfo(reasonHttp)
 		}
@@ -896,7 +898,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 
 		// リストの内容の検証
 		for i, course := range res {
-			if err := AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course); err != nil {
+			if err := AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, hres); err != nil {
 				return errWithParamInfo(reasonInvalidPrev)
 			}
 		}
@@ -1340,7 +1342,9 @@ func (s *Scenario) prepareCheckLoginAbnormal(ctx context.Context) error {
 
 func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) error {
 	errInvalidRegistration := failure.NewError(fails.ErrApplication, fmt.Errorf("履修登録できないはずの科目の履修に成功しました"))
-	errInvalidErrorResponse := errInvalidResponse("履修登録失敗時のレスポンスが期待する内容と一致しません")
+	errInvalidErrorResponse := func(hres *http.Response) error {
+		return fails.ErrorInvalidResponse("履修登録失敗時のレスポンスが期待する内容と一致しません", hres)
+	}
 
 	// ======== 検証用データの準備 ========
 
@@ -1471,7 +1475,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 	if !isSameIgnoringOrder(eres.CourseNotFound, []string{unknownCourse.ID}) ||
 		!isSameIgnoringOrder(eres.NotRegistrableStatus, []string{inProgressCourse.ID, closedCourse.ID}) ||
 		!isSameIgnoringOrder(eres.ScheduleConflict, []string{conflictedCourse1.ID, conflictedCourse2.ID, conflictedCourse3.ID}) {
-		return errInvalidErrorResponse
+		return errInvalidErrorResponse(hres)
 	}
 
 	return nil

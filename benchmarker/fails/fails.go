@@ -2,7 +2,9 @@ package fails
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"net/http"
 
 	"github.com/isucon/isucandar/failure"
 )
@@ -41,4 +43,16 @@ func IsTimeout(err error) bool {
 		return true
 	}
 	return failure.IsCode(err, failure.TimeoutErrorCode)
+}
+
+func ErrorInvalidResponse(message string, hres *http.Response) error {
+	return failure.NewError(ErrApplication, errMessageWithPath(message, hres))
+}
+
+func errMessageWithPath(message string, hres *http.Response) error {
+	if hres != nil {
+		return fmt.Errorf("%s (%s %s)", message, hres.Request.Method, hres.Request.URL.Path)
+	} else {
+		return fmt.Errorf(message)
+	}
 }
