@@ -64,7 +64,7 @@
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.stop="closeDropdown()"
-                      >シラバスを確認
+                      >科目の詳細を確認
                     </a>
                     <a
                       :href="`/teacher/courses/${c.id}`"
@@ -89,7 +89,7 @@
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.prevent.stop="onClickSetStatus(i)"
-                      >ステータス変更
+                      >科目の状態を変更
                     </a>
                     <a
                       href="#"
@@ -101,7 +101,7 @@
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.prevent.stop="onClickAddAnnouncement(i)"
-                      >お知らせ登録
+                      >お知らせを登録
                     </a>
                   </div>
                 </div>
