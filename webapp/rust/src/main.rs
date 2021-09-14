@@ -438,7 +438,7 @@ async fn login(
 
     if !bcrypt::verify(
         &req.password,
-        &String::from_utf8_lossy(&user.hashed_password),
+        &String::from_utf8(user.hashed_password).unwrap(),
     )
     .map_err(actix_web::error::ErrorInternalServerError)?
     {
