@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"sync"
 
@@ -23,12 +24,14 @@ type Student struct {
 	*UserAccount
 	Agent *agent.Agent
 
-	registeredCourses     []*Course
-	announcements         []*AnnouncementStatus // announcements は生成順でソートされている保証はない
-	announcementIndexByID map[string]int
-	readAnnouncementCond  *sync.Cond // おしらせの既読を監視するCond
-	addAnnouncementCond   *sync.Cond // おしらせの追加を監視するCond
-	rmu                   sync.RWMutex
+	registeredCourses []*Course
+	announcements     []*AnnouncementStatus // announcements は生成順でソートされている保証はない
+
+	announcementIndexByID   map[string]int
+	unreadAnnouncementIndex int        // このインデックスよりも古い(このインデックスは含まない)ものはすべて読まれていることが保証される.
+	readAnnouncementCond    *sync.Cond // おしらせの既読を監視するCond
+	addAnnouncementCond     *sync.Cond // おしらせの追加を監視するCond
+	rmu                     sync.RWMutex
 
 	registeredSchedule [5][6]*Course // 空きコマ管理[DayOfWeek:5][Period:6]
 	registeringCount   int
@@ -50,10 +53,11 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		UserAccount: userData,
 		Agent:       a,
 
-		registeredCourses:     make([]*Course, 0, 20),
-		announcements:         make([]*AnnouncementStatus, 0, 100),
-		announcementIndexByID: make(map[string]int, 100),
-		rmu:                   sync.RWMutex{},
+		registeredCourses:       make([]*Course, 0, 20),
+		announcements:           make([]*AnnouncementStatus, 0, 100),
+		announcementIndexByID:   make(map[string]int, 100),
+		unreadAnnouncementIndex: 0,
+		rmu:                     sync.RWMutex{},
 
 		registeredSchedule: [5][6]*Course{},
 		scheduleMutex:      sync.RWMutex{},
@@ -141,15 +145,35 @@ func (s *Student) isUnreadAnnouncement(id string) bool {
 	return s.announcements[s.announcementIndexByID[id]].Unread
 }
 
-func (s *Student) HasUnreadAnnouncement() bool {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+func (s *Student) HasUnreadOrDirtyAnnouncement() bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
-	for _, anc := range s.announcements {
-		if anc.Unread {
+	return s.unreadAnnouncementIndex < len(s.announcements)
+}
+
+// announcementID よりも前に追加されたannouncementの中にunreadなものがあるかどうか
+func (s *Student) HasUnreadOrDirtyAnnouncementBeforeID(announcementID string) bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	idx, ok := s.announcementIndexByID[announcementID]
+	if !ok {
+		panic(fmt.Sprintf("unreachable! student: %s, announcementID: %s", s.ID, announcementID))
+	}
+
+	if idx < s.unreadAnnouncementIndex {
+		return false
+	}
+
+	for i, announcement := range s.announcements[s.unreadAnnouncementIndex:idx] {
+		if announcement.Dirty || announcement.Unread {
+			s.unreadAnnouncementIndex += i
 			return true
 		}
 	}
+	s.unreadAnnouncementIndex = idx
+
 	return false
 }
 

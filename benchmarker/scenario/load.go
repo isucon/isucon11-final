@@ -397,13 +397,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				step.AddScore(score.UnreadGetAnnouncementList)
 			}
 
-			// このページに存在する未読お知らせ数（ページングするかどうかの判定用）
-			var unreadCount int
 			for _, ans := range res.Announcements {
-				if ans.Unread {
-					unreadCount++
-				}
-
 				expectStatus := student.GetAnnouncement(ans.ID)
 				if expectStatus == nil {
 					// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
@@ -445,11 +439,10 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			_, nextPathParam = parseLinkHeader(hres)
 
-			// 以降のページに未読お知らせがない（このページの未読数とレスポンスの未読数が一致）
-			// DoSにならないように少しwaitして1ページ目から見直す
-			if res.UnreadCount == unreadCount {
+			// unreadで古いものがないなら待つ
+			if len(res.Announcements) == 0 || !student.HasUnreadOrDirtyAnnouncementBeforeID(res.Announcements[len(res.Announcements)-1].ID) {
 				nextPathParam = ""
-				if !student.HasUnreadAnnouncement() {
+				if !student.HasUnreadOrDirtyAnnouncement() {
 					select {
 					case <-time.After(400 * time.Millisecond):
 					case <-student.WaitNewUnreadAnnouncement(ctx):
