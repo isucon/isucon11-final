@@ -56,8 +56,8 @@ return function (App $app) {
 
 final class Handler
 {
-    private const SQL_DIRECTORY                 = __DIR__ . '/../../sql/';
-    private const ASSIGNMENTS_DIRECTORY         = __DIR__ . '/../../assignments/';
+    private const SQL_DIRECTORY = __DIR__ . '/../../sql/';
+    private const ASSIGNMENTS_DIRECTORY = __DIR__ . '/../../assignments/';
     private const INIT_DATA_DIRECTORY = __DIR__ . '/../../data/';
     private const MYSQL_ERR_NUM_DUPLICATE_ENTRY = 1062;
 
@@ -88,7 +88,7 @@ final class Handler
     public function __construct(
         private PDO $dbh,
         private SessionHelper $session,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
     ) {
     }
 
