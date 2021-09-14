@@ -203,7 +203,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// 学生は registerCourseLimitPerStudent ずつコースを修了したら成績を確認する
 			// 前回判定した修了済みコースと現在の修了済みコースが20の倍率をまたいでいたら成績確認
 			finishCourseCount := student.FinishCourseCount()
-			if beforeFinishCourseCount%registerCourseLimitPerStudent > finishCourseCount%registerCourseLimitPerStudent {
+			if finishCourseCount/registerCourseLimitPerStudent > beforeFinishCourseCount/registerCourseLimitPerStudent {
 				// 成績確認
 				expected := collectVerifyGradesData(student)
 				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
