@@ -12,7 +12,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
@@ -28,23 +27,13 @@ import (
 // param: http.Response, 検証用modelオブジェクト
 // return: error
 
-func errInvalidStatusCode(res *http.Response, expected []int) error {
-	str := ""
-	for _, v := range expected {
-		str += strconv.Itoa(v) + ","
-	}
-	str = str[:len(str)-1]
-	return failure.NewError(fails.ErrInvalidStatus, fmt.Errorf("期待するHTTPステータスコード以外が返却されました. %s: %s, expected: %s, actual: %d", res.Request.Method, res.Request.URL.Path,
-		str, res.StatusCode))
-}
-
 func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 	for _, code := range allowedStatusCodes {
 		if res.StatusCode == code {
 			return nil
 		}
 	}
-	return errInvalidStatusCode(res, allowedStatusCodes)
+	return fails.ErrorInvalidStatusCode(res, allowedStatusCodes)
 }
 
 func verifyInitialize(res api.InitializeResponse, hres *http.Response) error {
