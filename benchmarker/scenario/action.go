@@ -293,8 +293,8 @@ func SendAnnouncementAction(ctx context.Context, agent *agent.Agent, announcemen
 	return hres, nil
 }
 
-func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, []*api.GetClassResponse, error) {
-	res := make([]*api.GetClassResponse, 0)
+func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) (*http.Response, []api.GetClassResponse, error) {
+	res := make([]api.GetClassResponse, 0)
 	hres, err := api.GetClasses(ctx, agent, courseID)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)

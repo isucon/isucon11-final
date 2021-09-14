@@ -413,7 +413,7 @@ func verifyAnnouncementsList(expectedMap map[string]model.AnnouncementStatus, re
 	return nil
 }
 
-func verifyClass(expected *model.Class, actual *api.GetClassResponse) error {
+func verifyClass(expected *model.Class, actual api.GetClassResponse) error {
 	if !AssertEqual("class id", expected.ID, actual.ID) {
 		return errInvalidResponse("講義IDが期待する値と一致しません")
 	}
@@ -436,7 +436,7 @@ func verifyClass(expected *model.Class, actual *api.GetClassResponse) error {
 	return nil
 }
 
-func verifyClasses(expected []*model.Class, res []*api.GetClassResponse) error {
+func verifyClasses(expected []*model.Class, res []api.GetClassResponse) error {
 	if !AssertEqual("class_list length", len(expected), len(res)) {
 		return errInvalidResponse("講義数が期待する数と一致しません")
 	}
