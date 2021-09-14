@@ -18,7 +18,7 @@ func BrowserAccess(ctx context.Context, a *agent.Agent, path string) (*http.Resp
 
 	res, err := a.Do(ctx, req)
 	if err != nil {
-		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+		return nil, nil, fails.ErrorHTTP(err)
 	}
 
 	if ctx.Err() != nil {
@@ -28,7 +28,7 @@ func BrowserAccess(ctx context.Context, a *agent.Agent, path string) (*http.Resp
 	// HTMLファイルから追加リソースを参照する
 	resources, err := a.ProcessHTML(ctx, res, res.Body)
 	if err != nil {
-		return nil, nil, failure.NewError(fails.ErrHTTP, err)
+		return nil, nil, fails.ErrorHTTP(err)
 	}
 
 	return res, resources, nil

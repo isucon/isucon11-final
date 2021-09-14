@@ -53,7 +53,7 @@ type AnnouncementResponse struct {
 func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID string) (*http.Response, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return nil, fails.ErrorHTTP(err)
 	}
 	q := u.Query()
 

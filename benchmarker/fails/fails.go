@@ -49,6 +49,10 @@ func ErrorInvalidResponse(message string, hres *http.Response) error {
 	return failure.NewError(ErrApplication, errMessageWithPath(message, hres))
 }
 
+func ErrorHTTP(err error) error {
+	return failure.NewError(ErrHTTP, err)
+}
+
 func errMessageWithPath(message string, hres *http.Response) error {
 	if hres != nil {
 		return fmt.Errorf("%s (%s %s)", message, hres.Request.Method, hres.Request.URL.Path)
