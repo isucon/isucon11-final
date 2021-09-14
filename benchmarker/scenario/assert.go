@@ -151,7 +151,7 @@ func AssertEqualCourseResult(expected *model.CourseResult, actual *api.CourseRes
 	}
 
 	for i := 0; i < len(expected.ClassScores); i++ {
-		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
+		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古い講義から見るようにしている
 		err := AssertEqualClassScore(expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1])
 		if err != nil {
 			return err
