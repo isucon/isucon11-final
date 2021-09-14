@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"sync"
+	"sync/atomic"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
@@ -23,6 +24,7 @@ type Student struct {
 	*UserAccount
 	Agent *agent.Agent
 
+	finishCourseCount     int64
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus // announcements は生成順でソートされている保証はない
 	announcementIndexByID map[string]int
@@ -255,6 +257,14 @@ func (s *Student) Courses() []*Course {
 	copy(res, s.registeredCourses[:])
 
 	return res
+}
+
+func (s *Student) AddFinishCourseCount() {
+	atomic.AddInt64(&s.finishCourseCount, 1)
+}
+
+func (s *Student) FinishCourseCount() int64 {
+	return atomic.LoadInt64(&s.finishCourseCount)
 }
 
 func (s *Student) HasFinishedCourse() bool {

@@ -16,12 +16,12 @@
 
 variable "contestant_names" {
   type    = list(string)
-  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt", "sapphi_red", "sorah", "sapphi_red2"]
+  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt", "sapphi_red", "sorah", "sapphi_red2", "rust", "ruby", "php", "nodejs"]
 }
 
 variable "two_instance_contestant_names" {
   type    = list(string)
-  default = ["sapphi_red", "temma", "sorah", "sapphi_red2", "takonomura"]
+  default = ["sapphi_red", "temma", "sorah", "sapphi_red2", "takonomura", "hattori"]
 }
 
 variable "three_instance_contestant_names" {
@@ -32,19 +32,23 @@ variable "three_instance_contestant_names" {
 variable "contestant_team_ids" {
   type = map(string)
   default = {
-    takonomura = "1"
-    temma      = "8"
-    hosshii    = "11"
-    buchy      = "16"
-    oribe      = "19"
-    eiya       = "13"
-    kanata     = "7"
-    hattori    = "18"
-    takahashi  = "20"
-    eagletmt   = "14"
-    sapphi_red = "2"
-    sorah      = "15"
+    takonomura  = "1"
+    temma       = "8"
+    hosshii     = "11"
+    buchy       = "16"
+    oribe       = "19"
+    eiya        = "13"
+    kanata      = "7"
+    hattori     = "18"
+    takahashi   = "20"
+    eagletmt    = "-14"
+    sapphi_red  = "-2"
+    sorah       = "-15"
     sapphi_red2 = "2"
+    rust        = "14"
+    ruby        = "15"
+    php         = "22"
+    nodejs      = "23"
   }
 }
 
@@ -52,7 +56,7 @@ resource "aws_instance" "contestant-1" {
   for_each = toset(var.contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-028be2c50e43ce40d"
+  ami           = "ami-05b40f1e907f46540"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -65,6 +69,7 @@ resource "aws_instance" "contestant-1" {
 
   tags = {
     Name = "final-dev-contestant-${each.key}-1"
+    Role = "contestant"
 
     IsuconTeamID      = var.contestant_team_ids[each.key]
     IsuconInstanceNum = "1"
@@ -99,7 +104,7 @@ resource "aws_instance" "contestant-2" {
   for_each = toset(var.two_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-028be2c50e43ce40d"
+  ami           = "ami-05b40f1e907f46540"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -112,6 +117,7 @@ resource "aws_instance" "contestant-2" {
 
   tags = {
     Name = "final-dev-contestant-${each.key}-2"
+    Role = "contestant"
 
     IsuconTeamID      = var.contestant_team_ids[each.key]
     IsuconInstanceNum = "2"
@@ -146,7 +152,7 @@ resource "aws_instance" "contestant-3" {
   for_each = toset(var.three_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-028be2c50e43ce40d"
+  ami           = "ami-05b40f1e907f46540"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -159,6 +165,7 @@ resource "aws_instance" "contestant-3" {
 
   tags = {
     Name = "final-dev-contestant-${each.key}-3"
+    Role = "contestant"
 
     IsuconTeamID      = var.contestant_team_ids[each.key]
     IsuconInstanceNum = "3"

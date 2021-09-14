@@ -183,6 +183,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 
 func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
+		beforeFinishCourseCount := int64(0)
 		for ctx.Err() == nil {
 
 			if student.RegisteringCount() >= registerCourseLimitPerStudent {
@@ -198,8 +199,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				return
 			}
 
-			// 履修したコースが0なら成績確認をしない
-			if len(student.Courses()) != 0 {
+			// 学生は registerCourseLimitPerStudent ずつコースを修了したら成績を確認する
+			// 前回判定した修了済みコースと現在の修了済みコースが20の倍率をまたいでいたら成績確認
+			finishCourseCount := student.FinishCourseCount()
+			if finishCourseCount/registerCourseLimitPerStudent > beforeFinishCourseCount/registerCourseLimitPerStudent {
 				// 成績確認
 				expected := collectVerifyGradesData(student)
 				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
@@ -215,6 +218,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddScore(score.RegGetGrades)
 				}
 			}
+			beforeFinishCourseCount = finishCourseCount
 
 			// ----------------------------------------
 			{
@@ -781,6 +785,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		course.SetStatusToClosed()
 		step.AddScore(score.FinishCourses)
 		for _, student := range course.Students() {
+			student.AddFinishCourseCount()
 			student.ReleaseTimeslot(course.DayOfWeek, course.Period)
 			s.CapacityCounter.Inc(course.DayOfWeek, course.Period)
 		}

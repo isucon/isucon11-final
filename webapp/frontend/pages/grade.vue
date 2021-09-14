@@ -148,7 +148,7 @@
                           :key="`courseScore${j}-score${s.score}`"
                           class="px-4 py-2 border bg-white"
                         >
-                          {{ s.score }}
+                          {{ s.score === null ? '未提出 / 未採点' : s.score }}
                         </div>
                         <div
                           :key="`courseScore${j}-submitters${s.submitters}`"
