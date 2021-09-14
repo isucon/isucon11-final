@@ -20,6 +20,8 @@ const (
 	minimumCheckAnnouncementInterval = 100 * time.Millisecond
 	// AnnouncePagingStudentInterval はお知らせページングシナリオを開始する人数間隔
 	AnnouncePagingStudentInterval = 5
+	// announcePagingInterval はページングを繰り返すシナリオのページング間隔
+	announcePagingInterval = 100 * time.Millisecond
 	// waitCourseFullTimeout は最初の履修成功時刻から科目が満員に達するまでの待ち時間
 	waitCourseFullTimeout = 2 * time.Second
 	// waitReadClassAnnouncementTimeout は学生がクラス課題のお知らせを確認するのを待つ最大時間
