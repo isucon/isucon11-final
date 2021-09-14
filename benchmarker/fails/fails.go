@@ -17,6 +17,7 @@ const (
 	ErrApplication failure.StringCode = "application-error"
 	// ErrHTTP はアプリケーションへの接続周りでのエラー。ある程度許容される。
 	ErrHTTP           failure.StringCode = "http-error"
+	ErrJSON           failure.StringCode = "json-error"
 	ErrInvalidStatus  failure.StringCode = "invalid status code"
 	ErrStaticResource failure.StringCode = "invalid resource"
 )
@@ -28,6 +29,7 @@ func IsCritical(err error) bool {
 func IsDeduction(err error) bool {
 	return failure.IsCode(err, ErrApplication) ||
 		failure.IsCode(err, ErrHTTP) ||
+		failure.IsCode(err, ErrJSON) ||
 		failure.IsCode(err, ErrInvalidStatus)
 }
 
@@ -51,6 +53,10 @@ func ErrorInvalidResponse(message string, hres *http.Response) error {
 
 func ErrorHTTP(err error) error {
 	return failure.NewError(ErrHTTP, err)
+}
+
+func ErrorJSON(hres *http.Response) error {
+	return failure.NewError(ErrJSON, errMessageWithPath("不正なJSONが返却されました", hres))
 }
 
 func errMessageWithPath(message string, hres *http.Response) error {
