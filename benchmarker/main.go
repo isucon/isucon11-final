@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -33,20 +32,12 @@ const (
 	// load.goには別途「Loadのリクエストを送り続ける時間」を定義しているので注意
 	loadTimeout              = 70 * time.Second
 	errorFailThreshold int64 = 100
-)
-
-var (
-	allowedTargetFQDN = []string{
-		"isucholar-1.t.isucon.dev",
-		"isucholar-2.t.isucon.dev",
-		"isucholar-3.t.isucon.dev",
-	}
+	allowedTargetFQDN = "isucholar.t.isucon.dev"
 )
 
 var (
 	COMMIT              string
 	targetAddress       string
-	targetableAddresses []string
 	profileFile         string
 	memProfileDir       string
 	promOut             string
@@ -62,14 +53,6 @@ var (
 	reporter benchrun.Reporter
 )
 
-func getEnv(key, defaultValue string) string {
-	val := os.Getenv(key)
-	if val != "" {
-		return val
-	}
-	return defaultValue
-}
-
 func init() {
 	certs, err := x509.SystemCertPool()
 	if err != nil {
@@ -81,7 +64,6 @@ func init() {
 	agent.DefaultTLSConfig.MinVersion = tls.VersionTLS12
 	agent.DefaultTLSConfig.InsecureSkipVerify = false
 
-	var targetableAddressesStr string
 
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
@@ -89,7 +71,6 @@ func init() {
 	flag.StringVar(&promOut, "prom-out", "", "prometheus text-file output path")
 	flag.BoolVar(&exitStatusOnFail, "exit-status", false, "set exit status non-zero when a benchmark result is failing")
 	flag.BoolVar(&useTLS, "tls", false, "target server is a tls")
-	flag.StringVar(&targetableAddressesStr, "all-addresses", getEnv("ISUCHOLAR_ALL_ADDRESSES", ""), `ex: "192.168.0.1,192.168.0.2,192.168.0.3" (comma separated, limit 3)`)
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
 	flag.BoolVar(&noPrepare, "no-prepare", false, "only load and validation step")
 	flag.BoolVar(&noResource, "no-resource", false, "do not verify page resource")
@@ -100,12 +81,6 @@ func init() {
 
 	if targetAddress == "" {
 		targetAddress = "localhost:8080"
-	}
-	// validate targetable-addresses
-	// useTLS な場合のみ IPアドレスと FQDN のペアが必要になる
-	targetableAddresses = strings.Split(targetableAddressesStr, ",")
-	if useTLS && (!(1 <= len(targetableAddresses) && len(targetableAddresses) <= 3) || targetableAddresses[0] == "") {
-		panic("invalid targetableAddresses: length must be 1~3")
 	}
 
 	agent.DefaultRequestTimeout = defaultRequestTimeout
@@ -272,23 +247,7 @@ func main() {
 	}
 
 	if useTLS {
-		var targetFQDN string
-		for i, addr := range targetableAddresses {
-			if addr == targetAddress {
-				targetFQDN = allowedTargetFQDN[i]
-			}
-		}
-		if targetFQDN == "" {
-			panic("targetAddress が targetableAddresses に含まれていません")
-		}
-
-		agent.DefaultTLSConfig.ServerName = targetFQDN
-	} else {
-		var err error
-		baseURL, err = url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
-		if err != nil {
-			panic(err)
-		}
+		agent.DefaultTLSConfig.ServerName = allowedTargetFQDN
 	}
 
 	config := &scenario.Config{
