@@ -21,7 +21,7 @@ variable "contestant_names" {
 
 variable "two_instance_contestant_names" {
   type    = list(string)
-  default = ["sapphi_red", "temma", "sorah", "sapphi_red2", "takonomura"]
+  default = ["sapphi_red", "temma", "sorah", "sapphi_red2", "takonomura", "hattori"]
 }
 
 variable "three_instance_contestant_names" {
@@ -42,7 +42,7 @@ variable "contestant_team_ids" {
     hattori    = "18"
     takahashi  = "20"
     eagletmt   = "14"
-    sapphi_red = "2"
+    sapphi_red = "-2"
     sorah      = "15"
     sapphi_red2 = "2"
   }
@@ -52,7 +52,7 @@ resource "aws_instance" "contestant-1" {
   for_each = toset(var.contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-028be2c50e43ce40d"
+  ami           = "ami-0524ae646e871e293"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -65,6 +65,7 @@ resource "aws_instance" "contestant-1" {
 
   tags = {
     Name = "final-dev-contestant-${each.key}-1"
+    Role = "contestant"
 
     IsuconTeamID      = var.contestant_team_ids[each.key]
     IsuconInstanceNum = "1"
@@ -99,7 +100,7 @@ resource "aws_instance" "contestant-2" {
   for_each = toset(var.two_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-028be2c50e43ce40d"
+  ami           = "ami-0524ae646e871e293"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -112,6 +113,7 @@ resource "aws_instance" "contestant-2" {
 
   tags = {
     Name = "final-dev-contestant-${each.key}-2"
+    Role = "contestant"
 
     IsuconTeamID      = var.contestant_team_ids[each.key]
     IsuconInstanceNum = "2"
@@ -146,7 +148,7 @@ resource "aws_instance" "contestant-3" {
   for_each = toset(var.three_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-028be2c50e43ce40d"
+  ami           = "ami-0524ae646e871e293"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -159,6 +161,7 @@ resource "aws_instance" "contestant-3" {
 
   tags = {
     Name = "final-dev-contestant-${each.key}-3"
+    Role = "contestant"
 
     IsuconTeamID      = var.contestant_team_ids[each.key]
     IsuconInstanceNum = "3"
