@@ -26,7 +26,7 @@ const (
 	waitGradeTimeout = 10 * time.Second
 	// loadRequestTime はLoadシナリオ内でリクエストを送り続ける時間(Load自体のTimeoutより早めに終わらせる)
 	loadRequestTime = 60 * time.Second
-	// loginRetryCount はloginがタイムアウトで失敗したときのリトライ回数
+	// loginRetryCount はloadでloginがタイムアウトで失敗したときのリトライ回数
 	loginRetryCount = 1
 )
 
