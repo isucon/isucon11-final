@@ -185,6 +185,9 @@ async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpR
     }
 
     if !tokio::process::Command::new("rm")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .arg("-rf")
         .arg(ASSIGNMENTS_DIRECTORY)
         .status()
@@ -194,6 +197,9 @@ async fn initialize(pool: web::Data<sqlx::MySqlPool>) -> actix_web::Result<HttpR
         return Err(actix_web::error::ErrorInternalServerError(""));
     }
     if !tokio::process::Command::new("cp")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .arg("-r")
         .arg(INIT_DATA_DIRECTORY)
         .arg(ASSIGNMENTS_DIRECTORY)
@@ -1539,11 +1545,17 @@ async fn create_submissions_zip(
 ) -> std::io::Result<()> {
     let tmp_dir = format!("{}{}/", ASSIGNMENTS_DIRECTORY, class_id);
     tokio::process::Command::new("rm")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .arg("-rf")
         .arg(&tmp_dir)
         .status()
         .await?;
     tokio::process::Command::new("mkdir")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .arg(&tmp_dir)
         .status()
         .await?;
@@ -1551,6 +1563,9 @@ async fn create_submissions_zip(
     // ファイル名を指定の形式に変更
     for submission in submissions {
         tokio::process::Command::new("cp")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .arg(&format!(
                 "{}{}-{}.pdf",
                 ASSIGNMENTS_DIRECTORY, class_id, submission.user_id
@@ -1565,6 +1580,9 @@ async fn create_submissions_zip(
 
     // -i 'tmp_dir/*': 空zipを許す
     tokio::process::Command::new("zip")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .arg("-j")
         .arg("-r")
         .arg(zip_file_path)
