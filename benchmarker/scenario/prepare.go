@@ -287,8 +287,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 						if expected == nil {
 							panic("unreachable! announcementID" + announcement.ID)
 						}
-						err = prepareCheckAnnouncementDetailContent(expected, &res)
+						err = AssertEqualAnnouncementDetail(expected, &res, true)
 						if err != nil {
+							AdminLogger.Printf("extra announcements ->name: %v, title:  %v", res.CourseName, res.Title)
 							step.AddError(err)
 							return
 						}
@@ -679,31 +680,10 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 	}
 
 	for i := 0; i < len(actual.Announcements); i++ {
-		expect := expected[i].Announcement
-		actual := actual.Announcements[i]
-		if !AssertEqual("announcement unread", expected[i].Unread, actual.Unread) ||
-			!AssertEqual("announcement ID", expect.ID, actual.ID) ||
-			!AssertEqual("announcement CourseID", expect.CourseID, actual.CourseID) ||
-			!AssertEqual("announcement Title", expect.Title, actual.Title) ||
-			!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) {
-			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
+		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], true); err != nil {
+			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.Announcements[i].CourseName, actual.Announcements[i].Title)
 			return errNotMatch
 		}
-	}
-
-	return nil
-}
-
-func prepareCheckAnnouncementDetailContent(expected *model.AnnouncementStatus, actual *api.GetAnnouncementDetailResponse) error {
-	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement が期待したものと一致しませんでした"))
-	if !AssertEqual("announcement unread", expected.Unread, actual.Unread) ||
-		!AssertEqual("announcement ID", expected.Announcement.ID, actual.ID) ||
-		!AssertEqual("announcement Title", expected.Announcement.Title, actual.Title) ||
-		!AssertEqual("announcement CourseID", expected.Announcement.CourseID, actual.CourseID) ||
-		!AssertEqual("announcement CourseName", expected.Announcement.CourseName, actual.CourseName) ||
-		!AssertEqual("announcement Message", expected.Announcement.Message, actual.Message) {
-		AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.CourseName, actual.Title)
-		return errNotMatch
 	}
 
 	return nil
@@ -864,7 +844,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 			return errWithParamInfo(reasonLack)
 		}
 		// 同じIDでも内容が違っていたら科目自体は見つかったが内容が不正という扱いにする
-		if !AssertEqualCourse(expectCourse, actualCourse, true) {
+		if err := AssertEqualCourse(expectCourse, actualCourse); err != nil {
 			return errWithParamInfo(reasonInvalidContent)
 		}
 	}
@@ -916,8 +896,8 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 
 		// リストの内容の検証
 		for i, course := range res {
-			if !AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, true) {
-				return errWithParamInfo(reasonInvalidContent)
+			if err := AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course); err != nil {
+				return errWithParamInfo(reasonInvalidPrev)
 			}
 		}
 	}
@@ -929,7 +909,13 @@ func searchCourseLocal(courses []*model.Course, param *model.SearchCourseParam) 
 	matchCourses := make([]*model.Course, 0)
 
 	for _, course := range courses {
-		if MatchCourse(course, param) {
+		if (param.Type == "" || course.Type == param.Type) &&
+			(param.Credit == 0 || course.Credit == param.Credit) &&
+			(param.Teacher == "" || course.Teacher().Name == param.Teacher) &&
+			(param.Period == -1 || course.Period == param.Period) &&
+			(param.DayOfWeek == -1 || course.DayOfWeek == param.DayOfWeek) &&
+			(containsAll(course.Name, param.Keywords) || containsAll(course.Keywords, param.Keywords)) &&
+			(param.Status == "" || string(course.Status()) == param.Status) {
 			matchCourses = append(matchCourses, course)
 		}
 	}
