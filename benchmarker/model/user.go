@@ -28,6 +28,7 @@ type Student struct {
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus // announcements は生成順でソートされている保証はない
 	announcementIndexByID map[string]int
+	unreadAnnouncement    map[string]*AnnouncementStatus
 	readAnnouncementCond  *sync.Cond // おしらせの既読を監視するCond
 	addAnnouncementCond   *sync.Cond // おしらせの追加を監視するCond
 	rmu                   sync.RWMutex
@@ -55,6 +56,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		registeredCourses:     make([]*Course, 0, 20),
 		announcements:         make([]*AnnouncementStatus, 0, 100),
 		announcementIndexByID: make(map[string]int, 100),
+		unreadAnnouncement:    make(map[string]*AnnouncementStatus, 100),
 		rmu:                   sync.RWMutex{},
 
 		registeredSchedule: [5][6]*Course{},
@@ -96,11 +98,13 @@ func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.announcements = append(s.announcements, &AnnouncementStatus{
+	announcementStatus := &AnnouncementStatus{
 		Announcement: announcement,
 		Dirty:        false,
 		Unread:       true,
-	})
+	}
+	s.announcements = append(s.announcements, announcementStatus)
+	s.unreadAnnouncement[announcement.ID] = announcementStatus
 	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
 	s.addAnnouncementCond.Broadcast()
 }
@@ -136,6 +140,7 @@ func (s *Student) ReadAnnouncement(id string) {
 
 	s.announcements[s.announcementIndexByID[id]].Dirty = false
 	s.announcements[s.announcementIndexByID[id]].Unread = false
+	delete(s.unreadAnnouncement, id)
 	s.readAnnouncementCond.Broadcast()
 }
 
@@ -144,15 +149,26 @@ func (s *Student) isUnreadAnnouncement(id string) bool {
 }
 
 func (s *Student) HasUnreadAnnouncement() bool {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
-	for _, anc := range s.announcements {
-		if anc.Unread {
+	return len(s.unreadAnnouncement) > 0
+}
+
+func (s *Student) HasUnreadOrDirtyAnnouncementBefore(announcementID string) bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	// 遅かったらいい感じのデータ構造に変える
+	for _, anc := range s.unreadAnnouncement {
+
+		if announcementID > anc.Announcement.ID {
 			return true
 		}
 	}
+
 	return false
+
 }
 
 func (s *Student) WaitNewUnreadAnnouncement(ctx context.Context) <-chan struct{} {
