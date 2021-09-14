@@ -3,6 +3,7 @@ import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
 import { promisify } from "util";
+import { URL } from "url";
 
 import bcrypt from "bcrypt";
 import session from "cookie-session";
@@ -750,7 +751,7 @@ coursesApi.get(
 
     if (req.query.credit) {
       const credit = parseInt(req.query.credit, 10);
-      if (!isNaN(credit)) {
+      if (!isNaN(credit) && credit > 0) {
         condition += " AND `courses`.`credit` = ?";
         args.push(credit);
       }
@@ -763,7 +764,7 @@ coursesApi.get(
 
     if (req.query.period) {
       const period = parseInt(req.query.period, 10);
-      if (!isNaN(period)) {
+      if (!isNaN(period) && period > 0) {
         condition += " AND `courses`.`period` = ?";
         args.push(period);
       }
@@ -783,7 +784,7 @@ coursesApi.get(
       });
       let keywordsCondition = "";
       arr.forEach((keyword) => {
-        keywordsCondition += " AND `courses`.`name` LIKE ?";
+        keywordsCondition += " AND `courses`.`keywords` LIKE ?";
         args.push(`%${keyword}%`);
       });
       condition += ` AND ((1=1${nameCondition}) OR (1=1${keywordsCondition}))`;
@@ -1045,7 +1046,7 @@ coursesApi.put(
       await db.beginTransaction();
 
       const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
-        "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
+        "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ? FOR UPDATE",
         [courseId]
       );
       if (cnt === 0) {
