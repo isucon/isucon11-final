@@ -1,4 +1,4 @@
-TARGET ?= golang
+TARGET ?= go
 
 .PHONY: up
 up: ## prepare dev environment
