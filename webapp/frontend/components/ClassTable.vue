@@ -73,7 +73,7 @@
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.prevent.stop="onClickRegisterScores(i)"
-                      >成績入力
+                      >採点結果の入力
                     </a>
                   </div>
                 </div>
