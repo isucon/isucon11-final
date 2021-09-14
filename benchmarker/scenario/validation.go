@@ -196,9 +196,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			step.AddError(failure.NewError(fails.ErrCritical, err))
 			return
 		}
-		for _, c := range res {
-			actuals = append(actuals, c)
-		}
+		actuals = append(actuals, res...)
 
 		_, nextPathParam = parseLinkHeader(hres)
 	}
@@ -221,7 +219,6 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			return
 		}
 	}
-	return
 }
 
 func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.BenchmarkStep) {
@@ -269,8 +266,6 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	}
 
 	p.Wait()
-
-	return
 }
 
 func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
