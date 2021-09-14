@@ -15,7 +15,7 @@
           <div class="flex flex-row space-x-2">
             <div class="flex-1 w-full">
               <label class="text-gray-500 font-bold text-right">
-                学籍番号
+                学内コード
               </label>
             </div>
             <div class="flex-1 w-full">
@@ -45,7 +45,7 @@
                     focus:outline-none focus:bg-white focus:border-purple-500
                   "
                   type="text"
-                  placeholder="学生の学籍番号を入力"
+                  placeholder="学生の学内コードを入力"
                   :value="param.userCode"
                   @input="$set(param, 'userCode', $event.target.value)"
                 />
