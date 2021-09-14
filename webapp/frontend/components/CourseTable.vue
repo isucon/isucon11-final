@@ -91,6 +91,18 @@
                       @click.prevent.stop="onClickSetStatus(i)"
                       >ステータス変更
                     </a>
+                    <a
+                      href="#"
+                      class="
+                        block
+                        px-4
+                        py-2
+                        text-black text-sm
+                        hover:bg-primary-300 hover:text-white
+                      "
+                      @click.prevent.stop="onClickAddAnnouncement(i)"
+                      >お知らせ登録
+                    </a>
                   </div>
                 </div>
               </td>
@@ -189,6 +201,10 @@ export default Vue.extend({
     },
     onClickSetStatus(courseIdx: number): void {
       this.$emit('setStatus', courseIdx)
+      this.closeDropdown()
+    },
+    onClickAddAnnouncement(courseIdx: number): void {
+      this.$emit('addAnnouncement', courseIdx)
       this.closeDropdown()
     },
     closeDropdown() {
