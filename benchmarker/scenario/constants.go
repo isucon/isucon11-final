@@ -26,6 +26,8 @@ const (
 	waitGradeTimeout = 10 * time.Second
 	// loadRequestTime はLoadシナリオ内でリクエストを送り続ける時間(Load自体のTimeoutより早めに終わらせる)
 	loadRequestTime = 60 * time.Second
+	// maxPage は最大で何ページまで見に行くか
+	maxPage = 2
 )
 
 // Verify

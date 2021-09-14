@@ -72,10 +72,27 @@ func (s *Student) AddCourse(course *Course) {
 }
 
 func (s *Student) Announcements() []*AnnouncementStatus {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
-	return s.announcements
+	res := make([]*AnnouncementStatus, len(s.announcements))
+	copy(res, s.announcements)
+
+	return res
+}
+
+func (s *Student) UnreadOrDirtyAnnouncements() []*AnnouncementStatus {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	res := make([]*AnnouncementStatus, 0, 20)
+	for _, announcement := range s.announcements {
+		if announcement.Unread || announcement.Dirty {
+			res = append(res, announcement)
+		}
+	}
+
+	return res
 }
 
 func (s *Student) AnnouncementsMap() map[string]*AnnouncementStatus {

@@ -371,6 +371,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
+		page := 0
 		for ctx.Err() == nil {
 			timer := time.After(50 * time.Millisecond)
 
@@ -397,30 +398,9 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				step.AddScore(score.UnreadGetAnnouncementList)
 			}
 
-			// このページに存在する未読お知らせ数（ページングするかどうかの判定用）
-			var unreadCount int
-			for _, ans := range res.Announcements {
-				if ans.Unread {
-					unreadCount++
-				}
-
-				expectStatus := student.GetAnnouncement(ans.ID)
-				if expectStatus == nil {
-					// webappでは認識されているが、ベンチではまだ認識されていないお知らせ
-					// load中には検証できないので既読化しない
-					continue
-				}
-				// 前にタイムアウトになってしまっていた場合、もしくはまだ見ていないお知らせの場合詳細を見に行く
-				if !(expectStatus.Dirty || ans.Unread) {
-					continue
-				}
-
-				if s.isNoRequestTime(ctx) {
-					return
-				}
-
+			for _, ansStatus := range student.UnreadOrDirtyAnnouncements() {
+				ans := ansStatus.Announcement
 				startGetAnnouncementDetail := time.Now()
-				// お知らせの詳細を取得する
 				_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
 				if err != nil {
 					var urlError *url.Error
@@ -432,29 +412,29 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				}
 				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
-				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
+				if err := verifyAnnouncementDetail(ansStatus, &res); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
 					step.AddScore(score.UnreadGetAnnouncementDetail)
 
 				}
-
 				student.ReadAnnouncement(ans.ID)
 			}
 
 			_, nextPathParam = parseLinkHeader(hres)
 
-			// 以降のページに未読お知らせがない（このページの未読数とレスポンスの未読数が一致）
-			// DoSにならないように少しwaitして1ページ目から見直す
-			if res.UnreadCount == unreadCount {
+			nextPage := (page + 1) % maxPage
+			if nextPage == 0 {
 				nextPathParam = ""
-				if !student.HasUnreadAnnouncement() {
-					select {
-					case <-time.After(400 * time.Millisecond):
-					case <-student.WaitNewUnreadAnnouncement(ctx):
-						// waitはお知らせ追加したらエスパーで即解消する
-					}
+			}
+			page = nextPage
+
+			if !student.HasUnreadAnnouncement() {
+				select {
+				case <-time.After(400 * time.Millisecond):
+				case <-student.WaitNewUnreadAnnouncement(ctx):
+					// waitはお知らせ追加したらエスパーで即解消する
 				}
 			}
 
