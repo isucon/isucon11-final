@@ -58,6 +58,7 @@ final class Handler
 {
     private const SQL_DIRECTORY                 = __DIR__ . '/../../sql/';
     private const ASSIGNMENTS_DIRECTORY         = __DIR__ . '/../../assignments/';
+    private const INIT_DATA_DIRECTORY = __DIR__ . '/../../data/';
     private const MYSQL_ERR_NUM_DUPLICATE_ENTRY = 1062;
 
     private const USER_TYPE_STUDENT = 'student';
@@ -125,8 +126,8 @@ final class Handler
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
-        if (exec(sprintf('mkdir %s', escapeshellarg(self::ASSIGNMENTS_DIRECTORY))) === false) {
-            $this->logger->error('failed to make directory: ' . self::ASSIGNMENTS_DIRECTORY);
+        if (exec(sprintf('cp -r %s %s', escapeshellarg(self::INIT_DATA_DIRECTORY), escapeshellarg(self::ASSIGNMENTS_DIRECTORY))) === false) {
+            $this->logger->error('failed to copy init directory: ' . self::INIT_DATA_DIRECTORY);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
