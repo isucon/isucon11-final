@@ -1290,30 +1290,35 @@ async fn add_class(
         .bind(&req.description)
         .execute(&mut tx)
         .await;
-    if let Err(sqlx::error::Error::Database(ref db_error)) = result {
-        if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
-            if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
-                let class: Class = isucholar::db::fetch_one_as(
-                    sqlx::query_as("SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?")
-                        .bind(course_id)
-                        .bind(&req.part),
-                    &mut tx,
-                )
-                .await
-                .map_err(SqlxError)?;
-                if req.title != class.title || req.description != class.description {
-                    return Err(actix_web::error::ErrorConflict(
-                        "A class with the same part already exists.",
-                    ));
-                } else {
-                    return Ok(
-                        HttpResponse::Created().json(AddClassResponse { class_id: class.id })
-                    );
+    if let Err(e) = result {
+        let _ = tx.rollback().await;
+        if let sqlx::error::Error::Database(ref db_error) = e {
+            if let Some(mysql_error) =
+                db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()
+            {
+                if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
+                    let class: Class = sqlx::query_as(
+                        "SELECT * FROM `classes` WHERE `course_id` = ? AND `part` = ?",
+                    )
+                    .bind(course_id)
+                    .bind(&req.part)
+                    .fetch_one(pool.as_ref())
+                    .await
+                    .map_err(SqlxError)?;
+                    if req.title != class.title || req.description != class.description {
+                        return Err(actix_web::error::ErrorConflict(
+                            "A class with the same part already exists.",
+                        ));
+                    } else {
+                        return Ok(
+                            HttpResponse::Created().json(AddClassResponse { class_id: class.id })
+                        );
+                    }
                 }
             }
         }
+        return Err(SqlxError(e).into());
     }
-    result.map_err(SqlxError)?;
 
     tx.commit().await.map_err(SqlxError)?;
 
@@ -1745,29 +1750,34 @@ async fn add_announcement(
     .bind(&req.message)
     .execute(&mut tx)
     .await;
-    if let Err(sqlx::error::Error::Database(ref db_error)) = result {
-        if let Some(mysql_error) = db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
-            if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
-                let announcement: Announcement = isucholar::db::fetch_one_as(
-                    sqlx::query_as("SELECT * FROM `announcements` WHERE `id` = ?").bind(&req.id),
-                    &mut tx,
-                )
-                .await
-                .map_err(SqlxError)?;
-                if announcement.course_id != req.course_id
-                    || announcement.title != req.title
-                    || announcement.message != req.message
-                {
-                    return Err(actix_web::error::ErrorConflict(
-                        "An announcement with the same id already exists.",
-                    ));
-                } else {
-                    return Ok(HttpResponse::Created().finish());
+    if let Err(e) = result {
+        let _ = tx.rollback().await;
+        if let sqlx::error::Error::Database(ref db_error) = e {
+            if let Some(mysql_error) =
+                db_error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()
+            {
+                if mysql_error.number() == MYSQL_ERR_NUM_DUPLICATE_ENTRY {
+                    let announcement: Announcement =
+                        sqlx::query_as("SELECT * FROM `announcements` WHERE `id` = ?")
+                            .bind(&req.id)
+                            .fetch_one(pool.as_ref())
+                            .await
+                            .map_err(SqlxError)?;
+                    if announcement.course_id != req.course_id
+                        || announcement.title != req.title
+                        || announcement.message != req.message
+                    {
+                        return Err(actix_web::error::ErrorConflict(
+                            "An announcement with the same id already exists.",
+                        ));
+                    } else {
+                        return Ok(HttpResponse::Created().finish());
+                    }
                 }
             }
         }
+        return Err(SqlxError(e).into());
     }
-    result.map_err(SqlxError)?;
 
     let targets: Vec<User> = sqlx::query_as(concat!(
         "SELECT `users`.* FROM `users`",
