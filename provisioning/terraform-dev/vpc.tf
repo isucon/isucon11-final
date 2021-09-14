@@ -70,6 +70,15 @@ resource "aws_security_group_rule" "final-dev-contestant-ingress-benchmark" {
   source_security_group_id = aws_security_group.final-dev-bench.id
 }
 
+resource "aws_security_group_rule" "final-dev-contestant-ingress-benchmark-https" {
+  security_group_id        = aws_security_group.final-dev-contestant.id
+  type                     = "ingress"
+  protocol                 = "tcp"
+  from_port                = 443
+  to_port                  = 443
+  source_security_group_id = aws_security_group.final-dev-bench.id
+}
+
 resource "aws_security_group_rule" "final-dev-contestant-ingress-contestant" {
   security_group_id        = aws_security_group.final-dev-contestant.id
   type                     = "ingress"
