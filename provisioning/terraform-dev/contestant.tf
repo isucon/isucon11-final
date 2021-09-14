@@ -16,7 +16,7 @@
 
 variable "contestant_names" {
   type    = list(string)
-  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt", "sapphi_red", "sorah", "sapphi_red2"]
+  default = ["takonomura", "temma", "hosshii", "buchy", "oribe", "eiya", "kanata", "hattori", "takahashi", "eagletmt", "sapphi_red", "sorah", "sapphi_red2", "rust", "ruby", "php", "nodejs"]
 }
 
 variable "two_instance_contestant_names" {
@@ -32,19 +32,23 @@ variable "three_instance_contestant_names" {
 variable "contestant_team_ids" {
   type = map(string)
   default = {
-    takonomura = "1"
-    temma      = "8"
-    hosshii    = "11"
-    buchy      = "16"
-    oribe      = "19"
-    eiya       = "13"
-    kanata     = "7"
-    hattori    = "18"
-    takahashi  = "20"
-    eagletmt   = "14"
-    sapphi_red = "-2"
-    sorah      = "15"
+    takonomura  = "1"
+    temma       = "8"
+    hosshii     = "11"
+    buchy       = "16"
+    oribe       = "19"
+    eiya        = "13"
+    kanata      = "7"
+    hattori     = "18"
+    takahashi   = "20"
+    eagletmt    = "-14"
+    sapphi_red  = "-2"
+    sorah       = "-15"
     sapphi_red2 = "2"
+    rust        = "14"
+    ruby        = "15"
+    php         = "22"
+    nodejs      = "23"
   }
 }
 
@@ -52,7 +56,7 @@ resource "aws_instance" "contestant-1" {
   for_each = toset(var.contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-0524ae646e871e293"
+  ami           = "ami-05b40f1e907f46540"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -100,7 +104,7 @@ resource "aws_instance" "contestant-2" {
   for_each = toset(var.two_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-0524ae646e871e293"
+  ami           = "ami-05b40f1e907f46540"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -148,7 +152,7 @@ resource "aws_instance" "contestant-3" {
   for_each = toset(var.three_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-0524ae646e871e293"
+  ami           = "ami-05b40f1e907f46540"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
