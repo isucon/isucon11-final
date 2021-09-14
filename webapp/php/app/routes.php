@@ -1351,37 +1351,30 @@ final class Handler
      */
     private function createSubmissionsZip(string $zipFilePath, string $classId, array $submissions): string
     {
-        $tmpDir = self::ASSIGNMENTS_DIRECTORY . $classId . '/';
-        if (exec(sprintf('rm -rf %s', escapeshellarg($tmpDir))) === false) {
-            return 'failed to remove directory: ' . $tmpDir;
-        }
-        if (exec(sprintf('mkdir %s', escapeshellarg($tmpDir))) === false) {
-            return 'failed to make directory: ' . $tmpDir;
-        }
+        if (count($submissions) === 0) {
+            // ZipArchive は中身が空の場合に zip ファイルを生成しないため、予め用意した空 zip ファイルを返す
+            copy(__DIR__ . '/../empty.zip', $zipFilePath);
+        } else {
+            $zip = new ZipArchive();
 
-        // ファイル名を指定の形式に変更
-        foreach ($submissions as $submission) {
-            if (
-                exec(sprintf(
-                    'cp %s %s',
-                    escapeshellarg(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf'),
-                    escapeshellarg($tmpDir . $submission->userCode . '-' . $submission->fileName),
-                )) === false
-            ) {
-                return 'failed to copy file: ' . $classId . '-' . $submission->userId . '.pdf';
+            if ($res = $zip->open($zipFilePath, ZipArchive::CREATE|ZipArchive::OVERWRITE) !== true) {
+                return 'failed to open zip-archive: ' . $zipFilePath . ' (' . $res . ')';
             }
-        }
 
-        // -i 'tmpDir/*': 空zipを許す
-        if (
-            exec(sprintf(
-                'zip -j -r %s %s -i %s',
-                escapeshellarg($zipFilePath),
-                escapeshellarg($tmpDir),
-                escapeshellarg($tmpDir . '*'),
-            )) === false
-        ) {
-            return 'failed to zip';
+            // ファイル名を指定の形式に変更
+            foreach ($submissions as $submission) {
+                if ($zip->addFile(
+                        self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf',
+                        $submission->userCode . '-' . $submission->fileName,
+                    ) === false
+                ) {
+                    return 'failed to add file ' . self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf' . ' to zip-archive as ' . $submission->userCode . '-' . $submission->fileName;
+                }
+            }
+
+            if ($zip->close() === false) {
+                return 'failed to close zip-archive: ' . $zipFilePath;
+            }
         }
 
         return '';
