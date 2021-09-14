@@ -909,7 +909,7 @@ final class Handler
         $this->dbh->beginTransaction();
 
         try {
-            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ?');
+            $stmt = $this->dbh->prepare('SELECT COUNT(*) FROM `courses` WHERE `id` = ? FOR UPDATE');
             $stmt->execute([$courseId]);
             $count = $stmt->fetch()[0];
         } catch (PDOException $e) {
