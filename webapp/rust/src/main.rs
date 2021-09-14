@@ -716,8 +716,6 @@ async fn get_grades(
 ) -> actix_web::Result<HttpResponse> {
     let (user_id, _, _) = get_user_info(session)?;
 
-    let mut tx = pool.begin().await.map_err(SqlxError)?;
-
     // 履修している科目一覧取得
     let registered_courses: Vec<Course> = sqlx::query_as(concat!(
         "SELECT `courses`.*",
@@ -726,7 +724,7 @@ async fn get_grades(
         " WHERE `user_id` = ?",
     ))
     .bind(&user_id)
-    .fetch_all(&mut tx)
+    .fetch_all(pool.as_ref())
     .await
     .map_err(SqlxError)?;
 
@@ -743,7 +741,7 @@ async fn get_grades(
             " ORDER BY `part` DESC",
         ))
         .bind(&course.id)
-        .fetch_all(&mut tx)
+        .fetch_all(pool.as_ref())
         .await
         .map_err(SqlxError)?;
 
@@ -751,23 +749,20 @@ async fn get_grades(
         let mut class_scores = Vec::with_capacity(classes.len());
         let mut my_total_score = 0;
         for class in classes {
-            let submissions_count: i64 = isucholar::db::fetch_one_scalar(
+            let submissions_count: i64 =
                 sqlx::query_scalar("SELECT COUNT(*) FROM `submissions` WHERE `class_id` = ?")
-                    .bind(&class.id),
-                &mut tx,
-            )
-            .await
-            .map_err(SqlxError)?;
+                    .bind(&class.id)
+                    .fetch_one(pool.as_ref())
+                    .await
+                    .map_err(SqlxError)?;
 
-            let my_score: Option<Option<u8>> = isucholar::db::fetch_optional_scalar(
-                sqlx::query_scalar(concat!(
-                    "SELECT `submissions`.`score` FROM `submissions`",
-                    " WHERE `user_id` = ? AND `class_id` = ?"
-                ))
-                .bind(&user_id)
-                .bind(&class.id),
-                &mut tx,
-            )
+            let my_score: Option<Option<u8>> = sqlx::query_scalar(concat!(
+                "SELECT `submissions`.`score` FROM `submissions`",
+                " WHERE `user_id` = ? AND `class_id` = ?"
+            ))
+            .bind(&user_id)
+            .bind(&class.id)
+            .fetch_optional(pool.as_ref())
             .await
             .map_err(SqlxError)?;
             if let Some(Some(my_score)) = my_score {
@@ -803,7 +798,7 @@ async fn get_grades(
             " GROUP BY `users`.`id`",
         ))
         .bind(&course.id)
-        .fetch(&mut tx);
+        .fetch(pool.as_ref());
         let mut totals = Vec::new();
         while let Some(row) = rows.next().await {
             let total_score: sqlx::types::Decimal = row.map_err(SqlxError)?;
@@ -854,7 +849,7 @@ async fn get_grades(
         .bind(CourseStatus::Closed)
         .bind(CourseStatus::Closed)
         .bind(UserType::Student)
-        .fetch(&mut tx);
+        .fetch(pool.as_ref());
         let mut gpas = Vec::new();
         while let Some(row) = rows.next().await {
             let gpa: sqlx::types::Decimal = row.map_err(SqlxError)?;
@@ -862,8 +857,6 @@ async fn get_grades(
         }
         gpas
     };
-
-    tx.commit().await.map_err(SqlxError)?;
 
     Ok(HttpResponse::Ok().json(GetGradeResponse {
         course_results,
