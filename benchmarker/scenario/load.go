@@ -372,7 +372,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
 		for ctx.Err() == nil {
-			timer := time.After(50 * time.Millisecond)
+			timer := time.After(minimumCheckAnnouncementInterval)
 
 			if s.isNoRequestTime(ctx) {
 				return
@@ -437,7 +437,6 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
 					step.AddScore(score.UnreadGetAnnouncementDetail)
-
 				}
 
 				student.ReadAnnouncement(ans.ID)
