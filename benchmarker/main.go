@@ -32,23 +32,23 @@ const (
 	// load.goには別途「Loadのリクエストを送り続ける時間」を定義しているので注意
 	loadTimeout              = 70 * time.Second
 	errorFailThreshold int64 = 100
-	allowedTargetFQDN = "isucholar.t.isucon.dev"
+	allowedTargetFQDN        = "isucholar.t.isucon.dev"
 )
 
 var (
-	COMMIT              string
-	targetAddress       string
-	profileFile         string
-	memProfileDir       string
-	promOut             string
-	useTLS              bool
-	exitStatusOnFail    bool
-	noLoad              bool
-	noPrepare           bool
-	noResource          bool
-	isDebug             bool
-	showVersion         bool
-	timeoutDuration     string
+	COMMIT           string
+	targetAddress    string
+	profileFile      string
+	memProfileDir    string
+	promOut          string
+	useTLS           bool
+	exitStatusOnFail bool
+	noLoad           bool
+	noPrepare        bool
+	noResource       bool
+	isDebug          bool
+	showVersion      bool
+	timeoutDuration  string
 
 	reporter benchrun.Reporter
 )
@@ -63,7 +63,6 @@ func init() {
 	agent.DefaultTLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	agent.DefaultTLSConfig.MinVersion = tls.VersionTLS12
 	agent.DefaultTLSConfig.InsecureSkipVerify = false
-
 
 	flag.StringVar(&targetAddress, "target", benchrun.GetTargetAddress(), "ex: localhost:9292")
 	flag.StringVar(&profileFile, "profile", "", "ex: cpu.out")
