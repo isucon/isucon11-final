@@ -19,7 +19,9 @@
               </label>
             </div>
             <div class="flex-1 w-full">
-              <label class="text-gray-500 font-bold text-right"> 成績 </label>
+              <label class="text-gray-500 font-bold text-right">
+                採点結果
+              </label>
             </div>
           </div>
           <template v-for="(param, index) in params">
@@ -95,7 +97,7 @@
         role="alert"
       >
         <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">成績の登録に失敗しました</span>
+        <span class="block sm:inline">採点結果の登録に失敗しました</span>
         <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
           <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
         </span>
