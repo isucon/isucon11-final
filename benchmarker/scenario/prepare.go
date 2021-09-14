@@ -752,6 +752,14 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 		return err
 	}
 
+	//  キーワード検索の簡単化の防止 https://github.com/isucon/isucon11-final/issues/691
+	param = model.NewCourseParam()
+	param.Keywords = []string{"SpeedUP"}
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
 	param = model.NewCourseParam()
 	param.Status = "closed"
 	expected = searchCourseLocal(courses, param)
