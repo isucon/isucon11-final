@@ -20,7 +20,7 @@ const (
 	ErrHTTP           failure.StringCode = "http-error"
 	ErrJSON           failure.StringCode = "json-error"
 	ErrInvalidStatus  failure.StringCode = "invalid-status-code"
-	ErrStaticResource failure.StringCode = "invalid resource"
+	ErrStaticResource failure.StringCode = "invalid-resource"
 )
 
 func IsCritical(err error) bool {
@@ -31,7 +31,8 @@ func IsDeduction(err error) bool {
 	return failure.IsCode(err, ErrApplication) ||
 		failure.IsCode(err, ErrHTTP) ||
 		failure.IsCode(err, ErrJSON) ||
-		failure.IsCode(err, ErrInvalidStatus)
+		failure.IsCode(err, ErrInvalidStatus) ||
+		failure.IsCode(err, ErrStaticResource)
 }
 
 func IsTimeout(err error) bool {
@@ -67,6 +68,10 @@ func ErrorInvalidStatusCode(hres *http.Response, expected []int) error {
 	}
 	str = str[:len(str)-4]
 	return failure.NewError(ErrInvalidStatus, errMessageWithPathAndDiff("期待するHTTPステータスコード以外が返却されました", hres, str, strconv.Itoa(hres.StatusCode)))
+}
+
+func ErrorStaticResource(message string) error {
+	return failure.NewError(ErrStaticResource, fmt.Errorf(message))
 }
 
 func errMessageWithPath(message string, hres *http.Response) error {
