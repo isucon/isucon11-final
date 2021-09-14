@@ -186,7 +186,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 		beforeFinishCourseCount := int64(0)
 		for ctx.Err() == nil {
 
-
 			if student.RegisteringCount() >= registerCourseLimitPerStudent {
 				// gradeはTimeSlotの空きが発生したらリクエストを送る
 				_ctx, cancel := context.WithDeadline(ctx, s.loadRequestEndTime)
