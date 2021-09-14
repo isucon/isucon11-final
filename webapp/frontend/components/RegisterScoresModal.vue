@@ -1,7 +1,9 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold justify-center mb-4">成績登録</p>
+      <p class="text-2xl text-black font-bold justify-center mb-4">
+        採点結果の登録
+      </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
           <LabeledText label="科目名" :value="courseName" />
@@ -41,7 +43,7 @@
                     focus:outline-none focus:bg-white focus:border-purple-500
                   "
                   type="text"
-                  placeholder="生徒の学籍番号を入力"
+                  placeholder="学生の学籍番号を入力"
                   :value="param.userCode"
                   @input="$set(param, 'userCode', $event.target.value)"
                 />
@@ -62,7 +64,7 @@
                     focus:outline-none focus:bg-white focus:border-purple-500
                   "
                   type="number"
-                  placeholder="成績を入力"
+                  placeholder="採点結果を入力"
                   :value="String(param.score)"
                   @input="$set(param, 'score', Number($event.target.value))"
                 />
@@ -172,10 +174,10 @@ export default Vue.extend({
           `/api/courses/${this.courseId}/classes/${this.classId}/assignments/scores`,
           this.params
         )
-        notify('成績の登録が完了しました')
+        notify('採点結果の登録が完了しました')
         this.close()
       } catch (e) {
-        notify('成績の登録に失敗しました')
+        notify('採点結果の登録に失敗しました')
         this.showAlert()
       }
     },
