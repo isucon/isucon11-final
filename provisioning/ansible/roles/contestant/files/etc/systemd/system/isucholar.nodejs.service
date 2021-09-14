@@ -1,0 +1,18 @@
+[Unit]
+Description=isucholar.nodejs
+After=cloud-config.service
+Wants=cloud-config.service
+
+[Service]
+WorkingDirectory=/home/isucon/webapp/nodejs
+EnvironmentFile=/home/isucon/env.sh
+
+User=isucon
+Group=isucon
+ExecStart=/home/isucon/local/node/bin/npm start
+
+Restart   = always
+Type      = simple
+
+[Install]
+WantedBy=multi-user.target
