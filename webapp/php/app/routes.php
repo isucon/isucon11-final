@@ -1370,6 +1370,10 @@ final class Handler
                 ) {
                     return 'failed to add file ' . self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf' . ' to zip-archive as ' . $submission->userCode . '-' . $submission->fileName;
                 }
+
+                if ($zip->setCompressionName($submission->userCode . '-' . $submission->fileName, ZipArchive::CM_STORE) === false) {
+                    return 'failed to add file ' . self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf' . ' to zip-archive as ' . $submission->userCode . '-' . $submission->fileName;
+                }
             }
 
             if ($zip->close() === false) {
