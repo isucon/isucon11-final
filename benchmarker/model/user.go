@@ -99,24 +99,15 @@ func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.announcements = append(s.announcements, &AnnouncementStatus{
-		Announcement: announcement,
-		Dirty:        false,
-		Unread:       true,
-	})
-	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
-	s.addAnnouncementCond.Broadcast()
-}
-
-func (s *Student) AddUnreadAnnouncement(announcement *Announcement) {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
-
-	s.unreadAnnouncement[announcement.ID] = &AnnouncementStatus{
+	announcementStatus := &AnnouncementStatus{
 		Announcement: announcement,
 		Dirty:        false,
 		Unread:       true,
 	}
+	s.announcements = append(s.announcements, announcementStatus)
+	s.unreadAnnouncement[announcement.ID] = announcementStatus
+	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
+	s.addAnnouncementCond.Broadcast()
 }
 
 func (s *Student) GetAnnouncement(id string) *AnnouncementStatus {

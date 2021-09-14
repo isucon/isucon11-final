@@ -254,7 +254,6 @@ func (c *Course) BroadCastAnnouncement(a *Announcement) {
 
 	for _, s := range c.registeredStudents {
 		s.AddAnnouncement(a)
-		s.AddUnreadAnnouncement(a)
 	}
 }
 
