@@ -2,11 +2,8 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"sync"
-
-	"github.com/oklog/ulid/v2"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
@@ -160,19 +157,10 @@ func (s *Student) HasUnreadOrDirtyAnnouncementBefore(announcementID string) bool
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
-	targetID, err := ulid.Parse(announcementID)
-	if err != nil {
-		panic(fmt.Sprintf("invalid ulid: %w", err))
-	}
-
 	// 遅かったらいい感じのデータ構造に変える
 	for _, anc := range s.unreadAnnouncement {
-		unreadID, err := ulid.Parse(anc.Announcement.ID)
-		if err != nil {
-			panic(fmt.Sprintf("invalid ulid: %w", err))
-		}
 
-		if targetID.Time() > unreadID.Time() {
+		if announcementID > anc.Announcement.ID {
 			return true
 		}
 	}
