@@ -49,6 +49,10 @@ func IsTimeout(err error) bool {
 	return failure.IsCode(err, failure.TimeoutErrorCode)
 }
 
+func ErrorCritical(err error) error {
+	return failure.NewError(ErrCritical, err)
+}
+
 func ErrorInvalidResponse(message string, hres *http.Response) error {
 	return failure.NewError(ErrApplication, errMessageWithPath(message, hres))
 }

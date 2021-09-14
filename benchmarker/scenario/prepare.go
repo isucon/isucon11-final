@@ -40,7 +40,7 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		agent.WithBaseURL(s.BaseURL.String()),
 	)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 
 	a.Name = "benchmarker-initializer"
@@ -49,11 +49,11 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	hres, res, err := InitializeAction(ctx, a)
 	if err != nil {
 		ContestantLogger.Printf("initializeが失敗しました")
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 	err = verifyInitialize(res, hres)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 	s.language = res.Language
 
@@ -65,28 +65,28 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 	// 初期科目を対象に検索したいので最初に検証する
 	err = s.prepareSearchCourse(ctx)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 
 	err = s.prepareNormal(ctx, step)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 
 	err = s.prepareAnnouncementsList(ctx, step)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 
 	err = s.prepareAbnormal(ctx)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 
 	_, _, err = InitializeAction(ctx, a)
 	if err != nil {
 		ContestantLogger.Printf("initializeが失敗しました")
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 
 	AdminLogger.Printf("Language: %s", s.Language())
@@ -134,7 +134,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 			if err != nil {
 				AdminLogger.Printf("teacherのログインに失敗しました")
-				step.AddError(failure.NewError(fails.ErrCritical, err))
+				step.AddError(fails.ErrorCritical(err))
 				return
 			}
 			teacher.IsLoggedIn = true
@@ -174,7 +174,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w.Wait()
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	// 生徒のログインとコース登録
@@ -183,7 +183,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		_, err := LoginAction(ctx, student.Agent, student.UserAccount)
 		if err != nil {
 			AdminLogger.Printf("studentのログインに失敗しました")
-			step.AddError(failure.NewError(fails.ErrCritical, err))
+			step.AddError(fails.ErrorCritical(err))
 			return
 		}
 
@@ -214,7 +214,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w.Process(ctx)
 	w.Wait()
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	// コースのステータスの変更
@@ -235,7 +235,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w.Wait()
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	studentByCode := make(map[string]*model.Student)
@@ -326,7 +326,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			for _, student := range students {
 				sub := class.GetSubmissionByStudentCode(student.Code)
 				if sub == nil {
-					step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("cannot find submission")))
+					step.AddError(fails.ErrorCritical(fmt.Errorf("cannot find submission")))
 					return
 				}
 				score := rand.Intn(101)
@@ -354,7 +354,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			expected := calculateGradeRes(student, studentByCode)
 			hres, res, err := GetGradeAction(ctx, student.Agent)
 			if err != nil {
-				step.AddError(failure.NewError(fails.ErrCritical, err))
+				step.AddError(fails.ErrorCritical(err))
 				return
 			}
 
@@ -392,7 +392,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		expected := calculateGradeRes(student, studentByCode)
 		hres, res, err := GetGradeAction(ctx, student.Agent)
 		if err != nil {
-			step.AddError(failure.NewError(fails.ErrCritical, err))
+			step.AddError(fails.ErrorCritical(err))
 			return
 		}
 
@@ -409,7 +409,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w.Wait()
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	// お知らせの検証
@@ -440,7 +440,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w.Process(ctx)
 	w.Wait()
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	return nil
@@ -470,7 +470,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	}
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	// 教師の用意
@@ -484,7 +484,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	}
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	// コース登録
@@ -510,7 +510,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	w.Wait()
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	// コース登録
@@ -533,7 +533,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	w.Wait()
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	// コースのステータスを更新する
@@ -599,15 +599,15 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	}
 
 	if hasErrors() {
-		return failure.NewError(fails.ErrCritical, fmt.Errorf("アプリケーション互換性チェックに失敗しました"))
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
 	return nil
 }
 
 func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
-	errHttp := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
-	errInvalidNext := failure.NewError(fails.ErrCritical, fmt.Errorf("link header の next によってページングできる回数が不正です"))
+	errHttp := fails.ErrorCritical(fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
+	errInvalidNext := fails.ErrorCritical(fmt.Errorf("link header の next によってページングできる回数が不正です"))
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path)
 	if err != nil {
@@ -653,10 +653,10 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 }
 
 func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, hres *http.Response) error {
-	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
-	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement が期待したものと一致しませんでした"))
-	errNoCount := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement の数が期待したものと一致しませんでした"))
-	errNoMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("announcement の unread_count が期待したものと一致しませんでした"))
+	errNotSorted := fails.ErrorCritical(fmt.Errorf("/api/announcements の順序が不正です"))
+	errNotMatch := fails.ErrorCritical(fmt.Errorf("announcement が期待したものと一致しませんでした"))
+	errNoCount := fails.ErrorCritical(fmt.Errorf("announcement の数が期待したものと一致しませんでした"))
+	errNoMatchUnreadCount := fails.ErrorCritical(fmt.Errorf("announcement の unread_count が期待したものと一致しませんでした"))
 
 	if actual.UnreadCount != expectedUnreadCount {
 		return errNoMatchUnreadCount

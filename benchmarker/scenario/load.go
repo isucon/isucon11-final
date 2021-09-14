@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/isucon/isucandar"
-	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
@@ -66,11 +65,11 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Wait()
 
 	if s.CourseManager.GetCourseCount() == 0 {
-		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("科目登録が1つも成功しませんでした")))
+		step.AddError(fails.ErrorCritical(fmt.Errorf("科目登録が1つも成功しませんでした")))
 		return nil
 	}
 	if s.ActiveStudentCount() == 0 {
-		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("ログインに成功した学生が1人もいませんでした")))
+		step.AddError(fails.ErrorCritical(fmt.Errorf("ログインに成功した学生が1人もいませんでした")))
 		return nil
 	}
 

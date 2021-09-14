@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/isucon/isucandar"
-	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
 
 	"github.com/isucon/isucon11-final/benchmarker/api"
@@ -33,14 +32,14 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 }
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errTimeout := failure.NewError(fails.ErrCritical, fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
-	errNotMatchUnreadCountAmongPages := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の各ページの unread_count の値が一致しません"))
-	errNotMatchUnreadCount := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の unread_count の値が不正です"))
-	errNotSorted := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements の順序が不正です"))
-	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("お知らせの内容が不正です"))
-	errNotMatchOver := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
-	errNotMatchUnder := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
-	errDuplicated := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて重複したIDの Announcement が見つかりました"))
+	errTimeout := fails.ErrorCritical(fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
+	errNotMatchUnreadCountAmongPages := fails.ErrorCritical(fmt.Errorf("/api/announcements の各ページの unread_count の値が一致しません"))
+	errNotMatchUnreadCount := fails.ErrorCritical(fmt.Errorf("/api/announcements の unread_count の値が不正です"))
+	errNotSorted := fails.ErrorCritical(fmt.Errorf("/api/announcements の順序が不正です"))
+	errNotMatch := fails.ErrorCritical(fmt.Errorf("お知らせの内容が不正です"))
+	errNotMatchOver := fails.ErrorCritical(fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
+	errNotMatchUnder := fails.ErrorCritical(fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
+	errDuplicated := fails.ErrorCritical(fmt.Errorf("最終検証にて重複したIDの Announcement が見つかりました"))
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
@@ -66,7 +65,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			for {
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
 				if err != nil {
-					step.AddError(failure.NewError(fails.ErrCritical, err))
+					step.AddError(fails.ErrorCritical(err))
 					return
 				}
 
@@ -174,8 +173,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errNotMatchCount := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて登録されている Course の個数が一致しませんでした"))
-	errNotMatch := failure.NewError(fails.ErrCritical, fmt.Errorf("最終検証にて存在しないはずの Course が見つかりました"))
+	errNotMatchCount := fails.ErrorCritical(fmt.Errorf("最終検証にて登録されている Course の個数が一致しませんでした"))
+	errNotMatch := fails.ErrorCritical(fmt.Errorf("最終検証にて存在しないはずの Course が見つかりました"))
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
@@ -197,7 +196,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
-			step.AddError(failure.NewError(fails.ErrCritical, err))
+			step.AddError(fails.ErrorCritical(err))
 			return
 		}
 		actuals = append(actuals, res...)
@@ -255,7 +254,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 
 			hres, res, err := GetGradeAction(ctx, user.Agent)
 			if err != nil {
-				step.AddError(failure.NewError(fails.ErrCritical, err))
+				step.AddError(fails.ErrorCritical(err))
 				return
 			}
 
@@ -275,24 +274,24 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 
 func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hres *http.Response) error {
 	if !AssertEqual("grade courses length", len(expected.CourseResults), len(actual.CourseResults)) {
-		return failure.NewError(fails.ErrCritical, fails.ErrorInvalidResponse("成績確認の courses の数が一致しません", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("成績確認の courses の数が一致しません", hres))
 	}
 
 	err := AssertEqualSummary(&expected.Summary, &actual.Summary, hres)
 	if err != nil {
-		return failure.NewError(fails.ErrCritical, err)
+		return fails.ErrorCritical(err)
 	}
 
 	for _, courseResult := range actual.CourseResults {
 		if _, ok := expected.CourseResults[courseResult.Code]; !ok {
 			AdminLogger.Println(courseResult.Code, "は予期せぬコースです")
-			return failure.NewError(fails.ErrCritical, fails.ErrorInvalidResponse("成績確認に意図しないcourseの結果が含まれています", hres))
+			return fails.ErrorCritical(fails.ErrorInvalidResponse("成績確認に意図しないcourseの結果が含まれています", hres))
 		}
 
 		expected := expected.CourseResults[courseResult.Code]
 		err := AssertEqualCourseResult(expected, &courseResult, hres)
 		if err != nil {
-			return failure.NewError(fails.ErrCritical, err)
+			return fails.ErrorCritical(err)
 		}
 	}
 

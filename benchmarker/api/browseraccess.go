@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -13,7 +12,7 @@ import (
 func BrowserAccess(ctx context.Context, a *agent.Agent, path string) (*http.Response, agent.Resources, error) {
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, nil, failure.NewError(fails.ErrCritical, err)
+		return nil, nil, fails.ErrorCritical(err)
 	}
 
 	res, err := a.Do(ctx, req)
