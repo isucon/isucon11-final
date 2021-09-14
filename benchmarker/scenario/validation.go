@@ -136,21 +136,24 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					return
 				}
 
-				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
-				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+				// for debug
 				if !expectStatus.Dirty {
 					if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
 						AdminLogger.Printf("unread mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
-						step.AddError(errNotMatch)
-						return
 					}
 				}
 
+				// for debug
 				if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
 					!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
 					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
 					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) {
 					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
+				}
+
+				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
+				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
+				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, !expectStatus.Dirty); err != nil {
 					step.AddError(errNotMatch)
 					return
 				}
@@ -193,9 +196,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			step.AddError(failure.NewError(fails.ErrCritical, err))
 			return
 		}
-		for _, c := range res {
-			actuals = append(actuals, c)
-		}
+		actuals = append(actuals, res...)
 
 		_, nextPathParam = parseLinkHeader(hres)
 	}
@@ -212,14 +213,12 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			return
 		}
 
-		// TODO: statusもdirtyフラグで検証する？
-		if !AssertEqualCourse(expect, actual, false) {
+		if err := AssertEqualCourse(expect, actual); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
 			step.AddError(errNotMatch)
 			return
 		}
 	}
-	return
 }
 
 func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.BenchmarkStep) {
@@ -267,8 +266,6 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	}
 
 	p.Wait()
-
-	return
 }
 
 func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) error {
@@ -276,9 +273,9 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) e
 		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認の courses の数が一致しません"))
 	}
 
-	err := validateSummary(&expected.Summary, &actual.Summary)
+	err := AssertEqualSummary(&expected.Summary, &actual.Summary)
 	if err != nil {
-		return err
+		return failure.NewError(fails.ErrCritical, err)
 	}
 
 	for _, courseResult := range actual.CourseResults {
@@ -288,38 +285,10 @@ func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse) e
 		}
 
 		expected := expected.CourseResults[courseResult.Code]
-		err := assertEqualCourseResult(expected, &courseResult)
+		err := AssertEqualCourseResult(expected, &courseResult)
 		if err != nil {
 			return failure.NewError(fails.ErrCritical, err)
 		}
-	}
-
-	return nil
-}
-
-func validateSummary(expected *model.Summary, actual *api.Summary) error {
-	if !AssertEqual("grade summary credits", expected.Credits, actual.Credits) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのcreditsが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade summary gpa", expected.GPA, actual.GPA, validateGPAErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpaが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade summary gpa_avg", expected.GpaAvg, actual.GpaAvg, validateGPAErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_avgが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade summary gpa_max", expected.GpaMax, actual.GpaMax, validateGPAErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_maxが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade summary gpa_min", expected.GpaMin, actual.GpaMin, validateGPAErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_minが一致しません"))
-	}
-
-	if !AssertWithinTolerance("grade summary gpa_t_score", expected.GpaTScore, actual.GpaTScore, validateGPAErrorTolerance) {
-		return failure.NewError(fails.ErrCritical, errInvalidResponse("成績確認のsummaryのgpa_t_scoreが一致しません"))
 	}
 
 	return nil

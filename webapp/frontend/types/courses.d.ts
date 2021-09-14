@@ -58,6 +58,11 @@ export type Announcement = {
   hasError?: boolean
 }
 
+export type AddAnnouncementRequest = Omit<
+  Announcement,
+  'courseName' | 'unread' | 'hasError'
+>
+
 export type AnnouncementResponse = {
   id: string
   courseId: string
@@ -84,7 +89,6 @@ export type AddClassRequest = {
   part: number
   title: string
   description: string
-  createdAt: number
 }
 
 type RegisterScoreRequestObject = {

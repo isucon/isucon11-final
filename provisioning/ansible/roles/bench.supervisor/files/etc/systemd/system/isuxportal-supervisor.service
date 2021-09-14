@@ -18,7 +18,9 @@ Environment=ISUXPORTAL_SUPERVISOR_INTERVAL_AFTER_EMPTY_RECEIVE=2
 EnvironmentFile=/home/isucon/isuxportal-supervisor.env
 
 # bench 差し替えを graceful に行うための設定
+ExecStartPre=-+/bin/chown isucon:isucon /tmp/isuxportal-supervisor
 ExecStartPre=-/bin/mv /tmp/isuxportal-supervisor /home/isucon/bin/isuxportal-supervisor
+ExecStartPre=-+/bin/chown isucon:isucon /tmp/benchmarker
 ExecStartPre=-/bin/mv /tmp/benchmarker /home/isucon/benchmarker/bin/benchmarker
 TimeoutStopSec=200s
 KillMode=mixed

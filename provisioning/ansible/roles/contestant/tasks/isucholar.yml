@@ -26,10 +26,19 @@
     npm ci
     npm run build
 
+# TODO: 言語別の include
 - name: "roles/contestant/tasks/isucholar: Include isucholar-go.yml"
   include: isucholar-go.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-nodejs.yml"
+  include: isucholar-nodejs.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-rust.yml"
+  include: isucholar-rust.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-php.yml"
+  include: isucholar-rust.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-ruby.yml"
+  include: isucholar-rust.yml
 
-# TODO: 言語別の include
+
 
 - name: "roles/contestant/tasks/isucholar: Enable isucholar.go.service"
   become_user: root

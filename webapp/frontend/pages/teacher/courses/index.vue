@@ -27,11 +27,17 @@
               :link="courseLink"
               @paginate="moveCoursePage"
               @setStatus="showSetStatusModal"
+              @addAnnouncement="showAddAnnouncementModal"
             />
           </div>
         </section>
       </div>
     </div>
+    <AddAnnouncementModal
+      :is-shown="visibleModal === 'AddAnnouncement'"
+      :course-id="courseId"
+      @close="visibleModal = null"
+    />
     <AddCourseModal
       :is-shown="visibleModal === 'AddCourse'"
       @close="visibleModal = null"
@@ -56,11 +62,12 @@ import InlineNotification from '~/components/common/InlineNotification.vue'
 import CourseTable from '~/components/CourseTable.vue'
 import AddCourseModal from '~/components/AddCourseModal.vue'
 import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
+import AddAnnouncementModal from '~/components/AddAnnouncementModal.vue'
 import { SyllabusCourse, User } from '~/types/courses'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 
-type modalKinds = 'AddCourse' | 'SetCourseStatus' | null
+type modalKinds = 'AddCourse' | 'SetCourseStatus' | 'AddAnnouncement' | null
 
 type DataType = {
   visibleModal: modalKinds
@@ -78,6 +85,7 @@ export default Vue.extend({
     CourseTable,
     AddCourseModal,
     SetCourseStatusModal,
+    AddAnnouncementModal,
     InlineNotification,
   },
   middleware: 'is_teacher',
@@ -143,6 +151,10 @@ export default Vue.extend({
     showSetStatusModal(courseIdx: number) {
       this.selectedCourseIdx = courseIdx
       this.visibleModal = 'SetCourseStatus'
+    },
+    showAddAnnouncementModal(courseIdx: number) {
+      this.selectedCourseIdx = courseIdx
+      this.visibleModal = 'AddAnnouncement'
     },
   },
 })
