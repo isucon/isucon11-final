@@ -78,14 +78,13 @@ func (s *Student) Announcements() []*AnnouncementStatus {
 	return s.announcements
 }
 
-func (s *Student) AnnouncementsMap() map[string]*AnnouncementStatus {
+func (s *Student) AnnouncementsMap() map[string]AnnouncementStatus {
 	s.rmu.RLock()
 	defer s.rmu.RUnlock()
 
-	result := make(map[string]*AnnouncementStatus, len(s.announcements))
+	result := make(map[string]AnnouncementStatus, len(s.announcements))
 	for _, announcement := range s.announcements {
-		tmp := *announcement
-		result[announcement.Announcement.ID] = &tmp
+		result[announcement.Announcement.ID] = *announcement
 	}
 	return result
 }

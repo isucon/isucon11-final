@@ -372,7 +372,7 @@ func verifyAnnouncementDetail(expected *model.AnnouncementStatus, res *api.GetAn
 }
 
 // お知らせ一覧の中身の検証
-func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, res *api.GetAnnouncementsResponse, verifyUnread bool) error {
+func verifyAnnouncementsList(expectedMap map[string]model.AnnouncementStatus, res *api.GetAnnouncementsResponse, verifyUnread bool) error {
 	// id の降順でソートされているか
 	for i := 0; i < len(res.Announcements)-1; i++ {
 		if res.Announcements[i].ID < res.Announcements[i+1].ID {
