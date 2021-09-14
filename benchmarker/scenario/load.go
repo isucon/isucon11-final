@@ -371,7 +371,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucandar.BenchmarkStep) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		var nextPathParam string // 次にアクセスするお知らせ一覧のページ
-		page := 0
+		page := 0                // 現在のページ(0-based)
 		for ctx.Err() == nil {
 			timer := time.After(50 * time.Millisecond)
 
@@ -424,10 +424,12 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			_, nextPathParam = parseLinkHeader(hres)
 
+			// 次のページが存在しない、もしくは存在していてもmaxPageページ目(1-based)だった場合は先頭に戻る
 			var nextPage int
 			if nextPathParam != "" {
 				nextPage = (page + 1) % maxPage
 			}
+
 			if nextPage == 0 {
 				nextPathParam = ""
 			}
