@@ -206,7 +206,7 @@ func AssertEqualSimpleClassScore(expected *model.SimpleClassScore, actual *api.C
 }
 
 func AssertEqualCourse(expected *model.Course, actual *api.GetCourseDetailResponse) error {
-	if !AssertEqual("course id", expected.Code, actual.Code) {
+	if !AssertEqual("course id", expected.ID, actual.ID) {
 		return errInvalidResponse("科目IDが期待する値と一致しません")
 	}
 
@@ -277,7 +277,7 @@ func AssertEqualClass(expected *model.Class, actual *api.GetClassResponse) error
 }
 
 func AssertEqualAnnouncementListContent(expected *model.AnnouncementStatus, actual *api.AnnouncementResponse, verifyUnread bool) error {
-	if !AssertEqual("announcement_list announcements ud", expected.Announcement.ID, actual.ID) {
+	if !AssertEqual("announcement_list announcements id", expected.Announcement.ID, actual.ID) {
 		return errInvalidResponse("お知らせIDが期待する値と一致しません")
 	}
 
