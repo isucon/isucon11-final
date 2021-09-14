@@ -101,7 +101,7 @@
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.prevent.stop="onClickAddAnnouncement(i)"
-                      >お知らせを登録
+                      >お知らせを送信
                     </a>
                   </div>
                 </div>
