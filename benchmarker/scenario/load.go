@@ -424,7 +424,10 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			_, nextPathParam = parseLinkHeader(hres)
 
-			nextPage := (page + 1) % maxPage
+			var nextPage int
+			if nextPathParam != "" {
+				nextPage = (page + 1) % maxPage
+			}
 			if nextPage == 0 {
 				nextPathParam = ""
 			}
