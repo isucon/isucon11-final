@@ -246,7 +246,28 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 }
 
 func verifyCourseDetail(expected *model.Course, actual *api.GetCourseDetailResponse) error {
-	return AssertEqualCourse(expected, actual)
+	if !compareCourseStatus(expected.Status(), actual.Status) {
+		return errInvalidResponse("科目のステータスが期待する値と一致しません")
+	}
+	return AssertEqualCourse(expected, actual, false)
+}
+
+// lhs のほうが rhs よりも前段階かどうか判定する
+func compareCourseStatus(lhs api.CourseStatus, rhs api.CourseStatus) bool {
+	asInt := func(s api.CourseStatus) int {
+		switch s {
+		case api.StatusRegistration:
+			return 0
+		case api.StatusInProgress:
+			return 1
+		case api.StatusClosed:
+			return 2
+		default:
+			panic("unreachable!")
+		}
+	}
+
+	return asInt(lhs) <= asInt(rhs)
 }
 
 func verifyAnnouncementDetail(expected *model.AnnouncementStatus, res *api.GetAnnouncementDetailResponse) error {

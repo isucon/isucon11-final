@@ -205,7 +205,7 @@ func AssertEqualSimpleClassScore(expected *model.SimpleClassScore, actual *api.C
 	return nil
 }
 
-func AssertEqualCourse(expected *model.Course, actual *api.GetCourseDetailResponse) error {
+func AssertEqualCourse(expected *model.Course, actual *api.GetCourseDetailResponse, verifyStatus bool) error {
 	if !AssertEqual("course id", expected.ID, actual.ID) {
 		return errInvalidResponse("科目IDが期待する値と一致しません")
 	}
@@ -242,7 +242,7 @@ func AssertEqualCourse(expected *model.Course, actual *api.GetCourseDetailRespon
 		return errInvalidResponse("科目の教員名が期待する値と一致しません")
 	}
 
-	if !AssertEqual("course status", expected.Status(), actual.Status) {
+	if verifyStatus && !AssertEqual("course status", expected.Status(), actual.Status) {
 		return errInvalidResponse("科目のステータスが期待する値と一致しません")
 	}
 
