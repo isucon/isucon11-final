@@ -12,7 +12,6 @@ import (
 	"strconv"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -69,7 +68,7 @@ type GetCourseDetailResponse struct {
 func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseRequest) (*http.Response, error) {
 	req, err := a.GET("/api/courses")
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	query := req.URL.Query()
 	if param.Type != "" {
@@ -101,7 +100,7 @@ func SearchCourse(ctx context.Context, a *agent.Agent, param *SearchCourseReques
 func SearchCourseWithNext(ctx context.Context, a *agent.Agent, pathParam string) (*http.Response, error) {
 	req, err := a.GET(pathParam)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)
@@ -112,7 +111,7 @@ func GetCourseDetail(ctx context.Context, a *agent.Agent, courseID string) (*htt
 
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)
@@ -136,12 +135,12 @@ type AddCourseResponse struct {
 func AddCourse(ctx context.Context, a *agent.Agent, courseRequest AddCourseRequest) (*http.Response, error) {
 	body, err := json.Marshal(courseRequest)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req, err := a.POST("/api/courses", bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -157,12 +156,12 @@ func SetCourseStatus(ctx context.Context, a *agent.Agent, courseID string, statu
 		Status: status,
 	})
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req, err := a.PUT(fmt.Sprintf("/api/courses/%s/status", courseID), bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	return a.Do(ctx, req)
@@ -180,12 +179,12 @@ type AddClassResponse struct {
 func AddClass(ctx context.Context, a *agent.Agent, courseID string, classRequest AddClassRequest) (*http.Response, error) {
 	body, err := json.Marshal(classRequest)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes", courseID), bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -206,7 +205,7 @@ func GetClasses(ctx context.Context, a *agent.Agent, courseID string) (*http.Res
 
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)
@@ -223,23 +222,23 @@ func SubmitAssignment(ctx context.Context, a *agent.Agent, courseID, classID, fi
 
 	part, err := w.CreatePart(header)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	_, err = io.Copy(part, bytes.NewBuffer(data))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	contentType := w.FormDataContentType()
 
 	err = w.Close()
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req, err := a.POST(fmt.Sprintf("/api/courses/%s/classes/%s/assignments", courseID, classID), &body)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req.Header.Set("Content-Type", contentType)
@@ -255,13 +254,13 @@ type RegisterScoreRequestContent struct {
 func RegisterScores(ctx context.Context, a *agent.Agent, courseID, classID string, scores []RegisterScoreRequestContent) (*http.Response, error) {
 	body, err := json.Marshal(scores)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	path := fmt.Sprintf("/api/courses/%s/classes/%s/assignments/scores", courseID, classID)
 
 	req, err := a.PUT(path, bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -273,7 +272,7 @@ func DownloadSubmittedAssignments(ctx context.Context, a *agent.Agent, courseID,
 
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)

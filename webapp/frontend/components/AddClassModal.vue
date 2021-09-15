@@ -40,25 +40,12 @@
           />
         </div>
       </div>
-      <div
-        v-if="failed"
-        class="
-          bg-red-100
-          border border-red-400
-          text-red-700
-          px-4
-          py-3
-          rounded
-          relative
-        "
-        role="alert"
-      >
-        <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">講義の登録に失敗しました</span>
-        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-          <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
-        </span>
-      </div>
+      <template v-if="failed">
+        <InlineNotification type="error">
+          <template #title>APIエラーがあります</template>
+          <template #message>講義の登録に失敗しました。</template>
+        </InlineNotification>
+      </template>
       <div class="px-4 py-3 flex justify-center">
         <Button @click="close"> 閉じる </Button>
         <Button color="primary" @click="submit"> 登録 </Button>
@@ -72,9 +59,9 @@ import Vue from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
-import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import LabeledText from '~/components/common/LabeledText.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 import { AddClassRequest } from '~/types/courses'
 
 type SubmitFormData = {
@@ -92,9 +79,9 @@ export default Vue.extend({
   components: {
     Card,
     Modal,
-    CloseIcon,
     Button,
     LabeledText,
+    InlineNotification,
   },
   props: {
     courseId: {
