@@ -63,7 +63,7 @@ export function formatRegistrationError(
 
   for (const key of Object.keys(err)) {
     if (key === 'notRegistrableStatus') {
-      message.push('科目が履修登録できない状態')
+      message.push('履修登録期間外')
     } else if (key === 'scheduleConflict') {
       message.push('時間割のコンフリクト')
     } else if (key === 'courseNotFound') {
