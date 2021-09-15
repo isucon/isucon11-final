@@ -6,7 +6,7 @@ type mag int64      // 1回でn点
 type fraction int64 // n回で1点
 
 var scoreCoefTable = map[score.ScoreTag]interface{}{
-	ScoreSubmitAssignment:    mag(1),
+	ScoreSubmitAssignment:    mag(3),
 	ScoreGetAnnouncementList: mag(1),
 }
 
