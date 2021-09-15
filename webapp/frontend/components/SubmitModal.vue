@@ -27,15 +27,11 @@
           <span class="text-sm font-medium text-white">ファイル選択</span>
           <input type="file" class="hidden" @change="onFileChanged" />
         </label>
-        <template v-if="files.length > 0">
+        <template v-if="file !== null">
           <div class="flex flex-col justify-center overflow-x-scroll">
-            <div
-              v-for="(file, index) in files"
-              :key="file.name"
-              class="flex flex-row items-center text-black text-base"
-            >
+            <div class="flex flex-row items-center text-black text-base">
               <span class="mr=2">{{ file.name }}</span
-              ><CloseIcon @click="removeFile(index)"></CloseIcon>
+              ><CloseIcon @click="removeFile"></CloseIcon>
             </div>
           </div>
         </template>
@@ -96,6 +92,7 @@
             font-medium
             text-white
           "
+          :disabled="file === null"
           @click="upload"
         >
           提出
@@ -113,7 +110,7 @@ import Modal from '~/components/common/Modal.vue'
 import CloseIcon from '~/components/common/CloseIcon.vue'
 
 type SubmitFormData = {
-  files: File[]
+  file: File | null
   failed: boolean
 }
 
@@ -145,7 +142,7 @@ export default Vue.extend({
   },
   data(): SubmitFormData {
     return {
-      files: [],
+      file: null,
       failed: false,
     }
   },
@@ -165,19 +162,18 @@ export default Vue.extend({
       ) {
         return
       }
-      const files: FileList = event.target.files
-      for (let i = 0; i < files.length; i++) {
-        this.files.push(files.item(i) as File)
-      }
+      this.file = event.target.files[0]
+      event.target.value = ''
     },
-    removeFile(index: number) {
-      this.files.splice(index, 1)
+    removeFile() {
+      this.file = null
     },
     upload() {
-      const formData = new FormData()
-      for (const file of this.files) {
-        formData.append('file', file)
+      if (this.file === null) {
+        return
       }
+      const formData = new FormData()
+      formData.append('file', this.file)
       this.$axios
         .post(
           `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignments`,
@@ -194,7 +190,7 @@ export default Vue.extend({
         })
     },
     close() {
-      this.files = []
+      this.file = null
       this.hideAlert()
       this.$emit('close')
     },
