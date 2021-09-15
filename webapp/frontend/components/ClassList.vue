@@ -1,12 +1,14 @@
 <template>
-  <div class="flex flex-col gap-4">
-    <ClassInfoCard
-      v-for="(cls, index) in classList"
-      :key="cls.id"
-      :course="course"
-      :classinfo="cls"
-      @submitted="submissionComplete(index)"
-    />
+  <div class="py-4">
+    <div class="flex flex-col gap-4">
+      <ClassInfoCard
+        v-for="(cls, index) in classList"
+        :key="cls.id"
+        :course="course"
+        :classinfo="cls"
+        @submitted="submissionComplete(index)"
+      />
+    </div>
   </div>
 </template>
 <script lang="ts">
