@@ -22,7 +22,7 @@ resource "aws_instance" "bench" {
   for_each = toset(var.team_ids)
 
   ami           = data.aws_ami.bench.id
-  instance_type = "c5.large"
+  instance_type = "c5.xlarge"
 
   subnet_id         = aws_subnet.bench.id
   availability_zone = aws_subnet.bench.availability_zone
