@@ -1,12 +1,12 @@
 ---
- - name: "roles/contestant/tasks/isucholar-rust: Build Web Application Rust"
-   become_user: isucon
-   args:
-     chdir: /home/isucon/webapp/rust
-   environment:
-     PATH: "/home/isucon/.cargo/bin:{{ ansible_env.PATH }}"
-   shell: |
-     cargo build --locked --release
+- name: "roles/contestant/tasks/isucholar-rust: Build Web Application Rust"
+  become_user: isucon
+  args:
+    chdir: /home/isucon/webapp/rust
+  environment:
+    PATH: "/home/isucon/.cargo/bin:{{ ansible_env.PATH }}"
+  shell: |
+    cargo build --locked --release
 
 - name: "roles/contestant/tasks/isucholar-rust: Deploy Service file"
   become_user: root
