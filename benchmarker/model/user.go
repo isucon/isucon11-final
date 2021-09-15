@@ -45,11 +45,7 @@ type AnnouncementStatus struct {
 }
 
 func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
-	a, _ := agent.NewAgent()
-
-	transport := agent.DefaultTransport.Clone()
-	transport.MaxIdleConnsPerHost = 20
-	a.HttpClient.Transport = transport
+	a, _ := agent.NewAgent(agent.WithCloneTransport(agent.DefaultTransport))
 
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
@@ -377,11 +373,7 @@ type Teacher struct {
 const teacherUserAgent = "isucholar-agent-teacher/1.0.0"
 
 func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
-	a, _ := agent.NewAgent()
-
-	transport := agent.DefaultTransport.Clone()
-	transport.MaxIdleConnsPerHost = 20
-	a.HttpClient.Transport = transport
+	a, _ := agent.NewAgent(agent.WithCloneTransport(agent.DefaultTransport))
 
 	a.BaseURL = baseURL
 	a.Name = teacherUserAgent
