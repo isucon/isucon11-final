@@ -1,11 +1,21 @@
 package scenario
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
+
+	"github.com/isucon/isucandar/failure"
+
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
 
-func parseLinkHeader(hres *http.Response) (prev string, next string) {
+var linkRegexp = regexp.MustCompile(`(?i)<([^>]+)>;\s+rel="([^"]+)"`)
+
+// parseLinkHeader は Link header をパースする
+func parseLinkHeader(hres *http.Response) (prev string, next string, err error) {
 	if hres == nil {
 		return
 	}
@@ -14,16 +24,31 @@ func parseLinkHeader(hres *http.Response) (prev string, next string) {
 	if linkHeader == "" {
 		return
 	}
-	links := strings.Split(linkHeader, ",")
 
-	for _, l := range links {
-		tags := strings.Split(l, ";")
-		if strings.Contains(tags[1], "prev") {
-			urlTag := strings.TrimSpace(tags[0])
-			prev = urlTag[1 : len(urlTag)-1]
-		} else if strings.Contains(tags[1], "next") {
-			urlTag := strings.TrimSpace(tags[0])
-			next = urlTag[1 : len(urlTag)-1]
+	// 意図的にフロントの実装 link_helper.ts に合わせている
+	links := strings.Split(linkHeader, ",")
+	for _, link := range links {
+		linkInfo := linkRegexp.FindStringSubmatch(link)
+		if linkInfo != nil && (linkInfo[2] == "prev" || linkInfo[2] == "next") {
+			u, err := url.Parse(linkInfo[1])
+			if err != nil {
+				return "", "", failure.NewError(fails.ErrApplication, fmt.Errorf("link header の URL が不正です"))
+			}
+			if u.Scheme != "" || u.Host != "" {
+				return "", "", failure.NewError(fails.ErrApplication, fmt.Errorf("link header に scheme, host, もしくは port は設定できません"))
+			}
+			var s string
+			if u.RawQuery != "" {
+				s = u.Path + "?" + u.RawQuery
+			} else {
+				s = u.Path
+			}
+			switch linkInfo[2] {
+			case "prev":
+				prev = s
+			case "next":
+				next = s
+			}
 		}
 	}
 	return

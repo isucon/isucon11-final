@@ -27,15 +27,11 @@
           <span class="text-sm font-medium text-white">ファイル選択</span>
           <input type="file" class="hidden" @change="onFileChanged" />
         </label>
-        <template v-if="files.length > 0">
+        <template v-if="file !== null">
           <div class="flex flex-col justify-center overflow-x-scroll">
-            <div
-              v-for="(file, index) in files"
-              :key="file.name"
-              class="flex flex-row items-center text-black text-base"
-            >
+            <div class="flex flex-row items-center text-black text-base">
               <span class="mr=2">{{ file.name }}</span
-              ><CloseIcon @click="removeFile(index)"></CloseIcon>
+              ><CloseIcon @click="removeFile"></CloseIcon>
             </div>
           </div>
         </template>
@@ -43,25 +39,12 @@
           <span class="text-black text-base">ファイルが選択されていません</span>
         </template>
       </div>
-      <div
-        v-if="failed"
-        class="
-          bg-red-100
-          border border-red-400
-          text-red-700
-          px-4
-          py-3
-          rounded
-          relative
-        "
-        role="alert"
-      >
-        <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">課題の提出に失敗しました</span>
-        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-          <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
-        </span>
-      </div>
+      <template v-if="failed">
+        <InlineNotification type="error">
+          <template #title>APIエラーがあります</template>
+          <template #message>課題の提出に失敗しました。</template>
+        </InlineNotification>
+      </template>
       <div class="px-4 py-3 flex justify-center">
         <button
           type="button"
@@ -96,6 +79,7 @@
             font-medium
             text-white
           "
+          :disabled="file === null"
           @click="upload"
         >
           提出
@@ -110,10 +94,10 @@ import Vue from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
-import CloseIcon from '~/components/common/CloseIcon.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type SubmitFormData = {
-  files: File[]
+  file: File | null
   failed: boolean
 }
 
@@ -122,7 +106,7 @@ export default Vue.extend({
   components: {
     Card,
     Modal,
-    CloseIcon,
+    InlineNotification,
   },
   props: {
     isShown: {
@@ -145,7 +129,7 @@ export default Vue.extend({
   },
   data(): SubmitFormData {
     return {
-      files: [],
+      file: null,
       failed: false,
     }
   },
@@ -154,7 +138,7 @@ export default Vue.extend({
       return `${this.classTitle} 課題提出`
     },
     description(): string {
-      return `これは科目 ${this.courseName} の授業 ${this.classTitle} の課題提出フォームです。 `
+      return `これは科目 ${this.courseName} の講義 ${this.classTitle} の課題提出フォームです。 `
     },
   },
   methods: {
@@ -165,19 +149,18 @@ export default Vue.extend({
       ) {
         return
       }
-      const files: FileList = event.target.files
-      for (let i = 0; i < files.length; i++) {
-        this.files.push(files.item(i) as File)
-      }
+      this.file = event.target.files[0]
+      event.target.value = ''
     },
-    removeFile(index: number) {
-      this.files.splice(index, 1)
+    removeFile() {
+      this.file = null
     },
     upload() {
-      const formData = new FormData()
-      for (const file of this.files) {
-        formData.append('file', file)
+      if (this.file === null) {
+        return
       }
+      const formData = new FormData()
+      formData.append('file', this.file)
       this.$axios
         .post(
           `/api/courses/${this.$route.params.id}/classes/${this.classId}/assignments`,
@@ -194,7 +177,7 @@ export default Vue.extend({
         })
     },
     close() {
-      this.files = []
+      this.file = null
       this.hideAlert()
       this.$emit('close')
     },

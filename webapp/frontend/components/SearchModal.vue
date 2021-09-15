@@ -84,11 +84,11 @@
               <Select
                 id="params-period"
                 class="flex-1"
-                label="ステータス"
+                label="科目の状態"
                 :options="[
-                  { text: '履修登録中', value: 'registration' },
-                  { text: '開講中', value: 'in-progress' },
-                  { text: '閉講', value: 'closed' },
+                  { text: '履修登録期間', value: 'registration' },
+                  { text: '講義期間', value: 'in-progress' },
+                  { text: '終了済み', value: 'closed' },
                 ]"
                 :selected="params.status || selected.status"
                 @change="params.status = $event"
@@ -117,7 +117,7 @@
                 <th>科目種別</th>
                 <th>時間</th>
                 <th>単位数</th>
-                <th>ステータス</th>
+                <th>科目の状態</th>
                 <th>担当</th>
                 <th></th>
               </tr>

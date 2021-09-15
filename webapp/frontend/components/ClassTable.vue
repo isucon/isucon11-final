@@ -28,13 +28,7 @@
                 <div class="relative">
                   <fa-icon
                     icon="ellipsis-v"
-                    class="
-                      min-w-min
-                      px-2
-                      cursor-pointer
-                      rounded
-                      hover:bg-primary-300
-                    "
+                    class="min-w-min px-2 cursor-pointer rounded"
                     @click.stop="onClickClassDropdown(i)"
                   />
                   <div
