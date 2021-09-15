@@ -208,6 +208,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
+					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
+					ContestantLogger.Printf("成績取得(GET /api/users/me/grades)がタイムアウトしました。生徒は%d秒後に成績取得のリトライを試み、その後履修登録を再開します。", int64(waitGradeTimeout/time.Second))
 					time.Sleep(waitGradeTimeout)
 					continue
 				}
