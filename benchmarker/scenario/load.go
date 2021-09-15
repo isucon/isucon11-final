@@ -386,7 +386,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
-			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
+			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam, "")
 			if err != nil {
 				step.AddError(err)
 				time.Sleep(100 * time.Millisecond)
@@ -476,7 +476,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
-			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
+			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam, "")
 			if err != nil {
 				step.AddError(err)
 				<-timer
