@@ -26,7 +26,7 @@ resource "aws_instance" "bench" {
 
   subnet_id         = aws_subnet.bench.id
   availability_zone = aws_subnet.bench.availability_zone
-  private_ip        = cidrhost(aws_subnet.bench.cidr_block, index(var.team_ids, each.key) + 101)
+  private_ip        = cidrhost(aws_subnet.bench.cidr_block, index(var.team_ids, each.key) + 201)
 
   vpc_security_group_ids = [
     aws_security_group.bench.id,

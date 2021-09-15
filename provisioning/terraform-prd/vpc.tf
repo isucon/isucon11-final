@@ -1,5 +1,5 @@
 resource "aws_vpc" "main" {
-  cidr_block = "10.14.0.0/17"
+  cidr_block = "10.11.0.0/17"
 
   tags = {
     Name = "final-prd"
