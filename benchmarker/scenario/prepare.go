@@ -357,7 +357,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				return
 			}
 
-			err = validateUserGrade(&expected, &res, hres)
+			err = AssertEqualGrade(&expected, &res, hres)
 			if err != nil {
 				step.AddError(err)
 				return
@@ -395,7 +395,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		err = validateUserGrade(&expected, &res, hres)
+		err = AssertEqualGrade(&expected, &res, hres)
 		if err != nil {
 			step.AddError(err)
 			return

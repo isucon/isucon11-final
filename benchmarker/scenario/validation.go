@@ -276,9 +276,9 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 				return
 			}
 
-			err = validateUserGrade(&expected, &res, hres)
+			err = AssertEqualGrade(&expected, &res, hres)
 			if err != nil {
-				step.AddError(err)
+				step.AddError(fails.ErrorCritical(err))
 				return
 			}
 		})
@@ -288,32 +288,6 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	}
 
 	p.Wait()
-}
-
-func validateUserGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hres *http.Response) error {
-	if !AssertEqual("grade courses length", len(expected.CourseResults), len(actual.CourseResults)) {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("成績確認の courses の数が一致しません", hres))
-	}
-
-	err := AssertEqualSummary(&expected.Summary, &actual.Summary, hres)
-	if err != nil {
-		return fails.ErrorCritical(err)
-	}
-
-	for _, courseResult := range actual.CourseResults {
-		if _, ok := expected.CourseResults[courseResult.Code]; !ok {
-			AdminLogger.Println(courseResult.Code, "は予期せぬコースです")
-			return fails.ErrorCritical(fails.ErrorInvalidResponse("成績確認に意図しないcourseの結果が含まれています", hres))
-		}
-
-		expected := expected.CourseResults[courseResult.Code]
-		err := AssertEqualCourseResult(expected, &courseResult, hres)
-		if err != nil {
-			return fails.ErrorCritical(err)
-		}
-	}
-
-	return nil
 }
 
 func calculateGradeRes(student *model.Student, students map[string]*model.Student) model.GradeRes {

@@ -91,6 +91,32 @@ func AssertEqualRegisteredCourse(expected *model.Course, actual *api.GetRegister
 	return nil
 }
 
+func AssertEqualGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hres *http.Response) error {
+	if !AssertEqual("grade courses length", len(expected.CourseResults), len(actual.CourseResults)) {
+		return fails.ErrorInvalidResponse("成績確認の courses の数が一致しません", hres)
+	}
+
+	err := AssertEqualSummary(&expected.Summary, &actual.Summary, hres)
+	if err != nil {
+		return err
+	}
+
+	for _, courseResult := range actual.CourseResults {
+		if _, ok := expected.CourseResults[courseResult.Code]; !ok {
+			AdminLogger.Println(courseResult.Code, "は予期せぬコースです")
+			return fails.ErrorInvalidResponse("成績確認の courses に意図しない科目が含まれています", hres)
+		}
+
+		expected := expected.CourseResults[courseResult.Code]
+		err := AssertEqualCourseResult(expected, &courseResult, hres)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func AssertEqualSummary(expected *model.Summary, actual *api.Summary, hres *http.Response) error {
 	if !AssertEqual("grade summary credits", expected.Credits, actual.Credits) {
 		return fails.ErrorInvalidResponse("成績確認の summary の credits が一致しません", hres)
