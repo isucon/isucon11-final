@@ -98,6 +98,9 @@ export default Vue.extend({
       hasError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - 教員用科目一覧',
+  },
   computed: {
     courseId(): string {
       return this.selectedCourseIdx !== null

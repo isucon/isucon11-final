@@ -2,20 +2,20 @@
 package scenario
 var (
 	resourcesHash = map[string]string{ 
-		"": "a6b916cd8476a3f58456120208f0ea2f",
-		"/200.html": "a6b916cd8476a3f58456120208f0ea2f",
+		"": "f3c04cceffdf1b2e234074cfe4bbe734",
+		"/200.html": "f3c04cceffdf1b2e234074cfe4bbe734",
 		"/README.md": "5034cfd9edf3fa7d7d23589ecb2488f9",
-		"/_nuxt/app.js": "6c7bdadfc35c63c5442caffe102477b3",
+		"/_nuxt/app.js": "20588016c1a5044752bdfc6b3c8df8cb",
 		"/_nuxt/css/app.css": "d74bb90997e966912b5ede427f92bb68",
 		"/_nuxt/runtime.js": "c51ffc86f28b62f78d641758e2dab72e",
-		"/announce": "a6b916cd8476a3f58456120208f0ea2f",
+		"/announce": "f3c04cceffdf1b2e234074cfe4bbe734",
 		"/favicon.svg": "90e6fef8cbe03a77db6897a45514d54f",
-		"/grade": "a6b916cd8476a3f58456120208f0ea2f",
+		"/grade": "f3c04cceffdf1b2e234074cfe4bbe734",
 		"/image/header_logo_white.svg": "7a62da4d9773a3656e4ab565624b5c40",
 		"/image/hero_logo_green.png": "8f0f24ff75632206e167deea7e054cec",
 		"/image/hero_logo_green.svg": "3a3703936abe5ca096a0d4a4145c65ce",
-		"/mypage": "a6b916cd8476a3f58456120208f0ea2f",
-		"/register": "a6b916cd8476a3f58456120208f0ea2f",
-		"/teacher/courses": "a6b916cd8476a3f58456120208f0ea2f",
+		"/mypage": "f3c04cceffdf1b2e234074cfe4bbe734",
+		"/register": "f3c04cceffdf1b2e234074cfe4bbe734",
+		"/teacher/courses": "f3c04cceffdf1b2e234074cfe4bbe734",
 	}
 )

@@ -4,7 +4,7 @@ const config = {
 
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
-    title: 'isucholar',
+    title: 'ISUCHOLAR',
     htmlAttrs: {
       lang: 'ja',
     },

@@ -188,6 +188,7 @@ import { formatType, formatPeriod, formatStatus } from '~/helpers/course_helper'
 import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type SyllabusData = {
+  title: string
   course: SyllabusCourse
   hasError: boolean
 }
@@ -215,17 +216,27 @@ export default Vue.extend({
       const res = await ctx.$axios.get(`/api/courses/${id}`)
       const course: SyllabusCourse = res.data
 
-      return { course, hasError: false }
+      return {
+        title: `ISUCHOLAR - 科目概要:${course.name}`,
+        course,
+        hasError: false,
+      }
     } catch (e) {
       console.error(e)
     }
 
-    return { course: initCourse, hasError: true }
+    return { title: '', course: initCourse, hasError: true }
   },
   data(): SyllabusData {
     return {
+      title: '',
       course: initCourse,
       hasError: false,
+    }
+  },
+  head(): any {
+    return {
+      title: this.title,
     }
   },
   computed: {

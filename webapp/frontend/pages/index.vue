@@ -82,6 +82,9 @@ export default Vue.extend({
       loginError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - ログイン',
+  },
   methods: {
     async onSubmitLogin() {
       try {

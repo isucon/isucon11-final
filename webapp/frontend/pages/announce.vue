@@ -136,6 +136,9 @@ export default Vue.extend({
       hasError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - お知らせ',
+  },
   watchQuery: true,
   created() {
     this.announcements = this.innerAnnouncements

@@ -132,6 +132,9 @@ export default Vue.extend({
       hasError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - マイページ',
+  },
   computed: {
     courses(): CalendarCourses {
       const periodCourses: CalendarCourses = []

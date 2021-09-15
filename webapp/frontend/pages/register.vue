@@ -173,6 +173,9 @@ export default Vue.extend({
       errorMessage: undefined,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - 履修登録',
+  },
   computed: {
     courses(): CalendarCourses {
       const periodCourses: CalendarCourses = []
