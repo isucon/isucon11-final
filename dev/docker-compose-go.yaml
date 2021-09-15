@@ -13,8 +13,8 @@ services:
       - backend
   backend:
     build:
-      context: ../webapp/golang
-      dockerfile: ../../dev/golang/Dockerfile
+      context: ../webapp/go
+      dockerfile: ../../dev/go/Dockerfile
     restart: always
     environment:
       MYSQL_HOSTNAME: mysql
