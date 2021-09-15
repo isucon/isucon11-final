@@ -41,7 +41,7 @@ func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, 
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -81,7 +81,7 @@ func GetMeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.G
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -102,7 +102,7 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -123,7 +123,7 @@ func GetRegisteredCoursesAction(ctx context.Context, agent *agent.Agent) (*http.
 	res := make([]*api.GetRegisteredCourseResponseContent, 0)
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -166,7 +166,7 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 	res := make([]*api.GetCourseDetailResponse, 0)
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -187,7 +187,7 @@ func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -212,7 +212,7 @@ func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model
 		if hres.StatusCode == http.StatusBadRequest {
 			decodeErr := json.NewDecoder(hres.Body).Decode(&eres)
 			if decodeErr != nil {
-				return hres, eres, fails.ErrorJSON(hres)
+				return hres, eres, fails.ErrorJSON(decodeErr, hres)
 			}
 
 			return hres, eres, err
@@ -242,7 +242,7 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next str
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -263,7 +263,7 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -306,7 +306,7 @@ func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) 
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -333,7 +333,7 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil
@@ -370,7 +370,7 @@ func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.Cours
 
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		return hres, res, fails.ErrorJSON(hres)
+		return hres, res, fails.ErrorJSON(err, hres)
 	}
 
 	return hres, res, nil

@@ -2,6 +2,7 @@ package fails
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -61,8 +62,15 @@ func ErrorHTTP(err error) error {
 	return failure.NewError(ErrHTTP, err)
 }
 
-func ErrorJSON(hres *http.Response) error {
-	return failure.NewError(ErrJSON, errMessageWithPath("不正なJSONが返却されました", hres))
+func ErrorJSON(err error, hres *http.Response) error {
+	switch e := err.(type) {
+	case *json.SyntaxError:
+		return failure.NewError(ErrJSON, errMessageWithPath("JSONの形式が不正です", hres))
+	case *json.UnmarshalTypeError:
+		return failure.NewError(ErrJSON, errMessageWithPath("JSONの値のデータ型が不正です", hres))
+	default:
+		return failure.NewError(ErrJSON, errMessageWithPath(e.Error(), hres))
+	}
 }
 
 func ErrorInvalidStatusCode(hres *http.Response, expected []int) error {
