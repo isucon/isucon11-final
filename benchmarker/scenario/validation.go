@@ -296,6 +296,7 @@ func calculateGradeRes(student *model.Student, students map[string]*model.Studen
 	for _, course := range courses {
 		result := course.CalcCourseResultByStudentCode(student.Code)
 		if result == nil {
+			// course は student が履修しているコースなので、result が nil になることはないはず
 			panic("unreachable! userCode:" + student.Code)
 		}
 
@@ -310,11 +311,19 @@ func calculateGradeRes(student *model.Student, students map[string]*model.Studen
 func calculateSummary(students map[string]*model.Student, userCode string) model.Summary {
 	n := len(students)
 	if n == 0 {
-		panic("TODO: len (students) is 0")
+		// ここに来ることはない気がするが webapp 的には偏差値のみ 50 でそれ以外は 0
+		// summary の対象となる生徒がいないというのは、コースがまだ一つも終わっていないことに等しい
+		return model.Summary{
+			Credits:   0,
+			GPA:       0,
+			GpaTScore: 0,
+			GpaAvg:    0,
+			GpaMax:    0,
+			GpaMin:    0,
+		}
 	}
 
 	if _, ok := students[userCode]; !ok {
-		// ベンチのバグ用のloggerを作ったらそこに出すようにする
 		// 呼び出し元が1箇所しか無くて、そこではstudentsのrangeをとってそのkeyをuserCode
 		// に渡すので大丈夫なはず
 		panic("unreachable! userCode: " + userCode)

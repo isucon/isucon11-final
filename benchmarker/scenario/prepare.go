@@ -284,6 +284,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 							return
 						}
 						expected := student.GetAnnouncement(announcement.ID)
+						// announcement は course に追加されていて、student は course を履修しているので nil になることはないはず
 						if expected == nil {
 							panic("unreachable! announcementID" + announcement.ID)
 						}

@@ -300,6 +300,7 @@ func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 	totalMax := util.MaxInt(totalScoresArr, 0)
 	totalMin := util.MinInt(totalScoresArr, 0)
 
+	// totalscore は registeredStudents に対して 0 点になるのでここは大丈夫
 	totalScore, ok := totalScores[code]
 	if !ok {
 		panic("unreachable! userCode: " + code)
