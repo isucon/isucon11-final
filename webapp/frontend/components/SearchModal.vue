@@ -4,7 +4,7 @@
       <div class="flex flex-col flex-nowrap">
         <h3
           id="modal-title"
-          class="text-lg leading-6 font-medium text-gray-900"
+          class="text-2xl leading-6 font-medium text-gray-500 mb-4"
         >
           科目検索
         </h3>

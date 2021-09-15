@@ -16,10 +16,10 @@
           w-full
           border-2 border-gray-200
           rounded
-          placeholder-gray-500
           appearance-none
           focus:outline-none focus:border-primary-500 focus:ring-0
         "
+        :class="selected ? '' : 'text-gray-500'"
         :placeholder="placeholder"
         @change="onChange"
       >
