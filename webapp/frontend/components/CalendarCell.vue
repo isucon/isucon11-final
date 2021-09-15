@@ -8,10 +8,7 @@
         lg:min-h-32
         md:min-h-32
         sm:min-h-full
-        xl:w-40
-        lg:w-30
-        md:w-30
-        sm:w-full
+        w-full
         overflow-hidden
       "
     >
