@@ -263,7 +263,7 @@ func main() {
 		panic(err)
 	}
 
-	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout))
+	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout), isucandar.WithoutPanicRecover())
 	if err != nil {
 		panic(err)
 	}

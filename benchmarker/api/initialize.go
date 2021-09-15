@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -19,7 +18,7 @@ func Initialize(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 
 	req, err := a.POST(path, nil)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")

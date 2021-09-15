@@ -17,26 +17,13 @@
           />
         </div>
       </div>
-      <div
-        v-if="failed"
-        class="
-          bg-red-100
-          border border-red-400
-          text-red-700
-          px-4
-          py-3
-          rounded
-          relative
-        "
-        role="alert"
-      >
-        <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">科目の状態の変更に失敗しました</span>
-        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-          <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
-        </span>
-      </div>
-      <div class="px-4 py-3 flex justify-center">
+      <template v-if="failed">
+        <InlineNotification type="error">
+          <template #title>APIエラーがあります</template>
+          <template #message>科目の状態の変更に失敗しました。</template>
+        </InlineNotification>
+      </template>
+      <div class="px-4 py-3 flex justify-center gap-2">
         <Button @click="close"> 閉じる </Button>
         <Button color="primary" @click="submit"> 変更 </Button>
       </div>
@@ -49,10 +36,10 @@ import Vue, { PropType } from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
-import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import Select from '~/components/common/Select.vue'
 import LabeledText from '~/components/common/LabeledText.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 import { CourseStatus, SetCourseStatusRequest } from '~/types/courses'
 
 type SubmitFormData = {
@@ -62,7 +49,7 @@ type SubmitFormData = {
 
 const statusOptions = [
   {
-    text: '履修登録受付期間',
+    text: '履修登録期間',
     value: 'registration',
   },
   {
@@ -83,7 +70,7 @@ export default Vue.extend({
   components: {
     Card,
     Modal,
-    CloseIcon,
+    InlineNotification,
     Button,
     Select,
     LabeledText,

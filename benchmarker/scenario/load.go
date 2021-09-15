@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/isucon/isucandar"
-	"github.com/isucon/isucandar/failure"
 	"github.com/isucon/isucandar/parallel"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
@@ -66,11 +65,11 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	wg.Wait()
 
 	if s.CourseManager.GetCourseCount() == 0 {
-		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("科目登録が1つも成功しませんでした")))
+		step.AddError(fails.ErrorCritical(fmt.Errorf("科目登録が1つも成功しませんでした")))
 		return nil
 	}
 	if s.ActiveStudentCount() == 0 {
-		step.AddError(failure.NewError(fails.ErrCritical, fmt.Errorf("ログインに成功した学生が1人もいませんでした")))
+		step.AddError(fails.ErrorCritical(fmt.Errorf("ログインに成功した学生が1人もいませんでした")))
 		return nil
 	}
 
@@ -205,7 +204,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			if finishCourseCount/registerCourseLimitPerStudent > beforeFinishCourseCount/registerCourseLimitPerStudent {
 				// 成績確認
 				expected := collectVerifyGradesData(student)
-				_, getGradeRes, err := GetGradeAction(ctx, student.Agent)
+				hres, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
 					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
@@ -213,7 +212,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					time.Sleep(waitGradeTimeout)
 					continue
 				}
-				err = verifyGrades(expected, &getGradeRes)
+				err = verifyGrades(expected, &getGradeRes, hres)
 				if err != nil {
 					step.AddError(err)
 				} else {
@@ -240,10 +239,12 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
+						<-timer
 						continue
 					}
-					if err := verifySearchCourseResults(res, param); err != nil {
+					if err := verifySearchCourseResults(res, param, hres); err != nil {
 						step.AddError(err)
+						<-timer
 						continue
 					}
 					step.AddScore(score.RegSearchCourses)
@@ -253,7 +254,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					}
 
 					// Linkヘッダから次ページのPath + QueryParamを取得
-					_, nextPathParam = parseLinkHeader(hres)
+					_, nextPathParam, err = parseLinkHeader(hres)
+					if err != nil {
+						step.AddError(err)
+					}
 				}
 
 				if s.isNoRequestTime(ctx) {
@@ -261,17 +265,15 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 
 				// 検索で得た科目のシラバスを確認する
-				// TODO: 検索は何らかが必ずヒットするようにする
 				if checkTargetID != "" {
-					_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
+					hres, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
 					if err != nil {
 						step.AddError(err)
-						continue
 					}
 					expected, exists := s.CourseManager.GetCourseByID(res.ID)
 					// ベンチ側の登録がまだの場合は検証スキップ
 					if exists {
-						if err := verifyCourseDetail(expected, &res); err != nil {
+						if err := verifyCourseDetail(expected, &res, hres); err != nil {
 							step.AddError(err)
 						} else {
 							step.AddScore(score.RegGetCourseDetail)
@@ -290,12 +292,13 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			}
 
 			expected := student.RegisteredSchedule()
-			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
+			hres, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
+				<-timer
 				continue
 			}
-			if err := verifyRegisteredCourses(expected, getRegisteredCoursesRes); err != nil {
+			if err := verifyRegisteredCourses(expected, getRegisteredCoursesRes, hres); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.RegGetRegisteredCourses)
@@ -370,7 +373,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			DebugLogger.Printf("[履修完了] code: %v, register count: %d", student.Code, len(temporaryReservedCourses))
 		}
-		// TODO: できれば登録に失敗した科目を抜いて再度登録する
 	}
 }
 
@@ -396,7 +398,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
-			if err := verifyAnnouncementsList(expectAnnouncementMap, &res, true); err != nil {
+			if err := verifyAnnouncementsList(expectAnnouncementMap, &res, hres, true); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.ScoreGetAnnouncementList)
@@ -423,7 +425,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 				startGetAnnouncementDetail := time.Now()
 				// お知らせの詳細を取得する
-				_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+				hres, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
 				if err != nil {
 					var urlError *url.Error
 					if errors.As(err, &urlError) && urlError.Timeout() {
@@ -434,7 +436,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				}
 				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
-				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &res, hres); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
@@ -445,7 +447,11 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				student.ReadAnnouncement(ans.ID)
 			}
 
-			_, nextPathParam = parseLinkHeader(hres)
+			_, nextPathParam, err = parseLinkHeader(hres)
+			if err != nil {
+				step.AddError(err)
+				continue
+			}
 
 			if len(res.Announcements) == 0 || !student.HasUnreadOrDirtyAnnouncementBefore(res.Announcements[len(res.Announcements)-1].ID) {
 				nextPathParam = ""
@@ -487,7 +493,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
 
 			// 並列で走る既読にするシナリオが未読/既読状態を変更するので、こちらのシナリオでは未読/既読状態は検証しない
-			if err := verifyAnnouncementsList(expectAnnouncementMap, &res, false); err != nil {
+			if err := verifyAnnouncementsList(expectAnnouncementMap, &res, hres, false); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.ScoreGetAnnouncementList)
@@ -518,14 +524,14 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 					panic("read unknown announcement")
 				}
 
-				_, res, err := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
+				hres, res, err := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
 				if err != nil {
 					step.AddError(err)
 					<-timer
 					continue
 				}
 
-				if err := verifyAnnouncementDetail(expectStatus, &res); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &res, hres); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
@@ -533,7 +539,10 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 				}
 			}
 
-			_, nextPathParam = parseLinkHeader(hres)
+			_, nextPathParam, err = parseLinkHeader(hres)
+			if err != nil {
+				step.AddError(err)
+			}
 
 			// 50msより短い間隔で一覧取得をしない
 			<-timer
@@ -711,12 +720,12 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				return
 			}
 
-			_, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
+			hres, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
 				step.AddError(err)
 				continue
 			}
-			if err := verifyAssignments(assignmentsData, class); err != nil {
+			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CourseDownloadSubmissions)
@@ -849,13 +858,13 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				return
 			}
 
-			_, res, err := GetMeAction(ctx, student.Agent)
+			hres, res, err := GetMeAction(ctx, student.Agent)
 			if err != nil {
 				AdminLogger.Printf("学生 %vのユーザ情報取得に失敗しました", student.Name)
 				step.AddError(err)
 				return
 			}
-			if err := verifyMe(student.UserAccount, &res); err != nil {
+			if err := verifyMe(student.UserAccount, &res, hres); err != nil {
 				step.AddError(err)
 				return
 			}
@@ -908,13 +917,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 		return
 	}
 
-	_, getMeRes, err := GetMeAction(ctx, teacher.Agent)
+	hres, getMeRes, err := GetMeAction(ctx, teacher.Agent)
 	if err != nil {
 		AdminLogger.Printf("teacherのユーザ情報取得に失敗しました")
 		step.AddError(err)
 		return
 	}
-	if err := verifyMe(teacher.UserAccount, &getMeRes); err != nil {
+	if err := verifyMe(teacher.UserAccount, &getMeRes, hres); err != nil {
 		step.AddError(err)
 		return
 	}
@@ -985,12 +994,12 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 			}
 
 			// 講義一覧を取得する
-			_, res, err := GetClassesAction(ctx, student.Agent, course.ID)
+			hres, res, err := GetClassesAction(ctx, student.Agent, course.ID)
 			if err != nil {
 				step.AddError(err)
 				return
 			}
-			if err := verifyClasses(course.Classes(), res); err != nil {
+			if err := verifyClasses(course.Classes(), res, hres); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CourseGetClasses)

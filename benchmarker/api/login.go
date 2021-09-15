@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -20,13 +19,13 @@ type LoginRequest struct {
 func Login(ctx context.Context, a *agent.Agent, auth LoginRequest) (*http.Response, error) {
 	body, err := json.Marshal(auth)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	path := "/login"
 
 	req, err := a.POST(path, bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
