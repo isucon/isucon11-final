@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="py-4">
     <div class="flex flex-col gap-4">
       <AnnouncementCard
         v-for="announcement in announcements"
