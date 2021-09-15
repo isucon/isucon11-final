@@ -67,6 +67,7 @@ import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type CourseData = {
+  title: string
   course: Course | undefined
   announcements: Announcement[]
   classes: ClassInfo[]
@@ -110,6 +111,7 @@ export default Vue.extend({
         }
       })
       return {
+        title: `ISUCHOLAR - 講義情報:${course.data.name}`,
         course: course.data,
         announcements,
         classes: classes.data ?? [],
@@ -121,6 +123,7 @@ export default Vue.extend({
     }
 
     return {
+      title: '',
       course: undefined,
       announcements: [],
       classes: [],
@@ -130,11 +133,17 @@ export default Vue.extend({
   },
   data(): CourseData {
     return {
+      title: '',
       course: undefined,
       announcements: [],
       classes: [],
       link: '',
       hasError: false,
+    }
+  },
+  head(): any {
+    return {
+      title: this.title,
     }
   },
   watchQuery: true,
@@ -144,10 +153,10 @@ export default Vue.extend({
       announcement: Announcement
     ) {
       try {
-        const res = await this.$axios.get<Announcement>(
+        const res = await this.$axios.get(
           `/api/announcements/${announcement.id}`
         )
-        const announcementDetail = res.data
+        const announcementDetail: Announcement = res.data
         const target = this.announcements.find(
           (item) => item.id === announcement.id
         )

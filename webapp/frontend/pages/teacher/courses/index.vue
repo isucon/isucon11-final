@@ -100,6 +100,9 @@ export default Vue.extend({
       hasError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - 教員用講義一覧',
+  },
   computed: {
     courseId(): string {
       return this.selectedCourseIdx !== null
