@@ -11,7 +11,8 @@
         class="
           block
           py-1.5
-          px-4
+          pr-8
+          pl-4
           w-full
           border-2 border-gray-200
           rounded
