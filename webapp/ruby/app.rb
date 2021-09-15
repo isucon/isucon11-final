@@ -81,8 +81,7 @@ module Isucholar
       end
     end
 
-    #	e.POST("/initialize", h.Initialize)
-    #// Initialize POST /initialize 初期化エンドポイント
+    # Initialize POST /initialize 初期化エンドポイント
     post '/initialize' do
       db_for_init = DB.get_db(:batch)
 
@@ -123,7 +122,7 @@ module Isucholar
       end
     end
 
-    #// Login POST /login ログイン
+    # Login POST /login ログイン
     post '/login' do
       user = db.xquery('SELECT * FROM `users` WHERE `code` = ?', json_params[:code]).first
       halt 401, 'Code or Password is wrong.' unless user
@@ -145,20 +144,13 @@ module Isucholar
       ''
     end
 
-    #// Logout POST /logout ログアウト
+    # Logout POST /logout ログアウト
     post '/logout' do
       session.destroy
       ''
     end
 
-    #
-    #	API := e.Group("/api", h.IsLoggedIn)
-    #	{
-    #		usersAPI := API.Group("/users")
-    #		{
-
-
-    #// GetMe GET /api/users/me 自身の情報を取得
+    # GetMe GET /api/users/me 自身の情報を取得
     get '/api/users/me', login: true do
       user_id, user_name, is_admin = user_data
       user_code = db.xquery('SELECT `code` FROM `users` WHERE `id` = ?', user_id).first[:code]
@@ -171,7 +163,7 @@ module Isucholar
       }.to_json
     end
 
-    #// GetRegisteredCourses GET /api/users/me/courses 履修中の科目一覧取得
+    # GetRegisteredCourses GET /api/users/me/courses 履修中の科目一覧取得
     get '/api/users/me/courses', login: true do
       user_id, _user_name, _is_admin = user_data
 
@@ -202,7 +194,7 @@ module Isucholar
       res.to_json
     end
 
-    #// RegisterCourses PUT /api/users/me/courses 履修登録
+    # RegisterCourses PUT /api/users/me/courses 履修登録
 
     RegisterCoursesErrorResponse = Struct.new(:course_not_found, :not_registrable_status, :schedule_conflict) do
       def as_json
@@ -274,7 +266,7 @@ module Isucholar
       ''
     end
 
-    #// GetGrades GET /api/users/me/grades 成績取得
+    # GetGrades GET /api/users/me/grades 成績取得
     get '/api/users/me/grades', login: true do
       user_id, _user_name, _is_admin = user_data
 
@@ -397,9 +389,6 @@ module Isucholar
       }.to_json
     end
 
-    #		coursesAPI := API.Group("/courses")
-    #		{
-
     # SearchCourses GET /api/courses 科目検索
     get '/api/courses', login: true do
       query = "SELECT `courses`.*, `users`.`name` AS `teacher`" \
@@ -508,7 +497,7 @@ module Isucholar
 
     class CourseConflict < StandardError; end
 
-    #// AddCourse POST /api/courses 新規科目登録
+    # AddCourse POST /api/courses 新規科目登録
     post '/api/courses', login: true, admin: true do
       user_id, _user_name, _is_admin = user_data
 
@@ -554,7 +543,7 @@ module Isucholar
       end
     end
 
-    #// GetCourseDetail GET /api/courses/:courseID 科目詳細の取得
+    # GetCourseDetail GET /api/courses/:courseID 科目詳細の取得
     get '/api/courses/:course_id', login: true do
       res = db.xquery(
         "SELECT `courses`.*, `users`.`name` AS `teacher`" \
@@ -570,7 +559,7 @@ module Isucholar
       res.to_h.to_json
     end
 
-    #// SetCourseStatus PUT /api/courses/:courseID/status 科目のステータスを変更
+    # SetCourseStatus PUT /api/courses/:courseID/status 科目のステータスを変更
     put '/api/courses/:course_id/status', login: true, admin: true do
       halt 400, "Invalid format" unless json_params[:status].kind_of?(String)
 
@@ -584,7 +573,7 @@ module Isucholar
       ''
     end
 
-    #// GetClasses GET /api/courses/:courseID/classes 科目に紐づく講義一覧の取得
+    # GetClasses GET /api/courses/:courseID/classes 科目に紐づく講義一覧の取得
     get '/api/courses/:course_id/classes', login: true do
       user_id, _user_name, _is_admin = user_data
 
@@ -658,7 +647,7 @@ module Isucholar
       end
     end
 
-    #// SubmitAssignment POST /api/courses/:courseID/classes/:classID/assignments 課題の提出
+    # SubmitAssignment POST /api/courses/:courseID/classes/:classID/assignments 課題の提出
     post '/api/courses/:course_id/classes/:class_id/assignments', login: true do
       user_id, _user_name, _is_admin = user_data
 
@@ -695,7 +684,7 @@ module Isucholar
       ''
     end
 
-    #// RegisterScores PUT /api/courses/:courseID/classes/:classID/assignments/scores 成績登録
+    # RegisterScores PUT /api/courses/:courseID/classes/:classID/assignments/scores 成績登録
     put '/api/courses/:course_id/classes/:class_id/assignments/scores', login: true, admin: true do
       class_id = params[:class_id]
 
@@ -717,7 +706,7 @@ module Isucholar
       ''
     end
 
-    #// DownloadSubmittedAssignments GET /api/courses/:courseID/classes/:classID/assignments/export 提出済みの課題ファイルをzip形式で一括ダウンロード
+    # DownloadSubmittedAssignments GET /api/courses/:courseID/classes/:classID/assignments/export 提出済みの課題ファイルをzip形式で一括ダウンロード
     get '/api/courses/:course_id/classes/:class_id/assignments/export', login: true, admin: true do
       class_id = params[:class_id]
 
@@ -759,7 +748,7 @@ module Isucholar
         )
       end
 
-      #// -i 'tmpDir/*': 空zipを許す
+      # -i 'tmpDir/*': 空zipを許す
       system "zip", "-j", "-r", zip_file_path, tmp_dir, "-i", "#{tmp_dir}*", exception: true
     end
 
@@ -853,7 +842,7 @@ module Isucholar
 
     class AnnouncementConflict < StandardError; end
 
-    #// AddAnnouncement POST /api/announcements 新規お知らせ追加
+    # AddAnnouncement POST /api/announcements 新規お知らせ追加
     post '/api/announcements', login: true, admin: true do
       if !json_params.kind_of?(Hash) || %i(id course_id title message).any? { |k| !json_params[k].kind_of?(String) }
         halt 400, "Invalid format."
@@ -898,7 +887,7 @@ module Isucholar
       ''
     end
 
-    #// GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
+    # GetAnnouncementDetail GET /api/announcements/:announcementID お知らせ詳細取得
     get '/api/announcements/:announcement_id', login: true do
       user_id, _user_name, _is_admin = user_data
 
