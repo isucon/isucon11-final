@@ -28,6 +28,12 @@ export type SearchCourseRequest = {
 export type Course = {
   id: string
   name: string
+  credit: number
+  description: string
+  keywords: string
+  status: CourseStatus
+  type: CourseType
+  code: string
   period: number
   dayOfWeek: DayOfWeek
   teacher: string

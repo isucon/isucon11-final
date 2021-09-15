@@ -3,10 +3,41 @@
     <div
       class="py-10 px-8 bg-white shadow-lg w-192 max-w-full mt-8 mb-8 rounded"
     >
-      <div class="flex-1 flex-col">
-        <h1 class="text-2xl mb-4 font-bold">
-          {{ course ? course.name : '講義名（仮）' }}
+      <template v-if="!course">
+        <div>now loading</div>
+      </template>
+      <div v-else class="flex flex-1 flex-col gap-4">
+        <h1 class="text-2xl font-bold">
+          {{ course.name }}
         </h1>
+        <div>
+          <h2 class="text-lg font-bold">講義の概要と目的</h2>
+          <div>
+            {{ course.description }}
+          </div>
+        </div>
+        <div class="grid grid-cols-course w-full gap-1 text-sm">
+          <h2 class="font-bold">科目コード</h2>
+          <div>
+            {{ course.code }}
+          </div>
+          <h2 class="font-bold">科目種別</h2>
+          <div>
+            {{ formatType(course.type) }}
+          </div>
+          <h2 class="font-bold">科目の状態</h2>
+          <div>
+            {{ formatStatus(course.status) }}
+          </div>
+          <h2 class="font-bold">教員</h2>
+          <div>
+            {{ course.teacher }}
+          </div>
+          <h2 class="font-bold">単位数</h2>
+          <div>
+            {{ course.credit }}
+          </div>
+        </div>
         <tabs
           :tabs="[
             { id: 'classworks', label: '講義情報' },
@@ -61,6 +92,7 @@ import {
   ClassInfo,
 } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
+import { formatStatus, formatType } from '~/helpers/course_helper'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import ClassList from '~/components/ClassList.vue'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
@@ -188,6 +220,8 @@ export default Vue.extend({
         params: { apipath },
       })
     },
+    formatStatus,
+    formatType,
   },
 })
 </script>
