@@ -167,7 +167,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}, worker.WithLoopCount(prepareCourseCount))
 
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 
 	w.Process(ctx)
@@ -209,7 +209,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		}
 	}, worker.WithLoopCount(prepareStudentCount))
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -229,7 +229,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		course.SetStatusToInProgress()
 	}, worker.WithLoopCount(prepareCourseCount))
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -345,7 +345,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			}
 		}, worker.WithLoopCount(prepareCourseCount))
 		if err != nil {
-			panic(fmt.Errorf("unreachable! %w", err))
+			AdminLogger.Println("info: cannot start worker: %w", err)
 		}
 		w.Process(ctx)
 		w.Wait()
@@ -366,7 +366,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			}
 		}, worker.WithLoopCount(prepareStudentCount))
 		if err != nil {
-			panic(fmt.Errorf("unreachable! %w", err))
+			AdminLogger.Println("info: cannot start worker: %w", err)
 		}
 		w.Process(ctx)
 		w.Wait()
@@ -383,7 +383,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		course.SetStatusToClosed()
 	}, worker.WithLoopCount(prepareCourseCount))
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -404,7 +404,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		}
 	}, worker.WithLoopCount(prepareStudentCount))
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -436,7 +436,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 	}, worker.WithLoopCount(prepareStudentCount))
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -505,7 +505,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		mu.Unlock()
 	}, worker.WithLoopCount(prepareCheckAnnouncementListCourseCount))
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 	w.Process(ctx)
 	w.Wait()
@@ -528,7 +528,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		}
 	}, worker.WithLoopCount(prepareCheckAnnouncementListStudentCount))
 	if err != nil {
-		panic(fmt.Errorf("unreachable! %w", err))
+		AdminLogger.Println("info: cannot start worker: %w", err)
 	}
 	w.Process(ctx)
 	w.Wait()
