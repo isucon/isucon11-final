@@ -3,8 +3,7 @@ package generate
 import (
 	"fmt"
 	"math/rand"
-	"strconv"
-	"time"
+	"strings"
 
 	"github.com/isucon/isucon11-final/benchmarker/model"
 )
@@ -21,15 +20,24 @@ func SubmissionData(course *model.Course, class *model.Class, user *model.UserAc
 		title = fmt.Sprintf("%s.pdf", user.Code)
 	}
 
-	return PDF(genSubmissionContents(), cyclicGetImage()), title
+	return PDF(genSubmissionContents(course, class, user), cyclicGetImage()), title
 }
 
-// TODO: いい感じにする
-func genSubmissionContents() string {
-	return "1: true\n" +
-		"2: false\n" +
-		"3: false\n" +
-		"4: true\n" +
-		"5: true\n" +
-		"timestamp: " + strconv.Itoa(int(time.Now().UnixNano())) // FIXME: hashを変えるための一時措置
+func genSubmissionContents(course *model.Course, class *model.Class, user *model.UserAccount) string {
+	boolAnswers := []string{"o", "x"}
+
+	var content strings.Builder
+	content.WriteString(fmt.Sprintf("%s part %d\n", course.Code, class.Part))
+	content.WriteString(fmt.Sprintf("code %s\n\n", user.Code))
+	questionCount := rand.Intn(5) + 3
+	for i := 0; i < questionCount; i++ {
+		switch rand.Intn(2) {
+		case 0:
+			content.WriteString(fmt.Sprintf("Q%d. %s\n", i+1, randElt(boolAnswers)))
+		case 1:
+			content.WriteString(fmt.Sprintf("Q%d. %d\n", i+1, rand.Intn(1001)))
+		}
+	}
+
+	return content.String()
 }
