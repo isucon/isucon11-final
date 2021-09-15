@@ -23,7 +23,9 @@
               <td class="px-1 py-0.5">{{ c.code }}</td>
               <td class="px-1 py-0.5">{{ c.name }}</td>
               <td class="px-1 py-0.5">{{ formatType(c.type) }}</td>
-              <td class="px-1 py-0.5">{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
+              <td class="px-1 py-0.5">
+                {{ formatPeriod(c.dayOfWeek, c.period) }}
+              </td>
               <td class="px-1 py-0.5">{{ c.credit }}</td>
               <td class="px-1 py-0.5">{{ formatStatus(c.status) }}</td>
               <td class="px-1 py-0.5">
