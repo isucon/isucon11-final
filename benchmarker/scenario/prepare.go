@@ -38,6 +38,7 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		agent.WithNoCookie(),
 		agent.WithTimeout(20*time.Second),
 		agent.WithBaseURL(s.BaseURL.String()),
+		agent.WithCloneTransport(agent.DefaultTransport),
 	)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
@@ -1029,6 +1030,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	agent, _ := agent.NewAgent(
 		agent.WithUserAgent(useragent.UserAgent()),
 		agent.WithBaseURL(s.BaseURL.String()),
+		agent.WithCloneTransport(agent.DefaultTransport),
 	)
 
 	// 検証で使用する学生ユーザ
