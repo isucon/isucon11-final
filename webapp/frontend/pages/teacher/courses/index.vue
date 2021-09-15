@@ -10,8 +10,8 @@
         </InlineNotification>
 
         <section class="mt-8">
-          <h1 class="text-2xl">科目</h1>
-          <div class="mt-4">
+          <div class="flex justify-between">
+            <div class="text-2xl">科目一覧</div>
             <Button color="primary" @click="showAddCourseModal"
               >新規登録</Button
             >

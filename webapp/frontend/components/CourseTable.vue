@@ -1,6 +1,6 @@
 <template>
   <div>
-    <table class="table-auto border w-full mt-1 p-2">
+    <table class="table-auto w-full">
       <thead>
         <tr class="text-left">
           <th class="px-1 py-0.5">科目コード</th>
@@ -30,7 +30,7 @@
                 <div class="relative">
                   <fa-icon
                     icon="ellipsis-v"
-                    class="min-w-min px-2 cursor-pointer rounded"
+                    class="min-w-min px-2 cursor-pointer rounded float-right"
                     @click.stop="onClickCourseDropdown(i)"
                   />
                   <div
