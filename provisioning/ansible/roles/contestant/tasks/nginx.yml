@@ -21,6 +21,7 @@
   with_items:
   - etc/nginx/nginx.conf
   - etc/nginx/sites-available/isucholar.conf
+  - etc/nginx/sites-available/isucholar-php.conf
   - etc/nginx/certificates/tls-cert.pem
   - etc/nginx/certificates/tls-key.pem
 
