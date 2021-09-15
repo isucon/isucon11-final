@@ -8,7 +8,8 @@
    shell: |
      bundle config set deployment true && \
      bundle config set path .bundle && \
-     bundle install -j4
+     bundle install -j4 && \
+     bundle binstubs puma
 
 - name: "roles/contestant/tasks/isucholar-ruby: Deploy Service file"
   become_user: root
