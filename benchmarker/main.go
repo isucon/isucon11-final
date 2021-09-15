@@ -32,6 +32,7 @@ const (
 	// load.goには別途「Loadのリクエストを送り続ける時間」を定義しているので注意
 	loadTimeout              = 70 * time.Second
 	errorFailThreshold int64 = 100
+	allowedTargetFQDN        = "isucholar.t.isucon.dev"
 )
 
 var (
@@ -76,6 +77,10 @@ func init() {
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
 	flag.Parse()
+
+	if targetAddress == "" {
+		targetAddress = "localhost:8080"
+	}
 
 	agent.DefaultRequestTimeout = defaultRequestTimeout
 }
@@ -230,17 +235,20 @@ func main() {
 		}()
 	}
 
-	if targetAddress == "" {
-		targetAddress = "localhost:8080"
-	}
 	scheme := "http"
 	if useTLS {
 		scheme = "https"
 	}
+
 	baseURL, err := url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
 	if err != nil {
 		panic(err)
 	}
+
+	if useTLS {
+		agent.DefaultTLSConfig.ServerName = allowedTargetFQDN
+	}
+
 	config := &scenario.Config{
 		BaseURL:          baseURL,
 		UseTLS:           useTLS,
@@ -297,7 +305,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				scenario.AdminLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
-				sendResult(s, step.Result(), false, true)
+				sendResult(s, step.Result(), false, count%5 == 0)
 			case <-ctx.Done():
 				ticker.Stop()
 				return nil

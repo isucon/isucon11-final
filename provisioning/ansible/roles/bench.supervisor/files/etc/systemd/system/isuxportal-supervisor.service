@@ -5,7 +5,7 @@ After=network.target cloud-config.service
 [Service]
 # 基本設定
 User=isucon
-ExecStart=/home/isucon/bin/isuxportal-supervisor /home/isucon/benchmarker/bin/benchmarker -prom-out /run/prometheus-node-exporter/textfile/bench.prom
+ExecStart=/home/isucon/bin/isuxportal-supervisor /home/isucon/benchmarker/bin/benchmarker -prom-out /run/prometheus-node-exporter/textfile/bench.prom -tls
 WorkingDirectory=/home/isucon/benchmarker
 LogsDirectory=isuxportal-supervisor
 LimitNOFILE=2000000
@@ -18,7 +18,9 @@ Environment=ISUXPORTAL_SUPERVISOR_INTERVAL_AFTER_EMPTY_RECEIVE=2
 EnvironmentFile=/home/isucon/isuxportal-supervisor.env
 
 # bench 差し替えを graceful に行うための設定
+ExecStartPre=-+/bin/chown isucon:isucon /tmp/isuxportal-supervisor
 ExecStartPre=-/bin/mv /tmp/isuxportal-supervisor /home/isucon/bin/isuxportal-supervisor
+ExecStartPre=-+/bin/chown isucon:isucon /tmp/benchmarker
 ExecStartPre=-/bin/mv /tmp/benchmarker /home/isucon/benchmarker/bin/benchmarker
 TimeoutStopSec=200s
 KillMode=mixed

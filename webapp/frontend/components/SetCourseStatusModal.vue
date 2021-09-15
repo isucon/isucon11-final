@@ -2,7 +2,7 @@
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
       <p class="text-2xl text-black font-bold justify-center mb-4">
-        ステータス変更
+        科目の状態を変更
       </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
@@ -12,7 +12,7 @@
           <Select
             id="params-status"
             v-model="params.status"
-            label="ステータス"
+            label="科目の状態"
             :options="statusOptions"
           />
         </div>
@@ -49,15 +49,15 @@ type SubmitFormData = {
 
 const statusOptions = [
   {
-    text: '履修登録中',
+    text: '履修登録受付期間',
     value: 'registration',
   },
   {
-    text: '開講中',
+    text: '講義期間',
     value: 'in-progress',
   },
   {
-    text: '閉講',
+    text: '終了済み',
     value: 'closed',
   },
 ]
@@ -117,11 +117,11 @@ export default Vue.extend({
           `/api/courses/${this.courseId}/status`,
           this.params
         )
-        notify('ステータス変更が完了しました')
+        notify('科目の状態変更が完了しました')
         this.$emit('completed')
         this.close()
       } catch (e) {
-        notify('ステータス変更に失敗しました')
+        notify('科目の状態変更に失敗しました')
         this.showAlert()
       }
     },

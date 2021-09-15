@@ -36,11 +36,11 @@ export function formatPeriod(dayOfWeek: DayOfWeek, period: number): string {
 
 export function formatStatus(status: CourseStatus): string {
   if (status === 'in-progress') {
-    return '開講中'
+    return '講義期間'
   } else if (status === 'registration') {
-    return '履修登録中'
+    return '履修登録受付期間'
   } else if (status === 'closed') {
-    return '閉講'
+    return '終了済み'
   } else {
     const _s: never = status
     return ''

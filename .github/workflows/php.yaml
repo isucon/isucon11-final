@@ -1,0 +1,69 @@
+name: PHP
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - benchmarker/**
+      - webapp/php/**
+      - webapp/frontend/**  # bench/assets.go の更新検知のために回す
+      - dev/frontend/Dockerfile
+      - dev/php/**
+      - dev/nginx/default.conf
+      - dev/Makefile
+      - dev/docker-composer-php.yaml
+      - .github/workflows/php.yml
+  pull_request:
+    paths:
+      - benchmarker/**
+      - webapp/php/**
+      - webapp/frontend/**  # bench/assets.go の更新検知のために回す
+      - dev/frontend/Dockerfile
+      - dev/php/*
+      - dev/nginx/default.conf
+      - dev/Makefile
+      - dev/docker-composer-php.yaml
+      - .github/workflows/php.yml
+
+jobs:
+  lint:
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: webapp/php
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.0"
+        env:
+          runner: self-hosted
+      - name: Install dependencies
+        run: ./composer.phar install
+
+      - name: Check coding style
+        run: ./composer.phar style
+
+      - name: Static Analysis
+        run: ./composer.phar analyse
+  test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup environments
+        run: TARGET=php make up
+        working-directory: ./dev
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: run -no-load
+        run: |
+          make
+          ./bin/benchmarker -no-load -exit-status
+        working-directory: ./benchmarker
+      - name: teardown environments
+        if: ${{ always() }}
+        run: TARGET=php make down
+        working-directory: ./dev

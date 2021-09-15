@@ -14,12 +14,12 @@
           id="login-code"
           v-model="code"
           class="col-span-3"
-          label="学籍番号"
+          label="学内コード"
           type="text"
-          placeholder="学籍番号"
+          placeholder="学内コード"
           :required="true"
           :invalid="loginError"
-          invalid-text="学籍番号またはパスワードに間違いがあります。"
+          invalid-text="学内コードまたはパスワードに間違いがあります。"
         />
         <TextInput
           id="login-password"
@@ -31,7 +31,7 @@
           autocomplete="current-password"
           :required="true"
           :invalid="loginError"
-          invalid-text="学籍番号またはパスワードに間違いがあります。"
+          invalid-text="学内コードまたはパスワードに間違いがあります。"
         />
 
         <Button type="submit" color="primary" class="mt-4 col-start-2"
@@ -98,7 +98,7 @@ export default Vue.extend({
         }
       } catch (e) {
         this.loginError = true
-        notify('学籍番号またはパスワードが誤っています')
+        notify('学内コードまたはパスワードが誤っています')
       }
     },
   },

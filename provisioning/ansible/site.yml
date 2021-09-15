@@ -17,6 +17,8 @@
     - langs.go
     - langs.rust
     - langs.nodejs
+    - langs.ruby
+    - langs.php
     - contestant
 
 - name: "bench roles"

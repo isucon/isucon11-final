@@ -1,0 +1,18 @@
+[Unit]
+Description=isucholar.ruby
+After=cloud-config.service
+Wants=cloud-config.service
+
+[Service]
+WorkingDirectory=/home/isucon/webapp/ruby
+EnvironmentFile=/home/isucon/env.sh
+
+User=isucon
+Group=isucon
+ExecStart=/home/isucon/local/ruby/bin/ruby /home/isucon/webapp/ruby/bin/puma -p $PORT
+
+Restart   = always
+Type      = simple
+
+[Install]
+WantedBy=multi-user.target

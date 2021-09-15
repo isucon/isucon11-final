@@ -1,5 +1,5 @@
 FROM golang:1.17.1-alpine AS build
-WORKDIR /go/src/github.com/isucon/isucon11-final/webapp/golang
+WORKDIR /go/src/github.com/isucon/isucon11-final/webapp/go
 COPY ./go.* ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
@@ -16,6 +16,6 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
 COPY --from=build /isucholar /bin/
-WORKDIR /webapp/golang
+WORKDIR /webapp/go
 
 ENTRYPOINT ["/bin/isucholar"]

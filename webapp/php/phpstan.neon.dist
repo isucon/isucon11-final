@@ -1,0 +1,6 @@
+parameters:
+    level: 4
+    ignoreErrors:
+        -
+            message: '#Unreachable statement - code above always terminates\.#'
+            path: app/routes.php
