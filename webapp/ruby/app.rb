@@ -97,8 +97,8 @@ module Isucholar
         db_for_init.abandon_results!
       end
 
-      system 'rm', '-rf', ASSIGNMENTS_DIRECTORY, exception: true
-      system 'cp', '-r', INIT_DATA_DIRECTORY, ASSIGNMENTS_DIRECTORY, exception: true
+      system 'rm', '-rf', ASSIGNMENTS_DIRECTORY, in: File::NULL, out: File::NULL, err: File::NULL, exception: true
+      system 'cp', '-r', INIT_DATA_DIRECTORY, ASSIGNMENTS_DIRECTORY, in: File::NULL, out: File::NULL, err: File::NULL, exception: true
 
       content_type :json
       {language: 'ruby'}.to_json
@@ -735,8 +735,8 @@ module Isucholar
 
     def create_submissions_zip(zip_file_path, class_id, submissions)
       tmp_dir = File.join(ASSIGNMENTS_DIRECTORY, class_id, '')
-      system "rm", "-rf", tmp_dir, exception: true
-      system "mkdir", tmp_dir, exception: true
+      system "rm", "-rf", tmp_dir, in: File::NULL, out: File::NULL, err: File::NULL,exception: true
+      system "mkdir", tmp_dir, in: File::NULL, out: File::NULL, err: File::NULL, exception: true
 
       # ファイル名を指定の形式に変更
       submissions.each do |submission|
@@ -744,12 +744,15 @@ module Isucholar
           "cp",
           File.join(ASSIGNMENTS_DIRECTORY, "#{class_id}-#{submission[:user_id]}.pdf"),
           File.join(tmp_dir, "#{submission[:user_code]}-#{submission[:file_name]}"),
+          in: File::NULL,
+          out: File::NULL,
+          err: File::NULL,
           exception: true,
         )
       end
 
       # -i 'tmpDir/*': 空zipを許す
-      system "zip", "-j", "-r", zip_file_path, tmp_dir, "-i", "#{tmp_dir}*", exception: true
+      system "zip", "-j", "-r", zip_file_path, tmp_dir, "-i", "#{tmp_dir}*", in: File::NULL, out: File::NULL, err: File::NULL, exception: true
     end
 
 
