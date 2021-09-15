@@ -7,11 +7,14 @@
         </h1>
         <tabs
           :tabs="[
-            { id: 'announcements', label: 'お知らせ' },
             { id: 'classworks', label: '講義情報' },
+            { id: 'announcements', label: 'お知らせ' },
           ]"
         >
           <template v-if="!hasError">
+            <template slot="classworks">
+              <ClassList :course="course" :classes="classes" />
+            </template>
             <template slot="announcements">
               <AnnouncementList
                 :announcements="announcements"
@@ -21,12 +24,9 @@
                 @close="closeAnnouncement"
               />
             </template>
-            <template slot="classworks">
-              <ClassList :course="course" :classes="classes" />
-            </template>
           </template>
           <template v-else>
-            <template slot="announcements">
+            <template slot="classworks">
               <InlineNotification type="error" class="my-4">
                 <template #title>APIエラーがあります</template>
                 <template #message
@@ -34,7 +34,7 @@
                 >
               </InlineNotification>
             </template>
-            <template slot="classworks">
+            <template slot="announcements">
               <InlineNotification type="error" class="my-4">
                 <template #title>APIエラーがあります</template>
                 <template #message
