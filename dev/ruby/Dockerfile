@@ -20,7 +20,8 @@ RUN echo "deb [signed-by=/usr/local/share/keyrings/sorah-ruby.asc] http://cache.
   libmysqlclient-dev \
   build-essential \
   zlib1g-dev \
-  tzdata
+  tzdata \
+  zip
 
 ENV DOCKERIZE_VERSION v0.6.1
 RUN curl -LSsfo /tmp/dockerize.tar.gz https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
