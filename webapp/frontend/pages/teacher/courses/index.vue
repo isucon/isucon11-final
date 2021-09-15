@@ -99,7 +99,7 @@ export default Vue.extend({
     }
   },
   head: {
-    title: 'ISUCHOLAR - 教員用科目一覧',
+    title: 'ISUCHOLAR - 教員用講義一覧',
   },
   computed: {
     courseId(): string {
