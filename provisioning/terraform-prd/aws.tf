@@ -4,7 +4,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project = "final-pre"
+      Project = "final"
     }
   }
 }

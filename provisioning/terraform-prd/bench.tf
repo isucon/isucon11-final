@@ -15,7 +15,7 @@ data "aws_ami" "bench" {
 }
 
 data "aws_ssm_parameter" "bench_token" {
-  name = "/hako/isuxportal-pre/ISUXPORTAL_BENCH_TOKEN"
+  name = "/hako/isuxportal-prd/ISUXPORTAL_BENCH_TOKEN"
 }
 
 resource "aws_instance" "bench" {
@@ -33,15 +33,15 @@ resource "aws_instance" "bench" {
   ]
 
   tags = {
-    Name = format("final-pre-bench-%02d", tonumber(each.key))
+    Name = format("final-prd-bench-%02d", tonumber(each.key))
   }
 
   root_block_device {
     volume_type = "gp3"
     volume_size = "20"
     tags = {
-      Name    = format("final-pre-bench-%02d", tonumber(each.key))
-      Project = "final-pre"
+      Name    = format("final-prd-bench-%02d", tonumber(each.key))
+      Project = "final-prd"
     }
   }
 

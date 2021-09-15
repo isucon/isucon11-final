@@ -1,7 +1,7 @@
 resource "aws_security_group" "bench" {
   vpc_id      = aws_vpc.main.id
-  name        = "final-pre-bench"
-  description = "security group for final-pre benchmarker instances"
+  name        = "final-prd-bench"
+  description = "security group for final-prd benchmarker instances"
 }
 
 data "aws_security_group" "bastion" {
@@ -30,8 +30,8 @@ resource "aws_security_group_rule" "bench-egress-all" {
 resource "aws_security_group" "contestant" {
   for_each    = toset(var.team_ids)
   vpc_id      = aws_vpc.main.id
-  name        = format("final-pre-contestant-%02d", tonumber(each.key))
-  description = "security group for final-pre team #${each.key} contestant instances"
+  name        = format("final-prd-contestant-%02d", tonumber(each.key))
+  description = "security group for final-prd team #${each.key} contestant instances"
 }
 
 resource "aws_security_group_rule" "contestant-ingress-ssh" {

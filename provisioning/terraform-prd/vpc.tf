@@ -2,7 +2,7 @@ resource "aws_vpc" "main" {
   cidr_block = "10.14.0.0/17"
 
   tags = {
-    Name = "final-pre"
+    Name = "final-prd"
   }
 }
 
@@ -23,14 +23,14 @@ resource "aws_subnet" "contestant" {
   map_public_ip_on_launch = false
 
   tags = {
-    Name = format("final-pre-contestant-%02d", tonumber(each.key))
+    Name = format("final-prd-contestant-%02d", tonumber(each.key))
   }
 }
 
 resource "aws_route_table" "contestant" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "final-pre-contestant"
+    Name = "final-prd-contestant"
   }
 }
 resource "aws_route" "contestant-default" {
@@ -56,14 +56,14 @@ resource "aws_subnet" "bench" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "final-pre-bench"
+    Name = "final-prd-bench"
   }
 }
 
 resource "aws_route_table" "bench" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "final-pre-bench"
+    Name = "final-prd-bench"
   }
 }
 resource "aws_route" "bench-default" {
