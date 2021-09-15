@@ -34,7 +34,15 @@ func parseLinkHeader(hres *http.Response) (prev string, next string, err error) 
 			if err != nil {
 				return "", "", failure.NewError(fails.ErrApplication, fmt.Errorf("link header の URL が不正です"))
 			}
-			s := u.Path + "?" + u.RawQuery
+			if u.Scheme != "" || u.Host != "" {
+				return "", "", failure.NewError(fails.ErrApplication, fmt.Errorf("link header に scheme, host, もしくは port は設定できません"))
+			}
+			var s string
+			if u.RawQuery != "" {
+				s = u.Path + "?" + u.RawQuery
+			} else {
+				s = u.Path
+			}
 			switch linkInfo[2] {
 			case "prev":
 				prev = s
