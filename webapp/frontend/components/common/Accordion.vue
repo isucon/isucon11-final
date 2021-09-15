@@ -7,7 +7,16 @@
         @click.prevent="toggle"
       >
         <slot name="header" />
-        <div v-show="isOpen" class="p-2"><slot /></div>
+        <transition
+          enter-active-class="duration-300 ease-out"
+          leave-active-class="duration-300 ease-in"
+          enter-to-class="max-h-24 overflow-hidden"
+          leave-class="max-h-24 overflow-hidden"
+          enter-class="max-h-0 overflow-hidden"
+          leave-to-class="max-h-0 overflow-hidden"
+        >
+          <div v-if="isOpen" class="p-2"><slot /></div>
+        </transition>
         <div class="mt-4 text-primary-500">
           {{ isOpen ? '閉じる' : '詳細を見る' }}
         </div>

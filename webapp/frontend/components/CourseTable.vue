@@ -8,7 +8,7 @@
           <th>科目種別</th>
           <th>時間</th>
           <th>単位数</th>
-          <th>ステータス</th>
+          <th>科目の状態</th>
           <th></th>
         </tr>
       </thead>
@@ -30,13 +30,7 @@
                 <div class="relative">
                   <fa-icon
                     icon="ellipsis-v"
-                    class="
-                      min-w-min
-                      px-2
-                      cursor-pointer
-                      rounded
-                      hover:bg-primary-300
-                    "
+                    class="min-w-min px-2 cursor-pointer rounded"
                     @click.stop="onClickCourseDropdown(i)"
                   />
                   <div
