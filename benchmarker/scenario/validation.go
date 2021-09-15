@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -34,25 +35,25 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errTimeout := fails.ErrorCritical(fmt.Errorf("時間内にお知らせの検証が完了しませんでした"))
 	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("各ページの unread_count の値が一致しません", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("各ページの unread_count の値が一致しません"), hres))
 	}
 	errNotMatchUnreadCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("unread_count の値が不正です", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("unread_count の値が不正です"), hres))
 	}
 	errNotSorted := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの順序が不正です", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres))
 	}
 	errNotMatch := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの内容が不正です", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの内容が不正です"), hres))
 	}
 	errNotMatchOver := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて存在しないはずのお知らせが見つかりました", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて存在しないはずのお知らせが見つかりました"), hres))
 	}
 	errNotMatchUnder := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて存在するはずのお知らせが見つかりませんでした", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて存在するはずのお知らせが見つかりませんでした"), hres))
 	}
 	errDuplicated := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて重複したIDのお知らせが見つかりました", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて重複したIDのお知らせが見つかりました"), hres))
 	}
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
@@ -192,10 +193,10 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errNotMatchCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて登録されている Course の個数が一致しませんでした", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて登録されている Course の個数が一致しませんでした"), hres))
 	}
 	errNotMatch := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて存在しないはずの Course が見つかりました", hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて存在しないはずの Course が見つかりました"), hres))
 	}
 
 	students := s.ActiveStudents()

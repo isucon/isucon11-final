@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -38,7 +39,7 @@ func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
 
 func verifyInitialize(res api.InitializeResponse, hres *http.Response) error {
 	if res.Language == "" {
-		return fails.ErrorInvalidResponse("initialize のレスポンスに利用言語が設定されていません", hres)
+		return fails.ErrorInvalidResponse(errors.New("initialize のレスポンスに利用言語が設定されていません"), hres)
 	}
 
 	return nil
@@ -69,12 +70,12 @@ func collectVerifyGradesData(student *model.Student) map[string]interface{} {
 func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse, hres *http.Response) error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 	if !AssertEqual("grade courses length", len(expected), len(res.CourseResults)) {
-		return fails.ErrorInvalidResponse("成績確認でのコース結果の数が一致しません", hres)
+		return fails.ErrorInvalidResponse(errors.New("成績確認でのコース結果の数が一致しません"), hres)
 	}
 
 	for _, resCourseResult := range res.CourseResults {
 		if _, ok := expected[resCourseResult.Code]; !ok {
-			return fails.ErrorInvalidResponse("成績確認で期待しないコースが含まれています", hres)
+			return fails.ErrorInvalidResponse(errors.New("成績確認で期待しないコースが含まれています"), hres)
 		}
 
 		switch v := expected[resCourseResult.Code].(type) {
@@ -98,17 +99,17 @@ func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse, hr
 
 func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult, hres *http.Response) error {
 	if !AssertEqual("grade courses name", expected.Name, res.Name) {
-		return fails.ErrorInvalidResponse("成績確認結果のコース名が違います", hres)
+		return fails.ErrorInvalidResponse(errors.New("成績確認結果のコース名が違います"), hres)
 	}
 
 	if !AssertEqual("grade courses code", expected.Code, res.Code) {
-		return fails.ErrorInvalidResponse("成績確認の科目コードが一致しません", hres)
+		return fails.ErrorInvalidResponse(errors.New("成績確認の科目コードが一致しません"), hres)
 	}
 
 	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
 	// そのため、追加済みクラスのスコアの数よりレスポンス内クラスのスコアの数が少ない場合はエラーとなる
 	if !AssertGreaterOrEqual("grade courses class_scores length", len(expected.SimpleClassScores), len(res.ClassScores)) {
-		return fails.ErrorInvalidResponse("成績確認のクラスのスコアの数が正しくありません", hres)
+		return fails.ErrorInvalidResponse(errors.New("成績確認のクラスのスコアの数が正しくありません"), hres)
 	}
 
 	// 最新のクラスの成績はまだ更新されているか判断できない
@@ -140,14 +141,14 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 	for _, resContent := range res {
 		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
 		if !ok {
-			return fails.ErrorInvalidResponse("科目の開講曜日が不正です", hres)
+			return fails.ErrorInvalidResponse(errors.New("科目の開講曜日が不正です"), hres)
 		}
 		periodIndex := int(resContent.Period) - 1
 		if periodIndex < 0 || periodIndex >= 6 {
-			return fails.ErrorInvalidResponse("科目の開講時限が不正です", hres)
+			return fails.ErrorInvalidResponse(errors.New("科目の開講時限が不正です"), hres)
 		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
-			return fails.ErrorInvalidResponse("履修済み科目のリストに時限の重複が存在します", hres)
+			return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに時限の重複が存在します"), hres)
 		}
 
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
@@ -164,7 +165,7 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 						return err
 					}
 				} else {
-					return fails.ErrorInvalidResponse("履修済み科目のリストに期待しない科目が含まれています", hres)
+					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに期待しない科目が含まれています"), hres)
 				}
 			}
 		}
@@ -175,24 +176,24 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 
 func verifyMatchCourse(res *api.GetCourseDetailResponse, param *model.SearchCourseParam, hres *http.Response) error {
 	if param.Type != "" && !AssertEqual("search type", api.CourseType(param.Type), res.Type) {
-		return fails.ErrorInvalidResponse("科目検索結果に検索条件のタイプと一致しない科目が含まれています", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目検索結果に検索条件のタイプと一致しない科目が含まれています"), hres)
 	}
 
 	if param.Credit != 0 && !AssertEqual("search credit", uint8(param.Credit), res.Credit) {
-		return fails.ErrorInvalidResponse("科目検索結果に検索条件の単位数と一致しない科目が含まれています", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目検索結果に検索条件の単位数と一致しない科目が含まれています"), hres)
 	}
 
 	if param.Teacher != "" && !AssertEqual("search teacher", param.Teacher, res.Teacher) {
-		return fails.ErrorInvalidResponse("科目検索結果に検索条件の教員名と一致しない科目が含まれています", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目検索結果に検索条件の教員名と一致しない科目が含まれています"), hres)
 	}
 
 	// resは1-6, paramは0-5
 	if param.Period != -1 && !AssertEqual("search period", uint8(param.Period+1), res.Period) {
-		return fails.ErrorInvalidResponse("科目検索結果に検索条件の時限と一致しない科目が含まれています", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目検索結果に検索条件の時限と一致しない科目が含まれています"), hres)
 	}
 
 	if param.DayOfWeek != -1 && !AssertEqual("search day_of_week", api.DayOfWeekTable[param.DayOfWeek], res.DayOfWeek) {
-		return fails.ErrorInvalidResponse("科目検索結果に検索条件の曜日と一致しない科目が含まれています", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目検索結果に検索条件の曜日と一致しない科目が含まれています"), hres)
 	}
 
 	// 以下の条件のいずれかを満たしたものがヒットする
@@ -200,11 +201,11 @@ func verifyMatchCourse(res *api.GetCourseDetailResponse, param *model.SearchCour
 	// - Keywordsに指定キーワードがすべて含まれている
 	if !containsAll(res.Name, param.Keywords) && !containsAll(res.Keywords, param.Keywords) {
 		AdminLogger.Printf("search keywords: keywords: %v / actual name: %s, actual keywords: %s", param.Keywords, res.Name, res.Keywords)
-		return fails.ErrorInvalidResponse("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目検索結果に検索条件のキーワードにヒットしない科目が含まれています"), hres)
 	}
 
 	if param.Status != "" && !AssertEqual("search status", param.Status, res.Status) {
-		return fails.ErrorInvalidResponse("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目検索結果に検索条件の科目ステータスと一致しない科目が含まれています"), hres)
 	}
 
 	return nil
@@ -214,7 +215,7 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 	// Code の昇順でソートされているか
 	for i := 0; i < len(res)-1; i++ {
 		if res[i].Code > res[i+1].Code {
-			return fails.ErrorInvalidResponse("科目検索結果の順序が不正です", hres)
+			return fails.ErrorInvalidResponse(errors.New("科目検索結果の順序が不正です"), hres)
 		}
 	}
 
@@ -232,7 +233,7 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 
 func verifyCourseDetail(expected *model.Course, actual *api.GetCourseDetailResponse, hres *http.Response) error {
 	if !compareCourseStatus(expected.Status(), actual.Status) {
-		return fails.ErrorInvalidResponse("科目のステータスが期待する値と一致しません", hres)
+		return fails.ErrorInvalidResponse(errors.New("科目のステータスが期待する値と一致しません"), hres)
 	}
 
 	return AssertEqualCourse(expected, actual, hres, false)
@@ -272,7 +273,7 @@ func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, r
 	// id の降順でソートされているか
 	for i := 0; i < len(res.Announcements)-1; i++ {
 		if res.Announcements[i].ID < res.Announcements[i+1].ID {
-			return fails.ErrorInvalidResponse("お知らせの順序が不正です", hres)
+			return fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres)
 		}
 	}
 
@@ -299,7 +300,7 @@ func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, r
 
 func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, hres *http.Response) error {
 	if !AssertEqual("class_list length", len(expected), len(res)) {
-		return fails.ErrorInvalidResponse("講義数が期待する数と一致しません", hres)
+		return fails.ErrorInvalidResponse(errors.New("講義数が期待する数と一致しません"), hres)
 	}
 
 	if len(res) > 0 {
@@ -314,19 +315,19 @@ func verifyAssignments(assignmentsData []byte, class *model.Class, hres *http.Re
 	if rand.Float64() < assignmentsVerifyRate {
 		r, err := zip.NewReader(bytes.NewReader(assignmentsData), int64(len(assignmentsData)))
 		if err != nil {
-			return fails.ErrorInvalidResponse("課題zipの展開に失敗しました", hres)
+			return fails.ErrorInvalidResponse(errors.New("課題zipの展開に失敗しました"), hres)
 		}
 
 		downloadedAssignments := make(map[string]uint32)
 		for _, f := range r.File {
 			rc, err := f.Open()
 			if err != nil {
-				return fails.ErrorInvalidResponse("課題zipのデータ読み込みに失敗しました", hres)
+				return fails.ErrorInvalidResponse(errors.New("課題zipのデータ読み込みに失敗しました"), hres)
 			}
 			assignmentData, err := ioutil.ReadAll(rc)
 			rc.Close()
 			if err != nil {
-				return fails.ErrorInvalidResponse("課題zipのデータ読み込みに失敗しました", hres)
+				return fails.ErrorInvalidResponse(errors.New("課題zipのデータ読み込みに失敗しました"), hres)
 			}
 			downloadedAssignments[f.Name] = crc32.ChecksumIEEE(assignmentData)
 		}
@@ -335,17 +336,17 @@ func verifyAssignments(assignmentsData []byte, class *model.Class, hres *http.Re
 
 		// mapのサイズが等しく、提出した課題がすべてダウンロードされた課題に含まれていれば、提出した課題とダウンロードされた課題は集合として等しい
 		if !AssertEqual("assignment length", len(expectedSubmissions), len(downloadedAssignments)) {
-			return fails.ErrorInvalidResponse("課題zipに含まれるファイルの数が期待する値と一致しません", hres)
+			return fails.ErrorInvalidResponse(errors.New("課題zipに含まれるファイルの数が期待する値と一致しません"), hres)
 		}
 
 		for studentCode, expectedSubmission := range expectedSubmissions {
 			expectedFileName := studentCode + "-" + expectedSubmission.Title
 			actualChecksum, ok := downloadedAssignments[expectedFileName]
 			if !ok {
-				return fails.ErrorInvalidResponse("提出した課題が課題zipに含まれていないか、ファイル名が間違っています", hres)
+				return fails.ErrorInvalidResponse(errors.New("提出した課題が課題zipに含まれていないか、ファイル名が間違っています"), hres)
 			}
 			if !AssertEqual("assignment checksum", expectedSubmission.Checksum, actualChecksum) {
-				return fails.ErrorInvalidResponse("提出した課題とダウンロードされた課題の内容が一致しません", hres)
+				return fails.ErrorInvalidResponse(errors.New("提出した課題とダウンロードされた課題の内容が一致しません"), hres)
 			}
 		}
 	}
@@ -384,7 +385,7 @@ func verifyPageResource(res *http.Response, resources agent.Resources) []error {
 
 func verifyResource(resource *agent.Resource, expectPath string) error {
 	if resource == nil || resource.Response == nil {
-		return fails.ErrorStaticResource(fmt.Sprintf("期待するリソースが読み込まれませんでした (%s)", expectPath))
+		return fails.ErrorStaticResource(fmt.Errorf("期待するリソースが読み込まれませんでした (%s)", expectPath))
 	}
 
 	if resource.Error != nil {
@@ -394,7 +395,7 @@ func verifyResource(resource *agent.Resource, expectPath string) error {
 				return nerr
 			}
 		}
-		return fails.ErrorStaticResource(fmt.Sprintf("リソースの取得に失敗しました (%s: %v)", expectPath, resource.Error))
+		return fails.ErrorStaticResource(fmt.Errorf("リソースの取得に失敗しました (%s: %v)", expectPath, resource.Error))
 	}
 
 	return verifyChecksum(resource.Response, expectPath)
@@ -422,7 +423,7 @@ func verifyChecksum(res *http.Response, expectPath string) error {
 	actual := fmt.Sprintf("%x", hash.Sum(nil))
 
 	if !AssertEqual("resource checksum", expected, actual) {
-		return fails.ErrorStaticResource(fmt.Sprintf("期待するチェックサムと一致しません (%s)", expectPath))
+		return fails.ErrorStaticResource(fmt.Errorf("期待するチェックサムと一致しません (%s)", expectPath))
 	}
 	return nil
 }
