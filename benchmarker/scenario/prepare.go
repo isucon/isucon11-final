@@ -834,7 +834,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for {
 		hres, res, err := SearchCourseAction(ctx, a, param, path)
 		if err != nil {
-			return err
+			return errWithParamInfo(err, hres)
 		}
 
 		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
@@ -923,7 +923,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for page := len(prevList) - 1; page >= 1; page-- {
 		hres, res, err := SearchCourseAction(ctx, a, param, prevList[page])
 		if err != nil {
-			return err
+			return errWithParamInfo(err, hres)
 		}
 
 		// prev でのアクセスなので1ページあたりの最大件数が取れるはず
