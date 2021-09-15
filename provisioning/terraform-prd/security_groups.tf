@@ -51,8 +51,8 @@ resource "aws_security_group_rule" "contestant-ingress-benchmark" {
   security_group_id        = aws_security_group.contestant[each.key].id
   type                     = "ingress"
   protocol                 = "tcp"
-  from_port                = 80
-  to_port                  = 80
+  from_port                = 443
+  to_port                  = 443
   source_security_group_id = aws_security_group.bench.id
 }
 
