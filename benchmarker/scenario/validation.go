@@ -235,7 +235,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 			return
 		}
 
-		if err := AssertEqualCourse(expect, actual, hresSample); err != nil {
+		if err := AssertEqualCourse(expect, actual, hresSample, true); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
 			step.AddError(errNotMatch(hresSample))
 			return

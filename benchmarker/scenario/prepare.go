@@ -875,7 +875,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 			return errWithParamInfo(reasonLack, hresSample)
 		}
 		// 同じIDでも内容が違っていたら科目自体は見つかったが内容が不正という扱いにする
-		if err := AssertEqualCourse(expectCourse, actualCourse, hresSample); err != nil {
+		if err := AssertEqualCourse(expectCourse, actualCourse, hresSample, true); err != nil {
 			return errWithParamInfo(reasonInvalidContent, hresSample)
 		}
 	}
@@ -927,7 +927,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 
 		// リストの内容の検証
 		for i, course := range res {
-			if err := AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, hres); err != nil {
+			if err := AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, hres, true); err != nil {
 				return errWithParamInfo(reasonInvalidPrev, hres)
 			}
 		}
