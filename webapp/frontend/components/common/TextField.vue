@@ -112,3 +112,9 @@ export default Vue.extend({
   },
 })
 </script>
+
+<style>
+input:placeholder-shown {
+  text-overflow: ellipsis;
+}
+</style>
