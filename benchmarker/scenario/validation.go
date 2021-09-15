@@ -90,7 +90,11 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				}
 
 				hresSample = hres
-				_, next = parseLinkHeader(hres)
+				_, next, err = parseLinkHeader(hres)
+				if err != nil {
+					step.AddError(fails.ErrorCritical(err))
+				}
+
 				if next == "" {
 					break
 				}
@@ -220,7 +224,11 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		actuals = append(actuals, res...)
 
 		hresSample = hres
-		_, nextPathParam = parseLinkHeader(hres)
+		_, nextPathParam, err = parseLinkHeader(hres)
+		if err != nil {
+			step.AddError(fails.ErrorCritical(err))
+			return
+		}
 	}
 
 	if !AssertEqual("course count", len(expectCourses), len(actuals)) {

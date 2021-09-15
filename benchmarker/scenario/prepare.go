@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -626,7 +627,10 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	if err != nil {
 		return "", errHttp
 	}
-	prev, next := parseLinkHeader(hres)
+	prev, next, err := parseLinkHeader(hres)
+	if err != nil {
+		return "", err
+	}
 
 	if (len(expected) <= AnnouncementCountPerPage && next != "") || (len(expected) > AnnouncementCountPerPage && next == "") {
 		return "", errInvalidNext
@@ -807,21 +811,22 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 }
 
 func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, expected []*model.Course) error {
-	errWithParamInfo := func(reason string, hres *http.Response) error {
-		return fails.ErrorInvalidResponse(fmt.Sprintf("%s (param: %s)", reason, param.GetParamString()), hres)
+	errWithParamInfo := func(err error, hres *http.Response) error {
+		message := fmt.Sprintf("%v (param: %s)", err, param.GetParamString())
+		return fails.ErrorInvalidResponse(message, hres)
 	}
 
-	reasonHttp := "/api/courses へのリクエストが失敗しました"
-	reasonEmpty := "科目検索の最初以外のページで空の検索結果が返却されました"
-	reasonDuplicated := "科目検索結果に重複した id の科目が存在します"
-	reasonLack := "科目検索で条件にヒットするはずの科目が見つかりませんでした"
-	reasonExcess := "科目検索で条件にヒットしない科目が見つかりました"
-	reasonInvalidContent := "科目検索結果に含まれる科目の内容が不正です"
-	reasonNotSorted := "科目検索結果の順序が code の昇順になっていません"
-	reasonNotMatchCountPerPage := "科目検索のページごとの件数が不正です"
-	reasonExistPrevFirstPage := "科目検索の最初のページの link header に prev が存在しました"
-	reasonNotExistPrevOtherThanFirstPage := "科目検索の最初以外のページの link header に prev が存在しませんでした"
-	reasonInvalidPrev := "科目検索の link header の prev で前のページに正しく戻ることができませんでした"
+	reasonHttp := errors.New("/api/courses へのリクエストが失敗しました")
+	reasonEmpty := errors.New("科目検索の最初以外のページで空の検索結果が返却されました")
+	reasonDuplicated := errors.New("科目検索結果に重複した id の科目が存在します")
+	reasonLack := errors.New("科目検索で条件にヒットするはずの科目が見つかりませんでした")
+	reasonExcess := errors.New("科目検索で条件にヒットしない科目が見つかりました")
+	reasonInvalidContent := errors.New("科目検索結果に含まれる科目の内容が不正です")
+	reasonNotSorted := errors.New("科目検索結果の順序が code の昇順になっていません")
+	reasonNotMatchCountPerPage := errors.New("科目検索のページごとの件数が不正です")
+	reasonExistPrevFirstPage := errors.New("科目検索の最初のページの link header に prev が存在しました")
+	reasonNotExistPrevOtherThanFirstPage := errors.New("科目検索の最初以外のページの link header に prev が存在しませんでした")
+	reasonInvalidPrev := errors.New("科目検索の link header の prev で前のページに正しく戻ることができませんでした")
 
 	var hresSample *http.Response
 	var path string
@@ -857,7 +862,11 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 		}
 
 		hresSample = hres
-		prev, next := parseLinkHeader(hres)
+		prev, next, err := parseLinkHeader(hres)
+		if err != nil {
+			return errWithParamInfo(err, hres)
+		}
+
 		prevList = append(prevList, prev)
 		path = next
 
