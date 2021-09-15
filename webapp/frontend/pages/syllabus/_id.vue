@@ -117,7 +117,7 @@
                 border
               "
             >
-              科目ステータス
+              科目の状態
             </div>
             <div class="px-2 py-2 border">
               {{ courseStatus }}

@@ -6,25 +6,25 @@ on:
       - 'main'
     paths:
       - benchmarker/**
-      - webapp/golang/**
+      - webapp/go/**
       - webapp/frontend/**  # bench/assets.go の更新検知のために回す
       - dev/frontend/Dockerfile
-      - dev/golang/Dockerfile
+      - dev/go/Dockerfile
       - dev/nginx/default.conf
       - dev/Makefile
       - dev/compose.yaml
-      - .github/workflows/golang.yml
+      - .github/workflows/go.yml
   pull_request:
     paths:
       - benchmarker/**
-      - webapp/golang/**
+      - webapp/go/**
       - webapp/frontend/**  # bench/assets.go の更新検知のために回す
       - dev/frontend/Dockerfile
-      - dev/golang/Dockerfile
+      - dev/go/Dockerfile
       - dev/nginx/default.conf
       - dev/Makefile
       - dev/compose.yaml
-      - .github/workflows/golang.yml
+      - .github/workflows/go.yml
 
 jobs:
   lint:
@@ -35,7 +35,7 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: latest
-          working-directory: ./webapp/golang
+          working-directory: ./webapp/go
           args: "-c ../../.github/.golangci.yaml"
   test:
     runs-on: self-hosted

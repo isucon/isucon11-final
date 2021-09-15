@@ -37,7 +37,7 @@
         <span
           class="pl-2 cursor-pointer hover:text-gray-200"
           @click="onClickDropdown"
-          >学籍番号: {{ code }}</span
+          >学内コード: {{ code }}</span
         >
         <div
           class="

@@ -21,7 +21,7 @@ variable "contestant_names" {
 
 variable "two_instance_contestant_names" {
   type    = list(string)
-  default = ["sapphi_red", "temma", "sorah", "sapphi_red2", "takonomura", "hattori"]
+  default = ["sapphi_red", "temma", "sorah", "sapphi_red2", "takonomura", "hattori", "ruby"]
 }
 
 variable "three_instance_contestant_names" {
@@ -56,7 +56,7 @@ resource "aws_instance" "contestant-1" {
   for_each = toset(var.contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-05b40f1e907f46540"
+  ami           = "ami-0f77f3aa829c95b30"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -104,7 +104,7 @@ resource "aws_instance" "contestant-2" {
   for_each = toset(var.two_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-05b40f1e907f46540"
+  ami           = "ami-0f77f3aa829c95b30"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]
@@ -152,7 +152,7 @@ resource "aws_instance" "contestant-3" {
   for_each = toset(var.three_instance_contestant_names)
 
   #ami           = data.aws_ami.contestant.id
-  ami           = "ami-05b40f1e907f46540"
+  ami           = "ami-0f77f3aa829c95b30"
   instance_type = "c5.large"
 
   availability_zone = var.availability_zones[0]

@@ -38,6 +38,7 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		agent.WithNoCookie(),
 		agent.WithTimeout(20*time.Second),
 		agent.WithBaseURL(s.BaseURL.String()),
+		agent.WithCloneTransport(agent.DefaultTransport),
 	)
 	if err != nil {
 		return failure.NewError(fails.ErrCritical, err)
@@ -427,7 +428,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				expectedUnreadCount++
 			}
 		}
-		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, expectedUnreadCount)
+		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, expectedUnreadCount)
 		if err != nil {
 			step.AddError(err)
 			return
@@ -584,7 +585,20 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 					sort.Slice(expected, func(i, j int) bool {
 						return expected[i].Announcement.ID > expected[j].Announcement.ID
 					})
-					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", expected, len(expected))
+					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected))
+					if err != nil {
+						step.AddError(err)
+						return
+					}
+
+					courseAnnouncementStatus := make([]*model.AnnouncementStatus, 0, 5)
+					for _, status := range expected {
+						if status.Announcement.CourseID == course.ID {
+							courseAnnouncementStatus = append(courseAnnouncementStatus, status)
+						}
+					}
+
+					_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected))
 					if err != nil {
 						step.AddError(err)
 						return
@@ -605,11 +619,11 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	return nil
 }
 
-func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
+func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
 	errHttp := failure.NewError(fails.ErrCritical, fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
 	errInvalidNext := failure.NewError(fails.ErrCritical, fmt.Errorf("link header の next によってページングできる回数が不正です"))
 
-	hres, res, err := GetAnnouncementListAction(ctx, a, path)
+	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
 	if err != nil {
 		return "", errHttp
 	}
@@ -634,12 +648,12 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 
 	// この_prevはpathと同じところを指すはず
 	// _prevとpathが同じ文字列であるとは限らない（pathが"" で_prevが/api/announcements?page=1とか）
-	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, expected[AnnouncementCountPerPage:], expectedUnreadCount)
+	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, courseID, expected[AnnouncementCountPerPage:], expectedUnreadCount)
 	if err != nil {
 		return "", err
 	}
 
-	_, res, err = GetAnnouncementListAction(ctx, a, _prev)
+	_, res, err = GetAnnouncementListAction(ctx, a, _prev, courseID)
 	if err != nil {
 		return "", errHttp
 	}
@@ -747,6 +761,14 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 
 	param = model.NewCourseParam()
 	param.Keywords = strings.Split(courses[rand.Intn(len(courses))].Keywords, " ")[:1]
+	expected = searchCourseLocal(courses, param)
+	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
+		return err
+	}
+
+	//  キーワード検索の簡単化の防止 https://github.com/isucon/isucon11-final/issues/691
+	param = model.NewCourseParam()
+	param.Keywords = []string{"SpeedUP"}
 	expected = searchCourseLocal(courses, param)
 	if err := prepareCheckSearchCourse(ctx, student.Agent, param, expected); err != nil {
 		return err
@@ -1021,6 +1043,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	agent, _ := agent.NewAgent(
 		agent.WithUserAgent(useragent.UserAgent()),
 		agent.WithBaseURL(s.BaseURL.String()),
+		agent.WithCloneTransport(agent.DefaultTransport),
 	)
 
 	// 検証で使用する学生ユーザ
@@ -1154,7 +1177,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 		return err
 	}
 
-	hres, _, err = GetAnnouncementListAction(ctx, agent, "")
+	hres, _, err = GetAnnouncementListAction(ctx, agent, "", "")
 	if err := checkAuthentication(hres, err); err != nil {
 		return err
 	}

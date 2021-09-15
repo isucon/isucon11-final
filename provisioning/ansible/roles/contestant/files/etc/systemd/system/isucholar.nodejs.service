@@ -9,7 +9,7 @@ EnvironmentFile=/home/isucon/env.sh
 
 User=isucon
 Group=isucon
-ExecStart=/home/isucon/local/node/bin/npm start
+ExecStart=/home/isucon/local/node/bin/node /home/isucon/webapp/nodejs/build/app.js
 
 Restart   = always
 Type      = simple

@@ -62,7 +62,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			timer := time.After(10 * time.Second)
 			var next string
 			for {
-				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
+				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
 					step.AddError(failure.NewError(fails.ErrCritical, err))
 					return
