@@ -12,7 +12,7 @@
           <LabeledText label="講義タイトル" :value="classTitle" />
         </div>
         <div>
-          <div class="flex flex-row space-x-2">
+          <div class="flex flex-row gap-2">
             <div class="flex-1 w-full">
               <label class="text-gray-500 font-bold text-right">
                 学内コード
@@ -27,7 +27,7 @@
           <template v-for="(param, index) in params">
             <div
               :key="`param-${index}`"
-              class="flex flex-row space-x-2 items-center"
+              class="flex flex-row gap-2 items-center"
             >
               <div class="flex-1 mb-1">
                 <input
@@ -89,7 +89,7 @@
           <template #message>採点結果の登録に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="px-4 py-3 flex justify-center gap-2">
+      <div class="py-3 flex justify-center gap-2">
         <Button @click="close"> 閉じる </Button>
         <Button color="primary" @click="submit"> 登録 </Button>
       </div>
