@@ -1051,7 +1051,7 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 		}
 
 		scores = append(scores, StudentScore{
-			score: rand.Intn(101),
+			score: generate.Score(),
 			code:  s.Code,
 		})
 	}
