@@ -316,7 +316,7 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 		return model.Summary{
 			Credits:   0,
 			GPA:       0,
-			GpaTScore: 0,
+			GpaTScore: 50,
 			GpaAvg:    0,
 			GpaMax:    0,
 			GpaMin:    0,
