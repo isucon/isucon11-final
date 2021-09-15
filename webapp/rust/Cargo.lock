@@ -1846,8 +1846,7 @@ dependencies = [
 [[package]]
 name = "sqlx"
 version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e4b94ab0f8c21ee4899b93b06451ef5d965f1a355982ee73684338228498440"
+source = "git+https://github.com/eagletmt/sqlx?branch=mysql-multiple-waiting-queries#783daa5ab448cc580266bb70de7d1a161c6de179"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -1856,8 +1855,7 @@ dependencies = [
 [[package]]
 name = "sqlx-core"
 version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec28b91a01e1fe286d6ba66f68289a2286df023fc97444e1fd86c2fd6d5dc026"
+source = "git+https://github.com/eagletmt/sqlx?branch=mysql-multiple-waiting-queries#783daa5ab448cc580266bb70de7d1a161c6de179"
 dependencies = [
  "ahash",
  "atoi",
@@ -1878,6 +1876,7 @@ dependencies = [
  "generic-array",
  "hashlink",
  "hex",
+ "indexmap",
  "itoa",
  "libc",
  "log",
@@ -1907,12 +1906,10 @@ dependencies = [
 [[package]]
 name = "sqlx-macros"
 version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dc33c35d54774eed73d54568d47a6ac099aed8af5e1556a017c131be88217d5"
+source = "git+https://github.com/eagletmt/sqlx?branch=mysql-multiple-waiting-queries#783daa5ab448cc580266bb70de7d1a161c6de179"
 dependencies = [
  "dotenv",
  "either",
- "futures",
  "heck",
  "once_cell",
  "proc-macro2",
@@ -1926,8 +1923,7 @@ dependencies = [
 [[package]]
 name = "sqlx-rt"
 version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14302b678d9c76b28f2e60115211e25e0aabc938269991745a169753dc00e35c"
+source = "git+https://github.com/eagletmt/sqlx?branch=mysql-multiple-waiting-queries#783daa5ab448cc580266bb70de7d1a161c6de179"
 dependencies = [
  "actix-rt",
  "once_cell",

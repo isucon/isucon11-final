@@ -21,6 +21,7 @@ mime = "0.3"
 num-traits = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_urlencoded = "0.7"
-sqlx = { version = "0.5", default-features = false, features = ["macros", "runtime-actix-rustls", "mysql", "chrono", "decimal"] }
+# sqlx に panic する不具合があるので修正したものを使う https://github.com/launchbadge/sqlx/pull/1439
+sqlx = { git = "https://github.com/eagletmt/sqlx", branch = "mysql-multiple-waiting-queries",  default-features = false, features = ["macros", "runtime-actix-rustls", "mysql", "chrono", "decimal"] }
 tokio = { version = "1", features = ["fs", "process"] }
 ulid = "0.4"
