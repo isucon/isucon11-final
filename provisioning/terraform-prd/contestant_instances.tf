@@ -31,6 +31,7 @@ resource "aws_instance" "contestant-1" {
 
   tags = {
     Name = format("final-prd-contestant-%02d-1", tonumber(each.key))
+    Role = "contestant"
 
     IsuconTeamID      = each.key
     IsuconInstanceNum = "1"
@@ -76,6 +77,7 @@ resource "aws_instance" "contestant-2" {
 
   tags = {
     Name = format("final-prd-contestant-%02d-2", tonumber(each.key))
+    Role = "contestant"
 
     IsuconTeamID      = each.key
     IsuconInstanceNum = "2"
@@ -121,6 +123,7 @@ resource "aws_instance" "contestant-3" {
 
   tags = {
     Name = format("final-prd-contestant-%02d-3", tonumber(each.key))
+    Role = "contestant"
 
     IsuconTeamID      = each.key
     IsuconInstanceNum = "3"

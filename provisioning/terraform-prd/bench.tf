@@ -34,6 +34,7 @@ resource "aws_instance" "bench" {
 
   tags = {
     Name = format("final-prd-bench-%02d", tonumber(each.key))
+    Role = "bench"
   }
 
   root_block_device {
