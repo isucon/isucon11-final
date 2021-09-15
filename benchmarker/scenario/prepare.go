@@ -813,10 +813,9 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 
 func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, expected []*model.Course) error {
 	errWithParamInfo := func(err error, hres *http.Response) error {
-		return fails.ErrorInvalidResponse(fmt.Errorf("%w (param: %s)", err, param.GetParamString()), hres)
+		return fails.ErrorInvalidResponse(fmt.Errorf("%w (query params: %s)", err, param.GetParamString()), hres)
 	}
 
-	reasonHttp := errors.New("/api/courses へのリクエストが失敗しました")
 	reasonEmpty := errors.New("科目検索の最初以外のページで空の検索結果が返却されました")
 	reasonDuplicated := errors.New("科目検索結果に重複した id の科目が存在します")
 	reasonLack := errors.New("科目検索で条件にヒットするはずの科目が見つかりませんでした")
@@ -837,7 +836,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for {
 		hres, res, err := SearchCourseAction(ctx, a, param, path)
 		if err != nil {
-			return errWithParamInfo(reasonHttp, hres)
+			return err
 		}
 
 		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
@@ -926,7 +925,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for page := len(prevList) - 1; page >= 1; page-- {
 		hres, res, err := SearchCourseAction(ctx, a, param, prevList[page])
 		if err != nil {
-			return errWithParamInfo(reasonHttp, hres)
+			return err
 		}
 
 		// prev でのアクセスなので1ページあたりの最大件数が取れるはず
