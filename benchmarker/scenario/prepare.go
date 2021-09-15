@@ -671,10 +671,10 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 
 func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, userCode string, hres *http.Response) error {
 	errWithUserCode := func(err error, hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (user code: %s)", err, userCode), hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s)", err, userCode), hres))
 	}
 	errWithUserCodeAndAnnouncementID := func(err error, announcementID string, hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (user code: %s, announcement id: %s)", err, userCode, announcementID), hres))
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s, お知らせID: %s)", err, userCode, announcementID), hres))
 	}
 
 	reasonNotSorted := errors.New("お知らせの順序が不正です")
@@ -811,7 +811,7 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 
 func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, expected []*model.Course) error {
 	errWithParamInfo := func(err error, hres *http.Response) error {
-		return fails.ErrorInvalidResponse(fmt.Errorf("%w (query params: %s)", err, param.GetParamString()), hres)
+		return fails.ErrorInvalidResponse(fmt.Errorf("%w (検索条件: %s)", err, param.GetParamString()), hres)
 	}
 
 	reasonEmpty := errors.New("科目検索の最初以外のページで空の検索結果が返却されました")
