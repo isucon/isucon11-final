@@ -17,7 +17,7 @@ RUN echo "deb [signed-by=/usr/local/share/keyrings/sorah-ruby.asc] http://cache.
   libruby3.0 \
   ruby3.0-gems \
   default-mysql-client \
-  libmariadbclient-dev \
+  libmysqlclient-dev \
   build-essential \
   zlib1g-dev \
   tzdata

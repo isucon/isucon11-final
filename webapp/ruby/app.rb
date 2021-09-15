@@ -41,6 +41,7 @@ module Isucholar
 
     set :session_secret, 'trapnomura'
     set :sessions, key: SESSION_NAME
+    set :protection, false
 
     set :public_folder, '../frontend/dist/'
 
@@ -109,6 +110,7 @@ module Isucholar
         unless session[:user_id]
           halt 401, "You are not logged in."
         end
+        true
       end
     end
 
@@ -117,6 +119,7 @@ module Isucholar
         unless session[:is_admin]
           halt 403, "You are not admin user."
         end
+        true
       end
     end
 
@@ -472,7 +475,7 @@ module Isucholar
       res = db.xquery(query+condition, *args).to_a
       links = []
 
-      link_url = URI.parse(request.url)
+      link_url = URI.parse(request.url).yield_self { |u| URI::Generic.build(path: u.path, query: u.query) }
       q = link_url.query ? URI.decode_www_form(link_url.query) : []
 
       if page > 1
@@ -608,7 +611,7 @@ module Isucholar
           title: klass[:title],
           description: klass[:description],
           submission_closed: klass[:submission_closed],
-          submitted: klass[:submitted],
+          submitted: klass[:submitted] == 1, # cast_booleans doesn't work as it is a computed value  
         }
       end.to_json
     end
@@ -813,7 +816,7 @@ module Isucholar
 
       links = []
 
-      link_url = URI.parse(request.url)
+      link_url = URI.parse(request.url).yield_self { |u| URI::Generic.build(path: u.path, query: u.query) }
       q = link_url.query ? URI.decode_www_form(link_url.query) : []
 
       if page > 1
