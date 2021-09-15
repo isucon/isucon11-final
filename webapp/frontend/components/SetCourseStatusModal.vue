@@ -49,7 +49,7 @@ type SubmitFormData = {
 
 const statusOptions = [
   {
-    text: '履修登録受付期間',
+    text: '履修登録期間',
     value: 'registration',
   },
   {
