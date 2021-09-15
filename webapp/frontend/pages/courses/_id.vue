@@ -89,10 +89,11 @@ export default Vue.extend({
     const { params, query, $axios } = ctx
 
     try {
+      const apiPath = params.apipath ?? `/api/announcements`
       const [course, classes, announcementResult] = await Promise.all([
         $axios.get<Course>(`/api/courses/${params.id}`),
         $axios.get<ClassInfo[]>(`/api/courses/${params.id}/classes`),
-        $axios.get<GetAnnouncementResponse>(`/api/announcements`, {
+        $axios.get<GetAnnouncementResponse>(apiPath, {
           params: { ...query, courseId: params.id },
         }),
       ])
@@ -180,8 +181,12 @@ export default Vue.extend({
     closeAnnouncement(event: { done: () => undefined }) {
       event.done()
     },
-    paginate(query: URLSearchParams) {
-      this.$router.push({ query: urlSearchParamsToObject(query) })
+    paginate(apipath: string, query: URLSearchParams) {
+      // course_id はURLのパスから取得するのでAPIから返ってきたパラメータはページング先のURLに引き継がないように消す
+      this.$router.push({
+        query: urlSearchParamsToObject(query, ['course_id']),
+        params: { apipath },
+      })
     },
   },
 })
