@@ -249,6 +249,7 @@ func verifyCourseDetail(expected *model.Course, actual *api.GetCourseDetailRespo
 	if !compareCourseStatus(expected.Status(), actual.Status) {
 		return errInvalidResponse("科目のステータスが期待する値と一致しません")
 	}
+
 	return AssertEqualCourse(expected, actual, false)
 }
 
@@ -263,11 +264,16 @@ func compareCourseStatus(lhs api.CourseStatus, rhs api.CourseStatus) bool {
 		case api.StatusClosed:
 			return 2
 		default:
-			panic("unreachable!")
+			return -1
 		}
 	}
 
-	return asInt(lhs) <= asInt(rhs)
+	r := asInt(rhs)
+	if r < 0 {
+		return false
+	}
+
+	return asInt(lhs) <= r
 }
 
 func verifyAnnouncementDetail(expected *model.AnnouncementStatus, res *api.GetAnnouncementDetailResponse) error {
