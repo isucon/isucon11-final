@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -23,7 +22,7 @@ func GetMe(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)
@@ -42,7 +41,7 @@ func GetRegisteredCourses(ctx context.Context, a *agent.Agent) (*http.Response, 
 
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)
@@ -61,13 +60,13 @@ type RegisterCoursesErrorResponse struct {
 func RegisterCourses(ctx context.Context, a *agent.Agent, courses []RegisterCourseRequestContent) (*http.Response, error) {
 	body, err := json.Marshal(courses)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	path := "/api/users/me/courses"
 
 	req, err := a.PUT(path, bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -112,7 +111,7 @@ func GetGrades(ctx context.Context, a *agent.Agent) (*http.Response, error) {
 
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)
