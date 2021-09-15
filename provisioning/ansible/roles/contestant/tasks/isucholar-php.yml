@@ -28,15 +28,15 @@
     mode: 0644
     backup: no
 
-# - name: "roles/contestant/tasks/isucholar-php: Build Web Application PHP"
-#   become: yes
-#   become_user: isucon
-#   environment:
-#     PATH: "/home/isucon/local/php/bin:{{ ansible_env.PATH }}"
-#   args:
-#     chdir: /home/isucon/webapp/php
-#   shell: |
-#     ./composer.phar install
+ - name: "roles/contestant/tasks/isucholar-php: Build Web Application PHP"
+   become: yes
+   become_user: isucon
+   environment:
+     PATH: "/home/isucon/local/php/bin:{{ ansible_env.PATH }}"
+   args:
+     chdir: /home/isucon/webapp/php
+   shell: |
+     ./composer.phar install
 
 - name: "roles/contestant/tasks/isucholar-php: Deploy Service file"
   become_user: root
