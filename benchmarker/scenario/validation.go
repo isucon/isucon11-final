@@ -32,14 +32,28 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 }
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errTimeout := fails.ErrorCritical(fmt.Errorf("時間内に Announcement の検証が完了しませんでした"))
-	errNotMatchUnreadCountAmongPages := fails.ErrorCritical(fmt.Errorf("/api/announcements の各ページの unread_count の値が一致しません"))
-	errNotMatchUnreadCount := fails.ErrorCritical(fmt.Errorf("/api/announcements の unread_count の値が不正です"))
-	errNotSorted := fails.ErrorCritical(fmt.Errorf("/api/announcements の順序が不正です"))
-	errNotMatch := fails.ErrorCritical(fmt.Errorf("お知らせの内容が不正です"))
-	errNotMatchOver := fails.ErrorCritical(fmt.Errorf("最終検証にて存在しないはずの Announcement が見つかりました"))
-	errNotMatchUnder := fails.ErrorCritical(fmt.Errorf("最終検証にて存在するはずの Announcement が見つかりませんでした"))
-	errDuplicated := fails.ErrorCritical(fmt.Errorf("最終検証にて重複したIDの Announcement が見つかりました"))
+	errTimeout := fails.ErrorCritical(fmt.Errorf("時間内にお知らせの検証が完了しませんでした"))
+	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("各ページの unread_count の値が一致しません", hres))
+	}
+	errNotMatchUnreadCount := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("unread_count の値が不正です", hres))
+	}
+	errNotSorted := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの順序が不正です", hres))
+	}
+	errNotMatch := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの内容が不正です", hres))
+	}
+	errNotMatchOver := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて存在しないはずのお知らせが見つかりました", hres))
+	}
+	errNotMatchUnder := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて存在するはずのお知らせが見つかりませんでした", hres))
+	}
+	errDuplicated := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて重複したIDのお知らせが見つかりました", hres))
+	}
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
@@ -92,7 +106,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 			for _, unreadCount := range responseUnreadCounts {
 				if responseUnreadCounts[0] != unreadCount {
-					step.AddError(errNotMatchUnreadCountAmongPages)
+					step.AddError(errNotMatchUnreadCountAmongPages(hresSample))
 					return
 				}
 			}
@@ -100,7 +114,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// 順序の検証
 			for i := 0; i < len(actualAnnouncements)-1; i++ {
 				if actualAnnouncements[i].ID < actualAnnouncements[i+1].ID {
-					step.AddError(errNotSorted)
+					step.AddError(errNotSorted(hresSample))
 					return
 				}
 			}
@@ -113,7 +127,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				}
 			}
 			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
-				step.AddError(errNotMatchUnreadCount)
+				step.AddError(errNotMatchUnreadCount(hresSample))
 				return
 			}
 
@@ -121,7 +135,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			existingID := make(map[string]struct{}, len(actualAnnouncements))
 			for _, a := range actualAnnouncements {
 				if _, ok := existingID[a.ID]; ok {
-					step.AddError(errDuplicated)
+					step.AddError(errDuplicated(hresSample))
 					return
 				}
 				existingID[a.ID] = struct{}{}
@@ -134,7 +148,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 				if !ok {
 					AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
-					step.AddError(errNotMatchUnder)
+					step.AddError(errNotMatchUnder(hresSample))
 					return
 				}
 
@@ -156,7 +170,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
 				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresSample, !expectStatus.Dirty); err != nil {
-					step.AddError(errNotMatch)
+					step.AddError(errNotMatch(hresSample))
 					return
 				}
 			}
@@ -164,7 +178,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
 				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
 				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
-				step.AddError(errNotMatchOver)
+				step.AddError(errNotMatchOver(hresSample))
 				return
 			}
 		}()
@@ -173,8 +187,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errNotMatchCount := fails.ErrorCritical(fmt.Errorf("最終検証にて登録されている Course の個数が一致しませんでした"))
-	errNotMatch := fails.ErrorCritical(fmt.Errorf("最終検証にて存在しないはずの Course が見つかりました"))
+	errNotMatchCount := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて登録されている Course の個数が一致しませんでした", hres))
+	}
+	errNotMatch := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて存在しないはずの Course が見つかりました", hres))
+	}
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
@@ -206,20 +224,20 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	}
 
 	if !AssertEqual("course count", len(expectCourses), len(actuals)) {
-		step.AddError(errNotMatchCount)
+		step.AddError(errNotMatchCount(hresSample))
 		return
 	}
 
 	for _, actual := range actuals {
 		expect, ok := expectCourses[actual.ID]
 		if !ok {
-			step.AddError(errNotMatch)
+			step.AddError(errNotMatch(hresSample))
 			return
 		}
 
 		if err := AssertEqualCourse(expect, actual, hresSample); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
-			step.AddError(errNotMatch)
+			step.AddError(errNotMatch(hresSample))
 			return
 		}
 	}
