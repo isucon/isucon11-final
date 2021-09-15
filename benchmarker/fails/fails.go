@@ -65,11 +65,11 @@ func ErrorHTTP(err error) error {
 func ErrorJSON(err error, hres *http.Response) error {
 	switch e := err.(type) {
 	case *json.SyntaxError:
-		return failure.NewError(ErrJSON, errMessageWithPath("JSONの形式が不正です", hres))
+		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Sprintf("JSONの形式が不正です (%s)", e.Error()), hres))
 	case *json.UnmarshalTypeError:
-		return failure.NewError(ErrJSON, errMessageWithPath("JSONの値のデータ型が不正です", hres))
+		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Sprintf("JSONのフィールド %s のデータ型が不正です", e.Field), hres))
 	default:
-		return failure.NewError(ErrJSON, errMessageWithPath(e.Error(), hres))
+		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Sprintf("JSONのデコードに失敗しました (%s)", e.Error()), hres))
 	}
 }
 
