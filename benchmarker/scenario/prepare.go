@@ -429,7 +429,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				expectedUnreadCount++
 			}
 		}
-		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, expectedUnreadCount)
+		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, expectedUnreadCount, student.Code)
 		if err != nil {
 			step.AddError(err)
 			return
@@ -586,7 +586,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 					sort.Slice(expected, func(i, j int) bool {
 						return expected[i].Announcement.ID > expected[j].Announcement.ID
 					})
-					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected))
+					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected), student.Code)
 					if err != nil {
 						step.AddError(err)
 						return
@@ -599,7 +599,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 						}
 					}
 
-					_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected))
+					_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected), student.Code)
 					if err != nil {
 						step.AddError(err)
 						return
@@ -620,7 +620,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	return nil
 }
 
-func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
+func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int, userCode string) (prev string, err error) {
 	errInvalidNext := fails.ErrorCritical(fmt.Errorf("link header の next によってページングできる回数が不正です"))
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
@@ -637,21 +637,21 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	}
 	// 次のページが存在しない
 	if next == "" {
-		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, hres)
+		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, userCode, hres)
 		if err != nil {
 			return "", err
 		}
 		return prev, nil
 	}
 
-	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, hres)
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, userCode, hres)
 	if err != nil {
 		return "", err
 	}
 
 	// この_prevはpathと同じところを指すはず
 	// _prevとpathが同じ文字列であるとは限らない（pathが"" で_prevが/api/announcements?page=1とか）
-	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, courseID, expected[AnnouncementCountPerPage:], expectedUnreadCount)
+	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, courseID, expected[AnnouncementCountPerPage:], expectedUnreadCount, userCode)
 	if err != nil {
 		return "", err
 	}
@@ -661,7 +661,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		return "", err
 	}
 
-	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, hres)
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, userCode, hres)
 	if err != nil {
 		return "", err
 	}
@@ -669,45 +669,44 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	return prev, nil
 }
 
-func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, hres *http.Response) error {
-	errNotSorted := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres))
+func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, userCode string, hres *http.Response) error {
+	errWithUserCode := func(err error, hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (user code: %s)", err, userCode), hres))
 	}
-	errNotMatch := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの内容が不正です"), hres))
-	}
-	errNoCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの数が期待したものと一致しませんでした"), hres))
-	}
-	errNoMatchUnreadCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの unread_count が期待したものと一致しませんでした"), hres))
+	errWithUserCodeAndAnnouncementID := func(err error, announcementID string, hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (user code: %s, announcement id: %s)", err, userCode, announcementID), hres))
 	}
 
+	reasonNotSorted := errors.New("お知らせの順序が不正です")
+	reasonNotMatch := errors.New("お知らせの内容が不正です")
+	reasonNoCount := errors.New("お知らせの数が期待したものと一致しませんでした")
+	reasonNoMatchUnreadCount := errors.New("お知らせの unread_count が期待したものと一致しませんでした")
+
 	if actual.UnreadCount != expectedUnreadCount {
-		return errNoMatchUnreadCount(hres)
+		return errWithUserCode(reasonNoMatchUnreadCount, hres)
 	}
 
 	if len(expected) != len(actual.Announcements) {
-		return errNoCount(hres)
+		return errWithUserCode(reasonNoCount, hres)
 	}
 
 	if expected == nil && actual.Announcements == nil {
 		return nil
 	} else if (expected == nil && actual.Announcements != nil) || (expected != nil && actual.Announcements == nil) {
-		return errNotMatch(hres)
+		return errWithUserCode(reasonNotMatch, hres)
 	}
 
 	// 順序の検証
 	for i := 0; i < len(actual.Announcements)-1; i++ {
 		if actual.Announcements[i].ID < actual.Announcements[i+1].ID {
-			return errNotSorted(hres)
+			return errWithUserCode(reasonNotSorted, hres)
 		}
 	}
 
 	for i := 0; i < len(actual.Announcements); i++ {
 		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], hres, true); err != nil {
 			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.Announcements[i].CourseName, actual.Announcements[i].Title)
-			return errNotMatch(hres)
+			return errWithUserCodeAndAnnouncementID(reasonNotMatch, actual.Announcements[i].ID, hres)
 		}
 	}
 
