@@ -12,7 +12,8 @@ use Slim\Factory\ServerRequestCreatorFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-setlocale(LC_ALL, 'ja_JP.UTF-8');
+// escapeshellarg に渡したマルチバイト文字部分が消えてしまう問題への対策
+setlocale(LC_ALL, 'C.UTF-8');
 
 // Instantiate PHP-DI ContainerBuilder
 $containerBuilder = new ContainerBuilder();

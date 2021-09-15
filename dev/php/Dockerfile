@@ -16,11 +16,6 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-RUN ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
-    sed -i -E 's/# (ja_JP.UTF-8)/\1/' /etc/locale.gen && \
-    locale-gen && \
-    update-locale LANG=ja_JP.UTF-8
-
 COPY . .
 
 RUN ./composer.phar install
