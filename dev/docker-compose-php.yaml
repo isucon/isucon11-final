@@ -13,14 +13,12 @@ services:
       - backend
   backend:
     build:
-      context: ../webapp/golang
-      dockerfile: ../../dev/golang/Dockerfile
+      context: ../webapp/php
+      dockerfile: ../../dev/php/Dockerfile
     restart: always
     environment:
       MYSQL_HOSTNAME: mysql
       DEBUG: "true"
-    entrypoint: dockerize -timeout 60s -wait tcp://mysql:3306
-    command: /bin/isucholar
     ports:
       - "7000:7000"
     depends_on:
@@ -28,6 +26,7 @@ services:
     volumes:
       - ../webapp/data:/webapp/data:ro
       - ../webapp/sql:/webapp/sql:ro
+      - ./php/php.ini:/usr/local/etc/php/php.ini
   mysql:
     image: mysql
     restart: always

@@ -207,6 +207,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				hres, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
 					step.AddError(err)
+					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
+					ContestantLogger.Printf("成績取得(GET /api/users/me/grades)がタイムアウトしました。学生は%d秒後に成績取得のリトライを試み、その後履修登録を再開します。", int64(waitGradeTimeout/time.Second))
 					time.Sleep(waitGradeTimeout)
 					continue
 				}
@@ -237,10 +239,12 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
+						<-timer
 						continue
 					}
 					if err := verifySearchCourseResults(res, param, hres); err != nil {
 						step.AddError(err)
+						<-timer
 						continue
 					}
 					step.AddScore(score.RegSearchCourses)
@@ -258,12 +262,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 
 				// 検索で得た科目のシラバスを確認する
-				// TODO: 検索は何らかが必ずヒットするようにする
 				if checkTargetID != "" {
 					hres, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
 					if err != nil {
 						step.AddError(err)
-						continue
 					}
 					expected, exists := s.CourseManager.GetCourseByID(res.ID)
 					// ベンチ側の登録がまだの場合は検証スキップ
@@ -290,6 +292,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			hres, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
+				<-timer
 				continue
 			}
 			if err := verifyRegisteredCourses(expected, getRegisteredCoursesRes, hres); err != nil {
@@ -367,7 +370,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			DebugLogger.Printf("[履修完了] code: %v, register count: %d", student.Code, len(temporaryReservedCourses))
 		}
-		// TODO: できれば登録に失敗した科目を抜いて再度登録する
 	}
 }
 
@@ -385,7 +387,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
-			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
+			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam, "")
 			if err != nil {
 				step.AddError(err)
 				time.Sleep(100 * time.Millisecond)
@@ -475,7 +477,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 
 			startGetAnnouncementList := time.Now()
 			// 学生はお知らせを確認し続ける
-			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam)
+			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam, "")
 			if err != nil {
 				step.AddError(err)
 				<-timer
@@ -1050,7 +1052,7 @@ func (s *Scenario) scoringAssignments(ctx context.Context, course *model.Course,
 		}
 
 		scores = append(scores, StudentScore{
-			score: rand.Intn(101),
+			score: generate.Score(),
 			code:  s.Code,
 		})
 	}

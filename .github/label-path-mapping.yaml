@@ -1,5 +1,5 @@
 backend:
-  - webapp/golang/**/*
+  - webapp/go/**/*
 frontend:
   - webapp/frontend/**/*
 benchmarker:

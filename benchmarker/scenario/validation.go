@@ -77,7 +77,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			var hresSample *http.Response
 			var next string
 			for {
-				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next)
+				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
 					step.AddError(fails.ErrorCritical(err))
 					return
