@@ -621,12 +621,11 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 }
 
 func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
-	errHttp := fails.ErrorCritical(fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
 	errInvalidNext := fails.ErrorCritical(fmt.Errorf("link header の next によってページングできる回数が不正です"))
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
 	if err != nil {
-		return "", errHttp
+		return "", err
 	}
 	prev, next, err := parseLinkHeader(hres)
 	if err != nil {
@@ -659,7 +658,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 
 	hres, res, err = GetAnnouncementListAction(ctx, a, _prev, courseID)
 	if err != nil {
-		return "", errHttp
+		return "", err
 	}
 
 	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, hres)
