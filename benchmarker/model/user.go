@@ -48,7 +48,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 	a, _ := agent.NewAgent()
 
 	transport := agent.DefaultTransport.Clone()
-	transport.MaxIdleConnsPerHost = 100
+	transport.MaxIdleConnsPerHost = 20
 	a.HttpClient.Transport = transport
 
 	a.Name = useragent.UserAgent()
@@ -380,7 +380,7 @@ func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
 	a, _ := agent.NewAgent()
 
 	transport := agent.DefaultTransport.Clone()
-	transport.MaxIdleConnsPerHost = 100
+	transport.MaxIdleConnsPerHost = 20
 	a.HttpClient.Transport = transport
 
 	a.BaseURL = baseURL
