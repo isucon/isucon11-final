@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
+    <div class="py-10 px-8 bg-white shadow-lg w-192 max-w-full mt-8 mb-8 rounded">
       <div class="flex-1 flex-col">
         <InlineNotification type="warn">
           <template #title>本ページは工事中です。</template>

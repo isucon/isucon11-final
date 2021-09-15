@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
+    <div class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded w-192 max-w-full">
       <div class="flex-1 flex-col">
         <div class="flex flex-row items-center mb-4">
           <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
