@@ -9,7 +9,7 @@ EnvironmentFile=/home/isucon/env.sh
 
 User=isucon
 Group=isucon
-ExecStart=/home/isucon/local/ruby/bin/bundle exec puma -p 3000
+ExecStart=/home/isucon/local/ruby/bin/bundle exec puma -p 7000
 
 Restart   = always
 Type      = simple
