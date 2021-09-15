@@ -251,7 +251,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					}
 
 					// Linkヘッダから次ページのPath + QueryParamを取得
-					_, nextPathParam = parseLinkHeader(hres)
+					_, nextPathParam, err = parseLinkHeader(hres)
+					if err != nil {
+						step.AddError(err)
+					}
 				}
 
 				if s.isNoRequestTime(ctx) {
@@ -443,7 +446,11 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				student.ReadAnnouncement(ans.ID)
 			}
 
-			_, nextPathParam = parseLinkHeader(hres)
+			_, nextPathParam, err = parseLinkHeader(hres)
+			if err != nil {
+				step.AddError(err)
+				continue
+			}
 
 			if len(res.Announcements) == 0 || !student.HasUnreadOrDirtyAnnouncementBefore(res.Announcements[len(res.Announcements)-1].ID) {
 				nextPathParam = ""
@@ -531,7 +538,10 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 				}
 			}
 
-			_, nextPathParam = parseLinkHeader(hres)
+			_, nextPathParam, err = parseLinkHeader(hres)
+			if err != nil {
+				step.AddError(err)
+			}
 
 			// 50msより短い間隔で一覧取得をしない
 			<-timer

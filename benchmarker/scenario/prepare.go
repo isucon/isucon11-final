@@ -627,7 +627,10 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	if err != nil {
 		return "", errHttp
 	}
-	prev, next := parseLinkHeader(hres)
+	prev, next, err := parseLinkHeader(hres)
+	if err != nil {
+		return "", err
+	}
 
 	if (len(expected) <= AnnouncementCountPerPage && next != "") || (len(expected) > AnnouncementCountPerPage && next == "") {
 		return "", errInvalidNext
@@ -848,7 +851,10 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 			return errWithParamInfo(reasonExcess)
 		}
 
-		prev, next := parseLinkHeader(hres)
+		prev, next, err := parseLinkHeader(hres)
+		if err != nil {
+			return errWithParamInfo(err.Error())
+		}
 		prevList = append(prevList, prev)
 		path = next
 
