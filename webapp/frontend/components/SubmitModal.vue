@@ -154,7 +154,7 @@ export default Vue.extend({
       return `${this.classTitle} 課題提出`
     },
     description(): string {
-      return `これは科目 ${this.courseName} の授業 ${this.classTitle} の課題提出フォームです。 `
+      return `これは科目 ${this.courseName} の講義 ${this.classTitle} の課題提出フォームです。 `
     },
   },
   methods: {

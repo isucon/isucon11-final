@@ -8,7 +8,7 @@
           <th>科目種別</th>
           <th>時間</th>
           <th>単位数</th>
-          <th>ステータス</th>
+          <th>科目の状態</th>
           <th></th>
         </tr>
       </thead>
