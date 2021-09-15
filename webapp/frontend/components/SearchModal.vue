@@ -16,7 +16,7 @@
             type="text"
             placeholder="キーワードを入力してください"
           />
-          <div class="flex mt-4 space-x-2">
+          <div class="flex mt-4 space-x-2 flex-wrap">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >科目</label
@@ -53,7 +53,7 @@
               />
             </div>
           </div>
-          <div class="flex mt-4 space-x-2">
+          <div class="flex mt-4 space-x-2 flex-wrap">
             <label
               class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
               >開講</label
