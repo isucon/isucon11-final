@@ -590,6 +590,18 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 						return
 					}
 
+					courseAnnouncementStatus := make([]*model.AnnouncementStatus, 0, 5)
+					for _, status := range expected {
+						if status.Announcement.CourseID == course.ID {
+							courseAnnouncementStatus = append(courseAnnouncementStatus, status)
+						}
+					}
+
+					_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected))
+					if err != nil {
+						step.AddError(err)
+						return
+					}
 				})
 				if err != nil {
 					AdminLogger.Println("info: cannot start parallel: %w", err)
