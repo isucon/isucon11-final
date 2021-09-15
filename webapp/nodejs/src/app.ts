@@ -568,8 +568,6 @@ usersApi.get("/me/grades", async (req, res) => {
 
   const db = await pool.getConnection();
   try {
-    await db.beginTransaction();
-
     // 履修している科目一覧取得
     const [registeredCourses] = await db.query<Course[]>(
       "SELECT `courses`.*" +
@@ -687,8 +685,6 @@ usersApi.get("/me/grades", async (req, res) => {
     );
     const gpas = rows.map((row) => row.gpa);
 
-    await db.commit();
-
     const response: GetGradeResponse = {
       summary: {
         credits: myCredits,
@@ -703,7 +699,6 @@ usersApi.get("/me/grades", async (req, res) => {
     return res.status(200).json(response);
   } catch (err) {
     console.error(err);
-    await db.rollback();
     return res.status(500).send();
   } finally {
     db.release();
