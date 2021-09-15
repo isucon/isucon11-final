@@ -121,7 +121,7 @@ export default Vue.extend({
     await this.loadCourses()
   },
   methods: {
-    async loadCourses(query?: Record<string, any>) {
+    async loadCourses(path = `/api/courses`, query?: Record<string, any>) {
       this.hasError = false
       if (!query) {
         this.courseLink = Object.assign({}, initLink)
@@ -129,10 +129,9 @@ export default Vue.extend({
       try {
         const resUser = await this.$axios.get<User>(`/api/users/me`)
         const user = resUser.data
-        const resCourses = await this.$axios.get<SyllabusCourse[]>(
-          `/api/courses`,
-          { params: { ...query, teacher: user.name } }
-        )
+        const resCourses = await this.$axios.get<SyllabusCourse[]>(path, {
+          params: { ...query, teacher: user.name },
+        })
         this.courses = resCourses.data ?? []
         this.courseLink = Object.assign(
           {},
@@ -144,8 +143,8 @@ export default Vue.extend({
         notify('科目一覧の取得に失敗しました')
       }
     },
-    async moveCoursePage(query: URLSearchParams) {
-      await this.loadCourses(urlSearchParamsToObject(query))
+    async moveCoursePage(path: string | undefined, query: URLSearchParams) {
+      await this.loadCourses(path, urlSearchParamsToObject(query))
     },
     showAddCourseModal() {
       this.visibleModal = 'AddCourse'
