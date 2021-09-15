@@ -240,10 +240,12 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					hres, res, err := SearchCourseAction(ctx, student.Agent, param, nextPathParam)
 					if err != nil {
 						step.AddError(err)
+						<-timer
 						continue
 					}
 					if err := verifySearchCourseResults(res, param); err != nil {
 						step.AddError(err)
+						<-timer
 						continue
 					}
 					step.AddScore(score.RegSearchCourses)
@@ -261,12 +263,10 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				}
 
 				// 検索で得た科目のシラバスを確認する
-				// TODO: 検索は何らかが必ずヒットするようにする
 				if checkTargetID != "" {
 					_, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
 					if err != nil {
 						step.AddError(err)
-						continue
 					}
 					expected, exists := s.CourseManager.GetCourseByID(res.ID)
 					// ベンチ側の登録がまだの場合は検証スキップ
@@ -293,6 +293,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			_, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 			if err != nil {
 				step.AddError(err)
+				<-timer
 				continue
 			}
 			if err := verifyRegisteredCourses(expected, getRegisteredCoursesRes); err != nil {
@@ -370,7 +371,6 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			DebugLogger.Printf("[履修完了] code: %v, register count: %d", student.Code, len(temporaryReservedCourses))
 		}
-		// TODO: できれば登録に失敗した科目を抜いて再度登録する
 	}
 }
 
