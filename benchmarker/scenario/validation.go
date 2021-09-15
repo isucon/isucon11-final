@@ -32,7 +32,7 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 }
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errTimeout := fails.ErrorCritical(fmt.Errorf("時間内にお知らせの検証が完了しませんでした"))
+	errTimeout := fails.ErrorCritical(fmt.Errorf("30秒以内にお知らせ一覧の全ページ確認が完了しませんでした"))
 	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
 		return fails.ErrorCritical(fails.ErrorInvalidResponse("各ページの unread_count の値が一致しません", hres))
 	}
@@ -73,7 +73,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			actualAnnouncements := make([]api.AnnouncementResponse, 0)
 			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
-			timer := time.After(10 * time.Second)
+			timer := time.After(30 * time.Second)
 			var hresSample *http.Response
 			var next string
 			for {
@@ -191,6 +191,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
+	errTimeout := fails.ErrorCritical(fmt.Errorf("30秒以内に検索条件なしで表示されるコース検索結果の全ページ確認が完了しませんでした"))
 	errNotMatchCount := func(hres *http.Response) error {
 		return fails.ErrorCritical(fails.ErrorInvalidResponse("最終検証にて登録されている Course の個数が一致しませんでした", hres))
 	}
@@ -214,6 +215,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
 	var hresSample *http.Response
+	timer := time.After(30 * time.Second)
 	nextPathParam := "/api/courses"
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
@@ -228,6 +230,13 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		if err != nil {
 			step.AddError(fails.ErrorCritical(err))
 			return
+		}
+
+		select {
+		case <-timer:
+			step.AddError(errTimeout)
+			break
+		default:
 		}
 	}
 
