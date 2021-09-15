@@ -168,8 +168,8 @@
                 <Pagination
                   :prev-disabled="!Boolean(link.prev)"
                   :next-disabled="!Boolean(link.next)"
-                  @goPrev="onClickPagination(link.prev.query)"
-                  @goNext="onClickPagination(link.next.query)"
+                  @goPrev="onClickPagination(link.prev.path, link.prev.query)"
+                  @goNext="onClickPagination(link.prev.path, link.next.query)"
                 />
               </div>
               <span class="opacity-0 w-28"></span>
@@ -288,11 +288,14 @@ export default Vue.extend({
     onClickReset(): void {
       this.reset()
     },
-    async onSubmitSearch(query?: Record<string, any>): Promise<void> {
+    async onSubmitSearch(
+      path = '/api/courses',
+      query?: Record<string, any>
+    ): Promise<void> {
       this.hasError = false
       const params = this.filterParams(this.params)
       try {
-        const res = await this.$axios.get<SyllabusCourse[]>('/api/courses', {
+        const res = await this.$axios.get<SyllabusCourse[]>(path, {
           params: { ...params, ...query },
         })
         if (res.status === 200) {
@@ -330,8 +333,8 @@ export default Vue.extend({
       this.reset()
       this.$emit('close')
     },
-    onClickPagination(query: URLSearchParams): void {
-      this.onSubmitSearch(urlSearchParamsToObject(query))
+    onClickPagination(path: string, query: URLSearchParams): void {
+      this.onSubmitSearch(path, urlSearchParamsToObject(query))
     },
     filterParams(params: SearchCourseRequest): SearchCourseRequest {
       return (Object.keys(params) as (keyof SearchCourseRequest)[])

@@ -122,8 +122,8 @@
       <Pagination
         :prev-disabled="!Boolean(link.prev)"
         :next-disabled="!Boolean(link.next)"
-        @goPrev="onClickPagination(link.prev.query)"
-        @goNext="onClickPagination(link.next.query)"
+        @goPrev="onClickPagination(link.prev.path, link.prev.query)"
+        @goNext="onClickPagination(link.next.path, link.next.query)"
       />
     </div>
   </div>
@@ -189,8 +189,8 @@ export default Vue.extend({
     formatStatus(status: CourseStatus): string {
       return formatStatus(status)
     },
-    onClickPagination(query: URLSearchParams): void {
-      this.$emit('paginate', query)
+    onClickPagination(path: string | undefined, query: URLSearchParams): void {
+      this.$emit('paginate', path, query)
     },
     onClickCourseDropdown(courseIdx: number): void {
       if (this.openDropdownIdx !== null && this.openDropdownIdx === courseIdx) {

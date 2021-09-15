@@ -13,8 +13,8 @@
       <Pagination
         :prev-disabled="!Boolean(parsedLink.prev)"
         :next-disabled="!Boolean(parsedLink.next)"
-        @goPrev="$emit('movePage', parsedLink.prev.query)"
-        @goNext="$emit('movePage', parsedLink.next.query)"
+        @goPrev="$emit('movePage', parsedLink.prev.path, parsedLink.prev.query)"
+        @goNext="$emit('movePage', parsedLink.next.path, parsedLink.next.query)"
       />
     </div>
   </div>
