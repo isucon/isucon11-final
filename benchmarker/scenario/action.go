@@ -226,12 +226,12 @@ func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model
 	return hres, eres, nil
 }
 
-func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next string) (*http.Response, api.GetAnnouncementsResponse, error) {
+func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next, courseID string) (*http.Response, api.GetAnnouncementsResponse, error) {
 	res := api.GetAnnouncementsResponse{}
 	if next == "" {
 		next = "/api/announcements"
 	}
-	hres, err := api.GetAnnouncementList(ctx, agent, next, "")
+	hres, err := api.GetAnnouncementList(ctx, agent, next, courseID)
 	if err != nil {
 		return hres, res, failure.NewError(fails.ErrHTTP, err)
 	}
