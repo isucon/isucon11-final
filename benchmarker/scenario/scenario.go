@@ -51,7 +51,7 @@ type Config struct {
 	IsDebug          bool
 }
 
-func NewScenario(config *Config) (*Scenario, error) {
+func NewScenario(config *Config) *Scenario {
 	studentsData := generate.LoadStudentsData()
 	teachersData := generate.LoadTeachersData()
 
@@ -90,7 +90,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		debugData:          NewDebugData(config.IsDebug),
 		finishCoursePubSub: pubsub.NewPubSub(),
 		initCourses:        initCourses,
-	}, nil
+	}
 }
 
 func (s *Scenario) Language() string {

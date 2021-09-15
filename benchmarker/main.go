@@ -258,10 +258,7 @@ func main() {
 		IsDebug:          isDebug,
 	}
 
-	s, err := scenario.NewScenario(config)
-	if err != nil {
-		panic(err)
-	}
+	s := scenario.NewScenario(config)
 
 	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout))
 	if err != nil {
