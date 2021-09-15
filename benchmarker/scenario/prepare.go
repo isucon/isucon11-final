@@ -652,36 +652,44 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path str
 }
 
 func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, hres *http.Response) error {
-	errNotSorted := fails.ErrorCritical(fmt.Errorf("/api/announcements の順序が不正です"))
-	errNotMatch := fails.ErrorCritical(fmt.Errorf("announcement が期待したものと一致しませんでした"))
-	errNoCount := fails.ErrorCritical(fmt.Errorf("announcement の数が期待したものと一致しませんでした"))
-	errNoMatchUnreadCount := fails.ErrorCritical(fmt.Errorf("announcement の unread_count が期待したものと一致しませんでした"))
+	errNotSorted := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの順序が不正です", hres))
+	}
+	errNotMatch := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの内容が不正です", hres))
+	}
+	errNoCount := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの数が期待したものと一致しませんでした", hres))
+	}
+	errNoMatchUnreadCount := func(hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse("お知らせの unread_count が期待したものと一致しませんでした", hres))
+	}
 
 	if actual.UnreadCount != expectedUnreadCount {
-		return errNoMatchUnreadCount
+		return errNoMatchUnreadCount(hres)
 	}
 
 	if len(expected) != len(actual.Announcements) {
-		return errNoCount
+		return errNoCount(hres)
 	}
 
 	if expected == nil && actual.Announcements == nil {
 		return nil
 	} else if (expected == nil && actual.Announcements != nil) || (expected != nil && actual.Announcements == nil) {
-		return errNotMatch
+		return errNotMatch(hres)
 	}
 
 	// 順序の検証
 	for i := 0; i < len(actual.Announcements)-1; i++ {
 		if actual.Announcements[i].ID < actual.Announcements[i+1].ID {
-			return errNotSorted
+			return errNotSorted(hres)
 		}
 	}
 
 	for i := 0; i < len(actual.Announcements); i++ {
 		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], hres, true); err != nil {
 			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.Announcements[i].CourseName, actual.Announcements[i].Title)
-			return errNotMatch
+			return errNotMatch(hres)
 		}
 	}
 
