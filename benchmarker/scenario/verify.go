@@ -89,6 +89,7 @@ func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse, hr
 				return err
 			}
 		default:
+			// 上の2種類の型しか来ないはず + 別のが来たら検証もできないしベンチがおかしいのでpanicで良い
 			panic(fmt.Sprintf("expect %T or %T, actual %T", &model.SimpleCourseResult{}, &model.CourseResult{}, v))
 		}
 	}

@@ -166,16 +166,25 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		activeCount := atomic.AddInt64(&s.activeStudentsCount, 1)
 
 		if activeCount%AnnouncePagingStudentInterval == 0 {
-			studentLoadWorker.Do(s.readAnnouncementPagingScenario(student, step))
+			err := studentLoadWorker.Do(s.readAnnouncementPagingScenario(student, step))
+			if err != nil {
+				AdminLogger.Println("info: cannot start parallel: %w", err)
+			}
 		}
 
 		s.CapacityCounter.IncAll()
 
 		// 同時実行可能数を制限する際には注意
 		// 成績確認 + (空きがあれば履修登録)
-		studentLoadWorker.Do(s.registrationScenario(student, step))
+		err := studentLoadWorker.Do(s.registrationScenario(student, step))
+		if err != nil {
+			AdminLogger.Println("info: cannot start parallel: %w", err)
+		}
 		// おしらせ確認 + 既読追加
-		studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
+		err = studentLoadWorker.Do(s.readAnnouncementScenario(student, step))
+		if err != nil {
+			AdminLogger.Println("info: cannot start parallel: %w", err)
+		}
 	})
 	return studentLoadWorker
 }
@@ -560,7 +569,10 @@ func (s *Scenario) createLoadCourseWorker(ctx context.Context, step *isucandar.B
 			// unreachable
 			panic("cPubSub に *model.Course以外が飛んできました")
 		}
-		loadCourseWorker.Do(s.courseScenario(course, step))
+		err := loadCourseWorker.Do(s.courseScenario(course, step))
+		if err != nil {
+			AdminLogger.Println("info: cannot start parallel: %w", err)
+		}
 	})
 	return loadCourseWorker
 }
