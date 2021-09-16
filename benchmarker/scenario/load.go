@@ -664,7 +664,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)に失敗しました。教師はリトライを試みます。")
+				ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto L
@@ -693,7 +693,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				ContestantLogger.Printf("お知らせ追加(POST /api/announcements)に失敗しました。教師はリトライを試みます。")
+				ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto ancLoop
@@ -723,7 +723,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				ContestantLogger.Printf("提出課題取得(GET /api/courses/:courseID/classes/:classID/assignments/export)に失敗しました。教師はリトライを試みます。")
+				ContestantLogger.Printf("提出課題取得(GET /api/courses/:courseID/classes/:classID/assignments/export)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto downloadLoop
@@ -847,7 +847,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 					if !isExtendRequest {
 						step.AddError(err)
 					}
-					if fails.IsTimeout(err) {
+					if i != loginRetryCount && fails.IsTimeout(err) {
 						time.Sleep(1000 * time.Millisecond)
 						isExtendRequest = s.isNoRequestTime(ctx)
 						continue
