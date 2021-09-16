@@ -1,15 +1,14 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold flex justify-center mb-4">
+      <p class="text-2xl text-black font-bold flex mb-4">
         {{ title }}
       </p>
       <div class="mb-4">
         <p>{{ description }}</p>
         <p>提出先の課題や提出ファイルが正しいか確認してください。</p>
       </div>
-      <div class="flex justify-center items-center mb-4">
-        <span class="text-black text-base font-bold mr-2">提出ファイル</span>
+      <div class="flex justify-center items-center my-8">
         <label
           class="
             mr-2
@@ -45,12 +44,11 @@
           <template #message>課題の提出に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="py-3 flex justify-center">
+      <div class="flex justify-center">
         <button
           type="button"
           class="
             mr-2
-            w-auto
             rounded-md
             border border-primary-500
             shadow-sm
@@ -60,6 +58,7 @@
             text-sm
             font-medium
             text-primary-500
+            w-20
           "
           @click="close"
         >
@@ -68,16 +67,15 @@
         <button
           type="button"
           class="
-            w-auto
             rounded-md
             border border-transparent
             shadow-sm
             px-4
-            py-2
             bg-primary-500
             text-sm
             font-medium
             text-white
+            w-20
           "
           :disabled="file === null"
           @click="upload"

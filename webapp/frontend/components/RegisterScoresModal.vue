@@ -99,8 +99,8 @@
         </InlineNotification>
       </template>
       <div class="flex justify-center gap-2">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 登録 </Button>
+        <Button w-class="w-24" @click="close"> 閉じる </Button>
+        <Button w-class="w-24" color="primary" @click="submit"> 登録 </Button>
       </div>
     </Card>
   </Modal>

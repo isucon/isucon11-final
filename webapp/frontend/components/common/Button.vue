@@ -12,7 +12,7 @@
       ease-out
       duration-500
     "
-    :class="[colorType, sizeType]"
+    :class="[colorType, sizeType, wClass]"
     :type="type"
     :disabled="disabled"
     @click="$emit('click')"
@@ -22,7 +22,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue'
+import Vue, { PropType } from 'vue'
 
 export default Vue.extend({
   props: {
@@ -42,6 +42,10 @@ export default Vue.extend({
       type: String,
       default: 'default',
     },
+    wClass: {
+      type: String as PropType<`w-${number}`>,
+      default: 'w-auto',
+    }
   },
   computed: {
     colorType() {

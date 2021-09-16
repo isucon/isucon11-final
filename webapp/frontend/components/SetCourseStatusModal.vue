@@ -1,6 +1,6 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
-    <Card>
+    <Card class="w-96 max-w-full">
       <p class="text-2xl text-black font-bold justify-center mb-4">
         科目の状態を変更
       </p>
@@ -23,9 +23,9 @@
           <template #message>科目の状態の変更に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="py-3 flex justify-center gap-2">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 変更 </Button>
+      <div class="flex justify-center gap-2">
+        <Button w-class="w-24" @click="close"> 閉じる </Button>
+        <Button w-class="w-24" color="primary" @click="submit"> 変更 </Button>
       </div>
     </Card>
   </Modal>

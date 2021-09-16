@@ -1,6 +1,6 @@
 <template>
   <Modal :is-shown="isShown" @close="onClose">
-    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 rounded">
+    <div class="bg-white p-4 sm:p-8 rounded">
       <div class="flex flex-col flex-nowrap">
         <h3
           id="modal-title"
