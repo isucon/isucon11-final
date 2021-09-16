@@ -1,7 +1,9 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold justify-center mb-4">科目登録</p>
+      <p class="text-2xl text-gray-800 font-bold justify-center mb-4">
+        科目登録
+      </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex flex-row space-x-2">
           <div class="flex-1">
