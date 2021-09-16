@@ -23,10 +23,10 @@
           <template #message>科目の状態の変更に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="flex justify-center gap-2">
-        <Button w-class="w-24" @click="close"> 閉じる </Button>
+      <div class="flex justify-center gap-2 mt-4">
+        <Button w-class="w-28" @click="close"> 閉じる </Button>
         <Button
-          w-class="w-24"
+          w-class="w-28"
           color="primary"
           :disable="params.status !== ''"
           @click="submit"
