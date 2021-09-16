@@ -112,7 +112,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}
 
 	teachers := make([]*model.Teacher, 0, prepareTeacherCount)
-	// TODO: ランダムなので同じ教師が入る可能性がある
+	// TODO: ランダムなので同じ教員が入る可能性がある
 	for i := 0; i < prepareTeacherCount; i++ {
 		teachers = append(teachers, s.userPool.randomTeacher())
 	}
@@ -128,7 +128,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 
 	courses := make([]*model.Course, 0, prepareCourseCount)
 	mu := sync.Mutex{}
-	// 教師のログインとコース登録をするワーカー
+	// 教員のログインと科目登録をするワーカー
 	w, err := worker.NewWorker(func(ctx context.Context, i int) {
 		teacher := teachers[i%len(teachers)]
 		isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
@@ -178,7 +178,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
-	// 生徒のログインとコース登録・履修済み科目の確認
+	// 学生のログインと科目登録・履修済み科目の確認
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
 		_, err := LoginAction(ctx, student.Agent, student.UserAccount)
@@ -231,7 +231,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
-	// コースのステータスの変更
+	// 科目のステータスの変更
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		course := courses[i]
 		teacher := course.Teacher()
@@ -256,15 +256,15 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	for _, student := range students {
 		studentByCode[student.Code] = student
 	}
-	// クラス追加、おしらせ追加、（一部）お知らせ確認
-	// 課題提出、ダウンロード、採点、成績確認
-	// workerはコースごと
+	// 講義追加、おしらせ追加、（一部）お知らせ確認
+	// 課題提出、ダウンロード、採点、成績取得
+	// workerは科目ごと
 	checkAnnouncementDetailPart := rand.Intn(prepareClassCountPerCourse)
 	for classPart := 0; classPart < prepareClassCountPerCourse; classPart++ {
 		w, err = worker.NewWorker(func(ctx context.Context, i int) {
 			course := courses[i]
 			teacher := course.Teacher()
-			// クラス追加
+			// 講義追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
@@ -286,7 +286,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			courseStudents := course.Students()
 
 			// 課題提出, ランダムでお知らせを読む
-			// 生徒ごとのループ
+			// 学生ごとのループ
 			p := parallel.NewParallel(ctx, prepareStudentCount)
 			for _, student := range courseStudents {
 				student := student
@@ -526,7 +526,7 @@ func prepareCheckRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*
 }
 
 func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar.BenchmarkStep) error {
-	// 4 回目のクラスのおしらせが追加された時点で CourseCount(5) * 4 = 20
+	// 4 回目の講義のおしらせが追加された時点で CourseCount(5) * 4 = 20
 	// となりおしらせが 20 個になるので、次のページの next がないかを検証できるはず
 	const (
 		prepareCheckAnnouncementListStudentCount        = 2
@@ -540,7 +540,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return len(errors.All()) > 0
 	}
 
-	// 生徒の用意
+	// 学生の用意
 	students := make([]*model.Student, prepareCheckAnnouncementListStudentCount)
 	for i := 0; i < prepareCheckAnnouncementListStudentCount; i++ {
 		student, err := s.getLoggedInStudent(ctx)
@@ -554,7 +554,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
-	// 教師の用意
+	// 教員の用意
 	teachers := make([]*model.Teacher, prepareCheckAnnouncementListTeacherCount)
 	for i := 0; i < prepareCheckAnnouncementListTeacherCount; i++ {
 		teacher, err := s.getLoggedInTeacher(ctx)
@@ -568,7 +568,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
-	// コース登録
+	// 科目登録
 	var mu sync.Mutex
 	courses := make([]*model.Course, 0, prepareCheckAnnouncementListCourseCount)
 	w, err := worker.NewWorker(func(ctx context.Context, i int) {
@@ -594,7 +594,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
-	// コース登録
+	// 科目登録
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
 		_, _, err := TakeCoursesAction(ctx, student.Agent, courses)
@@ -617,7 +617,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
-	// コースのステータスを更新する
+	// 科目のステータスを更新する
 	for _, course := range courses {
 		_, err = SetCourseStatusInProgressAction(ctx, course.Teacher().Agent, course.ID)
 		if err != nil {
@@ -626,20 +626,20 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 		course.SetStatusToInProgress()
 	}
 
-	// クラス追加、おしらせ追加をする
+	// 講義追加、おしらせ追加をする
 	// そのたびにおしらせリストを確認する
 	// 既読にはしない
 	for classPart := 0; classPart < prepareCheckAnnouncementListClassCountPerCourse; classPart++ {
 		for j := 0; j < prepareCheckAnnouncementListCourseCount; j++ {
 			course := courses[j]
 
-			// 最初のクラスが追加される前にも確認(おしらせが0のときに next がないことを保証する)
+			// 最初の講義が追加される前にも確認(おしらせが0のときに next がないことを保証する)
 			if classPart == 0 {
 				prepareCheckCourseAnnouncementList(ctx, step, course)
 			}
 
 			teacher := course.Teacher()
-			// クラス追加
+			// 講義追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
 			if err != nil {
@@ -658,7 +658,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 			}
 			course.BroadCastAnnouncement(announcement)
 
-			// コースごとに、そのコースに登録している生徒ごとにおしらせリストを確認する
+			// 科目ごとに、その科目に登録している学生ごとにおしらせリストを確認する
 			prepareCheckCourseAnnouncementList(ctx, step, course)
 		}
 	}
@@ -670,7 +670,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	return nil
 }
 
-// コースに登録している生徒全員について、すべてのおしらせリストとコースで絞り込んだおしらせリストを検証する
+// 科目に登録している学生全員について、すべてのおしらせリストと科目で絞り込んだおしらせリストを検証する
 func prepareCheckCourseAnnouncementList(ctx context.Context, step *isucandar.BenchmarkStep, course *model.Course) {
 	courseStudents := course.Students()
 	p := parallel.NewParallel(ctx, int32(len(courseStudents)))
@@ -968,7 +968,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 		}
 	}
 
-	// 順序は無視して期待するコースがすべて検索結果に含まれていることを検証
+	// 順序は無視して期待する科目がすべて検索結果に含まれていることを検証
 	// len(actual) <= len(expected) であり、actual には重複がないことが保証されているので expected の科目がすべて actual に含まれていれば両者は順序を除いて等しい
 	for _, expectCourse := range expected {
 		actualCourse, exists := actualByID[expectCourse.ID]
@@ -1064,7 +1064,7 @@ func (s *Scenario) prepareAbnormal(ctx context.Context) error {
 		return err
 	}
 
-	// 講師用APIの認可チェック
+	// 教員用APIの認可チェック
 	if err := s.prepareCheckAdminAuthorizationAbnormal(ctx); err != nil {
 		return err
 	}
@@ -1165,7 +1165,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 		return err
 	}
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -1312,7 +1312,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 
 func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) error {
 	errAuthorization := func(hres *http.Response) error {
-		return fails.ErrorInvalidResponse(errors.New("学生ユーザで講師用APIへのアクセスが成功しました"), hres)
+		return fails.ErrorInvalidResponse(errors.New("学生ユーザで教員用APIへのアクセスが成功しました"), hres)
 	}
 	checkAuthorization := func(hres *http.Response, err error) error {
 		// リクエストが成功したらwebappの不具合
@@ -1336,7 +1336,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 		return err
 	}
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -1498,7 +1498,7 @@ func (s *Scenario) prepareCheckRegisterCoursesAbnormal(ctx context.Context) erro
 		return err
 	}
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -1662,7 +1662,7 @@ func (s *Scenario) prepareCheckAddCourseAbnormal(ctx context.Context) error {
 
 	// ======== 検証用データの準備 ========
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -1722,7 +1722,7 @@ func (s *Scenario) prepareCheckSetCourseStatusAbnormal(ctx context.Context) erro
 
 	// ======== 検証用データの準備 ========
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -1782,7 +1782,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 
 	// ======== 検証用データの準備 ========
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -1899,7 +1899,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 		return err
 	}
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -2046,7 +2046,7 @@ func (s *Scenario) prepareCheckPostGradeAbnormal(ctx context.Context) error {
 		return err
 	}
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -2110,7 +2110,7 @@ func (s *Scenario) prepareCheckDownloadSubmissionsAbnormal(ctx context.Context) 
 
 	// ======== 検証用データの準備 ========
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -2145,7 +2145,7 @@ func (s *Scenario) prepareCheckSendAnnouncementAbnormal(ctx context.Context) err
 
 	// ======== 検証用データの準備 ========
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err
@@ -2190,7 +2190,7 @@ func (s *Scenario) prepareCheckGetAnnouncementDetailAbnormal(ctx context.Context
 		return err
 	}
 
-	// 検証で使用する講師ユーザ
+	// 検証で使用する教員ユーザ
 	teacher, err := s.getLoggedInTeacher(ctx)
 	if err != nil {
 		return err

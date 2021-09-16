@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	// ClassCountPerCourse は科目あたりのクラス数 -> used in model/course.go
+	// ClassCountPerCourse は科目あたりの講義数 -> used in model/course.go
 	ClassCountPerCourse = 5
 )
 

@@ -23,7 +23,7 @@ $ gem install forgery_ja securerandom bcrypt ulid
 $ ruby tools/gen_user_data.rb
 ```
 
-### 初期コース作成
+### 初期科目作成
 初期ユーザを生成し、 `/genenate/data/` 以下にTSVを配置してから実行する。
 ```
 $ make initial_course

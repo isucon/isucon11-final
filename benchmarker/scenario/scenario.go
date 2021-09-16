@@ -34,7 +34,7 @@ type Scenario struct {
 	gradeTimeoutCount   int64
 	debugData           *DebugData
 
-	// initCourses は/initializeで追加されるコース
+	// initCourses は/initializeで追加される科目
 	// 中のデータの更新はしないこと
 	initCourses []*model.Course
 

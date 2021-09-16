@@ -309,7 +309,7 @@ func calculateGradeRes(student *model.Student, students map[string]*model.Studen
 	for _, course := range courses {
 		result := course.CalcCourseResultByStudentCode(student.Code)
 		if result == nil {
-			// course は student が履修しているコースなので、result が nil になることはないはず
+			// course は student が履修している科目なので、result が nil になることはないはず
 			panic("unreachable! userCode:" + student.Code)
 		}
 
@@ -325,7 +325,7 @@ func calculateSummary(students map[string]*model.Student, userCode string) model
 	n := len(students)
 	if n == 0 {
 		// ここに来ることはない気がするが webapp 的には偏差値のみ 50 でそれ以外は 0
-		// summary の対象となる生徒がいないというのは、コースがまだ一つも終わっていないことに等しい
+		// summary の対象となる学生がいないというのは、科目がまだ一つも終わっていないことに等しい
 		return model.Summary{
 			Credits:   0,
 			GPA:       0,
