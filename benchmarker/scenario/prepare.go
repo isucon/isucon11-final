@@ -621,8 +621,10 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 }
 
 func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
-	errHttp := fails.ErrorCritical(fmt.Errorf("/api/announcements へのリクエストが失敗しました"))
-	errInvalidNext := fails.ErrorCritical(fmt.Errorf("link header の next によってページングできる回数が不正です"))
+	errHttp := fails.ErrorCritical(fmt.Errorf("お知らせリストへのリクエストが失敗しました"))
+	errMissingNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空でないことが期待される場所で空でした"))
+	errUnnecessaryNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空であることが期待される場所で空ではありませんでした"))
+	errNotExistPrevOtherThanFirstPage := errors.New("お知らせリストの最初以外のページの link header に prev が存在しませんでした")
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
 	if err != nil {
@@ -633,9 +635,16 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		return "", err
 	}
 
-	if (len(expected) <= AnnouncementCountPerPage && next != "") || (len(expected) > AnnouncementCountPerPage && next == "") {
-		return "", errInvalidNext
+	if len(expected) <= AnnouncementCountPerPage && next != "" {
+		return "", errUnnecessaryNext
 	}
+	if len(expected) > AnnouncementCountPerPage && next == "" {
+		return "", errMissingNext
+	}
+	if path != "" && prev == "" {
+		return "", errNotExistPrevOtherThanFirstPage
+	}
+
 	// 次のページが存在しない
 	if next == "" {
 		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, hres)
