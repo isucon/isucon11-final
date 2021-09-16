@@ -34,7 +34,7 @@ func genSubmissionContents(course *model.Course, class *model.Class, user *model
 		case 0:
 			content.WriteString(fmt.Sprintf("Q%d. %s\n", i+1, randElt(boolAnswers)))
 		case 1:
-			content.WriteString(fmt.Sprintf("Q%d. %d\n", i+1, rand.Intn(1001)))
+			content.WriteString(fmt.Sprintf("Q%d. %d\n", i+1, rand.Intn(4)+1))
 		}
 	}
 
