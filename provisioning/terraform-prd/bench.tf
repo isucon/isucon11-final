@@ -42,7 +42,7 @@ resource "aws_instance" "bench" {
     volume_size = "20"
     tags = {
       Name    = format("final-prd-bench-%02d", tonumber(each.key))
-      Project = "final-prd"
+      Project = "final"
     }
   }
 

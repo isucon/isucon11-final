@@ -3,7 +3,7 @@
     <Card>
       <div class="flex flex-col justify-between leading-normal">
         <p class="text-2xl text-primary-500 font-bold flex items-center">
-          {{ classTitle }}
+          {{ classinfo.title }}
         </p>
         <p class="text-gray-800 text-base mb-4">{{ classinfo.description }}</p>
         <div class="flex flex-row items-center">
@@ -59,9 +59,6 @@ export default Vue.extend({
     }
   },
   computed: {
-    classTitle(): string {
-      return `第${this.classinfo.part}回 ${this.classinfo.title}`
-    },
     submissionStatus(): string {
       if (this.classinfo.submitted) {
         return '提出済み'

@@ -8,8 +8,7 @@
         <p>{{ description }}</p>
         <p>提出先の課題や提出ファイルが正しいか確認してください。</p>
       </div>
-      <div class="flex justify-center items-center mb-4">
-        <span class="text-gray-800 text-base font-bold mr-2">提出ファイル</span>
+      <div class="flex justify-center items-center my-8">
         <label
           class="
             mr-2
@@ -28,7 +27,7 @@
           <input type="file" class="hidden" @change="onFileChanged" />
         </label>
         <template v-if="file !== null">
-          <div class="flex flex-col justify-center overflow-x-scroll">
+          <div class="flex flex-col justify-center">
             <div class="flex flex-row items-center text-gray-800 text-base">
               <span class="mr=2">{{ file.name }}</span
               ><CloseIcon @click="removeFile"></CloseIcon>
@@ -36,7 +35,9 @@
           </div>
         </template>
         <template v-else>
-          <span class="text-gray-800 text-base">ファイルが選択されていません</span>
+          <span class="text-gray-800 text-base"
+            >ファイルが選択されていません</span
+          >
         </template>
       </div>
       <template v-if="failed">
@@ -45,12 +46,11 @@
           <template #message>課題の提出に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="py-3 flex justify-center">
+      <div class="flex justify-center">
         <button
           type="button"
           class="
             mr-2
-            w-auto
             rounded-md
             border border-primary-500
             shadow-sm
@@ -60,6 +60,7 @@
             text-sm
             font-medium
             text-primary-500
+            w-20
           "
           @click="close"
         >
@@ -68,16 +69,15 @@
         <button
           type="button"
           class="
-            w-auto
             rounded-md
             border border-transparent
             shadow-sm
             px-4
-            py-2
             bg-primary-500
             text-sm
             font-medium
             text-white
+            w-20
           "
           :disabled="file === null"
           @click="upload"

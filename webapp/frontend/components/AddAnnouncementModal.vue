@@ -1,6 +1,6 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
-    <Card>
+    <Card class="w-96 max-w-full">
       <p class="text-2xl text-gray-800 font-bold justify-center mb-4">
         お知らせ登録
       </p>
@@ -28,9 +28,9 @@
           <template #message>お知らせの登録に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="py-3 flex justify-center gap-2">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 登録 </Button>
+      <div class="flex justify-center gap-2">
+        <Button w-class="w-24" @click="close"> 閉じる </Button>
+        <Button w-class="w-24" color="primary" @click="submit"> 登録 </Button>
       </div>
     </Card>
   </Modal>

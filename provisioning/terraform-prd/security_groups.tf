@@ -34,6 +34,13 @@ resource "aws_security_group" "contestant" {
   description = "security group for final-prd team #${each.key} contestant instances"
 }
 
+data "aws_instance" "bastion" {
+  filter {
+    name   = "tag:Name"
+    values = ["isucon11-bastion"]
+  }
+}
+
 resource "aws_security_group_rule" "contestant-ingress-ssh" {
   for_each = toset(var.team_ids)
 
@@ -42,7 +49,8 @@ resource "aws_security_group_rule" "contestant-ingress-ssh" {
   protocol          = "tcp"
   from_port         = 22
   to_port           = 22
-  cidr_blocks       = ["0.0.0.0/0"]
+  #cidr_blocks       = ["0.0.0.0/0"]
+  cidr_blocks = ["${data.aws_instance.bastion.public_ip}/32"]
 }
 
 resource "aws_security_group_rule" "contestant-ingress-benchmark" {

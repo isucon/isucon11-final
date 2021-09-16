@@ -42,7 +42,7 @@ resource "aws_instance" "contestant-1" {
     volume_size = "30"
     tags = {
       Name    = format("final-prd-contestant-%02d-1", tonumber(each.key))
-      Project = "final-prd"
+      Project = "final"
     }
   }
 
@@ -88,7 +88,7 @@ resource "aws_instance" "contestant-2" {
     volume_size = "30"
     tags = {
       Name    = format("final-prd-contestant-%02d-2", tonumber(each.key))
-      Project = "final-prd"
+      Project = "final"
     }
   }
 
@@ -134,7 +134,7 @@ resource "aws_instance" "contestant-3" {
     volume_size = "30"
     tags = {
       Name    = format("final-prd-contestant-%02d-3", tonumber(each.key))
-      Project = "final-prd"
+      Project = "final"
     }
   }
 

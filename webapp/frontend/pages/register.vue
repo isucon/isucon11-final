@@ -27,7 +27,7 @@
                   <template v-if="course.id">
                     <a
                       :key="`link-${p}-${w}-${i}`"
-                      :href="`/courses/${course.id}`"
+                      :href="`/syllabus/${course.id}`"
                       target="_blank"
                       class="
                         flex-grow
@@ -41,8 +41,13 @@
                         ease
                         hover:bg-primary-100
                       "
+                      :class="
+                        course.displayType === 'will_register'
+                          ? 'border-2 border-primary-700 border-opacity-40'
+                          : ''
+                      "
                     >
-                      <div class="flex flex-col">
+                      <div class="relative flex flex-col w-full h-full">
                         <span class="text-primary-500">
                           <template
                             v-if="
@@ -52,14 +57,27 @@
                           >
                             <span>{{ course.code }}</span>
                           </template>
-                          <template
-                            v-else-if="course.displayType === 'registered'"
-                          >
-                            <span>履修済</span>
-                          </template>
                           <span class="font-bold">{{ course.name }}</span>
                         </span>
                         <span class="text-sm">{{ course.teacher }}</span>
+                        <template
+                          v-if="
+                            course.code &&
+                            course.displayType === 'will_register'
+                          "
+                        >
+                          <button
+                            title="仮登録解除"
+                            class="absolute right-0 -bottom-0.5"
+                            @click="onClickCancelCourse($event, course.id)"
+                          >
+                            <fa-icon
+                              icon="times"
+                              size="lg"
+                              class="text-primary-500"
+                            />
+                          </button>
+                        </template>
                       </div>
                     </a>
                   </template>
@@ -276,6 +294,12 @@ export default Vue.extend({
         )}`
         notify('履修登録に失敗しました')
       }
+    },
+    onClickCancelCourse(e: Event, id: string): void {
+      e.preventDefault()
+      this.willRegisterCourses = this.willRegisterCourses.filter(
+        (c) => c.id !== id
+      )
     },
   },
 })

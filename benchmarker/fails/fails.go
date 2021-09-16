@@ -3,6 +3,7 @@ package fails
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -54,8 +55,8 @@ func ErrorCritical(err error) error {
 	return failure.NewError(ErrCritical, err)
 }
 
-func ErrorInvalidResponse(message string, hres *http.Response) error {
-	return failure.NewError(ErrApplication, errMessageWithPath(message, hres))
+func ErrorInvalidResponse(err error, hres *http.Response) error {
+	return failure.NewError(ErrApplication, errMessageWithPath(err, hres))
 }
 
 func ErrorHTTP(err error) error {
@@ -65,11 +66,11 @@ func ErrorHTTP(err error) error {
 func ErrorJSON(err error, hres *http.Response) error {
 	switch e := err.(type) {
 	case *json.SyntaxError:
-		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Sprintf("JSONの形式が不正です (%s)", e.Error()), hres))
+		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Errorf("JSONの形式が不正です (%w)", e), hres))
 	case *json.UnmarshalTypeError:
-		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Sprintf("JSONのフィールド %s のデータ型が不正です", e.Field), hres))
+		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Errorf("レスポンスに含まれる %s のデータ型が不正です", e.Field), hres))
 	default:
-		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Sprintf("JSONのデコードに失敗しました (%s)", e.Error()), hres))
+		return failure.NewError(ErrJSON, errMessageWithPath(fmt.Errorf("JSONのデコードに失敗しました (%w)", e), hres))
 	}
 }
 
@@ -79,25 +80,25 @@ func ErrorInvalidStatusCode(hres *http.Response, expected []int) error {
 		str += strconv.Itoa(v) + " or "
 	}
 	str = str[:len(str)-4]
-	return failure.NewError(ErrInvalidStatus, errMessageWithPathAndDiff("期待するHTTPステータスコード以外が返却されました", hres, str, strconv.Itoa(hres.StatusCode)))
+	return failure.NewError(ErrInvalidStatus, errMessageWithPathAndDiff(errors.New("期待するHTTPステータスコード以外が返却されました"), hres, str, strconv.Itoa(hres.StatusCode)))
 }
 
-func ErrorStaticResource(message string) error {
-	return failure.NewError(ErrStaticResource, fmt.Errorf(message))
+func ErrorStaticResource(err error) error {
+	return failure.NewError(ErrStaticResource, err)
 }
 
-func errMessageWithPath(message string, hres *http.Response) error {
+func errMessageWithPath(err error, hres *http.Response) error {
 	if hres != nil {
-		return fmt.Errorf("%s (%s %s)", message, hres.Request.Method, hres.Request.URL.Path)
+		return fmt.Errorf("%w (%s %s)", err, hres.Request.Method, hres.Request.URL.Path)
 	} else {
-		return fmt.Errorf(message)
+		return err
 	}
 }
 
-func errMessageWithPathAndDiff(message string, hres *http.Response, expected string, actual string) error {
+func errMessageWithPathAndDiff(err error, hres *http.Response, expected string, actual string) error {
 	if hres != nil {
-		return fmt.Errorf("%s (%s %s, expected: %s, actual: %s)", message, hres.Request.Method, hres.Request.URL.Path, expected, actual)
+		return fmt.Errorf("%w (%s %s, expected: %s, actual: %s)", err, hres.Request.Method, hres.Request.URL.Path, expected, actual)
 	} else {
-		return fmt.Errorf(message)
+		return err
 	}
 }

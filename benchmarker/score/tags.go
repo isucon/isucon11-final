@@ -7,6 +7,9 @@ const (
 	ScoreSubmitAssignment    score.ScoreTag = "SubmitAssignment"
 	ScoreGetAnnouncementList score.ScoreTag = "GetAnnouncementList"
 
+	// other (needs attention)
+	SkipRegisterNoCourseAvailable score.ScoreTag = "!1.SkipRegisterNoCourseAvailable"
+
 	// other
 	ActiveStudents           score.ScoreTag = "_O01.ActiveStudents"
 	StartCourseStudents      score.ScoreTag = "_O02.StartCourseStudents"
@@ -19,7 +22,6 @@ const (
 	CourseStartCourseUnder40 score.ScoreTag = "_O09.StartCourseUnder40"
 	CourseStartCourseUnder50 score.ScoreTag = "_O10.StartCourseUnder50"
 	CourseStartCourseFull    score.ScoreTag = "_O11.StartCourseFull"
-	CourseStartCourseOver50  score.ScoreTag = "!O12.StartCourseOver50"
 
 	// registration scenario
 	RegGetGrades                    score.ScoreTag = "_R1.GetGrades"
@@ -53,6 +55,9 @@ var Tags = []score.ScoreTag{
 	ScoreSubmitAssignment,
 	ScoreGetAnnouncementList,
 
+	// other (needs attention)
+	SkipRegisterNoCourseAvailable,
+
 	// other
 	ActiveStudents,
 	StartCourseStudents,
@@ -66,7 +71,6 @@ var Tags = []score.ScoreTag{
 	CourseStartCourseUnder40,
 	CourseStartCourseUnder50,
 	CourseStartCourseFull,
-	CourseStartCourseOver50,
 
 	// registration scenario
 	RegGetGrades,

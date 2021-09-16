@@ -33,6 +33,29 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	s.loadRequestEndTime = time.Now().Add(loadRequestTime)
 
+	// 一定間隔でgetGradeがタイムアウトした人数を表示する
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		var timeoutNum int64
+		for {
+			select {
+			case <-ticker.C:
+				if s.isNoRequestTime(ctx) {
+					return
+				}
+
+				timeoutNum = s.ResetGradeTimeoutCount()
+				if timeoutNum != 0 {
+					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
+					ContestantLogger.Printf("%d人の学生が成績取得(GET /api/users/me/grades)でタイムアウトしました。それぞれの学生は%d秒後にリトライを試み、その後履修登録を再開します。", timeoutNum, int64(waitGradeTimeout/time.Second))
+				}
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
 	// 負荷走行では
 	// アクティブ学生による負荷と
 	// 登録された科目による負荷が存在する
@@ -215,9 +238,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				expected := collectVerifyGradesData(student)
 				hres, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
+					s.AddGradeTimeoutCount()
 					step.AddError(err)
-					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
-					ContestantLogger.Printf("成績取得(GET /api/users/me/grades)がタイムアウトしました。学生は%d秒後に成績取得のリトライを試み、その後履修登録を再開します。", int64(waitGradeTimeout/time.Second))
 					time.Sleep(waitGradeTimeout)
 					continue
 				}
@@ -322,9 +344,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// 仮登録
 			remainingRegistrationCapacity := registerCourseLimitPerStudent - student.RegisteringCount()
 			if remainingRegistrationCapacity == 0 {
-				// unreachable
-				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
-				continue
+				// シナリオループの最初で TimeSlot が空いていることを確認しているので unreachable
+				panic("remainingRegistrationCapacity == 0")
 			}
 			temporaryReservedCourses := s.CourseManager.ReserveCoursesForStudent(student, remainingRegistrationCapacity)
 
@@ -336,8 +357,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ベンチ内で仮登録できた科目があればAPIに登録処理を投げる
 			if len(temporaryReservedCourses) == 0 {
-				// unreachable
-				DebugLogger.Printf("[履修スキップ（空き科目不足)] code: %v, name: %v", student.Code, student.Name)
+				// webapp側のAddCourseが異常に遅い場合、ここに到達する可能性がある
+				step.AddScore(score.SkipRegisterNoCourseAvailable)
 				continue
 			}
 
@@ -639,7 +660,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		case studentLen == 50:
 			step.AddScore(score.CourseStartCourseFull)
 		case studentLen > 50:
-			step.AddScore(score.CourseStartCourseOver50)
+			panic(fmt.Sprintf("start course over 50: course id: %v", course.ID))
 		}
 		for i := 0; i < studentLen; i++ {
 			step.AddScore(score.StartCourseStudents)

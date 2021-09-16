@@ -53,13 +53,7 @@ export default Vue.extend({
       if (isDisabled) {
         return ['text-gray-500']
       } else {
-        return [
-          'cursor-pointer',
-          'text-gray-800',
-          'hover:bg-primary-300',
-          'hover:text-white',
-          'hover:rounded',
-        ]
+        return ['cursor-pointer', 'text-gray-800']
       }
     },
   },

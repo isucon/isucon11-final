@@ -21,26 +21,6 @@
             @input="filterAnnouncements"
           />
         </div>
-        <div class="flex items-center">
-          <input
-            type="checkbox"
-            class="
-              appearance-none
-              rounded
-              text-primary-500
-              border-gray-200
-              focus:outline-none
-              focus:shadow-none
-              focus:ring-0
-              focus:ring-offset-0
-              focus:ring-primary-200
-              mr-2
-              my-2
-            "
-            @change="toggleUnreadFilter"
-          />
-          <span>未読のみ</span>
-        </div>
         <template v-if="!hasError">
           <AnnouncementList
             :announcements="announcements"
@@ -80,7 +60,6 @@ type AsyncAnnounceData = {
 type AnnounceListData = AsyncAnnounceData & {
   courseName: string
   announcements: Announcement[]
-  showUnreads: boolean
   hasError: boolean
 }
 
@@ -134,7 +113,6 @@ export default Vue.extend({
       announcements: [],
       courseName: '',
       numOfUnreads: 0,
-      showUnreads: false,
       link: '',
       hasError: false,
     }
@@ -185,15 +163,6 @@ export default Vue.extend({
       this.announcements = this.innerAnnouncements.filter((item) => {
         return item.courseName.indexOf(this.courseName) === 0
       })
-      if (this.showUnreads) {
-        this.announcements = this.announcements.filter((item) => {
-          return item.unread
-        })
-      }
-    },
-    toggleUnreadFilter() {
-      this.showUnreads = !this.showUnreads
-      this.filterAnnouncements()
     },
     paginate(apipath: string, query: URLSearchParams) {
       this.$router.push({
