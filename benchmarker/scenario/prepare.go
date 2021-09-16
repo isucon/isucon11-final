@@ -297,8 +297,19 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 						}
 						student.ReadAnnouncement(announcement.ID)
 					}
+
+					// 講義一覧を取得する
+					hres, res, err := GetClassesAction(ctx, student.Agent, course.ID)
+					if err != nil {
+						step.AddError(err)
+						return
+					}
+					if err := verifyClasses(course.Classes(), res, hres); err != nil {
+						step.AddError(err)
+					}
+
 					submissionData, fileName := generate.SubmissionData(course, class, student.UserAccount)
-					_, err := SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
+					_, err = SubmitAssignmentAction(ctx, student.Agent, course.ID, class.ID, fileName, submissionData)
 					if err != nil {
 						step.AddError(err)
 						return
