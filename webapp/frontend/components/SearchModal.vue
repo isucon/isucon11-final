@@ -255,6 +255,11 @@ export default Vue.extend({
       hasError: false,
     }
   },
+  watch: {
+    value(newValue, _oldValue) {
+      this.checkedCourses = newValue
+    },
+  },
   computed: {
     isShowSearchResult(): boolean {
       if (this.courses) {
