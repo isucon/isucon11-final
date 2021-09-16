@@ -51,7 +51,6 @@
                   >
                     <a
                       :href="`/syllabus/${c.id}`"
-                      target="_blank"
                       class="
                         block
                         px-4
@@ -64,7 +63,6 @@
                     </a>
                     <a
                       :href="`/teacher/courses/${c.id}`"
-                      target="_blank"
                       class="
                         block
                         px-4
