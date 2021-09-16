@@ -451,6 +451,8 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 }
 
 func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar.BenchmarkStep) error {
+	// 4 回目のクラスのおしらせが追加された時点で CourseCount(5) * 4 = 20
+	// となりおしらせが 20 個になるので、次のページの next がないかを検証できるはず
 	const (
 		prepareCheckAnnouncementListStudentCount        = 2
 		prepareCheckAnnouncementListTeacherCount        = 2
@@ -555,8 +557,13 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	for classPart := 0; classPart < prepareCheckAnnouncementListClassCountPerCourse; classPart++ {
 		for j := 0; j < prepareCheckAnnouncementListCourseCount; j++ {
 			course := courses[j]
-			teacher := course.Teacher()
 
+			// 最初のクラスが追加される前にも確認(おしらせが0のときに next がないことを保証する)
+			if classPart == 0 {
+				prepareCheckCourseAnnouncementList(ctx, step, course)
+			}
+
+			teacher := course.Teacher()
 			// クラス追加
 			classParam := generate.ClassParam(course, uint8(classPart+1))
 			_, classRes, err := AddClassAction(ctx, teacher.Agent, course, classParam)
@@ -576,42 +583,8 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 			}
 			course.BroadCastAnnouncement(announcement)
 
-			// 生徒ごとにおしらせリストの確認
-			courseStudents := course.Students()
-			p := parallel.NewParallel(ctx, int32(len(courseStudents)))
-			for _, student := range courseStudents {
-				student := student
-				err := p.Do(func(ctx context.Context) {
-					expected := student.Announcements()
-
-					// id が新しい方が先頭に来るようにソート
-					sort.Slice(expected, func(i, j int) bool {
-						return expected[i].Announcement.ID > expected[j].Announcement.ID
-					})
-					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected), student.Code)
-					if err != nil {
-						step.AddError(err)
-						return
-					}
-
-					courseAnnouncementStatus := make([]*model.AnnouncementStatus, 0, 5)
-					for _, status := range expected {
-						if status.Announcement.CourseID == course.ID {
-							courseAnnouncementStatus = append(courseAnnouncementStatus, status)
-						}
-					}
-
-					_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected), student.Code)
-					if err != nil {
-						step.AddError(err)
-						return
-					}
-				})
-				if err != nil {
-					AdminLogger.Println("info: cannot start parallel: %w", err)
-				}
-			}
-			p.Wait()
+			// コースごとに、そのコースに登録している生徒ごとにおしらせリストを確認する
+			prepareCheckCourseAnnouncementList(ctx, step, course)
 		}
 	}
 
@@ -622,10 +595,50 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	return nil
 }
 
+// コースに登録している生徒全員について、すべてのおしらせリストとコースで絞り込んだおしらせリストを検証する
+func prepareCheckCourseAnnouncementList(ctx context.Context, step *isucandar.BenchmarkStep, course *model.Course) {
+	courseStudents := course.Students()
+	p := parallel.NewParallel(ctx, int32(len(courseStudents)))
+	for _, student := range courseStudents {
+		student := student
+		err := p.Do(func(ctx context.Context) {
+			expected := student.Announcements()
+
+			// id が新しい方が先頭に来るようにソート
+			sort.Slice(expected, func(i, j int) bool {
+				return expected[i].Announcement.ID > expected[j].Announcement.ID
+			})
+			_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected), student.Code)
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+
+			courseAnnouncementStatus := make([]*model.AnnouncementStatus, 0, 5)
+			for _, status := range expected {
+				if status.Announcement.CourseID == course.ID {
+					courseAnnouncementStatus = append(courseAnnouncementStatus, status)
+				}
+			}
+
+			_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected), student.Code)
+			if err != nil {
+				step.AddError(err)
+				return
+			}
+		})
+		if err != nil {
+			AdminLogger.Println("info: cannot start parallel: %w", err)
+		}
+	}
+	p.Wait()
+}
+
 func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int, userCode string) (prev string, err error) {
 	errMissingNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空でないことが期待される場所で空でした"))
 	errUnnecessaryNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空であることが期待される場所で空ではありませんでした"))
 	errNotExistPrevOtherThanFirstPage := errors.New("お知らせリストの最初以外のページの link header に prev が存在しませんでした")
+	errUnnecessaryPrev := errors.New("お知らせリストの link header の prev が空であることが期待される場所で空ではありませんでした")
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
 	if err != nil {
@@ -644,6 +657,9 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	}
 	if path != "" && prev == "" {
 		return "", errNotExistPrevOtherThanFirstPage
+	}
+	if path == "" && prev != "" {
+		return "", errUnnecessaryPrev
 	}
 
 	// 次のページが存在しない
