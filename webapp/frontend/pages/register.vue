@@ -41,6 +41,11 @@
                         ease
                         hover:bg-primary-100
                       "
+                      :class="
+                        course.displayType === 'will_register'
+                          ? 'border-2 border-primary-700 border-opacity-40'
+                          : ''
+                      "
                     >
                       <div class="flex flex-col">
                         <span class="text-primary-500">
@@ -52,15 +57,9 @@
                           >
                             <span>{{ course.code }}</span>
                           </template>
-                          <template
-                            v-else-if="course.displayType === 'registered'"
-                          >
-                            <span>履修済</span>
-                          </template>
                           <span class="font-bold">{{ course.name }}</span>
                         </span>
                         <span class="text-sm">{{ course.teacher }}</span>
-
                         <template
                           v-if="
                             course.code &&
