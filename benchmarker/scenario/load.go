@@ -322,9 +322,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			// 仮登録
 			remainingRegistrationCapacity := registerCourseLimitPerStudent - student.RegisteringCount()
 			if remainingRegistrationCapacity == 0 {
-				// unreachable
-				DebugLogger.Printf("[履修スキップ（空きコマ不足)] code: %v, name: %v", student.Code, student.Name)
-				continue
+				// シナリオループの最初で TimeSlot が空いていることを確認しているので unreachable
+				panic("remainingRegistrationCapacity == 0")
 			}
 			temporaryReservedCourses := s.CourseManager.ReserveCoursesForStudent(student, remainingRegistrationCapacity)
 
@@ -336,8 +335,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 
 			// ベンチ内で仮登録できた科目があればAPIに登録処理を投げる
 			if len(temporaryReservedCourses) == 0 {
-				// unreachable
-				DebugLogger.Printf("[履修スキップ（空き科目不足)] code: %v, name: %v", student.Code, student.Name)
+				// webapp側のAddCourseが異常に遅い場合、ここに到達する可能性がある
+				step.AddScore(score.SkipRegisterNoCourseAvailable)
 				continue
 			}
 
@@ -639,7 +638,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 		case studentLen == 50:
 			step.AddScore(score.CourseStartCourseFull)
 		case studentLen > 50:
-			step.AddScore(score.CourseStartCourseOver50)
+			panic(fmt.Sprintf("start course over 50: course id: %v", course.ID))
 		}
 		for i := 0; i < studentLen; i++ {
 			step.AddScore(score.StartCourseStudents)
