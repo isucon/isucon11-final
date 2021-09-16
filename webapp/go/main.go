@@ -548,7 +548,7 @@ type ClassScore struct {
 	Title      string `json:"title"`
 	Part       uint8  `json:"part"`
 	Score      *int   `json:"score"`      // 0~100点
-	Submitters int    `json:"submitters"` // 提出した生徒数
+	Submitters int    `json:"submitters"` // 提出した学生数
 }
 
 // GetGrades GET /api/users/me/grades 成績取得

@@ -712,7 +712,7 @@ struct ClassScore {
     title: String,
     part: u8,
     score: Option<i64>, // 0~100点
-    submitters: i64,    // 提出した生徒数
+    submitters: i64,    // 提出した学生数
 }
 
 // GET /api/users/me/grades 成績取得

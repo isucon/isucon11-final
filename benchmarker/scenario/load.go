@@ -60,7 +60,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 	studentLoadWorker := s.createStudentLoadWorker(ctx, step) // Gradeの確認から始まるシナリオとAnnouncementsの確認から始まるシナリオの二種類を担うgoroutineがアクティブ学生ごとに起動している
 	courseLoadWorker := s.createLoadCourseWorker(ctx, step)   // 登録された科目につき一つのgoroutineが起動している
 
-	// コース履修が完了した際のカウントアップをするPubSubを設定する
+	// 科目履修が完了した際のカウントアップをするPubSubを設定する
 	s.setFinishCourseCountPubSub(ctx, step)
 
 	// LoadWorkerに初期負荷を追加
@@ -171,7 +171,7 @@ func (s *Scenario) setFinishCourseCountPubSub(ctx context.Context, step *isucand
 // アクティブ学生の負荷をかけ続けるLoadWorker(parallel.Parallel)を作成
 func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.BenchmarkStep) *parallel.Parallel {
 	// アクティブ学生は以下の2つのタスクを行い続ける
-	// 「成績確認 + （空きがあれば履修登録）」
+	// 「成績取得 + （空きがあれば履修登録）」
 	// 「おしらせ確認 + （未読があれば詳細確認）」
 	studentLoadWorker := parallel.NewParallel(ctx, -1)
 
@@ -196,7 +196,7 @@ func (s *Scenario) createStudentLoadWorker(ctx context.Context, step *isucandar.
 		s.CapacityCounter.IncAll()
 
 		// 同時実行可能数を制限する際には注意
-		// 成績確認 + (空きがあれば履修登録)
+		// 成績取得 + (空きがあれば履修登録)
 		err := studentLoadWorker.Do(s.registrationScenario(student, step))
 		if err != nil {
 			AdminLogger.Println("info: cannot start parallel: %w", err)
@@ -228,11 +228,11 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				return
 			}
 
-			// 学生は registerCourseLimitPerStudent ずつコースを修了したら成績を確認する
-			// 前回判定した修了済みコースと現在の修了済みコースが20の倍率をまたいでいたら成績確認
+			// 学生は registerCourseLimitPerStudent ずつ科目を修了したら成績を確認する
+			// 前回判定した修了済み科目と現在の修了済み科目が20の倍数をまたいでいたら成績取得
 			finishCourseCount := student.FinishCourseCount()
 			if finishCourseCount/registerCourseLimitPerStudent > beforeFinishCourseCount/registerCourseLimitPerStudent {
-				// 成績確認
+				// 成績取得
 				expected := collectVerifyGradesData(student)
 				hres, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
@@ -293,7 +293,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					return
 				}
 
-				// 検索で得た科目のシラバスを確認する
+				// 検索で得た科目の詳細を確認する
 				if checkTargetID != "" {
 					hres, res, err := GetCourseDetailAction(ctx, student.Agent, checkTargetID)
 					if err != nil {
@@ -627,13 +627,13 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				step.AddError(err)
 			}
 			if fails.IsTimeout(err) {
-				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
+				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教員はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto statusStartLoop
 			} else {
 				// 学生は開放されなくなる
-				AdminLogger.Printf("%vのコースステータスを in-progress に変更するのが失敗しました", course.Name)
+				AdminLogger.Printf("%vの科目ステータスを in-progress に変更するのが失敗しました", course.Name)
 				return
 			}
 		}
@@ -685,7 +685,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
+				ContestantLogger.Printf("講義追加(POST /api/courses/:courseID/classes)がタイムアウトまたは失敗しました。教員はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto L
@@ -714,7 +714,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
+				ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトまたは失敗しました。教員はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto ancLoop
@@ -745,7 +745,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				ContestantLogger.Printf("提出課題取得(GET /api/courses/:courseID/classes/:classID/assignments/export)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
+				ContestantLogger.Printf("提出課題取得(GET /api/courses/:courseID/classes/:classID/assignments/export)がタイムアウトまたは失敗しました。教員はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto downloadLoop
@@ -771,7 +771,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			classTimes[i] = time.Since(classStart).Milliseconds()
 		}
 
-		// クラスのラップタイム表示
+		// 講義のラップタイム表示
 		var compCount int
 		var sumTime int64
 		for _, ct := range classTimes {
@@ -802,13 +802,13 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				step.AddError(err)
 			}
 			if fails.IsTimeout(err) {
-				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
+				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教員はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto statusLoop
 			} else {
 				// 学生は開放されなくなる
-				AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
+				AdminLogger.Printf("%vの科目ステータスをclosedに変更するのが失敗しました", course.Name)
 				return
 			}
 		}
@@ -941,7 +941,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 		}
 	})
 	if !isLoggedIn {
-		// ログインに失敗したらコース追加中断
+		// ログインに失敗したら科目追加中断
 		return
 	}
 
@@ -976,7 +976,7 @@ L:
 			step.AddError(err)
 		}
 		if fails.IsTimeout(err) {
-			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教師はリトライを試みます。")
+			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教員はリトライを試みます。")
 			time.Sleep(100 * time.Millisecond)
 			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
@@ -1112,7 +1112,7 @@ L:
 			step.AddError(err)
 		}
 		if fails.IsTimeout(err) {
-			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
+			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教員はリトライを試みます。")
 			time.Sleep(100 * time.Millisecond)
 			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
@@ -1126,7 +1126,7 @@ L:
 		step.AddScore(score.CourseRegisterScore)
 	}
 
-	// POST成功したスコアをベンチ内に保存する
+	// POST成功した採点結果をベンチ内に保存する
 	for _, scoreData := range scores {
 		sub := class.GetSubmissionByStudentCode(scoreData.code)
 		if sub == nil {

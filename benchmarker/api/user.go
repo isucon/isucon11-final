@@ -103,7 +103,7 @@ type ClassScore struct {
 	Title      string `json:"title"`
 	Part       uint8  `json:"part"`
 	Score      *int   `json:"score"`      // 0~100点
-	Submitters int    `json:"submitters"` // 提出した生徒数
+	Submitters int    `json:"submitters"` // 提出した学生数
 }
 
 func GetGrades(ctx context.Context, a *agent.Agent) (*http.Response, error) {

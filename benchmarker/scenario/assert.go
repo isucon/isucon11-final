@@ -94,7 +94,7 @@ func AssertEqualRegisteredCourse(expected *model.Course, actual *api.GetRegister
 
 func AssertEqualGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hres *http.Response) error {
 	if !AssertEqual("grade courses length", len(expected.CourseResults), len(actual.CourseResults)) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の courses の数が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の courses の数が一致しません"), hres)
 	}
 
 	err := AssertEqualSummary(&expected.Summary, &actual.Summary, hres)
@@ -104,8 +104,8 @@ func AssertEqualGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hr
 
 	for _, courseResult := range actual.CourseResults {
 		if _, ok := expected.CourseResults[courseResult.Code]; !ok {
-			AdminLogger.Println(courseResult.Code, "は予期せぬコースです")
-			return fails.ErrorInvalidResponse(errors.New("成績確認の courses に意図しない科目が含まれています"), hres)
+			AdminLogger.Println(courseResult.Code, "は予期せぬ科目です")
+			return fails.ErrorInvalidResponse(errors.New("成績取得の courses に意図しない科目が含まれています"), hres)
 		}
 
 		expected := expected.CourseResults[courseResult.Code]
@@ -120,27 +120,27 @@ func AssertEqualGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hr
 
 func AssertEqualSummary(expected *model.Summary, actual *api.Summary, hres *http.Response) error {
 	if !AssertEqual("grade summary credits", expected.Credits, actual.Credits) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の summary の credits が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の credits が一致しません"), hres)
 	}
 
 	if !AssertWithinTolerance("grade summary gpa", expected.GPA, actual.GPA, validateGPAErrorTolerance) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の summary の gpa が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa が一致しません"), hres)
 	}
 
 	if !AssertWithinTolerance("grade summary gpa_max", expected.GpaMax, actual.GpaMax, validateGPAErrorTolerance) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の summary の gpa_max が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_max が一致しません"), hres)
 	}
 
 	if !AssertWithinTolerance("grade summary gpa_min", expected.GpaMin, actual.GpaMin, validateGPAErrorTolerance) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の summary の gpa_min が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_min が一致しません"), hres)
 	}
 
 	if !AssertWithinTolerance("grade summary gpa_avg", expected.GpaAvg, actual.GpaAvg, validateGPAErrorTolerance) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の summary の gpa_avg が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_avg が一致しません"), hres)
 	}
 
 	if !AssertWithinTolerance("grade summary gpa_t_score", expected.GpaTScore, actual.GpaTScore, validateGPAErrorTolerance) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の summary の gpa_t_score が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_t_score が一致しません"), hres)
 	}
 
 	return nil
@@ -148,35 +148,35 @@ func AssertEqualSummary(expected *model.Summary, actual *api.Summary, hres *http
 
 func AssertEqualCourseResult(expected *model.CourseResult, actual *api.CourseResult, hres *http.Response) error {
 	if !AssertEqual("grade courses name", expected.Name, actual.Name) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目名が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目名が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses code", expected.Code, actual.Code) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目のコードが一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目のコードが一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses total_score", expected.TotalScore, actual.TotalScore) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目の total_score が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses total_score_max", expected.TotalScoreMax, actual.TotalScoreMax) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目の total_score_max が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_max が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses total_score_min", expected.TotalScoreMin, actual.TotalScoreMin) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目の total_score_min が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_min が一致しません"), hres)
 	}
 
 	if !AssertWithinTolerance("grade courses total_score_avg", expected.TotalScoreAvg, actual.TotalScoreAvg, validateTotalScoreErrorTolerance) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目の total_score_avg が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_avg が一致しません"), hres)
 	}
 
 	if !AssertWithinTolerance("grade courses total_score_t_score", expected.TotalScoreTScore, actual.TotalScoreTScore, validateTotalScoreErrorTolerance) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目の total_score_t_score が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_t_score が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores length", len(expected.ClassScores), len(actual.ClassScores)) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目の class_scores の数が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の class_scores の数が一致しません"), hres)
 	}
 
 	for i := 0; i < len(expected.ClassScores); i++ {
@@ -192,23 +192,23 @@ func AssertEqualCourseResult(expected *model.CourseResult, actual *api.CourseRes
 
 func AssertEqualClassScore(expected *model.ClassScore, actual *api.ClassScore, hres *http.Response) error {
 	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の講義IDが一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義IDが一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores title", expected.Title, actual.Title) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の講義のタイトルが一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義のタイトルが一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の講義の part が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義の part が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores score", expected.Score, actual.Score) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の講義の採点結果が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義の採点結果が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores submitters", expected.SubmitterCount, actual.Submitters) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の講義の課題提出者の数が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義の課題提出者の数が一致しません"), hres)
 	}
 
 	return nil
@@ -216,19 +216,19 @@ func AssertEqualClassScore(expected *model.ClassScore, actual *api.ClassScore, h
 
 func AssertEqualSimpleClassScore(expected *model.SimpleClassScore, actual *api.ClassScore, hres *http.Response) error {
 	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認での講義IDが一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義IDが一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores title", expected.Title, actual.Title) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認での講義のタイトルが一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義のタイトルが一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認での講義の part が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義の part が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores score", expected.Score, actual.Score) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認での講義の採点結果が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義の採点結果が一致しません"), hres)
 	}
 
 	return nil

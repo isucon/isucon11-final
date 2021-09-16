@@ -64,7 +64,7 @@ func verifyMe(expected *model.UserAccount, res *api.GetMeResponse, hres *http.Re
 }
 
 // この返り値の map の value の interfaceは
-// すでにclosedなコースについてはCourseResult に、
+// すでにclosedな科目についてはCourseResult に、
 // そうでない場合は、SimpleCourseResult になる
 func collectVerifyGradesData(student *model.Student) map[string]interface{} {
 	courses := student.Courses()
@@ -84,12 +84,12 @@ func collectVerifyGradesData(student *model.Student) map[string]interface{} {
 func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse, hres *http.Response) error {
 	// summaryはcreditが検証できそうな気がするけどめんどくさいのでしてない
 	if !AssertEqual("grade courses length", len(expected), len(res.CourseResults)) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認でのコース結果の数が一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得での科目結果の数が一致しません"), hres)
 	}
 
 	for _, resCourseResult := range res.CourseResults {
 		if _, ok := expected[resCourseResult.Code]; !ok {
-			return fails.ErrorInvalidResponse(errors.New("成績確認で期待しないコースが含まれています"), hres)
+			return fails.ErrorInvalidResponse(errors.New("成績取得で期待しない科目が含まれています"), hres)
 		}
 
 		switch v := expected[resCourseResult.Code].(type) {
@@ -114,25 +114,25 @@ func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse, hr
 
 func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.CourseResult, hres *http.Response) error {
 	if !AssertEqual("grade courses name", expected.Name, res.Name) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認結果のコース名が違います"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得結果の科目名が違います"), hres)
 	}
 
 	if !AssertEqual("grade courses code", expected.Code, res.Code) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認の科目コードが一致しません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目コードが一致しません"), hres)
 	}
 
-	// リクエスト前の時点で登録成功しているクラスの成績は、成績レスポンスに必ず含まれている
-	// そのため、追加済みクラスのスコアの数よりレスポンス内クラスのスコアの数が少ない場合はエラーとなる
+	// リクエスト前の時点で登録成功している講義の成績は、成績レスポンスに必ず含まれている
+	// そのため、追加済み講義の採点結果の数よりレスポンス内講義の採点結果の数が少ない場合はエラーとなる
 	if !AssertGreaterOrEqual("grade courses class_scores length", len(expected.SimpleClassScores), len(res.ClassScores)) {
-		return fails.ErrorInvalidResponse(errors.New("成績確認のクラスのスコアの数が正しくありません"), hres)
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義の採点結果の数が正しくありません"), hres)
 	}
 
-	// 最新のクラスの成績はまだ更新されているか判断できない
-	// 一つ前のクラスの処理が終わらないと次のクラスの処理は始まらないので、
-	// 一つ前のクラスまでの成績は正しくなっているはず
+	// 最新の講義の成績はまだ更新されているか判断できない
+	// 一つ前の講義の処理が終わらないと次の講義の処理は始まらないので、
+	// 一つ前の講義までの成績は正しくなっているはず
 	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
 	for i := 0; i < len(expected.SimpleClassScores)-1; i++ {
-		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
+		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古い講義から見るようにしている
 		err := AssertEqualSimpleClassScore(expected.SimpleClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1], hres)
 		if err != nil {
 			return err
@@ -360,10 +360,10 @@ func verifyAssignments(assignmentsData []byte, class *model.Class, hres *http.Re
 			expectedFileName := studentCode + "-" + expectedSubmission.Title
 			actualChecksum, ok := downloadedAssignments[expectedFileName]
 			if !ok {
-				return fails.ErrorInvalidResponse(errors.New("提出した課題が課題zipに含まれていないか、ファイル名が間違っています"), hres)
+				return fails.ErrorInvalidResponse(errors.New("提出課題が課題zipに含まれていないか、ファイル名が間違っています"), hres)
 			}
 			if !AssertEqual("assignment checksum", expectedSubmission.Checksum, actualChecksum) {
-				return fails.ErrorInvalidResponse(errors.New("提出した課題とダウンロードされた課題の内容が一致しません"), hres)
+				return fails.ErrorInvalidResponse(errors.New("提出課題とダウンロードされた課題の内容が一致しません"), hres)
 			}
 		}
 	}
