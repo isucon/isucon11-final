@@ -423,7 +423,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					// load中には検証できないので既読化しない
 					continue
 				}
-				// 前にタイムアウトになってしまっていた場合、もしくはまだ見ていないお知らせの場合詳細を見に行く
+				// 前にタイムアウトになってしまっていた場合、もしくはwebapp上で未読のお知らせの場合詳細を見に行く
 				if !(expectStatus.Dirty || ans.Unread) {
 					continue
 				}
@@ -616,6 +616,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto statusStartLoop
 			} else {
+				// 学生は開放されなくなる
 				AdminLogger.Printf("%vのコースステータスを in-progress に変更するのが失敗しました", course.Name)
 				return
 			}
@@ -655,8 +656,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				return
 			}
 
-			timer := time.After(1 * time.Millisecond)
-
 			classParam := generate.ClassParam(course, uint8(i+1))
 
 			// 60秒以降のリトライリクエストかどうか
@@ -670,16 +669,10 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
-					ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトしました。教師はリトライを試みます。")
-					time.Sleep(100 * time.Millisecond)
-					isExtendRequest = s.isNoRequestTime(ctx)
-					goto L
-				} else {
-					<-timer
-					continue
-				}
+				ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)に失敗しました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto L
 			} else {
 				if !isExtendRequest {
 					step.AddScore(score.CourseAddClass)
@@ -705,16 +698,10 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
-					ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトしました。教師はリトライを試みます。")
-					time.Sleep(100 * time.Millisecond)
-					isExtendRequest = s.isNoRequestTime(ctx)
-					goto ancLoop
-				} else {
-					<-timer
-					continue
-				}
+				ContestantLogger.Printf("お知らせ追加(POST /api/announcements)に失敗しました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto ancLoop
 			} else {
 				if !isExtendRequest {
 					step.AddScore(score.CourseAddAnnouncement)
@@ -732,10 +719,19 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				return
 			}
 
+		downloadLoop:
+			if s.isNoRetryTime(ctx) {
+				return
+			}
 			hres, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
-				step.AddError(err)
-				continue
+				if !isExtendRequest {
+					step.AddError(err)
+				}
+				ContestantLogger.Printf("提出課題取得(GET /api/courses/:courseID/classes/:classID/assignments/export)に失敗しました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto downloadLoop
 			}
 			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
 				step.AddError(err)
@@ -750,7 +746,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			_, err = s.scoringAssignments(ctx, course, class, teacher, step)
 			if err != nil {
 				step.AddError(err)
-				<-timer
 				continue
 			}
 
@@ -794,6 +789,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto statusLoop
 			} else {
+				// 学生は開放されなくなる
 				AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
 				return
 			}
@@ -1094,15 +1090,12 @@ L:
 		if !isExtendRequest {
 			step.AddError(err)
 		}
-		var urlError *url.Error
-		if errors.As(err, &urlError) && urlError.Timeout() {
+		if fails.IsTimeout(err) {
 			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
 			// timeout したらもう一回リクエストする
 			time.Sleep(100 * time.Millisecond)
 			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
-		} else if hres != nil && hres.StatusCode == http.StatusNoContent {
-			// すでにwebappに登録されていたら続ける
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
 			return nil, err
