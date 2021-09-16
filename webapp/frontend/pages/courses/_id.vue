@@ -7,16 +7,16 @@
         <div>now loading</div>
       </template>
       <div v-else class="flex flex-1 flex-col gap-4">
-        <h1 class="text-2xl font-bold">
+        <h1 class="text-2xl font-bold text-gray-800">
           {{ course.name }}
         </h1>
         <div>
-          <h2 class="text-lg font-bold">講義の概要と目的</h2>
-          <div>
+          <h2 class="text-lg font-bold text-gray-800">講義の概要と目的</h2>
+          <div class="text-gray-800">
             {{ course.description }}
           </div>
         </div>
-        <div class="grid grid-cols-course w-full gap-1 text-sm">
+        <div class="grid grid-cols-course w-full gap-1 text-sm text-gray-800">
           <h2 class="font-bold">科目コード</h2>
           <div>
             {{ course.code }}
