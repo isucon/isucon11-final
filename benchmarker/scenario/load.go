@@ -2,11 +2,9 @@ package scenario
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -353,10 +351,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
+				if fails.IsTimeout(err) {
 					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
-					// timeout したらもう一回リクエストする
 					time.Sleep(100 * time.Millisecond)
 					isExtendRequest = s.isNoRequestTime(ctx)
 					goto L
@@ -609,8 +605,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if !isExtendRequest {
 				step.AddError(err)
 			}
-			var urlError *url.Error
-			if errors.As(err, &urlError) && urlError.Timeout() {
+			if fails.IsTimeout(err) {
 				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
@@ -782,8 +777,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if !isExtendRequest {
 				step.AddError(err)
 			}
-			var urlError *url.Error
-			if errors.As(err, &urlError) && urlError.Timeout() {
+			if fails.IsTimeout(err) {
 				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
@@ -842,6 +836,8 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				}
 			}
 
+
+			isExtendRequest := false
 			for i := 0; i <= loginRetryCount; i++ {
 				if s.isNoRequestTime(ctx) {
 					return
@@ -849,13 +845,15 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 				_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 				if err != nil {
-					var urlError *url.Error
-					if i != loginRetryCount && errors.As(err, &urlError) && urlError.Timeout() {
+					if !isExtendRequest {
+						step.AddError(err)
+					}
+					if fails.IsTimeout(err) {
 						time.Sleep(1000 * time.Millisecond)
+						isExtendRequest = s.isNoRequestTime(ctx)
 						continue
 					} else {
 						AdminLogger.Printf("学生 %vのログインが失敗しました", student.Name)
-						step.AddError(err)
 						return
 					}
 				}
@@ -895,6 +893,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 
 	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
 
+		isExtendRequest := false
 		for i := 0; i <= loginRetryCount; i++ {
 			if s.isNoRequestTime(ctx) {
 				return
@@ -903,13 +902,13 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 			_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 
 			if err != nil {
-				var urlError *url.Error
-				if i != loginRetryCount && errors.As(err, &urlError) && urlError.Timeout() {
-					time.Sleep(1000 * time.Millisecond)
-					continue
-				} else {
+				if !isExtendRequest {
 					step.AddError(err)
-					return
+				}
+				if fails.IsTimeout(err) {
+					time.Sleep(1000 * time.Millisecond)
+					isExtendRequest = s.isNoRequestTime(ctx)
+					continue
 				}
 			}
 			teacher.IsLoggedIn = true
@@ -951,9 +950,7 @@ L:
 		if !isExtendRequest {
 			step.AddError(err)
 		}
-		var urlError *url.Error
-		if errors.As(err, &urlError) && urlError.Timeout() {
-			// timeout したらもう一回リクエストする
+		if fails.IsTimeout(err) {
 			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教師はリトライを試みます。")
 			time.Sleep(100 * time.Millisecond)
 			isExtendRequest = s.isNoRequestTime(ctx)
@@ -1031,8 +1028,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
+				if fails.IsTimeout(err) {
 					ContestantLogger.Printf("課題提出(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。学生はリトライを試みます。")
 					time.Sleep(100 * time.Millisecond)
 					isExtendRequest = s.isNoRequestTime(ctx)
@@ -1092,7 +1088,6 @@ L:
 		}
 		if fails.IsTimeout(err) {
 			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
-			// timeout したらもう一回リクエストする
 			time.Sleep(100 * time.Millisecond)
 			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
