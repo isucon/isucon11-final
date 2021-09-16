@@ -1,6 +1,6 @@
 <template>
   <Modal :is-shown="isShown" @close="onClose">
-    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 rounded">
       <div class="flex flex-col flex-nowrap">
         <h3
           id="modal-title"
@@ -13,15 +13,12 @@
             id="params-keywords"
             v-model="params.keywords"
             label="キーワード"
+            label-direction="vertical"
             type="text"
             placeholder="キーワードを入力してください"
           />
-          <div class="flex mt-4 space-x-2 flex-wrap">
-            <label
-              class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
-              >科目</label
-            >
-            <div class="flex flex-auto gap-1">
+          <div class="flex mt-4">
+            <div class="flex gap-1">
               <TextField
                 id="params-teacher"
                 v-model="params.teacher"
@@ -54,10 +51,6 @@
             </div>
           </div>
           <div class="flex mt-4 space-x-2 flex-wrap">
-            <label
-              class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
-              >開講</label
-            >
             <div class="flex flex-auto gap-1">
               <Select
                 id="params-day-of-week"
