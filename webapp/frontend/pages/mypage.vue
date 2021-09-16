@@ -56,8 +56,6 @@ import Vue from 'vue'
 import { Context } from '@nuxt/types'
 import Calendar from '../components/Calendar.vue'
 import CalendarCell from '../components/CalendarCell.vue'
-import Card from '~/components/common/Card.vue'
-import Button from '~/components/common/Button.vue'
 import { DayOfWeekMap, PeriodCount, WeekdayCount } from '~/constants/calendar'
 import { Course, DayOfWeek } from '~/types/courses'
 import InlineNotification from '~/components/common/InlineNotification.vue'
@@ -78,7 +76,7 @@ type DataType = {
 }
 
 export default Vue.extend({
-  components: { InlineNotification, Button, Card, CalendarCell, Calendar },
+  components: { InlineNotification, CalendarCell, Calendar },
   middleware: 'is_student',
   async asyncData(
     ctx: Context
