@@ -47,7 +47,7 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 				timeoutNum = s.ResetGradeTimeoutCount()
 				if timeoutNum != 0 {
 					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
-					ContestantLogger.Printf("%d人の学生が成績取得(GET /api/users/me/grades)でタイムアウトしました。学生は%d秒後にリトライを試み、その後履修登録を再開します。", timeoutNum, int64(waitGradeTimeout/time.Second))
+					ContestantLogger.Printf("%d人の学生が成績取得(GET /api/users/me/grades)でタイムアウトしました。それぞれの学生は%d秒後にリトライを試み、その後履修登録を再開します。", timeoutNum, int64(waitGradeTimeout/time.Second))
 				}
 			case <-ctx.Done():
 				ticker.Stop()
