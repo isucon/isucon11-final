@@ -35,6 +35,7 @@ func IsDeduction(err error) bool {
 		failure.IsCode(err, ErrHTTP) ||
 		failure.IsCode(err, ErrJSON) ||
 		failure.IsCode(err, ErrInvalidStatus) ||
+		failure.IsCode(err, ErrInvalidContentType) ||
 		failure.IsCode(err, ErrStaticResource)
 }
 
