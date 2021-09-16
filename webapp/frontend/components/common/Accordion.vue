@@ -3,7 +3,7 @@
     <div class="flex flex-col justify-between leading-normal">
       <a
         href="#"
-        class="block bg-white no-underline text-black"
+        class="block bg-white no-underline text-gray-800"
         @click.prevent="toggle"
       >
         <slot name="header" />

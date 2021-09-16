@@ -4,7 +4,7 @@
       class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded w-192 max-w-full"
     >
       <div class="flex-1 flex-col">
-        <h1 class="text-2xl">履修登録</h1>
+        <h1 class="text-2xl font-bold text-gray-800">履修登録</h1>
         <div class="flex mt-2 mb-6 gap-2">
           <Button @click="onClickSearchCourse">科目検索</Button>
           <Button color="primary" @click="onClickConfirm">内容の確定</Button>

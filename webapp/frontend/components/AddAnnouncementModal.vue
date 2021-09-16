@@ -1,7 +1,7 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card class="w-96 max-w-full">
-      <p class="text-2xl text-black font-bold justify-center mb-4">
+      <p class="text-2xl text-gray-800 font-bold justify-center mb-4">
         お知らせ登録
       </p>
       <div class="flex flex-col space-y-4 mb-4">

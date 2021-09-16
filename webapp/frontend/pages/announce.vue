@@ -5,7 +5,7 @@
     >
       <div class="flex-1 flex-col">
         <div class="flex flex-row items-center mb-4">
-          <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
+          <h1 class="text-2xl font-bold text-gray-800 mr-4">お知らせ一覧</h1>
           <span class="bg-primary-500 text-white text-sm py-1 px-2 rounded-sm"
             ><fa-icon icon="bell" class="mr-0.5" /><span>{{
               numOfUnreads
