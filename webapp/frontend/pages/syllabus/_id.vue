@@ -1,6 +1,8 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
+    <div
+      class="py-10 px-8 bg-white shadow-lg w-192 max-w-full mt-8 mb-8 rounded"
+    >
       <div class="flex-1 flex-col">
         <section>
           <h1 class="text-2xl">科目概要</h1>
@@ -117,7 +119,7 @@
                 border
               "
             >
-              科目ステータス
+              科目の状態
             </div>
             <div class="px-2 py-2 border">
               {{ courseStatus }}
@@ -188,6 +190,7 @@ import { formatType, formatPeriod, formatStatus } from '~/helpers/course_helper'
 import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type SyllabusData = {
+  title: string
   course: SyllabusCourse
   hasError: boolean
 }
@@ -215,17 +218,27 @@ export default Vue.extend({
       const res = await ctx.$axios.get(`/api/courses/${id}`)
       const course: SyllabusCourse = res.data
 
-      return { course, hasError: false }
+      return {
+        title: `ISUCHOLAR - 科目概要:${course.name}`,
+        course,
+        hasError: false,
+      }
     } catch (e) {
       console.error(e)
     }
 
-    return { course: initCourse, hasError: true }
+    return { title: '', course: initCourse, hasError: true }
   },
   data(): SyllabusData {
     return {
+      title: '',
       course: initCourse,
       hasError: false,
+    }
+  },
+  head(): any {
+    return {
+      title: this.title,
     }
   },
   computed: {

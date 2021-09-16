@@ -1,7 +1,9 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold justify-center mb-4">科目登録</p>
+      <p class="text-2xl text-gray-800 font-bold justify-center mb-4">
+        科目登録
+      </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex flex-row space-x-2">
           <div class="flex-1">
@@ -87,28 +89,15 @@
           placeholder="キーワードを半角スペース区切りで入力してください"
         />
       </div>
-      <div
-        v-if="failed"
-        class="
-          bg-red-100
-          border border-red-400
-          text-red-700
-          px-4
-          py-3
-          rounded
-          relative
-        "
-        role="alert"
-      >
-        <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">科目の登録に失敗しました</span>
-        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-          <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
-        </span>
-      </div>
-      <div class="px-4 py-3 flex justify-center">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 登録 </Button>
+      <template v-if="failed">
+        <InlineNotification type="error">
+          <template #title>APIエラーがあります</template>
+          <template #message>科目の登録に失敗しました。</template>
+        </InlineNotification>
+      </template>
+      <div class="flex justify-center gap-2 mt-4">
+        <Button w-class="w-28" @click="close"> 閉じる </Button>
+        <Button color="primary" w-class="w-28" @click="submit"> 登録 </Button>
       </div>
     </Card>
   </Modal>
@@ -119,9 +108,9 @@ import Vue from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
-import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import TextField from '~/components/common/TextField.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 import { AddCourseRequest } from '~/types/courses'
 import { PeriodCount } from '~/constants/calendar'
 
@@ -145,7 +134,7 @@ export default Vue.extend({
   components: {
     Card,
     Modal,
-    CloseIcon,
+    InlineNotification,
     Button,
     TextField,
   },

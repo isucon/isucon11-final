@@ -23,7 +23,9 @@
     "cookie-universal-nuxt": "^2.1.5",
     "core-js": "^3.9.1",
     "nuxt": "^2.15.3",
-    "snakecase-keys": "^4.0.2"
+    "snakecase-keys": "^4.0.2",
+    "ulid": "^2.3.0",
+    "vue-click-outside": "^1.1.0"
   },
   "devDependencies": {
     "@nuxt/types": "^2.15.3",

@@ -1,15 +1,15 @@
 <template>
   <div>
-    <table class="table-auto border w-full mt-1">
+    <table class="table-auto w-full">
       <thead>
-        <tr class="text-center">
-          <th>科目コード</th>
-          <th>科目名</th>
-          <th>科目種別</th>
-          <th>時間</th>
-          <th>単位数</th>
-          <th>ステータス</th>
-          <th></th>
+        <tr class="text-left">
+          <th class="px-1 py-0.5">科目コード</th>
+          <th class="px-1 py-0.5">科目名</th>
+          <th class="px-1 py-0.5">科目種別</th>
+          <th class="px-1 py-0.5">時間</th>
+          <th class="px-1 py-0.5">単位数</th>
+          <th class="px-1 py-0.5">科目の状態</th>
+          <th class="px-1 py-0.5"></th>
         </tr>
       </thead>
 
@@ -18,25 +18,21 @@
           <template v-for="(c, i) in courses">
             <tr
               :key="`course-tr-${i}`"
-              class="text-center bg-gray-200 odd:bg-white"
+              class="text-left bg-gray-200 odd:bg-white"
             >
-              <td>{{ c.code }}</td>
-              <td>{{ c.name }}</td>
-              <td>{{ formatType(c.type) }}</td>
-              <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
-              <td>{{ c.credit }}</td>
-              <td>{{ formatStatus(c.status) }}</td>
-              <td>
+              <td class="px-1 py-0.5">{{ c.code }}</td>
+              <td class="px-1 py-0.5">{{ c.name }}</td>
+              <td class="px-1 py-0.5">{{ formatType(c.type) }}</td>
+              <td class="px-1 py-0.5">
+                {{ formatPeriod(c.dayOfWeek, c.period) }}
+              </td>
+              <td class="px-1 py-0.5">{{ c.credit }}</td>
+              <td class="px-1 py-0.5">{{ formatStatus(c.status) }}</td>
+              <td class="px-1 py-0.5">
                 <div class="relative">
                   <fa-icon
                     icon="ellipsis-v"
-                    class="
-                      min-w-min
-                      px-2
-                      cursor-pointer
-                      rounded
-                      hover:bg-primary-300
-                    "
+                    class="min-w-min px-2 cursor-pointer rounded float-right"
                     @click.stop="onClickCourseDropdown(i)"
                   />
                   <div
@@ -55,25 +51,23 @@
                   >
                     <a
                       :href="`/syllabus/${c.id}`"
-                      target="_blank"
                       class="
                         block
                         px-4
                         py-2
-                        text-black text-sm
+                        text-gray-800 text-sm
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.stop="closeDropdown()"
-                      >シラバスを確認
+                      >科目の詳細を確認
                     </a>
                     <a
                       :href="`/teacher/courses/${c.id}`"
-                      target="_blank"
                       class="
                         block
                         px-4
                         py-2
-                        text-black text-sm
+                        text-gray-800 text-sm
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.stop="closeDropdown()"
@@ -85,11 +79,23 @@
                         block
                         px-4
                         py-2
-                        text-black text-sm
+                        text-gray-800 text-sm
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.prevent.stop="onClickSetStatus(i)"
-                      >ステータス変更
+                      >科目の状態を変更
+                    </a>
+                    <a
+                      href="#"
+                      class="
+                        block
+                        px-4
+                        py-2
+                        text-gray-800 text-sm
+                        hover:bg-primary-300 hover:text-white
+                      "
+                      @click.prevent.stop="onClickAddAnnouncement(i)"
+                      >お知らせを送信
                     </a>
                   </div>
                 </div>
@@ -110,8 +116,8 @@
       <Pagination
         :prev-disabled="!Boolean(link.prev)"
         :next-disabled="!Boolean(link.next)"
-        @goPrev="onClickPagination(link.prev.query)"
-        @goNext="onClickPagination(link.next.query)"
+        @goPrev="onClickPagination(link.prev.path, link.prev.query)"
+        @goNext="onClickPagination(link.next.path, link.next.query)"
       />
     </div>
   </div>
@@ -177,8 +183,8 @@ export default Vue.extend({
     formatStatus(status: CourseStatus): string {
       return formatStatus(status)
     },
-    onClickPagination(query: URLSearchParams): void {
-      this.$emit('paginate', query)
+    onClickPagination(path: string | undefined, query: URLSearchParams): void {
+      this.$emit('paginate', path, query)
     },
     onClickCourseDropdown(courseIdx: number): void {
       if (this.openDropdownIdx !== null && this.openDropdownIdx === courseIdx) {
@@ -189,6 +195,10 @@ export default Vue.extend({
     },
     onClickSetStatus(courseIdx: number): void {
       this.$emit('setStatus', courseIdx)
+      this.closeDropdown()
+    },
+    onClickAddAnnouncement(courseIdx: number): void {
+      this.$emit('addAnnouncement', courseIdx)
       this.closeDropdown()
     },
     closeDropdown() {

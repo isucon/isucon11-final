@@ -1,0 +1,50 @@
+---
+- name: "roles/contestant/tasks/isucholar-php: Put isucondition.php-fpm.conf"
+  become: yes
+  become_user: isucon
+  copy:
+    src: home/isucon/local/php/etc/isucholar.php-fpm.conf
+    dest: /home/isucon/local/php/etc/isucholar.php-fpm.conf
+
+- name: "roles/contestant/tasks/isucholar-php: Fix php.ini for Memory Limit"
+  become: yes
+  become_user: isucon
+  ini_file:
+    path: /home/isucon/local/php/etc/php.ini
+    section: PHP
+    option: memory_limit
+    value: "-1"
+    mode: 0644
+    backup: yes
+
+- name: "roles/contestant/tasks/isucholar-php: Fix php.ini for timezone"
+  become: yes
+  become_user: isucon
+  ini_file:
+    path: /home/isucon/local/php/etc/php.ini
+    section: Date
+    option: date.timezone
+    value: "Asia/Tokyo"
+    mode: 0644
+    backup: no
+
+- name: "roles/contestant/tasks/isucholar-php: Build Web Application PHP"
+  become: yes
+  become_user: isucon
+  environment:
+    PATH: "/home/isucon/local/php/bin:{{ ansible_env.PATH }}"
+  args:
+    chdir: /home/isucon/webapp/php
+  shell: |
+    ./composer.phar install
+
+- name: "roles/contestant/tasks/isucholar-php: Deploy Service file"
+  become_user: root
+  copy:
+    src: "{{ item }}"
+    dest: "/{{ item }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_items:
+    - etc/systemd/system/isucholar.php.service

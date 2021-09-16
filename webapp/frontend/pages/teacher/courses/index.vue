@@ -1,6 +1,8 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
+    <div
+      class="py-10 px-8 bg-white shadow-lg w-192 max-w-full mt-8 mb-8 rounded"
+    >
       <div class="flex-1 flex-col">
         <InlineNotification type="warn">
           <template #title>本ページは工事中です。</template>
@@ -8,8 +10,8 @@
         </InlineNotification>
 
         <section class="mt-8">
-          <h1 class="text-2xl">科目</h1>
-          <div class="mt-4">
+          <div class="flex justify-between">
+            <div class="text-2xl">科目一覧</div>
             <Button color="primary" @click="showAddCourseModal"
               >新規登録</Button
             >
@@ -27,11 +29,17 @@
               :link="courseLink"
               @paginate="moveCoursePage"
               @setStatus="showSetStatusModal"
+              @addAnnouncement="showAddAnnouncementModal"
             />
           </div>
         </section>
       </div>
     </div>
+    <AddAnnouncementModal
+      :is-shown="visibleModal === 'AddAnnouncement'"
+      :course-id="courseId"
+      @close="visibleModal = null"
+    />
     <AddCourseModal
       :is-shown="visibleModal === 'AddCourse'"
       @close="visibleModal = null"
@@ -56,11 +64,12 @@ import InlineNotification from '~/components/common/InlineNotification.vue'
 import CourseTable from '~/components/CourseTable.vue'
 import AddCourseModal from '~/components/AddCourseModal.vue'
 import SetCourseStatusModal from '~/components/SetCourseStatusModal.vue'
+import AddAnnouncementModal from '~/components/AddAnnouncementModal.vue'
 import { SyllabusCourse, User } from '~/types/courses'
 import { Link, parseLinkHeader } from '~/helpers/link_helper'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 
-type modalKinds = 'AddCourse' | 'SetCourseStatus' | null
+type modalKinds = 'AddCourse' | 'SetCourseStatus' | 'AddAnnouncement' | null
 
 type DataType = {
   visibleModal: modalKinds
@@ -78,6 +87,7 @@ export default Vue.extend({
     CourseTable,
     AddCourseModal,
     SetCourseStatusModal,
+    AddAnnouncementModal,
     InlineNotification,
   },
   middleware: 'is_teacher',
@@ -89,6 +99,9 @@ export default Vue.extend({
       courseLink: { prev: undefined, next: undefined },
       hasError: false,
     }
+  },
+  head: {
+    title: 'ISUCHOLAR - 教員用講義一覧',
   },
   computed: {
     courseId(): string {
@@ -111,7 +124,7 @@ export default Vue.extend({
     await this.loadCourses()
   },
   methods: {
-    async loadCourses(query?: Record<string, any>) {
+    async loadCourses(path = `/api/courses`, query?: Record<string, any>) {
       this.hasError = false
       if (!query) {
         this.courseLink = Object.assign({}, initLink)
@@ -119,10 +132,9 @@ export default Vue.extend({
       try {
         const resUser = await this.$axios.get<User>(`/api/users/me`)
         const user = resUser.data
-        const resCourses = await this.$axios.get<SyllabusCourse[]>(
-          `/api/courses`,
-          { params: { ...query, teacher: user.name } }
-        )
+        const resCourses = await this.$axios.get<SyllabusCourse[]>(path, {
+          params: { ...query, teacher: user.name },
+        })
         this.courses = resCourses.data ?? []
         this.courseLink = Object.assign(
           {},
@@ -134,8 +146,8 @@ export default Vue.extend({
         notify('科目一覧の取得に失敗しました')
       }
     },
-    async moveCoursePage(query: URLSearchParams) {
-      await this.loadCourses(urlSearchParamsToObject(query))
+    async moveCoursePage(path: string | undefined, query: URLSearchParams) {
+      await this.loadCourses(path, urlSearchParamsToObject(query))
     },
     showAddCourseModal() {
       this.visibleModal = 'AddCourse'
@@ -143,6 +155,10 @@ export default Vue.extend({
     showSetStatusModal(courseIdx: number) {
       this.selectedCourseIdx = courseIdx
       this.visibleModal = 'SetCourseStatus'
+    },
+    showAddAnnouncementModal(courseIdx: number) {
+      this.selectedCourseIdx = courseIdx
+      this.visibleModal = 'AddAnnouncement'
     },
   },
 })

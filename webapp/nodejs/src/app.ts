@@ -4,6 +4,7 @@ import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
 import { promisify } from "util";
+import { URL } from "url";
 
 import archiver from "archiver";
 import bcrypt from "bcrypt";
@@ -554,7 +555,7 @@ interface ClassScore {
   title: string;
   part: number;
   score: number | null;
-  submitters: number; // 提出した生徒数
+  submitters: number; // 提出した学生数
 }
 
 // GET /api/users/me/grades 成績取得
@@ -569,8 +570,6 @@ usersApi.get("/me/grades", async (req, res) => {
 
   const db = await pool.getConnection();
   try {
-    await db.beginTransaction();
-
     // 履修している科目一覧取得
     const [registeredCourses] = await db.query<Course[]>(
       "SELECT `courses`.*" +
@@ -630,7 +629,7 @@ usersApi.get("/me/grades", async (req, res) => {
         }
       }
 
-      // この科目を受講している学生のTotalScore一覧を取得
+      // この科目を履修している学生のTotalScore一覧を取得
       const [rows] = await db.query<
         ({ total_score: number } & RowDataPacket)[]
       >(
@@ -667,7 +666,7 @@ usersApi.get("/me/grades", async (req, res) => {
     }
 
     // GPAの統計値
-    // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
+    // 一つでも修了した科目がある学生のGPA一覧
     const [rows] = await db.query<({ gpa: number } & RowDataPacket)[]>(
       "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
         " FROM `users`" +
@@ -688,8 +687,6 @@ usersApi.get("/me/grades", async (req, res) => {
     );
     const gpas = rows.map((row) => row.gpa);
 
-    await db.commit();
-
     const response: GetGradeResponse = {
       summary: {
         credits: myCredits,
@@ -704,7 +701,6 @@ usersApi.get("/me/grades", async (req, res) => {
     return res.status(200).json(response);
   } catch (err) {
     console.error(err);
-    await db.rollback();
     return res.status(500).send();
   } finally {
     db.release();
@@ -752,7 +748,7 @@ coursesApi.get(
 
     if (req.query.credit) {
       const credit = parseInt(req.query.credit, 10);
-      if (!isNaN(credit)) {
+      if (!isNaN(credit) && credit > 0) {
         condition += " AND `courses`.`credit` = ?";
         args.push(credit);
       }
@@ -765,7 +761,7 @@ coursesApi.get(
 
     if (req.query.period) {
       const period = parseInt(req.query.period, 10);
-      if (!isNaN(period)) {
+      if (!isNaN(period) && period > 0) {
         condition += " AND `courses`.`period` = ?";
         args.push(period);
       }
@@ -785,7 +781,7 @@ coursesApi.get(
       });
       let keywordsCondition = "";
       arr.forEach((keyword) => {
-        keywordsCondition += " AND `courses`.`name` LIKE ?";
+        keywordsCondition += " AND `courses`.`keywords` LIKE ?";
         args.push(`%${keyword}%`);
       });
       condition += ` AND ((1=1${nameCondition}) OR (1=1${keywordsCondition}))`;
@@ -1047,7 +1043,7 @@ coursesApi.put(
       await db.beginTransaction();
 
       const [[{ cnt }]] = await db.query<({ cnt: number } & RowDataPacket)[]>(
-        "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ?",
+        "SELECT COUNT(*) AS `cnt` FROM `courses` WHERE `id` = ? FOR UPDATE",
         [courseId]
       );
       if (cnt === 0) {
@@ -1363,7 +1359,7 @@ function isValidRegisterScoresRequest(
   );
 }
 
-// PUT /api/courses/:courseId/classes/:classId/assignments/scores 成績登録
+// PUT /api/courses/:courseId/classes/:classId/assignments/scores 採点結果登録
 coursesApi.put(
   "/:courseId/classes/:classId/assignments/scores",
   isAdmin,

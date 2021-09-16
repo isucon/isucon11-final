@@ -17,7 +17,7 @@ import (
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
+	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun"
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
 	"github.com/pkg/profile"
 
@@ -32,6 +32,7 @@ const (
 	// load.goには別途「Loadのリクエストを送り続ける時間」を定義しているので注意
 	loadTimeout              = 70 * time.Second
 	errorFailThreshold int64 = 100
+	allowedTargetFQDN        = "isucholar.t.isucon.dev"
 )
 
 var (
@@ -76,6 +77,10 @@ func init() {
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
 	flag.Parse()
+
+	if targetAddress == "" {
+		targetAddress = "localhost:8080"
+	}
 
 	agent.DefaultRequestTimeout = defaultRequestTimeout
 }
@@ -177,10 +182,10 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		},
 		Finished: finish,
 		Passed:   passed,
-		Score:    totalScore, // TODO: 加点 - 減点
+		Score:    totalScore,
 		ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
-			Raw:       rawScore,    // TODO: 加点
-			Deduction: deductScore, // TODO: 減点
+			Raw:       rawScore,
+			Deduction: deductScore,
 		},
 		Execution: &isuxportalResources.BenchmarkResult_Execution{
 			Reason: reason,
@@ -230,17 +235,20 @@ func main() {
 		}()
 	}
 
-	if targetAddress == "" {
-		targetAddress = "localhost:8080"
-	}
 	scheme := "http"
 	if useTLS {
 		scheme = "https"
 	}
+
 	baseURL, err := url.Parse(fmt.Sprintf("%s://%s/", scheme, targetAddress))
 	if err != nil {
 		panic(err)
 	}
+
+	if useTLS {
+		agent.DefaultTLSConfig.ServerName = allowedTargetFQDN
+	}
+
 	config := &scenario.Config{
 		BaseURL:          baseURL,
 		UseTLS:           useTLS,
@@ -250,12 +258,9 @@ func main() {
 		IsDebug:          isDebug,
 	}
 
-	s, err := scenario.NewScenario(config)
-	if err != nil {
-		panic(err)
-	}
+	s := scenario.NewScenario(config)
 
-	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout))
+	b, err := isucandar.NewBenchmark(isucandar.WithLoadTimeout(loadTimeout), isucandar.WithoutPanicRecover())
 	if err != nil {
 		panic(err)
 	}
@@ -297,7 +302,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				scenario.AdminLogger.Printf("[debug] %.f seconds have passed\n", time.Since(startAt).Seconds())
-				sendResult(s, step.Result(), false, true)
+				sendResult(s, step.Result(), false, count%5 == 0)
 			case <-ctx.Done():
 				ticker.Stop()
 				return nil

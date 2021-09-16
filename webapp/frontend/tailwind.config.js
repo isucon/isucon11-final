@@ -33,6 +33,8 @@ module.exports = {
       gridTemplateColumns: {
         calendar: 'minmax(0, 2.5rem) repeat(5, minmax(0, 1fr));',
         syllabus: 'minmax(min-content, 10rem) 1fr;',
+        course: '5rem 1fr;',
+        score: '1fr 1fr 1.5rem',
       },
       gridRowEnd: {
         8: '8',
@@ -45,6 +47,9 @@ module.exports = {
       minHeight: {
         40: '10rem',
         32: '8rem',
+      },
+      width: {
+        192: '48rem',
       },
     },
   },

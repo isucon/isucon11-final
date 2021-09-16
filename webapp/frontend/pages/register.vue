@@ -1,8 +1,10 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded">
+    <div
+      class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded w-192 max-w-full"
+    >
       <div class="flex-1 flex-col">
-        <h1 class="text-2xl">履修登録</h1>
+        <h1 class="text-2xl font-bold text-gray-800">履修登録</h1>
         <div class="flex mt-2 mb-6 gap-2">
           <Button @click="onClickSearchCourse">科目検索</Button>
           <Button color="primary" @click="onClickConfirm">内容の確定</Button>
@@ -25,7 +27,7 @@
                   <template v-if="course.id">
                     <a
                       :key="`link-${p}-${w}-${i}`"
-                      :href="`/courses/${course.id}`"
+                      :href="`/syllabus/${course.id}`"
                       target="_blank"
                       class="
                         flex-grow
@@ -39,8 +41,13 @@
                         ease
                         hover:bg-primary-100
                       "
+                      :class="
+                        course.displayType === 'will_register'
+                          ? 'border-2 border-primary-700 border-opacity-40'
+                          : ''
+                      "
                     >
-                      <div class="flex flex-col">
+                      <div class="relative flex flex-col w-full h-full">
                         <span class="text-primary-500">
                           <template
                             v-if="
@@ -50,14 +57,27 @@
                           >
                             <span>{{ course.code }}</span>
                           </template>
-                          <template
-                            v-else-if="course.displayType === 'registered'"
-                          >
-                            <span>履修済</span>
-                          </template>
                           <span class="font-bold">{{ course.name }}</span>
                         </span>
                         <span class="text-sm">{{ course.teacher }}</span>
+                        <template
+                          v-if="
+                            course.code &&
+                            course.displayType === 'will_register'
+                          "
+                        >
+                          <button
+                            title="仮登録解除"
+                            class="absolute right-0 -bottom-0.5"
+                            @click="onClickCancelCourse($event, course.id)"
+                          >
+                            <fa-icon
+                              icon="times"
+                              size="lg"
+                              class="text-primary-500"
+                            />
+                          </button>
+                        </template>
                       </div>
                     </a>
                   </template>
@@ -173,6 +193,9 @@ export default Vue.extend({
       errorMessage: undefined,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - 履修登録',
+  },
   computed: {
     courses(): CalendarCourses {
       const periodCourses: CalendarCourses = []
@@ -271,6 +294,12 @@ export default Vue.extend({
         )}`
         notify('履修登録に失敗しました')
       }
+    },
+    onClickCancelCourse(e: Event, id: string): void {
+      e.preventDefault()
+      this.willRegisterCourses = this.willRegisterCourses.filter(
+        (c) => c.id !== id
+      )
     },
   },
 })

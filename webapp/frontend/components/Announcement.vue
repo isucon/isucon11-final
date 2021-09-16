@@ -2,7 +2,7 @@
   <div>
     <Accordion @open="$emit('open', $event)" @close="$emit('close', $event)">
       <template #header>
-        <div class="text-xl text-black flex items-center justify-between">
+        <div class="text-xl text-gray-800 flex items-center justify-between">
           <span>
             {{ announcement.title }}
           </span>
@@ -15,12 +15,12 @@
       </template>
       <template #default>
         <template v-if="!announcement.hasError">
-          <p class="text-black text-base break-all">
+          <p class="text-gray-800 text-base break-all">
             {{ announcement.message || '' }}
           </p>
         </template>
         <template v-else>
-          <p class="text-base break-all my-2">
+          <p class="text-base text-gray-800 break-all my-2">
             お知らせ詳細の取得に失敗しました。
           </p>
         </template>

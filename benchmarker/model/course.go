@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	// ClassCountPerCourse は科目あたりのクラス数 -> used in model/course.go
+	// ClassCountPerCourse は科目あたりの講義数 -> used in model/course.go
 	ClassCountPerCourse = 5
 )
 
@@ -286,8 +286,7 @@ func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 	defer c.rmu.RUnlock()
 
 	if _, ok := c.registeredStudents[code]; !ok {
-		// TODO: unreachable
-		return nil
+		panic("unreachable! user is not found. userCode: " + code)
 	}
 
 	totalScores := c.calcTotalScores()
@@ -300,6 +299,7 @@ func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 	totalMax := util.MaxInt(totalScoresArr, 0)
 	totalMin := util.MinInt(totalScoresArr, 0)
 
+	// totalscore は registeredStudents に対して 0 点になるのでここは大丈夫
 	totalScore, ok := totalScores[code]
 	if !ok {
 		panic("unreachable! userCode: " + code)
@@ -391,7 +391,7 @@ func (p *SearchCourseParam) GetParamString() string {
 	}
 
 	if len(paramStrings) == 0 {
-		return "empty"
+		return "指定なし"
 	} else {
 		return strings.Join(paramStrings, ", ")
 	}

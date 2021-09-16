@@ -7,19 +7,21 @@ const (
 	ScoreSubmitAssignment    score.ScoreTag = "SubmitAssignment"
 	ScoreGetAnnouncementList score.ScoreTag = "GetAnnouncementList"
 
+	// other (needs attention)
+	SkipRegisterNoCourseAvailable score.ScoreTag = "!1.SkipRegisterNoCourseAvailable"
+
 	// other
-	ActiveStudents           score.ScoreTag = "_O1.ActiveStudents"
-	StartCourseStudents      score.ScoreTag = "_O2.StartCourseStudents"
-	FinishCourses            score.ScoreTag = "_O3.FinishCourses"
-	FinishCourseStudents     score.ScoreTag = "_O4.FinishCourseStudents"
-	GetAnnouncementsDetail   score.ScoreTag = "_O5.GetAnnouncementDetail"
-	CourseStartCourseUnder10 score.ScoreTag = "_O6.StartCourseUnder10"
-	CourseStartCourseUnder20 score.ScoreTag = "_O7.StartCourseUnder20"
-	CourseStartCourseUnder30 score.ScoreTag = "_O8.StartCourseUnder30"
-	CourseStartCourseUnder40 score.ScoreTag = "_O9.StartCourseUnder40"
-	CourseStartCourseUnder50 score.ScoreTag = "_10.StartCourseUnder50"
-	CourseStartCourseFull    score.ScoreTag = "_11.StartCourseFull"
-	CourseStartCourseOver50  score.ScoreTag = "!12.StartCourseOver50"
+	ActiveStudents           score.ScoreTag = "_O01.ActiveStudents"
+	StartCourseStudents      score.ScoreTag = "_O02.StartCourseStudents"
+	FinishCourses            score.ScoreTag = "_O03.FinishCourses"
+	FinishCourseStudents     score.ScoreTag = "_O04.FinishCourseStudents"
+	GetAnnouncementsDetail   score.ScoreTag = "_O05.GetAnnouncementDetail"
+	CourseStartCourseUnder10 score.ScoreTag = "_O06.StartCourseUnder10"
+	CourseStartCourseUnder20 score.ScoreTag = "_O07.StartCourseUnder20"
+	CourseStartCourseUnder30 score.ScoreTag = "_O08.StartCourseUnder30"
+	CourseStartCourseUnder40 score.ScoreTag = "_O09.StartCourseUnder40"
+	CourseStartCourseUnder50 score.ScoreTag = "_O10.StartCourseUnder50"
+	CourseStartCourseFull    score.ScoreTag = "_O11.StartCourseFull"
 
 	// registration scenario
 	RegGetGrades                    score.ScoreTag = "_R1.GetGrades"
@@ -53,6 +55,9 @@ var Tags = []score.ScoreTag{
 	ScoreSubmitAssignment,
 	ScoreGetAnnouncementList,
 
+	// other (needs attention)
+	SkipRegisterNoCourseAvailable,
+
 	// other
 	ActiveStudents,
 	StartCourseStudents,
@@ -66,7 +71,6 @@ var Tags = []score.ScoreTag{
 	CourseStartCourseUnder40,
 	CourseStartCourseUnder50,
 	CourseStartCourseFull,
-	CourseStartCourseOver50,
 
 	// registration scenario
 	RegGetGrades,

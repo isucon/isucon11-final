@@ -1,10 +1,13 @@
 package scenario
 
 import (
+	"errors"
 	"math"
+	"net/http"
 	"reflect"
 
 	"github.com/isucon/isucon11-final/benchmarker/api"
+	"github.com/isucon/isucon11-final/benchmarker/fails"
 	"github.com/isucon/isucon11-final/benchmarker/model"
 )
 
@@ -49,66 +52,64 @@ func AssertWithinTolerance(msg string, expect, actual, tolerance float64) bool {
 	return r
 }
 
-func AssertEqualCourse(expected *model.Course, actual *api.GetCourseDetailResponse, verifyStatus bool) bool {
-	return AssertEqual("course id", expected.ID, actual.ID) &&
-		AssertEqual("course code", expected.Code, actual.Code) &&
-		AssertEqual("course type", api.CourseType(expected.Type), actual.Type) &&
-		AssertEqual("course name", expected.Name, actual.Name) &&
-		AssertEqual("course description", expected.Description, actual.Description) &&
-		AssertEqual("course credit", uint8(expected.Credit), actual.Credit) &&
-		AssertEqual("course period", uint8(expected.Period+1), actual.Period) &&
-		AssertEqual("course day_of_week", api.DayOfWeekTable[expected.DayOfWeek], actual.DayOfWeek) &&
-		AssertEqual("course teacher", expected.Teacher().Name, actual.Teacher) &&
-		(!verifyStatus || AssertEqual("course status", expected.Status(), actual.Status)) &&
-		AssertEqual("course keywords", expected.Keywords, actual.Keywords)
+func AssertEqualUserAccount(expected *model.UserAccount, actual *api.GetMeResponse, hres *http.Response) error {
+	if !AssertEqual("account code", expected.Code, actual.Code) {
+		return fails.ErrorInvalidResponse(errors.New("学内コードが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("account name", expected.Name, actual.Name) {
+		return fails.ErrorInvalidResponse(errors.New("氏名が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("account is_admin", expected.IsAdmin, actual.IsAdmin) {
+		return fails.ErrorInvalidResponse(errors.New("管理者フラグが期待する値と一致しません"), hres)
+	}
+
+	return nil
 }
 
-func MatchCourse(course *model.Course, param *model.SearchCourseParam) bool {
-	return (param.Type == "" || course.Type == param.Type) &&
-		(param.Credit == 0 || course.Credit == param.Credit) &&
-		(param.Teacher == "" || course.Teacher().Name == param.Teacher) &&
-		(param.Period == -1 || course.Period == param.Period) &&
-		(param.DayOfWeek == -1 || course.DayOfWeek == param.DayOfWeek) &&
-		(containsAll(course.Name, param.Keywords) || containsAll(course.Keywords, param.Keywords)) &&
-		(param.Status == "" || string(course.Status()) == param.Status)
+func AssertEqualRegisteredCourse(expected *model.Course, actual *api.GetRegisteredCourseResponseContent, hres *http.Response) error {
+	if !AssertEqual("registered_course id", expected.ID, actual.ID) {
+		return fails.ErrorInvalidResponse(errors.New("科目IDが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("registered_course name", expected.Name, actual.Name) {
+		return fails.ErrorInvalidResponse(errors.New("科目名が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("registered_course teacher", expected.Teacher().Name, actual.Teacher) {
+		return fails.ErrorInvalidResponse(errors.New("科目の教員名が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("registered_course period", uint8(expected.Period+1), actual.Period) {
+		return fails.ErrorInvalidResponse(errors.New("科目の開講時限が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("registered_course day_of_weeek", api.DayOfWeekTable[expected.DayOfWeek], actual.DayOfWeek) {
+		return fails.ErrorInvalidResponse(errors.New("科目の開講曜日が期待する値と一致しません"), hres)
+	}
+
+	return nil
 }
 
-func assertEqualCourseResult(expected *model.CourseResult, actual *api.CourseResult) error {
-	if !AssertEqual("grade courses name", expected.Name, actual.Name) {
-		return errInvalidResponse("成績確認のコースの名前が一致しません")
+func AssertEqualGrade(expected *model.GradeRes, actual *api.GetGradeResponse, hres *http.Response) error {
+	if !AssertEqual("grade courses length", len(expected.CourseResults), len(actual.CourseResults)) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の courses の数が一致しません"), hres)
 	}
 
-	if !AssertEqual("grade courses code", expected.Code, actual.Code) {
-		return errInvalidResponse("成績確認のコースのコードが一致しません")
+	err := AssertEqualSummary(&expected.Summary, &actual.Summary, hres)
+	if err != nil {
+		return err
 	}
 
-	if !AssertEqual("grade courses total_score", expected.TotalScore, actual.TotalScore) {
-		return errInvalidResponse("成績確認のコースのTotalScoreが一致しません")
-	}
+	for _, courseResult := range actual.CourseResults {
+		if _, ok := expected.CourseResults[courseResult.Code]; !ok {
+			AdminLogger.Println(courseResult.Code, "は予期せぬ科目です")
+			return fails.ErrorInvalidResponse(errors.New("成績取得の courses に意図しない科目が含まれています"), hres)
+		}
 
-	if !AssertEqual("grade courses total_score_max", expected.TotalScoreMax, actual.TotalScoreMax) {
-		return errInvalidResponse("成績確認のコースのTotalScoreMaxが一致しません")
-	}
-
-	if !AssertEqual("grade courses total_score_min", expected.TotalScoreMin, actual.TotalScoreMin) {
-		return errInvalidResponse("成績確認のコースのTotalScoreMinが一致しません")
-	}
-
-	if !AssertWithinTolerance("grade courses total_score_avg", expected.TotalScoreAvg, actual.TotalScoreAvg, validateTotalScoreErrorTolerance) {
-		return errInvalidResponse("成績確認のコースのTotalScoreAvgが一致しません")
-	}
-
-	if !AssertWithinTolerance("grade courses total_score_t_score", expected.TotalScoreTScore, actual.TotalScoreTScore, validateTotalScoreErrorTolerance) {
-		return errInvalidResponse("成績確認のコースのTotalScoreTScoreが一致しません")
-	}
-
-	if !AssertEqual("grade courses class_scores length", len(expected.ClassScores), len(actual.ClassScores)) {
-		return errInvalidResponse("成績確認のClassScoresの数が一致しません")
-	}
-
-	for i := 0; i < len(expected.ClassScores); i++ {
-		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古いクラスから見るようにしている
-		err := assertEqualClassScore(expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1])
+		expected := expected.CourseResults[courseResult.Code]
+		err := AssertEqualCourseResult(expected, &courseResult, hres)
 		if err != nil {
 			return err
 		}
@@ -117,25 +118,246 @@ func assertEqualCourseResult(expected *model.CourseResult, actual *api.CourseRes
 	return nil
 }
 
-func assertEqualClassScore(expected *model.ClassScore, actual *api.ClassScore) error {
-	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
-		return errInvalidResponse("成績確認のクラスのIDが一致しません")
+func AssertEqualSummary(expected *model.Summary, actual *api.Summary, hres *http.Response) error {
+	if !AssertEqual("grade summary credits", expected.Credits, actual.Credits) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の credits が一致しません"), hres)
 	}
 
-	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
-		return errInvalidResponse("成績確認のクラスのpartが一致しません")
+	if !AssertWithinTolerance("grade summary gpa", expected.GPA, actual.GPA, validateGPAErrorTolerance) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa が一致しません"), hres)
+	}
+
+	if !AssertWithinTolerance("grade summary gpa_max", expected.GpaMax, actual.GpaMax, validateGPAErrorTolerance) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_max が一致しません"), hres)
+	}
+
+	if !AssertWithinTolerance("grade summary gpa_min", expected.GpaMin, actual.GpaMin, validateGPAErrorTolerance) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_min が一致しません"), hres)
+	}
+
+	if !AssertWithinTolerance("grade summary gpa_avg", expected.GpaAvg, actual.GpaAvg, validateGPAErrorTolerance) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_avg が一致しません"), hres)
+	}
+
+	if !AssertWithinTolerance("grade summary gpa_t_score", expected.GpaTScore, actual.GpaTScore, validateGPAErrorTolerance) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の summary の gpa_t_score が一致しません"), hres)
+	}
+
+	return nil
+}
+
+func AssertEqualCourseResult(expected *model.CourseResult, actual *api.CourseResult, hres *http.Response) error {
+	if !AssertEqual("grade courses name", expected.Name, actual.Name) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目名が一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses code", expected.Code, actual.Code) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目のコードが一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses total_score", expected.TotalScore, actual.TotalScore) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score が一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses total_score_max", expected.TotalScoreMax, actual.TotalScoreMax) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_max が一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses total_score_min", expected.TotalScoreMin, actual.TotalScoreMin) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_min が一致しません"), hres)
+	}
+
+	if !AssertWithinTolerance("grade courses total_score_avg", expected.TotalScoreAvg, actual.TotalScoreAvg, validateTotalScoreErrorTolerance) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_avg が一致しません"), hres)
+	}
+
+	if !AssertWithinTolerance("grade courses total_score_t_score", expected.TotalScoreTScore, actual.TotalScoreTScore, validateTotalScoreErrorTolerance) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の total_score_t_score が一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses class_scores length", len(expected.ClassScores), len(actual.ClassScores)) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の科目の class_scores の数が一致しません"), hres)
+	}
+
+	for i := 0; i < len(expected.ClassScores); i++ {
+		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古い講義から見るようにしている
+		err := AssertEqualClassScore(expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1], hres)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func AssertEqualClassScore(expected *model.ClassScore, actual *api.ClassScore, hres *http.Response) error {
+	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義IDが一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores title", expected.Title, actual.Title) {
-		return errInvalidResponse("成績確認のクラスのタイトルが一致しません")
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義のタイトルが一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義の part が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores score", expected.Score, actual.Score) {
-		return errInvalidResponse("成績確認のクラスのスコアが一致しません")
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義の採点結果が一致しません"), hres)
 	}
 
 	if !AssertEqual("grade courses class_scores submitters", expected.SubmitterCount, actual.Submitters) {
-		return errInvalidResponse("成績確認のクラスの課題提出者の数が一致しません")
+		return fails.ErrorInvalidResponse(errors.New("成績取得の講義の課題提出者の数が一致しません"), hres)
+	}
+
+	return nil
+}
+
+func AssertEqualSimpleClassScore(expected *model.SimpleClassScore, actual *api.ClassScore, hres *http.Response) error {
+	if !AssertEqual("grade courses class_scores class_id", expected.ClassID, actual.ClassID) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義IDが一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses class_scores title", expected.Title, actual.Title) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義のタイトルが一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses class_scores part", expected.Part, actual.Part) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義の part が一致しません"), hres)
+	}
+
+	if !AssertEqual("grade courses class_scores score", expected.Score, actual.Score) {
+		return fails.ErrorInvalidResponse(errors.New("成績取得での講義の採点結果が一致しません"), hres)
+	}
+
+	return nil
+}
+
+func AssertEqualCourse(expected *model.Course, actual *api.GetCourseDetailResponse, hres *http.Response, verifyStatus bool) error {
+	if !AssertEqual("course id", expected.ID, actual.ID) {
+		return fails.ErrorInvalidResponse(errors.New("科目IDが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course code", expected.Code, actual.Code) {
+		return fails.ErrorInvalidResponse(errors.New("科目のコードが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course type", api.CourseType(expected.Type), actual.Type) {
+		return fails.ErrorInvalidResponse(errors.New("科目のタイプが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course name", expected.Name, actual.Name) {
+		return fails.ErrorInvalidResponse(errors.New("科目名が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course description", expected.Description, actual.Description) {
+		return fails.ErrorInvalidResponse(errors.New("科目の詳細が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course credit", uint8(expected.Credit), actual.Credit) {
+		return fails.ErrorInvalidResponse(errors.New("科目の単位数が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course period", uint8(expected.Period+1), actual.Period) {
+		return fails.ErrorInvalidResponse(errors.New("科目の開講時限が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course day_of_week", api.DayOfWeekTable[expected.DayOfWeek], actual.DayOfWeek) {
+		return fails.ErrorInvalidResponse(errors.New("科目の開講曜日が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course teacher", expected.Teacher().Name, actual.Teacher) {
+		return fails.ErrorInvalidResponse(errors.New("科目の教員名が期待する値と一致しません"), hres)
+	}
+
+	if verifyStatus && !AssertEqual("course status", expected.Status(), actual.Status) {
+		return fails.ErrorInvalidResponse(errors.New("科目のステータスが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("course keywords", expected.Keywords, actual.Keywords) {
+		return fails.ErrorInvalidResponse(errors.New("科目のキーワードが期待する値と一致しません"), hres)
+	}
+
+	return nil
+}
+
+func AssertEqualClass(expected *model.Class, actual *api.GetClassResponse, student *model.Student, hres *http.Response) error {
+	if !AssertEqual("class id", expected.ID, actual.ID) {
+		return fails.ErrorInvalidResponse(errors.New("講義IDが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("class part", expected.Part, actual.Part) {
+		return fails.ErrorInvalidResponse(errors.New("講義のパートが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("class title", expected.Title, actual.Title) {
+		return fails.ErrorInvalidResponse(errors.New("講義のタイトルが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("class description", expected.Desc, actual.Description) {
+		return fails.ErrorInvalidResponse(errors.New("講義の説明文が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("class submission_closed", expected.IsSubmissionClosed(), actual.SubmissionClosed) {
+		return fails.ErrorInvalidResponse(errors.New("講義の課題締め切り状況が期待する値と一致しません"), hres)
+	}
+
+	isSubmitted := expected.GetSubmissionByStudentCode(student.Code) != nil
+	if !AssertEqual("class submitted", isSubmitted, actual.Submitted) {
+		return fails.ErrorInvalidResponse(errors.New("講義の課題提出状況が期待する値と一致しません"), hres)
+	}
+
+	return nil
+}
+
+func AssertEqualAnnouncementListContent(expected *model.AnnouncementStatus, actual *api.AnnouncementResponse, hres *http.Response, verifyUnread bool) error {
+	if !AssertEqual("announcement_list announcements id", expected.Announcement.ID, actual.ID) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせIDが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("announcement_list announcements course_id", expected.Announcement.CourseID, actual.CourseID) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせの科目IDが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("announcement_list announcements course_name", expected.Announcement.CourseName, actual.CourseName) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせの科目名が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("announcement_list announcements title", expected.Announcement.Title, actual.Title) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせのタイトルが期待する値と一致しません"), hres)
+	}
+
+	if verifyUnread && !AssertEqual("announcement_list announcements unread", expected.Unread, actual.Unread) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせの未読/既読状態が期待する値と一致しません"), hres)
+	}
+
+	return nil
+}
+
+func AssertEqualAnnouncementDetail(expected *model.AnnouncementStatus, actual *api.GetAnnouncementDetailResponse, hres *http.Response, verifyUnread bool) error {
+	if !AssertEqual("announcement_detail id", expected.Announcement.ID, actual.ID) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせのIDが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("announcement_detail course_id", expected.Announcement.CourseID, actual.CourseID) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせの講義IDが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("announcement_detail course_name", expected.Announcement.CourseName, actual.CourseName) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせの講義名が期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("announcement_detail title", expected.Announcement.Title, actual.Title) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせのタイトルが期待する値と一致しません"), hres)
+	}
+
+	if !AssertEqual("announcement_detail message", expected.Announcement.Message, actual.Message) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせのメッセージが期待する値と一致しません"), hres)
+	}
+
+	if verifyUnread && !AssertEqual("announcement_detail unread", expected.Unread, actual.Unread) {
+		return fails.ErrorInvalidResponse(errors.New("お知らせの未読/既読状態が期待する値と一致しません"), hres)
 	}
 
 	return nil

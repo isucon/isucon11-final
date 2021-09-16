@@ -1,8 +1,8 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
-    <Card>
-      <p class="text-2xl text-black font-bold justify-center mb-4">
-        ステータス変更
+    <Card class="w-96 max-w-full">
+      <p class="text-2xl text-gray-800 font-bold justify-center mb-4">
+        科目の状態を変更
       </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
@@ -12,33 +12,27 @@
           <Select
             id="params-status"
             v-model="params.status"
-            label="ステータス"
+            label="科目の状態"
             :options="statusOptions"
           />
         </div>
       </div>
-      <div
-        v-if="failed"
-        class="
-          bg-red-100
-          border border-red-400
-          text-red-700
-          px-4
-          py-3
-          rounded
-          relative
-        "
-        role="alert"
-      >
-        <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">ステータスの変更に失敗しました</span>
-        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-          <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
-        </span>
-      </div>
-      <div class="px-4 py-3 flex justify-center">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 変更 </Button>
+      <template v-if="failed">
+        <InlineNotification type="error">
+          <template #title>APIエラーがあります</template>
+          <template #message>科目の状態の変更に失敗しました。</template>
+        </InlineNotification>
+      </template>
+      <div class="flex justify-center gap-2 mt-4">
+        <Button w-class="w-28" @click="close"> 閉じる </Button>
+        <Button
+          w-class="w-28"
+          color="primary"
+          :disable="params.status !== ''"
+          @click="submit"
+        >
+          変更
+        </Button>
       </div>
     </Card>
   </Modal>
@@ -49,33 +43,37 @@ import Vue, { PropType } from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
-import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import Select from '~/components/common/Select.vue'
 import LabeledText from '~/components/common/LabeledText.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 import { CourseStatus, SetCourseStatusRequest } from '~/types/courses'
 
-type SubmitFormData = {
+type SetCourseStatusRequestWithDefault = {
+  status: SetCourseStatusRequest['status'] | ''
+}
+
+type Data = {
   failed: boolean
-  params: SetCourseStatusRequest
+  params: SetCourseStatusRequestWithDefault
 }
 
 const statusOptions = [
   {
-    text: '履修登録中',
+    text: '履修登録期間',
     value: 'registration',
   },
   {
-    text: '開講中',
+    text: '講義期間',
     value: 'in-progress',
   },
   {
-    text: '閉講',
+    text: '終了済み',
     value: 'closed',
   },
 ]
 
-const initParams: SetCourseStatusRequest = {
+const initParams: { status: CourseStatus | '' } = {
   status: 'registration',
 }
 
@@ -83,7 +81,7 @@ export default Vue.extend({
   components: {
     Card,
     Modal,
-    CloseIcon,
+    InlineNotification,
     Button,
     Select,
     LabeledText,
@@ -107,7 +105,7 @@ export default Vue.extend({
       required: true,
     },
   },
-  data(): SubmitFormData {
+  data(): Data {
     return {
       failed: false,
       params: Object.assign({}, initParams),
@@ -125,16 +123,18 @@ export default Vue.extend({
   },
   methods: {
     async submit() {
+      if (this.params.status === '') return
+
       try {
         await this.$axios.put(
           `/api/courses/${this.courseId}/status`,
           this.params
         )
-        notify('ステータス変更が完了しました')
+        notify('科目の状態変更が完了しました')
         this.$emit('completed')
         this.close()
       } catch (e) {
-        notify('ステータス変更に失敗しました')
+        notify('科目の状態変更に失敗しました')
         this.showAlert()
       }
     },

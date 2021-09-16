@@ -1,7 +1,9 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold justify-center mb-4">講義登録</p>
+      <p class="text-2xl text-gray-800 font-bold justify-center mb-4">
+        講義登録
+      </p>
       <div class="flex flex-col space-y-4 mb-4">
         <div class="flex-1">
           <LabeledText label="科目名" :value="courseName" />
@@ -40,28 +42,15 @@
           />
         </div>
       </div>
-      <div
-        v-if="failed"
-        class="
-          bg-red-100
-          border border-red-400
-          text-red-700
-          px-4
-          py-3
-          rounded
-          relative
-        "
-        role="alert"
-      >
-        <strong class="font-bold">エラー</strong>
-        <span class="block sm:inline">講義の登録に失敗しました</span>
-        <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-          <CloseIcon :classes="['text-red-500']" @click="hideAlert"></CloseIcon>
-        </span>
-      </div>
-      <div class="px-4 py-3 flex justify-center">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 登録 </Button>
+      <template v-if="failed">
+        <InlineNotification type="error">
+          <template #title>APIエラーがあります</template>
+          <template #message>講義の登録に失敗しました。</template>
+        </InlineNotification>
+      </template>
+      <div class="flex justify-center gap-2 mt-4">
+        <Button w-class="w-28" @click="close">閉じる</Button>
+        <Button color="primary" w-class="w-28" @click="submit">登録</Button>
       </div>
     </Card>
   </Modal>
@@ -72,9 +61,9 @@ import Vue from 'vue'
 import { notify } from '~/helpers/notification_helper'
 import Card from '~/components/common/Card.vue'
 import Modal from '~/components/common/Modal.vue'
-import CloseIcon from '~/components/common/CloseIcon.vue'
 import Button from '~/components/common/Button.vue'
 import LabeledText from '~/components/common/LabeledText.vue'
+import InlineNotification from '~/components/common/InlineNotification.vue'
 import { AddClassRequest } from '~/types/courses'
 
 type SubmitFormData = {
@@ -86,16 +75,15 @@ const initParams: AddClassRequest = {
   part: 1,
   title: '',
   description: '',
-  createdAt: 0,
 }
 
 export default Vue.extend({
   components: {
     Card,
     Modal,
-    CloseIcon,
     Button,
     LabeledText,
+    InlineNotification,
   },
   props: {
     courseId: {
@@ -120,7 +108,6 @@ export default Vue.extend({
   },
   methods: {
     async submit() {
-      this.params.createdAt = Math.floor(new Date().getTime() / 1000)
       try {
         await this.$axios.post(
           `/api/courses/${this.courseId}/classes`,
@@ -128,19 +115,9 @@ export default Vue.extend({
         )
         notify('講義の登録が完了しました')
         this.$emit('completed')
-
-        const params = {
-          title: `クラス追加: ${this.params.title}`,
-          message: `クラスが新しく追加されました: ${this.params.title}\n${this.params.description}`,
-          courseId: this.courseId,
-          createdAt: Math.floor(Date.now() / 1000), // ミリ秒を削除
-        }
-        await this.$axios.post(`/api/announcements`, params)
-
-        notify('講義の登録のお知らせ投稿が完了しました')
         this.close()
       } catch (e) {
-        notify('講義の登録またはお知らせ投稿に失敗しました')
+        notify('講義の登録に失敗しました')
         this.showAlert()
       }
     },

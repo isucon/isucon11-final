@@ -1,9 +1,11 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg w-8/12 mt-8 mb-8 rounded">
+    <div
+      class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded w-192 max-w-full"
+    >
       <div class="flex-1 flex-col">
         <div class="flex flex-row items-center mb-4">
-          <h1 class="text-2xl font-bold mr-4">お知らせ一覧</h1>
+          <h1 class="text-2xl font-bold text-gray-800 mr-4">お知らせ一覧</h1>
           <span class="bg-primary-500 text-white text-sm py-1 px-2 rounded-sm"
             ><fa-icon icon="bell" class="mr-0.5" /><span>{{
               numOfUnreads
@@ -18,26 +20,6 @@
             placeholder="科目名で絞り込み"
             @input="filterAnnouncements"
           />
-        </div>
-        <div class="flex items-center">
-          <input
-            type="checkbox"
-            class="
-              appearance-none
-              rounded
-              text-primary-500
-              border-gray-200
-              focus:outline-none
-              focus:shadow-none
-              focus:ring-0
-              focus:ring-offset-0
-              focus:ring-primary-200
-              mr-2
-              my-2
-            "
-            @change="toggleUnreadFilter"
-          />
-          <span>未読のみ</span>
         </div>
         <template v-if="!hasError">
           <AnnouncementList
@@ -78,7 +60,6 @@ type AsyncAnnounceData = {
 type AnnounceListData = AsyncAnnounceData & {
   courseName: string
   announcements: Announcement[]
-  showUnreads: boolean
   hasError: boolean
 }
 
@@ -89,10 +70,11 @@ export default Vue.extend({
   components: { InlineNotification, TextField, AnnouncementList },
   middleware: 'is_student',
   async asyncData(ctx: Context) {
-    const { $axios, query } = ctx
+    const { $axios, query, params } = ctx
 
     try {
-      const response = await $axios.get('/api/announcements', { params: query })
+      const apiPath = params.apipath ?? '/api/announcements'
+      const response = await $axios.get(apiPath, { params: query })
       const responseBody: GetAnnouncementResponse = response.data
       const link = response.headers.link
       const announcements: Announcement[] = Object.values(
@@ -131,10 +113,12 @@ export default Vue.extend({
       announcements: [],
       courseName: '',
       numOfUnreads: 0,
-      showUnreads: false,
       link: '',
       hasError: false,
     }
+  },
+  head: {
+    title: 'ISUCHOLAR - お知らせ',
   },
   watchQuery: true,
   created() {
@@ -179,20 +163,12 @@ export default Vue.extend({
       this.announcements = this.innerAnnouncements.filter((item) => {
         return item.courseName.indexOf(this.courseName) === 0
       })
-      if (this.showUnreads) {
-        this.announcements = this.announcements.filter((item) => {
-          return item.unread
-        })
-      }
     },
-    toggleUnreadFilter() {
-      this.showUnreads = !this.showUnreads
-      this.filterAnnouncements()
-    },
-    paginate(query: URLSearchParams) {
+    paginate(apipath: string, query: URLSearchParams) {
       this.$router.push({
-        path: '/announce',
+        name: 'announce',
         query: urlSearchParamsToObject(query),
+        params: { apipath },
       })
     },
   },

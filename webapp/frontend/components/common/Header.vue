@@ -37,7 +37,7 @@
         <span
           class="pl-2 cursor-pointer hover:text-gray-200"
           @click="onClickDropdown"
-          >学籍番号: {{ code }}</span
+          >学内コード: {{ code }}</span
         >
         <div
           class="
@@ -54,12 +54,13 @@
           :class="stateDropdown"
         >
           <a
+            v-click-outside="onOutsideClickDropdown"
             href="#"
             class="
               block
               px-4
               py-2
-              text-black text-sm
+              text-gray-800 text-sm
               hover:bg-primary-300 hover:text-white
             "
             @click="onClickLogout"
@@ -73,6 +74,8 @@
 <script lang="ts">
 import Vue from 'vue'
 import axios, { AxiosError } from 'axios'
+// @ts-ignore
+import ClickOutside from 'vue-click-outside'
 import { notify } from '~/helpers/notification_helper'
 
 type Data = {
@@ -82,6 +85,9 @@ type Data = {
 }
 
 export default Vue.extend({
+  directives: {
+    ClickOutside,
+  },
   data(): Data {
     return {
       code: '',
@@ -115,7 +121,12 @@ export default Vue.extend({
     },
   },
   methods: {
-    onClickDropdown() {
+    onOutsideClickDropdown(e: Event) {
+      e.stopPropagation()
+      this.isOpenDropdown = false
+    },
+    onClickDropdown(e: Event) {
+      e.stopPropagation()
       this.isOpenDropdown = !this.isOpenDropdown
     },
     async onClickLogout(event: Event) {

@@ -1,0 +1,56 @@
+name: CI for Rust backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - benchmarker/**/*
+      - webapp/rust/**/*
+      - .github/workflows/rust.yaml
+  pull_request:
+    paths:
+      - benchmarker/**/*
+      - webapp/rust/**/*
+      - .github/workflows/rust.yaml
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path webapp/rust/Cargo.toml -- --check
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --manifest-path webapp/rust/Cargo.toml
+
+  test:
+    name: Test
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environment
+        run: make -C dev up TARGET=rust
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: Run benchmarker with -no-load
+        run: |
+          make -C benchmarker
+          benchmarker/bin/benchmarker -no-load -exit-status
+      - name: Teardown environment
+        if: ${{ always() }}
+        run: make -C dev down TARGET=rust

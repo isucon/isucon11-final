@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"sync"
+	"sync/atomic"
 
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/random/useragent"
@@ -23,9 +24,11 @@ type Student struct {
 	*UserAccount
 	Agent *agent.Agent
 
+	finishCourseCount     int64
 	registeredCourses     []*Course
 	announcements         []*AnnouncementStatus // announcements は生成順でソートされている保証はない
 	announcementIndexByID map[string]int
+	unreadAnnouncement    map[string]*AnnouncementStatus
 	readAnnouncementCond  *sync.Cond // おしらせの既読を監視するCond
 	addAnnouncementCond   *sync.Cond // おしらせの追加を監視するCond
 	rmu                   sync.RWMutex
@@ -42,7 +45,8 @@ type AnnouncementStatus struct {
 }
 
 func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
-	a, _ := agent.NewAgent()
+	a, _ := agent.NewAgent(agent.WithCloneTransport(agent.DefaultTransport))
+
 	a.Name = useragent.UserAgent()
 	a.BaseURL = baseURL
 
@@ -53,6 +57,7 @@ func NewStudent(userData *UserAccount, baseURL *url.URL) *Student {
 		registeredCourses:     make([]*Course, 0, 20),
 		announcements:         make([]*AnnouncementStatus, 0, 100),
 		announcementIndexByID: make(map[string]int, 100),
+		unreadAnnouncement:    make(map[string]*AnnouncementStatus, 100),
 		rmu:                   sync.RWMutex{},
 
 		registeredSchedule: [5][6]*Course{},
@@ -94,11 +99,13 @@ func (s *Student) AddAnnouncement(announcement *Announcement) {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 
-	s.announcements = append(s.announcements, &AnnouncementStatus{
+	announcementStatus := &AnnouncementStatus{
 		Announcement: announcement,
 		Dirty:        false,
 		Unread:       true,
-	})
+	}
+	s.announcements = append(s.announcements, announcementStatus)
+	s.unreadAnnouncement[announcement.ID] = announcementStatus
 	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
 	s.addAnnouncementCond.Broadcast()
 }
@@ -134,6 +141,7 @@ func (s *Student) ReadAnnouncement(id string) {
 
 	s.announcements[s.announcementIndexByID[id]].Dirty = false
 	s.announcements[s.announcementIndexByID[id]].Unread = false
+	delete(s.unreadAnnouncement, id)
 	s.readAnnouncementCond.Broadcast()
 }
 
@@ -142,35 +150,49 @@ func (s *Student) isUnreadAnnouncement(id string) bool {
 }
 
 func (s *Student) HasUnreadAnnouncement() bool {
-	s.rmu.Lock()
-	defer s.rmu.Unlock()
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
 
-	for _, anc := range s.announcements {
-		if anc.Unread {
+	return len(s.unreadAnnouncement) > 0
+}
+
+func (s *Student) HasUnreadOrDirtyAnnouncementBefore(announcementID string) bool {
+	s.rmu.RLock()
+	defer s.rmu.RUnlock()
+
+	// 遅かったらいい感じのデータ構造に変える
+	for _, anc := range s.unreadAnnouncement {
+
+		if announcementID > anc.Announcement.ID {
 			return true
 		}
 	}
+
 	return false
+
 }
 
-func (s *Student) WaitNewUnreadAnnouncement(ctx context.Context) <-chan struct{} {
+// WaitExistUnreadAnnouncement は未読おしらせが発生するまでwaitする
+func (s *Student) WaitExistUnreadAnnouncement(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
-		case <-s.waitAddAnnouncement():
+		case <-s.waitExistUnreadAnnouncement():
 		}
 		close(ch)
 	}()
 	return ch
 }
 
-func (s *Student) waitAddAnnouncement() <-chan struct{} {
+func (s *Student) waitExistUnreadAnnouncement() <-chan struct{} {
 	ch := make(chan struct{})
 	// MEMO: このgoroutineはWaitNewUnreadAnnouncementがctx.Done()で抜けた場合放置される
 	go func() {
 		s.addAnnouncementCond.L.Lock()
-		s.addAnnouncementCond.Wait()
+		for len(s.unreadAnnouncement) == 0 {
+			s.addAnnouncementCond.Wait()
+		}
 		s.addAnnouncementCond.L.Unlock()
 		close(ch)
 	}()
@@ -255,6 +277,14 @@ func (s *Student) Courses() []*Course {
 	copy(res, s.registeredCourses[:])
 
 	return res
+}
+
+func (s *Student) AddFinishCourseCount() {
+	atomic.AddInt64(&s.finishCourseCount, 1)
+}
+
+func (s *Student) FinishCourseCount() int64 {
+	return atomic.LoadInt64(&s.finishCourseCount)
 }
 
 func (s *Student) HasFinishedCourse() bool {
@@ -346,7 +376,8 @@ type Teacher struct {
 const teacherUserAgent = "isucholar-agent-teacher/1.0.0"
 
 func NewTeacher(userData *UserAccount, baseURL *url.URL) *Teacher {
-	a, _ := agent.NewAgent()
+	a, _ := agent.NewAgent(agent.WithCloneTransport(agent.DefaultTransport))
+
 	a.BaseURL = baseURL
 	a.Name = teacherUserAgent
 	return &Teacher{

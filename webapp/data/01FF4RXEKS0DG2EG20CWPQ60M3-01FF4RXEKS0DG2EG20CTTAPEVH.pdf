@@ -1,0 +1,69 @@
+%PDF-1.7
+
+1 0 obj
+<<
+  /Type /Catalog
+  /Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+  /Type /Pages
+  /MediaBox [ 0 0 1600.00 1000.00 ]
+  /Count 1
+  /Kids [ 3 0 R ]
+>>
+endobj
+
+3 0 obj
+<<
+  /Type /Page
+  /Parent 2 0 R
+  /Resources
+  << /Font
+    << /F1
+      << /Type /Font
+         /Subtype /Type1
+         /BaseFont /Helvetica
+      >>
+    >>
+  >>
+  /Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<<
+  /Length 206
+>>
+stream
+  BT
+    128.00 900.00 Td
+    /F1 64.00 Tf
+    70.40 TL
+    (1: Iikanjini Speed Up Contest) Tj T*
+    (2: 1KB) Tj T*
+    (3: Go) Tj T*
+    (4: /top) Tj T*
+    (5: ISUCON) Tj T*
+    (timestamp: 1631071093324547686) Tj T*
+  ET
+endstream
+endobj
+
+xref
+0 5
+0000000000 65535 f
+0000000010 00000 n
+0000000064 00000 n
+0000000166 00000 n
+0000000368 00000 n
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+780
+%%EOF

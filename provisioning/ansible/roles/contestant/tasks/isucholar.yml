@@ -16,20 +16,19 @@
     owner: isucon
     group: isucon
 
-- name: "roles/contestant/tasks/isucholar-go: Build Web Frontend"
-  become_user: isucon
-  args:
-    chdir: /home/isucon/webapp/frontend/
-  environment:
-    PATH: "/home/isucon/local/node/bin:{{ ansible_env.PATH }}"
-  shell: |
-    npm ci
-    npm run build
 
 - name: "roles/contestant/tasks/isucholar: Include isucholar-go.yml"
   include: isucholar-go.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-nodejs.yml"
+  include: isucholar-nodejs.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-rust.yml"
+  include: isucholar-rust.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-php.yml"
+  include: isucholar-php.yml
+- name: "roles/contestant/tasks/isucholar: Include isucholar-ruby.yml"
+  include: isucholar-ruby.yml
 
-# TODO: 言語別の include
+
 
 - name: "roles/contestant/tasks/isucholar: Enable isucholar.go.service"
   become_user: root

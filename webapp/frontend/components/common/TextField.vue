@@ -17,7 +17,7 @@
             rounded
             py-2
             px-4
-            text-gray-700
+            text-gray-800
             leading-tight
             focus:outline-none focus:border-primary-500 focus:ring-0
           "
@@ -112,3 +112,9 @@ export default Vue.extend({
   },
 })
 </script>
+
+<style>
+input:placeholder-shown {
+  text-overflow: ellipsis;
+}
+</style>

@@ -3,6 +3,7 @@ package scenario
 import (
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucandar/failure"
@@ -30,9 +31,10 @@ type Scenario struct {
 	activeStudentsCount int64
 	language            string
 	loadRequestEndTime  time.Time
+	gradeTimeoutCount   int64
 	debugData           *DebugData
 
-	// initCourses は/initializeで追加されるコース
+	// initCourses は/initializeで追加される科目
 	// 中のデータの更新はしないこと
 	initCourses []*model.Course
 
@@ -51,7 +53,7 @@ type Config struct {
 	IsDebug          bool
 }
 
-func NewScenario(config *Config) (*Scenario, error) {
+func NewScenario(config *Config) *Scenario {
 	studentsData := generate.LoadStudentsData()
 	teachersData := generate.LoadTeachersData()
 
@@ -90,7 +92,7 @@ func NewScenario(config *Config) (*Scenario, error) {
 		debugData:          NewDebugData(config.IsDebug),
 		finishCoursePubSub: pubsub.NewPubSub(),
 		initCourses:        initCourses,
-	}, nil
+	}
 }
 
 func (s *Scenario) Language() string {
@@ -115,6 +117,14 @@ func (s *Scenario) ActiveStudentCount() int {
 	defer s.rmu.Unlock()
 
 	return len(s.activeStudents)
+}
+
+func (s *Scenario) AddGradeTimeoutCount() {
+	atomic.AddInt64(&s.gradeTimeoutCount, 1)
+}
+
+func (s *Scenario) ResetGradeTimeoutCount() int64 {
+	return atomic.SwapInt64(&s.gradeTimeoutCount, 0)
 }
 
 func (s *Scenario) Reset() {
@@ -154,5 +164,6 @@ func (s *Scenario) Reset() {
 	s.debugData = NewDebugData(s.Config.IsDebug)
 	s.finishCoursePubSub = pubsub.NewPubSub()
 	s.finishCourseStudentsCount = 0
+	s.gradeTimeoutCount = 0
 	s.initCourses = initCourses
 }

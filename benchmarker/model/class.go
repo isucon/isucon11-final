@@ -7,23 +7,39 @@ import (
 type ClassParam struct {
 	Title string
 	Desc  string
-	Part  uint8 // n回目のクラス
+	Part  uint8 // n回目の講義
 }
 
 type Class struct {
 	*ClassParam
-	ID          string
-	submissions map[string]*Submission // map[学籍番号]*Submission
-	rmu         sync.RWMutex
+	ID                 string
+	isSubmissionClosed bool
+	submissions        map[string]*Submission // map[学籍番号]*Submission
+	rmu                sync.RWMutex
 }
 
 func NewClass(id string, param *ClassParam) *Class {
 	return &Class{
-		ClassParam:  param,
-		ID:          id,
-		submissions: make(map[string]*Submission),
-		rmu:         sync.RWMutex{},
+		ClassParam:         param,
+		ID:                 id,
+		isSubmissionClosed: false,
+		submissions:        make(map[string]*Submission),
+		rmu:                sync.RWMutex{},
 	}
+}
+
+func (c *Class) IsSubmissionClosed() bool {
+	c.rmu.RLock()
+	defer c.rmu.RUnlock()
+
+	return c.isSubmissionClosed
+}
+
+func (c *Class) CloseSubmission() {
+	c.rmu.Lock()
+	defer c.rmu.Unlock()
+
+	c.isSubmissionClosed = true
 }
 
 func (c *Class) AddSubmission(studentCode string, summary *Submission) {

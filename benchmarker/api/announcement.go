@@ -9,7 +9,6 @@ import (
 	"net/url"
 
 	"github.com/isucon/isucandar/agent"
-	"github.com/isucon/isucandar/failure"
 
 	"github.com/isucon/isucon11-final/benchmarker/fails"
 )
@@ -24,13 +23,13 @@ type AddAnnouncementRequest struct {
 func AddAnnouncement(ctx context.Context, a *agent.Agent, announcement AddAnnouncementRequest) (*http.Response, error) {
 	body, err := json.Marshal(announcement)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 	path := "/api/announcements"
 
 	req, err := a.POST(path, bytes.NewReader(body))
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -53,7 +52,7 @@ type AnnouncementResponse struct {
 func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, courseID string) (*http.Response, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrHTTP, err)
+		return nil, fails.ErrorHTTP(err)
 	}
 	q := u.Query()
 
@@ -64,7 +63,7 @@ func GetAnnouncementList(ctx context.Context, a *agent.Agent, rawURL string, cou
 
 	req, err := a.GET(u.String())
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)
@@ -84,7 +83,7 @@ func GetAnnouncementDetail(ctx context.Context, a *agent.Agent, id string) (*htt
 
 	req, err := a.GET(path)
 	if err != nil {
-		return nil, failure.NewError(fails.ErrCritical, err)
+		return nil, fails.ErrorCritical(err)
 	}
 
 	return a.Do(ctx, req)

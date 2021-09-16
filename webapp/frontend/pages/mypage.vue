@@ -1,81 +1,51 @@
 <template>
   <div>
-    <div class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded">
+    <div
+      class="py-10 px-8 bg-white shadow-lg mt-8 mb-8 rounded w-192 max-w-full"
+    >
+      <h1 class="text-2xl font-bold text-gray-800 mb-4">履修科目一覧</h1>
       <div class="flex-1 flex-col">
-        <section>
-          <h1 class="text-2xl">現在開講中の講義</h1>
-
-          <template v-if="currentCourse">
-            <div class="py-4">
-              <Card>
-                <div class="flex justify-between items-center">
-                  <div>
-                    <h2 class="text-xl mb-2 font-bold text-primary-500">
-                      {{ currentCourse.name }}
-                    </h2>
-                    <ul class="list-none text-gray-500">
-                      <li>教員氏名 {{ currentCourse.teacher }}</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <NuxtLink :to="`/courses/${currentCourse.id}`">
-                      <Button>講義情報</Button>
-                    </NuxtLink>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </template>
-          <template v-else>
-            <p>現在の時間は履修している開講中の講義はありません。</p>
-          </template>
-        </section>
-
         <template v-if="hasError">
           <InlineNotification type="error" class="my-4">
             <template #title>APIエラーがあります</template>
             <template #message>履修済み科目の取得に失敗しました。</template>
           </InlineNotification>
         </template>
-
-        <section>
-          <h2 class="text-lg mt-4">2021年度前期</h2>
-          <Calendar>
-            <template v-for="(periodCourses, p) in courses">
-              <template v-for="(course, w) in periodCourses">
-                <CalendarCell
-                  :key="`course-${p}-${w}`"
-                  :cursor="course !== undefined ? 'pointer' : 'default'"
-                >
-                  <template v-if="course !== undefined">
-                    <NuxtLink
-                      :to="`/courses/${course.id}`"
-                      class="
-                        flex-grow
-                        h-30
-                        px-2
-                        py-2
-                        w-full
-                        transition
-                        duration-500
-                        ease
-                        hover:bg-primary-100
-                      "
-                    >
-                      <div class="flex flex-col">
-                        <span class="text-primary-500 font-bold">{{
-                          course.name
-                        }}</span>
-                        <span class="text-sm">{{ course.teacher }}</span>
-                      </div>
-                    </NuxtLink>
-                  </template>
-                  <template v-else></template>
-                </CalendarCell>
-              </template>
+        <Calendar class="text-gray-800">
+          <template v-for="(periodCourses, p) in courses">
+            <template v-for="(course, w) in periodCourses">
+              <CalendarCell
+                :key="`course-${p}-${w}`"
+                :cursor="course !== undefined ? 'pointer' : 'default'"
+              >
+                <template v-if="course !== undefined">
+                  <NuxtLink
+                    :to="`/courses/${course.id}`"
+                    class="
+                      flex-grow
+                      h-30
+                      px-2
+                      py-2
+                      w-full
+                      transition
+                      duration-500
+                      ease
+                      hover:bg-primary-100
+                    "
+                  >
+                    <div class="flex flex-col">
+                      <span class="text-primary-500 font-bold">{{
+                        course.name
+                      }}</span>
+                      <span class="text-sm">{{ course.teacher }}</span>
+                    </div>
+                  </NuxtLink>
+                </template>
+                <template v-else></template>
+              </CalendarCell>
             </template>
-          </Calendar>
-        </section>
+          </template>
+        </Calendar>
       </div>
     </div>
   </div>
@@ -86,8 +56,6 @@ import Vue from 'vue'
 import { Context } from '@nuxt/types'
 import Calendar from '../components/Calendar.vue'
 import CalendarCell from '../components/CalendarCell.vue'
-import Card from '~/components/common/Card.vue'
-import Button from '~/components/common/Button.vue'
 import { DayOfWeekMap, PeriodCount, WeekdayCount } from '~/constants/calendar'
 import { Course, DayOfWeek } from '~/types/courses'
 import InlineNotification from '~/components/common/InlineNotification.vue'
@@ -108,7 +76,7 @@ type DataType = {
 }
 
 export default Vue.extend({
-  components: { InlineNotification, Button, Card, CalendarCell, Calendar },
+  components: { InlineNotification, CalendarCell, Calendar },
   middleware: 'is_student',
   async asyncData(
     ctx: Context
@@ -131,6 +99,9 @@ export default Vue.extend({
       },
       hasError: false,
     }
+  },
+  head: {
+    title: 'ISUCHOLAR - マイページ',
   },
   computed: {
     courses(): CalendarCourses {

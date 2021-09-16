@@ -9,7 +9,7 @@ type Submission struct {
 	Title    string
 	Checksum uint32
 
-	// score は課題に対する講師によって追加されるスコア
+	// score は課題に対する教員によって追加される採点結果
 	// 提出後採点されるまではNULL
 	// 採点されたら採点された点
 	score *int

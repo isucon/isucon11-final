@@ -1,63 +1,33 @@
 <template>
-  <div
-    class="fixed z-10 inset-0 overflow-y-auto"
-    :class="state"
-    aria-labelledby="modal-title"
-    role="dialog"
-    aria-modal="true"
+  <transition
+    enter-active-class="transition-opacity duration-200"
+    leave-active-class="transition-opacity duration-200"
+    enter-class="opacity-0"
+    leave-to-class="opacity-0"
   >
     <div
+      v-show="isShown"
       class="
+        fixed
+        z-10
+        inset-0
+        h-screen
+        w-screen
+        bg-gray-500 bg-opacity-75
         flex
-        items-end
+        items-center
         justify-center
-        min-h-screen
-        pt-4
-        px-4
-        pb-20
-        text-center
-        sm:block sm:p-0
       "
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+      @click="$emit('close')"
     >
-      <!--
-        Background overlay, show/hide based on modal state.
-
-        Entering: "ease-out duration-300"
-          From: "opacity-0"
-          To: "opacity-100"
-        Leaving: "ease-in duration-200"
-          From: "opacity-100"
-          To: "opacity-0"
-      -->
-      <div
-        class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-        aria-hidden="true"
-        @click="$emit('close')"
-      ></div>
-
-      <span
-        class="hidden sm:inline-block sm:align-middle sm:h-screen"
-        aria-hidden="true"
-        >&#8203;</span
-      >
-      <div
-        class="
-          inline-block
-          align-bottom
-          bg-white
-          rounded-lg
-          text-left
-          overflow-hidden
-          shadow-xl
-          transform
-          transition-all
-          sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full
-        "
-      >
+      <div class="m-auto" @click.stop>
         <slot />
       </div>
     </div>
-  </div>
+  </transition>
 </template>
 <script lang="ts">
 import Vue from 'vue'
@@ -72,6 +42,30 @@ export default Vue.extend({
   computed: {
     state() {
       return this.isShown ? 'block' : 'hidden'
+    },
+  },
+  watch: {
+    isShown(newVal, oldVal) {
+      if (newVal === oldVal) {
+        return
+      }
+      if (newVal) {
+        document.body.style.overflow = 'hidden'
+        const getScrollbarWidth = () => {
+          const element = document.createElement('div')
+          element.style.visibility = 'hidden'
+          element.style.overflow = 'scroll'
+          document.body.appendChild(element)
+          const scrollbarWidth = element.offsetWidth - element.clientWidth
+          document.body.removeChild(element)
+          return scrollbarWidth
+        }
+        document.body.style.paddingRight = `${getScrollbarWidth()}px`
+      }
+      if (!newVal) {
+        document.body.style.overflow = 'auto'
+        document.body.style.paddingRight = '0'
+      }
     },
   },
 })
