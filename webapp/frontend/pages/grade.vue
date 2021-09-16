@@ -99,7 +99,10 @@
                 >
                   {{ r.totalScoreMax }}
                 </div>
-                <div :key="`button${i}`" class="px-2 py-2 border">
+                <div
+                  :key="`button${i}`"
+                  class="flex justify-center items-center border"
+                >
                   <Button
                     color="plain"
                     size="mini"
