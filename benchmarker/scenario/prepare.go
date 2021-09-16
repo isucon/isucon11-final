@@ -315,7 +315,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 						step.AddError(err)
 						return
 					}
-					if err := verifyClasses(course.Classes(), res, hres); err != nil {
+					if err := verifyClasses(course.Classes(), res, student, hres); err != nil {
 						step.AddError(err)
 					}
 
