@@ -552,7 +552,7 @@ final class Handler
                 }
             }
 
-            // この科目を受講している学生のTotalScore一覧を取得
+            // この科目を履修している学生のTotalScore一覧を取得
             /** @var array<int> $totals */
             $totals = [];
             $query = 'SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`' .
@@ -598,7 +598,7 @@ final class Handler
         }
 
         // GPAの統計値
-        // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
+        // 一つでも修了した科目がある学生のGPA一覧
         /** @var array<float> $gpas */
         $gpas = [];
         $query = 'SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`' .
@@ -1215,7 +1215,7 @@ final class Handler
     }
 
     /**
-     * registerScores PUT /api/courses/:courseId/classes/:classId/assignments/scores 成績登録
+     * registerScores PUT /api/courses/:courseId/classes/:classId/assignments/scores 採点結果登録
      */
     public function registerScores(Request $request, Response $response, array $params): Response
     {
