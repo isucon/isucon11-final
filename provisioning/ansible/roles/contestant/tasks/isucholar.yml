@@ -16,7 +16,7 @@
     owner: isucon
     group: isucon
 
-# TODO: 言語別の include
+
 - name: "roles/contestant/tasks/isucholar: Include isucholar-go.yml"
   include: isucholar-go.yml
 - name: "roles/contestant/tasks/isucholar: Include isucholar-nodejs.yml"

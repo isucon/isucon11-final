@@ -286,8 +286,7 @@ func (c *Course) CalcCourseResultByStudentCode(code string) *CourseResult {
 	defer c.rmu.RUnlock()
 
 	if _, ok := c.registeredStudents[code]; !ok {
-		// TODO: unreachable
-		return nil
+		panic("unreachable! user is not found. userCode: " + code)
 	}
 
 	totalScores := c.calcTotalScores()
