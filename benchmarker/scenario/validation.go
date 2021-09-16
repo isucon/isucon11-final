@@ -32,7 +32,7 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 }
 
 func errValidation(err error) error {
-	return fails.ErrorCritical(fmt.Errorf("%w 【整合性チェックに失敗しました】", err))
+	return fails.ErrorCritical(fmt.Errorf("整合性チェックに失敗しました: %w", err))
 }
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
