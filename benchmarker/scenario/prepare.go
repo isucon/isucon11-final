@@ -318,6 +318,8 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				step.AddError(err)
 				return
 			}
+			class.CloseSubmission()
+
 			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
 				step.AddError(err)
 				return
@@ -1104,6 +1106,7 @@ func (s *Scenario) prepareCheckAuthenticationAbnormal(ctx context.Context) error
 	if err != nil {
 		return err
 	}
+	submissionClosedClass.CloseSubmission()
 
 	// 課題提出が締め切られていない講義
 	classParam = generate.ClassParam(course, 2)
@@ -1272,6 +1275,7 @@ func (s *Scenario) prepareCheckAdminAuthorizationAbnormal(ctx context.Context) e
 	if err != nil {
 		return err
 	}
+	submissionClosedClass.CloseSubmission()
 
 	// 課題提出が締め切られていない講義
 	classParam = generate.ClassParam(course, 2)
@@ -1851,6 +1855,7 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 	if err != nil {
 		return err
 	}
+	submissionClosedClass.CloseSubmission()
 
 	// inProgressCourse の課題提出が締め切られていない講義
 	classParam = generate.ClassParam(inProgressCourse, 2)
