@@ -9,6 +9,7 @@ const (
 
 	// other (needs attention)
 	SkipRegisterNoCourseAvailable score.ScoreTag = "!1.SkipRegisterNoCourseAvailable"
+	ValidateTimeout               score.ScoreTag = "!2.ValidateTimeout"
 
 	// other
 	ActiveStudents           score.ScoreTag = "_O01.ActiveStudents"
@@ -22,7 +23,6 @@ const (
 	CourseStartCourseUnder40 score.ScoreTag = "_O09.StartCourseUnder40"
 	CourseStartCourseUnder50 score.ScoreTag = "_O10.StartCourseUnder50"
 	CourseStartCourseFull    score.ScoreTag = "_O11.StartCourseFull"
-	ValidateTimeout          score.ScoreTag = "_!O12.ValidateTimeout"
 
 	// registration scenario
 	RegGetGrades                    score.ScoreTag = "_R1.GetGrades"
@@ -58,6 +58,7 @@ var Tags = []score.ScoreTag{
 
 	// other (needs attention)
 	SkipRegisterNoCourseAvailable,
+	ValidateTimeout,
 
 	// other
 	ActiveStudents,
@@ -72,7 +73,6 @@ var Tags = []score.ScoreTag{
 	CourseStartCourseUnder40,
 	CourseStartCourseUnder50,
 	CourseStartCourseFull,
-	ValidateTimeout,
 
 	// registration scenario
 	RegGetGrades,
