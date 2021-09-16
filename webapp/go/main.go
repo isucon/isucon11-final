@@ -621,7 +621,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 			}
 		}
 
-		// この科目を受講している学生のTotalScore一覧を取得
+		// この科目を履修している学生のTotalScore一覧を取得
 		var totals []int
 		query := "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`" +
 			" FROM `users`" +
@@ -658,7 +658,7 @@ func (h *handlers) GetGrades(c echo.Context) error {
 	}
 
 	// GPAの統計値
-	// 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
+	// 一つでも修了した科目がある学生のGPA一覧
 	var gpas []float64
 	query = "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
 		" FROM `users`" +
@@ -1166,7 +1166,7 @@ type Score struct {
 	Score    int    `json:"score"`
 }
 
-// RegisterScores PUT /api/courses/:courseID/classes/:classID/assignments/scores 成績登録
+// RegisterScores PUT /api/courses/:courseID/classes/:classID/assignments/scores 採点結果登録
 func (h *handlers) RegisterScores(c echo.Context) error {
 	classID := c.Param("classID")
 
