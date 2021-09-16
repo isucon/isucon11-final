@@ -105,8 +105,8 @@ func (s *Student) AddAnnouncement(announcement *Announcement) {
 		Unread:       true,
 	}
 	s.announcements = append(s.announcements, announcementStatus)
-	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
 	s.unreadAnnouncement[announcement.ID] = announcementStatus
+	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
 	s.addAnnouncementCond.Broadcast()
 }
 

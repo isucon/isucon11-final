@@ -431,7 +431,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 				startGetAnnouncementDetail := time.Now()
 				// お知らせの詳細を取得する
 				detailHres, detailRes, detailErr := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
-				if err != nil {
+				if detailErr != nil {
 					if fails.IsTimeout(detailErr) {
 						student.MarkAnnouncementReadDirty(ans.ID)
 					}
@@ -530,7 +530,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 				}
 
 				detailHres, detailRes, detailErr := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
-				if err != nil {
+				if detailErr != nil {
 					step.AddError(detailErr)
 					time.Sleep(100 * time.Millisecond)
 					continue
