@@ -23,11 +23,11 @@ INSERT INTO `classes` VALUES
 ('01FF4RXEKS0DG2EG20D61YCEM1','01FF4RXEKS0DG2EG20CWPQ60M3',5,'ISUCON7 予選','本日はISUCON7 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。',0);
 
 INSERT INTO `announcements` VALUES
-('01FF4RXEKS0DG2EG20D6N5CNRQ','01FF4RXEKS0DG2EG20CWPQ60M3','クラス追加: ISUCON3 予選','クラスが新しく追加されました: ISUCON3 予選\n本日はISUCON3 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
-('01FF4RXEKS0DG2EG20DA1W34X3','01FF4RXEKS0DG2EG20CWPQ60M3','クラス追加: ISUCON4 予選','クラスが新しく追加されました: ISUCON4 予選\n本日はISUCON4 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
-('01FF4RXEKS0DG2EG20DAGTWP61','01FF4RXEKS0DG2EG20CWPQ60M3','クラス追加: ISUCON5 予選','クラスが新しく追加されました: ISUCON5 予選\n本日はISUCON5 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
-('01FF4RXEKS0DG2EG20DBT4PFHF','01FF4RXEKS0DG2EG20CWPQ60M3','クラス追加: ISUCON6 予選','クラスが新しく追加されました: ISUCON6 予選\n本日はISUCON6 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
-('01FF4RXEKS0DG2EG20DDPCS14P','01FF4RXEKS0DG2EG20CWPQ60M3','クラス追加: ISUCON7 予選','クラスが新しく追加されました: ISUCON7 予選\n本日はISUCON7 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。');
+('01FF4RXEKS0DG2EG20D6N5CNRQ','01FF4RXEKS0DG2EG20CWPQ60M3','講義追加: ISUCON3 予選','講義が新しく追加されました: ISUCON3 予選\n本日はISUCON3 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
+('01FF4RXEKS0DG2EG20DA1W34X3','01FF4RXEKS0DG2EG20CWPQ60M3','講義追加: ISUCON4 予選','講義が新しく追加されました: ISUCON4 予選\n本日はISUCON4 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
+('01FF4RXEKS0DG2EG20DAGTWP61','01FF4RXEKS0DG2EG20CWPQ60M3','講義追加: ISUCON5 予選','講義が新しく追加されました: ISUCON5 予選\n本日はISUCON5 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
+('01FF4RXEKS0DG2EG20DBT4PFHF','01FF4RXEKS0DG2EG20CWPQ60M3','講義追加: ISUCON6 予選','講義が新しく追加されました: ISUCON6 予選\n本日はISUCON6 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。'),
+('01FF4RXEKS0DG2EG20DDPCS14P','01FF4RXEKS0DG2EG20CWPQ60M3','講義追加: ISUCON7 予選','講義が新しく追加されました: ISUCON7 予選\n本日はISUCON7 予選の過去問を実施します。課題は講義中に出題するクイズへの回答を提出してください。');
 
 INSERT INTO `unread_announcements` VALUES
 ('01FF4RXEKS0DG2EG20D6N5CNRQ','01FF4RXEKS0DG2EG20CN2GJB8K',true),

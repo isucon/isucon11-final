@@ -553,7 +553,7 @@ interface ClassScore {
   title: string;
   part: number;
   score: number | null;
-  submitters: number; // 提出した生徒数
+  submitters: number; // 提出した学生数
 }
 
 // GET /api/users/me/grades 成績取得
