@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -28,13 +29,26 @@ import (
 // param: http.Response, 検証用modelオブジェクト
 // return: error
 
-func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
+func verifyStatusCode(hres *http.Response, allowedStatusCodes []int) error {
 	for _, code := range allowedStatusCodes {
-		if res.StatusCode == code {
+		if hres.StatusCode == code {
 			return nil
 		}
 	}
-	return fails.ErrorInvalidStatusCode(res, allowedStatusCodes)
+	return fails.ErrorInvalidStatusCode(hres, allowedStatusCodes)
+}
+
+func verifyContentType(hres *http.Response, allowedMediaType string) error {
+	mediaType, _, err := mime.ParseMediaType(hres.Header.Get("Content-Type"))
+	if err != nil {
+		return fails.ErrorInvalidContentType(fmt.Errorf("Content-Type の取得に失敗しました (%w)", err), hres)
+	}
+
+	if !AssertEqual("content type", allowedMediaType, mediaType) {
+		return fails.ErrorInvalidContentType(errors.New("Content-Type が不正です"), hres)
+	}
+
+	return nil
 }
 
 func verifyInitialize(res api.InitializeResponse, hres *http.Response) error {
@@ -299,14 +313,16 @@ func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, r
 	return nil
 }
 
-func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, hres *http.Response) error {
+func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, student *model.Student, hres *http.Response) error {
 	if !AssertEqual("class_list length", len(expected), len(res)) {
 		return fails.ErrorInvalidResponse(errors.New("講義数が期待する数と一致しません"), hres)
 	}
 
-	if len(res) > 0 {
-		// 最後に追加された講義だけ中身を検証する
-		return AssertEqualClass(expected[len(expected)-1], res[len(res)-1], hres)
+	for i, expectedClass := range expected {
+		actualClass := res[i]
+		if err := AssertEqualClass(expectedClass, actualClass, student, hres); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -2,11 +2,9 @@ package scenario
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -374,10 +372,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
+				if fails.IsTimeout(err) {
 					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
-					// timeout したらもう一回リクエストする
 					time.Sleep(100 * time.Millisecond)
 					isExtendRequest = s.isNoRequestTime(ctx)
 					goto L
@@ -444,7 +440,7 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 					// load中には検証できないので既読化しない
 					continue
 				}
-				// 前にタイムアウトになってしまっていた場合、もしくはまだ見ていないお知らせの場合詳細を見に行く
+				// 前にタイムアウトになってしまっていた場合、もしくはwebapp上で未読のお知らせの場合詳細を見に行く
 				if !(expectStatus.Dirty || ans.Unread) {
 					continue
 				}
@@ -455,18 +451,17 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 				startGetAnnouncementDetail := time.Now()
 				// お知らせの詳細を取得する
-				hres, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
-				if err != nil {
-					var urlError *url.Error
-					if errors.As(err, &urlError) && urlError.Timeout() {
+				detailHres, detailRes, detailErr := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+				if detailErr != nil {
+					if fails.IsTimeout(detailErr) {
 						student.MarkAnnouncementReadDirty(ans.ID)
 					}
-					step.AddError(err)
+					step.AddError(detailErr)
 					continue // 次の未読おしらせの確認へ
 				}
 				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
-				if err := verifyAnnouncementDetail(expectStatus, &res, hres); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &detailRes, detailHres); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
@@ -479,18 +474,19 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			_, nextPathParam, err = parseLinkHeader(hres)
 			if err != nil {
+				time.Sleep(100 * time.Millisecond)
 				step.AddError(err)
 				continue
 			}
 
+			// 以降のページに未読がなければnextPathParamをリセットする
 			if len(res.Announcements) == 0 || !student.HasUnreadOrDirtyAnnouncementBefore(res.Announcements[len(res.Announcements)-1].ID) {
 				nextPathParam = ""
-				if !student.HasUnreadAnnouncement() {
-					select {
-					case <-time.After(400 * time.Millisecond):
-					case <-student.WaitNewUnreadAnnouncement(ctx):
-						// waitはお知らせ追加したらエスパーで即解消する
-					}
+				select {
+				case <-time.After(400 * time.Millisecond):
+					// 未読がなければ最大400ms待つ
+				case <-student.WaitExistUnreadAnnouncement(ctx):
+					// waitは未読のお知らせが追加されたらエスパーで即解消する
 				}
 			}
 
@@ -517,7 +513,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam, "")
 			if err != nil {
 				step.AddError(err)
-				<-timer
+				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
@@ -554,14 +550,14 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 					panic("read unknown announcement")
 				}
 
-				hres, res, err := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
-				if err != nil {
-					step.AddError(err)
-					<-timer
+				detailHres, detailRes, detailErr := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
+				if detailErr != nil {
+					step.AddError(detailErr)
+					time.Sleep(100 * time.Millisecond)
 					continue
 				}
 
-				if err := verifyAnnouncementDetail(expectStatus, &res, hres); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &detailRes, detailHres); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
@@ -630,13 +626,13 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if !isExtendRequest {
 				step.AddError(err)
 			}
-			var urlError *url.Error
-			if errors.As(err, &urlError) && urlError.Timeout() {
+			if fails.IsTimeout(err) {
 				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto statusStartLoop
 			} else {
+				// 学生は開放されなくなる
 				AdminLogger.Printf("%vのコースステータスを in-progress に変更するのが失敗しました", course.Name)
 				return
 			}
@@ -676,8 +672,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				return
 			}
 
-			timer := time.After(1 * time.Millisecond)
-
 			classParam := generate.ClassParam(course, uint8(i+1))
 
 			// 60秒以降のリトライリクエストかどうか
@@ -691,16 +685,10 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
-					ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトしました。教師はリトライを試みます。")
-					time.Sleep(100 * time.Millisecond)
-					isExtendRequest = s.isNoRequestTime(ctx)
-					goto L
-				} else {
-					<-timer
-					continue
-				}
+				ContestantLogger.Printf("クラス追加(POST /api/:courseID/classes)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto L
 			} else {
 				if !isExtendRequest {
 					step.AddScore(score.CourseAddClass)
@@ -726,16 +714,10 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
-					ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトしました。教師はリトライを試みます。")
-					time.Sleep(100 * time.Millisecond)
-					isExtendRequest = s.isNoRequestTime(ctx)
-					goto ancLoop
-				} else {
-					<-timer
-					continue
-				}
+				ContestantLogger.Printf("お知らせ追加(POST /api/announcements)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto ancLoop
 			} else {
 				if !isExtendRequest {
 					step.AddScore(score.CourseAddAnnouncement)
@@ -753,11 +735,23 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				return
 			}
 
+			isExtendRequest = false
+		downloadLoop:
+			if s.isNoRetryTime(ctx) {
+				return
+			}
 			hres, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
-				step.AddError(err)
-				continue
+				if !isExtendRequest {
+					step.AddError(err)
+				}
+				ContestantLogger.Printf("提出課題取得(GET /api/courses/:courseID/classes/:classID/assignments/export)がタイムアウトまたは失敗しました。教師はリトライを試みます。")
+				time.Sleep(100 * time.Millisecond)
+				isExtendRequest = s.isNoRequestTime(ctx)
+				goto downloadLoop
 			}
+			class.CloseSubmission()
+
 			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
 				step.AddError(err)
 			} else {
@@ -771,7 +765,6 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			_, err = s.scoringAssignments(ctx, course, class, teacher, step)
 			if err != nil {
 				step.AddError(err)
-				<-timer
 				continue
 			}
 
@@ -808,13 +801,13 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			if !isExtendRequest {
 				step.AddError(err)
 			}
-			var urlError *url.Error
-			if errors.As(err, &urlError) && urlError.Timeout() {
+			if fails.IsTimeout(err) {
 				ContestantLogger.Printf("講義のステータス変更(PUT /api/courses/:courseID/status)がタイムアウトしました。教師はリトライを試みます。")
 				time.Sleep(100 * time.Millisecond)
 				isExtendRequest = s.isNoRequestTime(ctx)
 				goto statusLoop
 			} else {
+				// 学生は開放されなくなる
 				AdminLogger.Printf("%vのコースステータスをclosedに変更するのが失敗しました", course.Name)
 				return
 			}
@@ -867,6 +860,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				}
 			}
 
+			isExtendRequest := false
 			for i := 0; i <= loginRetryCount; i++ {
 				if s.isNoRequestTime(ctx) {
 					return
@@ -874,13 +868,15 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 				_, err = LoginAction(ctx, student.Agent, student.UserAccount)
 				if err != nil {
-					var urlError *url.Error
-					if i != loginRetryCount && errors.As(err, &urlError) && urlError.Timeout() {
+					if !isExtendRequest {
+						step.AddError(err)
+					}
+					if i != loginRetryCount && fails.IsTimeout(err) {
 						time.Sleep(1000 * time.Millisecond)
+						isExtendRequest = s.isNoRequestTime(ctx)
 						continue
 					} else {
 						AdminLogger.Printf("学生 %vのログインが失敗しました", student.Name)
-						step.AddError(err)
 						return
 					}
 				}
@@ -920,6 +916,7 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 
 	isLoggedIn := teacher.LoginOnce(func(teacher *model.Teacher) {
 
+		isExtendRequest := false
 		for i := 0; i <= loginRetryCount; i++ {
 			if s.isNoRequestTime(ctx) {
 				return
@@ -928,12 +925,14 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 			_, err := LoginAction(ctx, teacher.Agent, teacher.UserAccount)
 
 			if err != nil {
-				var urlError *url.Error
-				if i != loginRetryCount && errors.As(err, &urlError) && urlError.Timeout() {
+				if !isExtendRequest {
+					step.AddError(err)
+				}
+				if i != loginRetryCount && fails.IsTimeout(err) {
 					time.Sleep(1000 * time.Millisecond)
+					isExtendRequest = s.isNoRequestTime(ctx)
 					continue
 				} else {
-					step.AddError(err)
 					return
 				}
 			}
@@ -976,9 +975,7 @@ L:
 		if !isExtendRequest {
 			step.AddError(err)
 		}
-		var urlError *url.Error
-		if errors.As(err, &urlError) && urlError.Timeout() {
-			// timeout したらもう一回リクエストする
+		if fails.IsTimeout(err) {
 			ContestantLogger.Printf("講義追加(POST /api/courses)がタイムアウトしました。教師はリトライを試みます。")
 			time.Sleep(100 * time.Millisecond)
 			isExtendRequest = s.isNoRequestTime(ctx)
@@ -1032,7 +1029,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				step.AddError(err)
 				return
 			}
-			if err := verifyClasses(course.Classes(), res, hres); err != nil {
+			if err := verifyClasses(course.Classes(), res, student, hres); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CourseGetClasses)
@@ -1056,8 +1053,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				var urlError *url.Error
-				if errors.As(err, &urlError) && urlError.Timeout() {
+				if fails.IsTimeout(err) {
 					ContestantLogger.Printf("課題提出(POST /api/:courseID/classes/:classID/assignments)がタイムアウトしました。学生はリトライを試みます。")
 					time.Sleep(100 * time.Millisecond)
 					isExtendRequest = s.isNoRequestTime(ctx)
@@ -1115,15 +1111,11 @@ L:
 		if !isExtendRequest {
 			step.AddError(err)
 		}
-		var urlError *url.Error
-		if errors.As(err, &urlError) && urlError.Timeout() {
+		if fails.IsTimeout(err) {
 			ContestantLogger.Printf("成績追加(PUT /api/:courseID/classes/:classID/assignments/scores)がタイムアウトしました。教師はリトライを試みます。")
-			// timeout したらもう一回リクエストする
 			time.Sleep(100 * time.Millisecond)
 			isExtendRequest = s.isNoRequestTime(ctx)
 			goto L
-		} else if hres != nil && hres.StatusCode == http.StatusNoContent {
-			// すでにwebappに登録されていたら続ける
 		} else {
 			// タイムアウト以外の何らかのエラーだったら終わり
 			return nil, err

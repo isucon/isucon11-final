@@ -39,6 +39,11 @@ func InitializeAction(ctx context.Context, agent *agent.Agent) (*http.Response, 
 		return hres, res, err
 	}
 
+	err = verifyContentType(hres, "application/json")
+	if err != nil {
+		return hres, res, err
+	}
+
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
 		return hres, res, fails.ErrorJSON(err, hres)
@@ -79,6 +84,11 @@ func GetMeAction(ctx context.Context, agent *agent.Agent) (*http.Response, api.G
 		return hres, res, err
 	}
 
+	err = verifyContentType(hres, "application/json")
+	if err != nil {
+		return hres, res, err
+	}
+
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
 		return hres, res, fails.ErrorJSON(err, hres)
@@ -100,6 +110,11 @@ func GetGradeAction(ctx context.Context, agent *agent.Agent) (*http.Response, ap
 		return hres, res, err
 	}
 
+	err = verifyContentType(hres, "application/json")
+	if err != nil {
+		return hres, res, err
+	}
+
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
 		return hres, res, fails.ErrorJSON(err, hres)
@@ -116,6 +131,11 @@ func GetRegisteredCoursesAction(ctx context.Context, agent *agent.Agent) (*http.
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
+	if err != nil {
+		return hres, nil, err
+	}
+
+	err = verifyContentType(hres, "application/json")
 	if err != nil {
 		return hres, nil, err
 	}
@@ -163,6 +183,11 @@ func SearchCourseAction(ctx context.Context, agent *agent.Agent, param *model.Se
 		return hres, nil, err
 	}
 
+	err = verifyContentType(hres, "application/json")
+	if err != nil {
+		return hres, nil, err
+	}
+
 	res := make([]*api.GetCourseDetailResponse, 0)
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
@@ -181,6 +206,11 @@ func GetCourseDetailAction(ctx context.Context, agent *agent.Agent, id string) (
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = verifyContentType(hres, "application/json")
 	if err != nil {
 		return hres, res, err
 	}
@@ -210,6 +240,11 @@ func TakeCoursesAction(ctx context.Context, agent *agent.Agent, courses []*model
 	if err != nil {
 		// 400のときはエラー内容が返ってくるのでレスポンスをデコードする
 		if hres.StatusCode == http.StatusBadRequest {
+			contentTypeErr := verifyContentType(hres, "application/json")
+			if contentTypeErr != nil {
+				return hres, eres, contentTypeErr
+			}
+
 			decodeErr := json.NewDecoder(hres.Body).Decode(&eres)
 			if decodeErr != nil {
 				return hres, eres, fails.ErrorJSON(decodeErr, hres)
@@ -240,6 +275,11 @@ func GetAnnouncementListAction(ctx context.Context, agent *agent.Agent, next, co
 		return hres, res, err
 	}
 
+	err = verifyContentType(hres, "application/json")
+	if err != nil {
+		return hres, res, err
+	}
+
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
 		return hres, res, fails.ErrorJSON(err, hres)
@@ -257,6 +297,11 @@ func GetAnnouncementDetailAction(ctx context.Context, agent *agent.Agent, id str
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusOK, http.StatusNotModified})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = verifyContentType(hres, "application/json")
 	if err != nil {
 		return hres, res, err
 	}
@@ -304,6 +349,11 @@ func GetClassesAction(ctx context.Context, agent *agent.Agent, courseID string) 
 		return hres, res, err
 	}
 
+	err = verifyContentType(hres, "application/json")
+	if err != nil {
+		return hres, res, err
+	}
+
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
 		return hres, res, fails.ErrorJSON(err, hres)
@@ -327,6 +377,11 @@ func AddClassAction(ctx context.Context, agent *agent.Agent, course *model.Cours
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusCreated})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = verifyContentType(hres, "application/json")
 	if err != nil {
 		return hres, res, err
 	}
@@ -364,6 +419,11 @@ func AddCourseAction(ctx context.Context, agent *agent.Agent, param *model.Cours
 	defer hres.Body.Close()
 
 	err = verifyStatusCode(hres, []int{http.StatusCreated})
+	if err != nil {
+		return hres, res, err
+	}
+
+	err = verifyContentType(hres, "application/json")
 	if err != nil {
 		return hres, res, err
 	}
