@@ -47,7 +47,7 @@
                           : ''
                       "
                     >
-                      <div class="flex flex-col">
+                      <div class="relative flex flex-col w-full h-full">
                         <span class="text-primary-500">
                           <template
                             v-if="
@@ -68,7 +68,7 @@
                         >
                           <button
                             title="仮登録解除"
-                            class="ml-auto"
+                            class="absolute right-0 -bottom-0.5"
                             @click="onClickCancelCourse($event, course.id)"
                           >
                             <fa-icon
