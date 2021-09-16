@@ -395,7 +395,7 @@ func verifyResource(resource *agent.Resource, expectPath string) error {
 				return nerr
 			}
 		}
-		return fails.ErrorStaticResource(fmt.Errorf("リソースの取得に失敗しました (%s: %v)", expectPath, resource.Error))
+		return fails.ErrorStaticResource(fmt.Errorf("リソースの取得に失敗しました (%s) %w", expectPath, resource.Error))
 	}
 
 	return verifyChecksum(resource.Response, expectPath)
