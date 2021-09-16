@@ -29,8 +29,7 @@ func genSubmissionContents(course *model.Course, class *model.Class, user *model
 	var content strings.Builder
 	content.WriteString(fmt.Sprintf("%s part %d\n", course.Code, class.Part))
 	content.WriteString(fmt.Sprintf("code %s\n\n", user.Code))
-	questionCount := rand.Intn(5) + 3
-	for i := 0; i < questionCount; i++ {
+	for i := 0; i < 5; i++ {
 		switch rand.Intn(2) {
 		case 0:
 			content.WriteString(fmt.Sprintf("Q%d. %s\n", i+1, randElt(boolAnswers)))
