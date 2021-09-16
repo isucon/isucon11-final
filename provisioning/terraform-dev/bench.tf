@@ -19,11 +19,11 @@ data "aws_ssm_parameter" "bench_token" {
 }
 
 resource "aws_instance" "bench" {
-  count = 1
+  count = 3
 
   #ami           = data.aws_ami.bench.id
-  ami           = "ami-01208ab070571fa58"
-  instance_type = "c5.large"
+  ami           = "ami-0b3cc9e66d2d1d9e2"
+  instance_type = "c5.xlarge"
 
   availability_zone = var.availability_zones[0]
   subnet_id         = data.aws_subnet.private[0].id
