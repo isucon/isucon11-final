@@ -33,6 +33,29 @@ func (s *Scenario) Load(parent context.Context, step *isucandar.BenchmarkStep) e
 
 	s.loadRequestEndTime = time.Now().Add(loadRequestTime)
 
+	// 一定間隔でgetGradeがタイムアウトした人数を表示する
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		var timeoutNum int64
+		for {
+			select {
+			case <-ticker.C:
+				if s.isNoRequestTime(ctx) {
+					return
+				}
+
+				timeoutNum = s.ResetGradeTimeoutCount()
+				if timeoutNum != 0 {
+					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
+					ContestantLogger.Printf("%d人の学生が成績取得(GET /api/users/me/grades)でタイムアウトしました。それぞれの学生は%d秒後にリトライを試み、その後履修登録を再開します。", timeoutNum, int64(waitGradeTimeout/time.Second))
+				}
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
 	// 負荷走行では
 	// アクティブ学生による負荷と
 	// 登録された科目による負荷が存在する
@@ -215,9 +238,8 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 				expected := collectVerifyGradesData(student)
 				hres, getGradeRes, err := GetGradeAction(ctx, student.Agent)
 				if err != nil {
+					s.AddGradeTimeoutCount()
 					step.AddError(err)
-					// NOTE: 意図的にタイムアウトがとてもよくなさそうなメッセージを見せている
-					ContestantLogger.Printf("成績取得(GET /api/users/me/grades)がタイムアウトしました。学生は%d秒後に成績取得のリトライを試み、その後履修登録を再開します。", int64(waitGradeTimeout/time.Second))
 					time.Sleep(waitGradeTimeout)
 					continue
 				}
