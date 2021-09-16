@@ -79,6 +79,11 @@ func (s *Scenario) Prepare(ctx context.Context, step *isucandar.BenchmarkStep) e
 		return fails.ErrorCritical(err)
 	}
 
+	err = s.prepareCourseStatus(ctx)
+	if err != nil {
+		return fails.ErrorCritical(err)
+	}
+
 	err = s.prepareAbnormal(ctx)
 	if err != nil {
 		return fails.ErrorCritical(err)
@@ -1054,6 +1059,68 @@ func searchCourseLocal(courses []*model.Course, param *model.SearchCourseParam) 
 	}
 
 	return matchCourses
+}
+
+func (s *Scenario) prepareCourseStatus(ctx context.Context) error {
+	teacher, err := s.getLoggedInTeacher(ctx)
+	if err != nil {
+		return err
+	}
+
+	// コースの追加
+	param := generate.CourseParam(0, 0, teacher)
+	_, courseRes, err := AddCourseAction(ctx, teacher.Agent, param)
+	if err != nil {
+		return err
+	}
+	course := model.NewCourse(param, courseRes.ID, teacher, prepareCourseCapacity, model.NewCapacityCounter())
+
+	// ステータス確認(registration)
+	student, err := s.getLoggedInStudent(ctx)
+	if err != nil {
+		return err
+	}
+	hres, detailRes, err := GetCourseDetailAction(ctx, student.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+	if err := AssertEqualCourse(course, &detailRes, hres, true); err != nil {
+		return err
+	}
+
+	// ステータス更新(in-progress)
+	_, err = SetCourseStatusInProgressAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+	course.SetStatusToInProgress()
+
+	// ステータス確認(in-progress)
+	hres, detailRes, err = GetCourseDetailAction(ctx, student.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+	if err := AssertEqualCourse(course, &detailRes, hres, true); err != nil {
+		return err
+	}
+
+	// ステータス更新(close)
+	_, err = SetCourseStatusClosedAction(ctx, teacher.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+	course.SetStatusToClosed()
+
+	// ステータス確認(close)
+	hres, detailRes, err = GetCourseDetailAction(ctx, student.Agent, course.ID)
+	if err != nil {
+		return err
+	}
+	if err := AssertEqualCourse(course, &detailRes, hres, true); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Scenario) prepareAbnormal(ctx context.Context) error {
