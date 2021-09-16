@@ -162,7 +162,7 @@
                   :prev-disabled="!Boolean(link.prev)"
                   :next-disabled="!Boolean(link.next)"
                   @goPrev="onClickPagination(link.prev.path, link.prev.query)"
-                  @goNext="onClickPagination(link.prev.path, link.next.query)"
+                  @goNext="onClickPagination(link.next.path, link.next.query)"
                 />
               </div>
               <span class="opacity-0 w-28"></span>
