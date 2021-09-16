@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -28,13 +29,26 @@ import (
 // param: http.Response, 検証用modelオブジェクト
 // return: error
 
-func verifyStatusCode(res *http.Response, allowedStatusCodes []int) error {
+func verifyStatusCode(hres *http.Response, allowedStatusCodes []int) error {
 	for _, code := range allowedStatusCodes {
-		if res.StatusCode == code {
+		if hres.StatusCode == code {
 			return nil
 		}
 	}
-	return fails.ErrorInvalidStatusCode(res, allowedStatusCodes)
+	return fails.ErrorInvalidStatusCode(hres, allowedStatusCodes)
+}
+
+func verifyContentType(hres *http.Response, allowedMediaType string) error {
+	mediaType, _, err := mime.ParseMediaType(hres.Header.Get("Content-Type"))
+	if err != nil {
+		return fails.ErrorInvalidContentType(fmt.Errorf("Content-Type の取得に失敗しました (%w)", err), hres)
+	}
+
+	if !AssertEqual("content type", allowedMediaType, mediaType) {
+		return fails.ErrorInvalidContentType(errors.New("Content-Type が不正です"), hres)
+	}
+
+	return nil
 }
 
 func verifyInitialize(res api.InitializeResponse, hres *http.Response) error {
