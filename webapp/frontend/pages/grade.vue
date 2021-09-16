@@ -126,7 +126,7 @@
                   >
                     <div class="px-4 py-2 bg-gray-300">講義回</div>
                     <div class="px-4 py-2 bg-gray-300">講義名</div>
-                    <div class="px-4 py-2 bg-gray-300">成績</div>
+                    <div class="px-4 py-2 bg-gray-300">採点結果</div>
                     <div class="px-4 py-2 bg-gray-300">課題提出者数</div>
                     <template v-if="r.classScores">
                       <template v-for="(s, j) in r.classScores">
