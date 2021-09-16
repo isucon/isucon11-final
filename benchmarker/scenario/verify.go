@@ -236,10 +236,8 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 
 	// 取得されたものが検索条件にヒットするか
 	for _, course := range res {
-		if rand.Float64() < searchCourseVerifyRate {
-			if err := verifyMatchCourse(course, param, hres); err != nil {
-				return err
-			}
+		if err := verifyMatchCourse(course, param, hres); err != nil {
+			return err
 		}
 	}
 
@@ -328,8 +326,8 @@ func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, student
 	return nil
 }
 
-func verifyAssignments(assignmentsData []byte, class *model.Class, hres *http.Response) error {
-	if rand.Float64() < assignmentsVerifyRate {
+func verifyAssignments(assignmentsData []byte, class *model.Class, mustVerify bool, hres *http.Response) error {
+	if mustVerify || rand.Float64() < assignmentsVerifyRate {
 		r, err := zip.NewReader(bytes.NewReader(assignmentsData), int64(len(assignmentsData)))
 		if err != nil {
 			return fails.ErrorInvalidResponse(errors.New("課題zipの展開に失敗しました"), hres)

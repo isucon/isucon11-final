@@ -752,7 +752,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			}
 			class.CloseSubmission()
 
-			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
+			if err := verifyAssignments(assignmentsData, class, false, hres); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CourseDownloadSubmissions)

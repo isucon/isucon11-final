@@ -32,8 +32,7 @@ const (
 
 // Verify
 const (
-	searchCourseVerifyRate = 0.2
-	assignmentsVerifyRate  = 0.2
+	assignmentsVerifyRate = 0.2
 )
 
 // Validation
