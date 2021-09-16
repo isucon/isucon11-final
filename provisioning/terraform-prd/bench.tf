@@ -33,7 +33,7 @@ resource "aws_instance" "bench" {
   ]
 
   tags = {
-    Name = format("final-prd-bench-%02d", tonumber(each.key))
+    Name = format("final-prd-bench-%03d", tonumber(each.key))
     Role = "bench"
   }
 
@@ -41,7 +41,7 @@ resource "aws_instance" "bench" {
     volume_type = "gp3"
     volume_size = "20"
     tags = {
-      Name    = format("final-prd-bench-%02d", tonumber(each.key))
+      Name    = format("final-prd-bench-%03d", tonumber(each.key))
       Project = "final"
     }
   }
