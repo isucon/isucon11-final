@@ -153,29 +153,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			}
 
 			expectAnnouncementsMap := student.AnnouncementsMap()
-			if couldSeeAll {
-				// レスポンスのunread_countの検証
-				var actualUnreadCount int
-				for _, a := range actualAnnouncements {
-					if a.Unread {
-						actualUnreadCount++
-					}
-				}
-				if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
-					step.AddError(errNotMatchUnreadCount(hresSample))
-					return
-				}
-
-				if len(expectAnnouncementsMap) > len(actualAnnouncements) {
-					step.AddError(errNotMatchUnder(hresSample))
-					return
-				}
-
-				if len(expectAnnouncementsMap) < len(actualAnnouncements) {
-					step.AddError(errNotMatchOver(hresSample))
-					return
-				}
-			}
 
 			for _, actual := range actualAnnouncements {
 				expectStatus, ok := expectAnnouncementsMap[actual.ID]
@@ -193,6 +170,27 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				}
 
 				delete(expectAnnouncementsMap, actual.ID)
+			}
+
+			if couldSeeAll {
+				// レスポンスのunread_countの検証
+				var actualUnreadCount int
+				for _, a := range actualAnnouncements {
+					if a.Unread {
+						actualUnreadCount++
+					}
+				}
+				if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
+					step.AddError(errNotMatchUnreadCount(hresSample))
+					return
+				}
+
+				if !AssertEqual("announcement len", len(expectAnnouncementsMap), len(actualAnnouncements)) {
+					// 上で actual が expect の部分集合であることを確認しているので、ここで数が合わない場合は expect の方が多い
+					AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
+					step.AddError(errNotMatchUnder(hresSample))
+					return
+				}
 			}
 		}()
 	}
