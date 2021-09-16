@@ -168,8 +168,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					step.AddError(errNotMatch(hresSample))
 					return
 				}
-
-				delete(expectAnnouncementsMap, actual.ID)
 			}
 
 			if couldSeeAll {
