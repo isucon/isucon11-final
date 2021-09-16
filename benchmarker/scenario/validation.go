@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/score"
+
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/parallel"
 
@@ -32,7 +34,7 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 	// これは 10 秒 + ベンチの計算分しかかからないので先にやる
 	s.validateGrades(ctx, step)
 
-	// それぞれ 30 秒以上かかったらリクエストをやめて通す
+	// それぞれ 10 秒以上かかったらリクエストをやめて通す
 	s.validateAnnouncements(ctx, step)
 	s.validateCourses(ctx, step)
 
@@ -115,6 +117,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 				select {
 				case <-timer:
+					step.AddScore(score.ValidateTimeout)
 					break L
 				default:
 				}
@@ -219,7 +222,6 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 
 L:
 	for {
-
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
 			step.AddError(errValidation(err))
@@ -241,6 +243,7 @@ L:
 
 		select {
 		case <-timer:
+			step.AddScore(score.ValidateTimeout)
 			break L
 		default:
 		}
