@@ -792,7 +792,7 @@ async fn get_grades(
             }
         }
 
-        // この科目を受講している学生のtotal_score一覧を取得
+        // この科目を履修している学生のtotal_score一覧を取得
         let mut rows = sqlx::query_scalar(concat!(
             "SELECT IFNULL(SUM(`submissions`.`score`), 0) AS `total_score`",
             " FROM `users`",
@@ -833,7 +833,7 @@ async fn get_grades(
     }
 
     // GPAの統計値
-    // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
+    // 一つでも修了した科目がある学生のGPA一覧
     let gpas = {
         let mut rows = sqlx::query_scalar(concat!(
             "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`",
@@ -1445,7 +1445,7 @@ struct Score {
     score: i64,
 }
 
-// PUT /api/courses/{course_id}/classes/{class_id}/assignments/scores 成績登録
+// PUT /api/courses/{course_id}/classes/{class_id}/assignments/scores 採点結果登録
 async fn register_scores(
     pool: web::Data<sqlx::MySqlPool>,
     path: web::Path<AssignmentPath>,

@@ -627,7 +627,7 @@ usersApi.get("/me/grades", async (req, res) => {
         }
       }
 
-      // この科目を受講している学生のTotalScore一覧を取得
+      // この科目を履修している学生のTotalScore一覧を取得
       const [rows] = await db.query<
         ({ total_score: number } & RowDataPacket)[]
       >(
@@ -664,7 +664,7 @@ usersApi.get("/me/grades", async (req, res) => {
     }
 
     // GPAの統計値
-    // 一つでも修了した科目（履修した & ステータスがclosedである）がある学生のGPA一覧
+    // 一つでも修了した科目がある学生のGPA一覧
     const [rows] = await db.query<({ gpa: number } & RowDataPacket)[]>(
       "SELECT IFNULL(SUM(`submissions`.`score` * `courses`.`credit`), 0) / 100 / `credits`.`credits` AS `gpa`" +
         " FROM `users`" +
@@ -1357,7 +1357,7 @@ function isValidRegisterScoresRequest(
   );
 }
 
-// PUT /api/courses/:courseId/classes/:classId/assignments/scores 成績登録
+// PUT /api/courses/:courseId/classes/:classId/assignments/scores 採点結果登録
 coursesApi.put(
   "/:courseId/classes/:classId/assignments/scores",
   isAdmin,
