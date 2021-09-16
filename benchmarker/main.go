@@ -17,7 +17,7 @@ import (
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/agent"
 	"github.com/isucon/isucandar/failure"
-	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun" // TODO: modify to isucon11-portal
+	"github.com/isucon/isucon10-portal/bench-tool.go/benchrun"
 	isuxportalResources "github.com/isucon/isucon10-portal/proto.go/isuxportal/resources"
 	"github.com/pkg/profile"
 
@@ -182,10 +182,10 @@ func sendResult(s *scenario.Scenario, result *isucandar.BenchmarkResult, finish 
 		},
 		Finished: finish,
 		Passed:   passed,
-		Score:    totalScore, // TODO: 加点 - 減点
+		Score:    totalScore,
 		ScoreBreakdown: &isuxportalResources.BenchmarkResult_ScoreBreakdown{
-			Raw:       rawScore,    // TODO: 加点
-			Deduction: deductScore, // TODO: 減点
+			Raw:       rawScore,
+			Deduction: deductScore,
 		},
 		Execution: &isuxportalResources.BenchmarkResult_Execution{
 			Reason: reason,

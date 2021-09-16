@@ -112,7 +112,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}
 
 	teachers := make([]*model.Teacher, 0, prepareTeacherCount)
-	// TODO: ランダムなので同じ教員が入る可能性がある
+	// ランダムなので同じ教員が入る可能性がある。prepareTeacherCountと使用された教員の数が一意しない場合がある。
 	for i := 0; i < prepareTeacherCount; i++ {
 		teachers = append(teachers, s.userPool.randomTeacher())
 	}
@@ -1057,8 +1057,6 @@ func searchCourseLocal(courses []*model.Course, param *model.SearchCourseParam) 
 }
 
 func (s *Scenario) prepareAbnormal(ctx context.Context) error {
-	// TODO: 並列化
-
 	// 認証チェック
 	if err := s.prepareCheckAuthenticationAbnormal(ctx); err != nil {
 		return err
@@ -2004,8 +2002,12 @@ func (s *Scenario) prepareCheckSubmitAssignmentAbnormal(ctx context.Context) err
 		return err
 	}
 
-	// TODO: 不正な課題ファイルの提出で弾かれることのチェック
-	// やるなら専用Action作らないといけないかも
+	// 以下の異常系をチェックしていない(ブラウザチェックでも見ていない)
+	//　file, header, err := c.Request().FormFile("file")
+	//　if err != nil {
+	//　	return c.String(http.StatusBadRequest, "Invalid file.")
+	//　}
+	//　defer file.Close()
 
 	// ======== 検証用データの準備(2) ========
 
