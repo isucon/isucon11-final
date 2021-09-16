@@ -345,7 +345,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			}
 			class.CloseSubmission()
 
-			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
+			if err := verifyAssignments(assignmentsData, class, true, hres); err != nil {
 				step.AddError(err)
 				return
 			}

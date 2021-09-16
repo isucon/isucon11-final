@@ -31,10 +31,8 @@ const (
 )
 
 // Verify
-// TODO: 決め打ちではなく外から指定できるようにする
 const (
-	searchCourseVerifyRate = 0.2
-	assignmentsVerifyRate  = 0.2
+	assignmentsVerifyRate = 0.2
 )
 
 // Validation
