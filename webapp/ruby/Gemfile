@@ -7,6 +7,8 @@ gem 'mysql2-cs-bind'
 gem 'ulid'
 gem 'bcrypt'
 
+gem 'zip_tricks'
+
 
 group :development do
   gem 'sinatra-contrib'

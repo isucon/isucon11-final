@@ -6,6 +6,8 @@ require 'sinatra/base'
 require 'ulid'
 require 'uri'
 
+require 'zip_tricks'
+
 require_relative './util'
 require_relative './db'
 
@@ -710,8 +712,7 @@ module Isucholar
     get '/api/courses/:course_id/classes/:class_id/assignments/export', login: true, admin: true do
       class_id = params[:class_id]
 
-      zip_file_path = nil
-      db_transaction do
+      zip = db_transaction do
         class_count = db.xquery("SELECT COUNT(*) AS `cnt` FROM `classes` WHERE `id` = ? FOR UPDATE", class_id).first[:cnt]
         halt 404, "No such class." if class_count == 0
 
@@ -724,37 +725,27 @@ module Isucholar
         )
 
         zip_file_path = File.join(ASSIGNMENTS_DIRECTORY, "#{class_id}.zip")
-        create_submissions_zip(zip_file_path, class_id, submissions)
+        resp = create_submissions_zip(zip_file_path, class_id, submissions)
 
         db.xquery("UPDATE `classes` SET `submission_closed` = true WHERE `id` = ?", class_id)
+        resp
       end
 
       content_type 'application/zip'
-      send_file zip_file_path
+      zip
     end
 
     def create_submissions_zip(zip_file_path, class_id, submissions)
-      tmp_dir = File.join(ASSIGNMENTS_DIRECTORY, class_id, '')
-      system "rm", "-rf", tmp_dir, in: File::NULL, out: File::NULL, err: File::NULL,exception: true
-      system "mkdir", tmp_dir, in: File::NULL, out: File::NULL, err: File::NULL, exception: true
-
-      # ファイル名を指定の形式に変更
-      submissions.each do |submission|
-        system(
-          "cp",
-          File.join(ASSIGNMENTS_DIRECTORY, "#{class_id}-#{submission[:user_id]}.pdf"),
-          File.join(tmp_dir, "#{submission[:user_code]}-#{submission[:file_name]}"),
-          in: File::NULL,
-          out: File::NULL,
-          err: File::NULL,
-          exception: true,
-        )
+      ZipTricks::Streamer.output_enum do |zip|
+        submissions.each do |submission|
+          zip.write_stored_file("#{submission[:user_code]}-#{submission[:file_name]}") do |sink|
+            File.open(File.join(ASSIGNMENTS_DIRECTORY, "#{class_id}-#{submission[:user_id]}.pdf"), 'rb') do |io|
+              IO.copy_stream io, sink
+            end
+          end
+        end
       end
-
-      # -i 'tmpDir/*': 空zipを許す
-      system "zip", "-j", "-r", zip_file_path, tmp_dir, "-i", "#{tmp_dir}*", in: File::NULL, out: File::NULL, err: File::NULL, exception: true
     end
-
 
     # GetAnnouncementList GET /api/announcements お知らせ一覧取得
     get '/api/announcements', login: true do
