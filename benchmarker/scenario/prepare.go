@@ -214,9 +214,11 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		hres, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
 		if err != nil {
 			step.AddError(err)
+			return
 		}
 		if err := prepareCheckRegisteredCourses(expectedSchedule, getRegisteredCoursesRes, hres); err != nil {
 			step.AddError(err)
+			return
 		}
 
 	}, worker.WithLoopCount(prepareStudentCount))
@@ -317,6 +319,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 					}
 					if err := verifyClasses(course.Classes(), res, student, hres); err != nil {
 						step.AddError(err)
+						return
 					}
 
 					submissionData, fileName := generate.SubmissionData(course, class, student.UserAccount)
