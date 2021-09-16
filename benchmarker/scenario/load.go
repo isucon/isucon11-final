@@ -836,7 +836,6 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 				}
 			}
 
-
 			isExtendRequest := false
 			for i := 0; i <= loginRetryCount; i++ {
 				if s.isNoRequestTime(ctx) {
