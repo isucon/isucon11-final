@@ -1,7 +1,7 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card class="p-8">
-      <p class="text-2xl text-gray-700 font-bold justify-center mb-4">
+      <p class="text-2xl text-gray-800 font-bold justify-center mb-4">
         採点結果の登録
       </p>
       <div class="flex flex-col space-y-4 mb-4">
@@ -31,7 +31,7 @@
                   rounded
                   py-2
                   px-4
-                  text-gray-700
+                  text-gray-800
                   leading-tight
                   focus:outline-none focus:border-primary-500 focus:ring-0
                 "
@@ -50,7 +50,7 @@
                   rounded
                   py-2
                   px-4
-                  text-gray-700
+                  text-gray-800
                   leading-tight
                   focus:outline-none focus:border-primary-500 focus:ring-0
                 "

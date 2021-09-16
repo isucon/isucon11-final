@@ -4,7 +4,7 @@
       class="py-10 px-8 bg-white shadow-lg w-192 max-w-full mt-8 mb-8 rounded"
     >
       <div class="flex-1 flex-col">
-        <h1 class="text-2xl">個人成績照会</h1>
+        <h1 class="text-2xl font-bold text-gray-800">個人成績照会</h1>
 
         <template v-if="hasError">
           <InlineNotification type="error" class="my-4">
@@ -14,56 +14,49 @@
         </template>
 
         <section class="mt-10">
-          <h1 class="text-xl">成績概要</h1>
+          <h1 class="text-xl text-gray-800">成績概要</h1>
 
-          <table class="table-auto my-2">
-            <thead>
-              <tr class="bg-gray-300">
-                <th class="px-4 py-2">取得単位数</th>
-                <th class="px-4 py-2">GPA</th>
-                <th class="px-4 py-2">全学生GPA平均値</th>
-                <th class="px-4 py-2">全学生GPA偏差値</th>
-                <th class="px-4 py-2">全学生GPA最低値</th>
-                <th class="px-4 py-2">全学生GPA最大値</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="bg-gray-200 odd:bg-white">
-                <td class="px-4 py-2 border break-words">
-                  {{ grades.summary.credits }}
-                </td>
-                <td class="px-4 py-2 border break-words">
-                  {{ round(grades.summary.gpa, digits) }}
-                </td>
-                <td class="px-4 py-2 border break-words">
-                  {{ round(grades.summary.gpaAvg, digits) }}
-                </td>
-                <td class="px-4 py-2 border break-words">
-                  {{ round(grades.summary.gpaTScore, digits) }}
-                </td>
-                <td class="px-4 py-2 border break-words">
-                  {{ round(grades.summary.gpaMin, digits) }}
-                </td>
-                <td class="px-4 py-2 border break-words">
-                  {{ round(grades.summary.gpaMax, digits) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="my-2 grid grid-cols-6 text-gray-900 max-w-full">
+            <div class="px-4 py-2 bg-gray-300">取得単位数</div>
+            <div class="px-4 py-2 bg-gray-300">GPA</div>
+            <div class="px-4 py-2 bg-gray-300">全学生GPA平均値</div>
+            <div class="px-4 py-2 bg-gray-300">全学生GPA偏差値</div>
+            <div class="px-4 py-2 bg-gray-300">全学生GPA最低値</div>
+            <div class="px-4 py-2 bg-gray-300">全学生GPA最高値</div>
+
+            <div class="px-4 py-2 border break-words">
+              {{ grades.summary.credits }}
+            </div>
+            <div class="px-4 py-2 border break-words">
+              {{ round(grades.summary.gpa, digits) }}
+            </div>
+            <div class="px-4 py-2 border break-words">
+              {{ round(grades.summary.gpaAvg, digits) }}
+            </div>
+            <div class="px-4 py-2 border break-words">
+              {{ round(grades.summary.gpaTScore, digits) }}
+            </div>
+            <div class="px-4 py-2 border break-words">
+              {{ round(grades.summary.gpaMin, digits) }}
+            </div>
+            <div class="px-4 py-2 border break-words">
+              {{ round(grades.summary.gpaMax, digits) }}
+            </div>
+          </div>
         </section>
 
         <section class="mt-10">
-          <h1 class="text-xl">成績一覧</h1>
+          <h1 class="text-xl text-gray-800">成績一覧</h1>
 
-          <div class="my-2 grid grid-cols-8 items-stretch">
-            <div class="px-4 py-2 border bg-gray-300">科目コード</div>
-            <div class="px-4 py-2 border bg-gray-300">科目名</div>
-            <div class="px-4 py-2 border bg-gray-300">成績</div>
-            <div class="px-4 py-2 border bg-gray-300">平均点</div>
-            <div class="px-4 py-2 border bg-gray-300">偏差値</div>
-            <div class="px-4 py-2 border bg-gray-300">最低点</div>
-            <div class="px-4 py-2 border bg-gray-300">最高点</div>
-            <div class="px-4 py-2 border bg-gray-300">各講義成績</div>
+          <div class="my-2 grid grid-cols-8 text-gray-900">
+            <div class="px-4 py-2 bg-gray-300">科目コード</div>
+            <div class="px-4 py-2 bg-gray-300">科目名</div>
+            <div class="px-4 py-2 bg-gray-300">成績</div>
+            <div class="px-4 py-2 bg-gray-300">平均点</div>
+            <div class="px-4 py-2 bg-gray-300">偏差値</div>
+            <div class="px-4 py-2 bg-gray-300">最低点</div>
+            <div class="px-4 py-2 bg-gray-300">最高点</div>
+            <div class="px-4 py-2 bg-gray-300">各講義成績</div>
 
             <template v-if="grades.courses">
               <template v-for="(r, i) in grades.courses">

@@ -55,7 +55,7 @@ export default Vue.extend({
       } else {
         return [
           'cursor-pointer',
-          'text-glay-700',
+          'text-gray-800',
           'hover:bg-primary-300',
           'hover:text-white',
           'hover:rounded',

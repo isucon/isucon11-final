@@ -55,7 +55,7 @@
                         block
                         px-4
                         py-2
-                        text-glay-700 text-sm
+                        text-gray-800 text-sm
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.stop="closeDropdown()"
@@ -67,7 +67,7 @@
                         block
                         px-4
                         py-2
-                        text-glay-700 text-sm
+                        text-gray-800 text-sm
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.stop="closeDropdown()"
@@ -79,7 +79,7 @@
                         block
                         px-4
                         py-2
-                        text-glay-700 text-sm
+                        text-gray-800 text-sm
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.prevent.stop="onClickSetStatus(i)"
@@ -91,7 +91,7 @@
                         block
                         px-4
                         py-2
-                        text-glay-700 text-sm
+                        text-gray-800 text-sm
                         hover:bg-primary-300 hover:text-white
                       "
                       @click.prevent.stop="onClickAddAnnouncement(i)"
