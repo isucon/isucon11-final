@@ -434,18 +434,17 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 				startGetAnnouncementDetail := time.Now()
 				// お知らせの詳細を取得する
-				hres, res, err := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
+				detailHres, detailRes, detailErr := GetAnnouncementDetailAction(ctx, student.Agent, ans.ID)
 				if err != nil {
-					var urlError *url.Error
-					if errors.As(err, &urlError) && urlError.Timeout() {
+					if fails.IsTimeout(detailErr) {
 						student.MarkAnnouncementReadDirty(ans.ID)
 					}
-					step.AddError(err)
+					step.AddError(detailErr)
 					continue // 次の未読おしらせの確認へ
 				}
 				s.debugData.AddInt("GetAnnouncementDetailTime", time.Since(startGetAnnouncementDetail).Milliseconds())
 
-				if err := verifyAnnouncementDetail(expectStatus, &res, hres); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &detailRes, detailHres); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)
@@ -458,18 +457,19 @@ func (s *Scenario) readAnnouncementScenario(student *model.Student, step *isucan
 
 			_, nextPathParam, err = parseLinkHeader(hres)
 			if err != nil {
+				time.Sleep(100 * time.Millisecond)
 				step.AddError(err)
 				continue
 			}
 
+			// 以降のページに未読がなければnextPathParamをリセットする
 			if len(res.Announcements) == 0 || !student.HasUnreadOrDirtyAnnouncementBefore(res.Announcements[len(res.Announcements)-1].ID) {
 				nextPathParam = ""
-				if !student.HasUnreadAnnouncement() {
-					select {
-					case <-time.After(400 * time.Millisecond):
-					case <-student.WaitNewUnreadAnnouncement(ctx):
-						// waitはお知らせ追加したらエスパーで即解消する
-					}
+				select {
+				case <-time.After(400 * time.Millisecond):
+					// 未読がなければ最大400ms待つ
+				case <-student.WaitExistUnreadAnnouncement(ctx):
+					// waitは未読のお知らせが追加されたらエスパーで即解消する
 				}
 			}
 
@@ -496,7 +496,7 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 			hres, res, err := GetAnnouncementListAction(ctx, student.Agent, nextPathParam, "")
 			if err != nil {
 				step.AddError(err)
-				<-timer
+				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 			s.debugData.AddInt("GetAnnouncementListTime", time.Since(startGetAnnouncementList).Milliseconds())
@@ -533,14 +533,14 @@ func (s *Scenario) readAnnouncementPagingScenario(student *model.Student, step *
 					panic("read unknown announcement")
 				}
 
-				hres, res, err := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
+				detailHres, detailRes, detailErr := GetAnnouncementDetailAction(ctx, student.Agent, targetID)
 				if err != nil {
-					step.AddError(err)
-					<-timer
+					step.AddError(detailErr)
+					time.Sleep(100 * time.Millisecond)
 					continue
 				}
 
-				if err := verifyAnnouncementDetail(expectStatus, &res, hres); err != nil {
+				if err := verifyAnnouncementDetail(expectStatus, &detailRes, detailHres); err != nil {
 					step.AddError(err)
 				} else {
 					step.AddScore(score.GetAnnouncementsDetail)

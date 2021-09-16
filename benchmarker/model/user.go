@@ -105,8 +105,8 @@ func (s *Student) AddAnnouncement(announcement *Announcement) {
 		Unread:       true,
 	}
 	s.announcements = append(s.announcements, announcementStatus)
-	s.unreadAnnouncement[announcement.ID] = announcementStatus
 	s.announcementIndexByID[announcement.ID] = len(s.announcements) - 1
+	s.unreadAnnouncement[announcement.ID] = announcementStatus
 	s.addAnnouncementCond.Broadcast()
 }
 
@@ -172,24 +172,27 @@ func (s *Student) HasUnreadOrDirtyAnnouncementBefore(announcementID string) bool
 
 }
 
-func (s *Student) WaitNewUnreadAnnouncement(ctx context.Context) <-chan struct{} {
+// WaitExistUnreadAnnouncement は未読おしらせが発生するまでwaitする
+func (s *Student) WaitExistUnreadAnnouncement(ctx context.Context) <-chan struct{} {
 	ch := make(chan struct{})
 	go func() {
 		select {
 		case <-ctx.Done():
-		case <-s.waitAddAnnouncement():
+		case <-s.waitExistUnreadAnnouncement():
 		}
 		close(ch)
 	}()
 	return ch
 }
 
-func (s *Student) waitAddAnnouncement() <-chan struct{} {
+func (s *Student) waitExistUnreadAnnouncement() <-chan struct{} {
 	ch := make(chan struct{})
 	// MEMO: このgoroutineはWaitNewUnreadAnnouncementがctx.Done()で抜けた場合放置される
 	go func() {
 		s.addAnnouncementCond.L.Lock()
-		s.addAnnouncementCond.Wait()
+		for !s.HasUnreadAnnouncement() {
+			s.addAnnouncementCond.Wait()
+		}
 		s.addAnnouncementCond.L.Unlock()
 		close(ch)
 	}()
