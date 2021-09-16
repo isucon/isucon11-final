@@ -178,7 +178,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
 	}
 
-	// 生徒のログインとコース登録
+	// 生徒のログインとコース登録・履修済み科目の確認
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
 		_, err := LoginAction(ctx, student.Agent, student.UserAccount)
@@ -206,8 +206,19 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		}
 		for _, course := range courses {
 			student.AddCourse(course)
+			student.FillTimeslot(course)
 			course.AddStudent(student)
 		}
+
+		expectedSchedule := student.RegisteredSchedule()
+		hres, getRegisteredCoursesRes, err := GetRegisteredCoursesAction(ctx, student.Agent)
+		if err != nil {
+			step.AddError(err)
+		}
+		if err := prepareCheckRegisteredCourses(expectedSchedule, getRegisteredCoursesRes, hres); err != nil {
+			step.AddError(err)
+		}
+
 	}, worker.WithLoopCount(prepareStudentCount))
 	if err != nil {
 		AdminLogger.Println("info: cannot start worker: %w", err)
@@ -454,6 +465,56 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	w.Wait()
 	if hasErrors() {
 		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
+	}
+
+	return nil
+}
+
+func prepareCheckRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.GetRegisteredCourseResponseContent, hres *http.Response) error {
+	// DayOfWeekの逆引きテーブル（string -> int）
+	dayOfWeekIndexTable := map[api.DayOfWeek]int{
+		"monday":    0,
+		"tuesday":   1,
+		"wednesday": 2,
+		"thursday":  3,
+		"friday":    4,
+	}
+
+	actualSchedule := [5][6]*api.GetRegisteredCourseResponseContent{}
+	for _, resContent := range res {
+		dayOfWeekIndex, ok := dayOfWeekIndexTable[resContent.DayOfWeek]
+		if !ok {
+			return fails.ErrorInvalidResponse(errors.New("科目の開講曜日が不正です"), hres)
+		}
+		periodIndex := int(resContent.Period) - 1
+		if periodIndex < 0 || periodIndex >= 6 {
+			return fails.ErrorInvalidResponse(errors.New("科目の開講時限が不正です"), hres)
+		}
+		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
+			return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに時限の重複が存在します"), hres)
+		}
+
+		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
+	}
+
+	for d := 0; d < 5; d++ {
+		for p := 0; p < 6; p++ {
+			if actualSchedule[d][p] != nil {
+				// レスポンス側で枠が埋まっているなら、ベンチ側の同じ枠も同じ科目で埋まっていることを期待する
+				if expectedSchedule[d][p] != nil {
+					if err := AssertEqualRegisteredCourse(expectedSchedule[d][p], actualSchedule[d][p], hres); err != nil {
+						return err
+					}
+				} else {
+					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに期待しない科目が含まれています"), hres)
+				}
+			} else {
+				// レスポンス側で枠が埋まっていないなら、ベンチ側の同じ枠も埋まっていないことを期待する
+				if expectedSchedule[d][p] != nil {
+					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに履修しているはずの科目が含まれていません"), hres)
+				}
+			}
+		}
 	}
 
 	return nil
