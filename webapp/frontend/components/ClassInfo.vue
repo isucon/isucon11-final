@@ -5,7 +5,7 @@
         <p class="text-2xl text-primary-500 font-bold flex items-center">
           {{ classTitle }}
         </p>
-        <p class="text-black text-base mb-4">{{ classinfo.description }}</p>
+        <p class="text-glay-700 text-base mb-4">{{ classinfo.description }}</p>
         <div class="flex flex-row items-center">
           <Button :disabled="submissionDisabled" @click="openModal">
             課題を提出する

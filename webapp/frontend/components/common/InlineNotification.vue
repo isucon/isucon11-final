@@ -5,7 +5,7 @@
       <slot name="title" />
     </div>
     <div>
-      <p class="text-sm text-gray-800"><slot name="message" /></p>
+      <p class="text-sm text-glay-700"><slot name="message" /></p>
     </div>
   </div>
 </template>

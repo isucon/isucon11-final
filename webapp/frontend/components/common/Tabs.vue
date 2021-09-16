@@ -44,7 +44,7 @@ export default Vue.extend({
     tabClasses(index: number): string[] {
       return index === this.activeTabIndex
         ? ['text-primary-500', 'font-bold', 'border-primary-500']
-        : ['text-gray-600', 'border-gray-600']
+        : ['text-glay-700', 'border-gray-600']
     },
     activate(index: number) {
       this.activeTabIndex = index

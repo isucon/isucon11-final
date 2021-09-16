@@ -2,7 +2,7 @@
   <div>
     <Accordion @open="$emit('open', $event)" @close="$emit('close', $event)">
       <template #header>
-        <div class="text-xl text-black flex items-center justify-between">
+        <div class="text-xl text-glay-700 flex items-center justify-between">
           <span>
             {{ announcement.title }}
           </span>
@@ -15,7 +15,7 @@
       </template>
       <template #default>
         <template v-if="!announcement.hasError">
-          <p class="text-black text-base break-all">
+          <p class="text-glay-700 text-base break-all">
             {{ announcement.message || '' }}
           </p>
         </template>

@@ -1,7 +1,7 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
     <Card>
-      <p class="text-2xl text-black font-bold flex justify-center mb-4">
+      <p class="text-2xl text-glay-700 font-bold flex justify-center mb-4">
         {{ title }}
       </p>
       <div class="mb-4">
@@ -9,7 +9,7 @@
         <p>提出先の課題や提出ファイルが正しいか確認してください。</p>
       </div>
       <div class="flex justify-center items-center mb-4">
-        <span class="text-black text-base font-bold mr-2">提出ファイル</span>
+        <span class="text-glay-700 text-base font-bold mr-2">提出ファイル</span>
         <label
           class="
             mr-2
@@ -29,14 +29,14 @@
         </label>
         <template v-if="file !== null">
           <div class="flex flex-col justify-center overflow-x-scroll">
-            <div class="flex flex-row items-center text-black text-base">
+            <div class="flex flex-row items-center text-glay-700 text-base">
               <span class="mr=2">{{ file.name }}</span
               ><CloseIcon @click="removeFile"></CloseIcon>
             </div>
           </div>
         </template>
         <template v-else>
-          <span class="text-black text-base">ファイルが選択されていません</span>
+          <span class="text-glay-700 text-base">ファイルが選択されていません</span>
         </template>
       </div>
       <template v-if="failed">
