@@ -28,7 +28,7 @@
           <input type="file" class="hidden" @change="onFileChanged" />
         </label>
         <template v-if="file !== null">
-          <div class="flex flex-col justify-center overflow-x-scroll">
+          <div class="flex flex-col justify-center">
             <div class="flex flex-row items-center text-black text-base">
               <span class="mr=2">{{ file.name }}</span
               ><CloseIcon @click="removeFile"></CloseIcon>
