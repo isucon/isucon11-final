@@ -19,7 +19,6 @@ func BrowserAccess(ctx context.Context, a *agent.Agent, path string) (*http.Resp
 	if err != nil {
 		return nil, nil, fails.ErrorHTTP(err)
 	}
-	defer res.Body.Close()
 
 	if ctx.Err() != nil {
 		return res, nil, nil
