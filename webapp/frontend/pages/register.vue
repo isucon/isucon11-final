@@ -41,8 +41,13 @@
                         ease
                         hover:bg-primary-100
                       "
+                      :class="
+                        course.displayType === 'will_register'
+                          ? 'border-2 border-primary-700 border-opacity-40'
+                          : ''
+                      "
                     >
-                      <div class="flex flex-col">
+                      <div class="relative flex flex-col w-full h-full">
                         <span class="text-primary-500">
                           <template
                             v-if="
@@ -52,15 +57,9 @@
                           >
                             <span>{{ course.code }}</span>
                           </template>
-                          <template
-                            v-else-if="course.displayType === 'registered'"
-                          >
-                            <span>履修済</span>
-                          </template>
                           <span class="font-bold">{{ course.name }}</span>
                         </span>
                         <span class="text-sm">{{ course.teacher }}</span>
-
                         <template
                           v-if="
                             course.code &&
@@ -69,7 +68,7 @@
                         >
                           <button
                             title="仮登録解除"
-                            class="ml-auto"
+                            class="absolute right-0 -bottom-0.5"
                             @click="onClickCancelCourse($event, course.id)"
                           >
                             <fa-icon
