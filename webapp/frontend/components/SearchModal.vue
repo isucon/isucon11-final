@@ -102,54 +102,58 @@
           <hr class="my-6" />
           <div>
             <h3 class="text-xl font-bold">検索結果</h3>
-            <table class="table-auto border w-full mt-1">
-              <tr class="text-center">
-                <th>選択</th>
-                <th>科目コード</th>
-                <th>科目名</th>
-                <th>科目種別</th>
-                <th>時間</th>
-                <th>単位数</th>
-                <th>科目の状態</th>
-                <th>担当</th>
-                <th></th>
-              </tr>
-              <template v-for="(c, i) in courses">
-                <tr
-                  :key="`tr-${i}`"
-                  class="text-center bg-gray-200 odd:bg-white"
+            <div class="w-full max-h-60 overflow-y-scroll">
+              <table class="table-auto -mt-px">
+                <thead
+                  class="text-center -translate-x-px sticky top-0 z-10 bg-white"
                 >
-                  <td>
-                    <input
-                      type="checkbox"
-                      class="
-                        form-input
-                        text-primary-500
-                        focus:outline-none focus:ring-primary-200
-                        rounded
-                      "
-                      :checked="isChecked(c.id)"
-                      @change="onChangeCheckbox(c)"
-                    />
-                  </td>
-                  <td>{{ c.code }}</td>
-                  <td>{{ c.name }}</td>
-                  <td>{{ formatType(c.type) }}</td>
-                  <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
-                  <td>{{ c.credit }}</td>
-                  <td>{{ formatStatus(c.status) }}</td>
-                  <td>{{ c.teacher }}</td>
-                  <td>
-                    <a
-                      :href="`/syllabus/${c.id}`"
-                      target="_blank"
-                      class="text-primary-500"
-                      >詳細を見る
-                    </a>
-                  </td>
-                </tr>
-              </template>
-            </table>
+                  <th>選択</th>
+                  <th>科目コード</th>
+                  <th>科目名</th>
+                  <th>科目種別</th>
+                  <th>時間</th>
+                  <th>単位数</th>
+                  <th>科目の状態</th>
+                  <th>担当</th>
+                  <th></th>
+                </thead>
+                <template v-for="(c, i) in courses">
+                  <tr
+                    :key="`tr-${i}`"
+                    class="text-center bg-gray-200 odd:bg-white"
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        class="
+                          form-input
+                          text-primary-500
+                          focus:outline-none focus:ring-primary-200
+                          rounded
+                        "
+                        :checked="isChecked(c.id)"
+                        @change="onChangeCheckbox(c)"
+                      />
+                    </td>
+                    <td>{{ c.code }}</td>
+                    <td>{{ c.name }}</td>
+                    <td>{{ formatType(c.type) }}</td>
+                    <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
+                    <td>{{ c.credit }}</td>
+                    <td>{{ formatStatus(c.status) }}</td>
+                    <td>{{ c.teacher }}</td>
+                    <td>
+                      <a
+                        :href="`/syllabus/${c.id}`"
+                        target="_blank"
+                        class="text-primary-500"
+                        >詳細を見る
+                      </a>
+                    </td>
+                  </tr>
+                </template>
+              </table>
+            </div>
             <div class="flex justify-between mt-2">
               <Button
                 :disabled="checkedCourses.length === 0"
