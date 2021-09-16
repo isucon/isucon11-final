@@ -143,7 +143,6 @@
                           focus:ring-0
                           focus:ring-offset-0
                           focus:ring-primary-200
-                          h-full
                         "
                         :checked="isChecked(c.id)"
                         @change="onChangeCheckbox(c)"
