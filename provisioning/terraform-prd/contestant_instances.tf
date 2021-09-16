@@ -30,7 +30,7 @@ resource "aws_instance" "contestant-1" {
 
 
   tags = {
-    Name = format("final-prd-contestant-%02d-1", tonumber(each.key))
+    Name = format("final-prd-contestant-%03d-1", tonumber(each.key))
     Role = "contestant"
 
     IsuconTeamID      = each.key
@@ -41,7 +41,7 @@ resource "aws_instance" "contestant-1" {
     volume_type = "gp3"
     volume_size = "30"
     tags = {
-      Name    = format("final-prd-contestant-%02d-1", tonumber(each.key))
+      Name    = format("final-prd-contestant-%03d-1", tonumber(each.key))
       Project = "final"
     }
   }
@@ -56,7 +56,7 @@ resource "aws_eip" "contestant-1" {
   instance = aws_instance.contestant-1[each.key].id
 
   tags = {
-    Name = format("final-prd-contestant-%02d-1", tonumber(each.key))
+    Name = format("final-prd-contestant-%03d-1", tonumber(each.key))
   }
 }
 
@@ -76,7 +76,7 @@ resource "aws_instance" "contestant-2" {
 
 
   tags = {
-    Name = format("final-prd-contestant-%02d-2", tonumber(each.key))
+    Name = format("final-prd-contestant-%03d-2", tonumber(each.key))
     Role = "contestant"
 
     IsuconTeamID      = each.key
@@ -87,7 +87,7 @@ resource "aws_instance" "contestant-2" {
     volume_type = "gp3"
     volume_size = "30"
     tags = {
-      Name    = format("final-prd-contestant-%02d-2", tonumber(each.key))
+      Name    = format("final-prd-contestant-%03d-2", tonumber(each.key))
       Project = "final"
     }
   }
@@ -102,7 +102,7 @@ resource "aws_eip" "contestant-2" {
   instance = aws_instance.contestant-2[each.key].id
 
   tags = {
-    Name = format("final-prd-contestant-%02d-2", tonumber(each.key))
+    Name = format("final-prd-contestant-%03d-2", tonumber(each.key))
   }
 }
 
@@ -122,7 +122,7 @@ resource "aws_instance" "contestant-3" {
 
 
   tags = {
-    Name = format("final-prd-contestant-%02d-3", tonumber(each.key))
+    Name = format("final-prd-contestant-%03d-3", tonumber(each.key))
     Role = "contestant"
 
     IsuconTeamID      = each.key
@@ -133,7 +133,7 @@ resource "aws_instance" "contestant-3" {
     volume_type = "gp3"
     volume_size = "30"
     tags = {
-      Name    = format("final-prd-contestant-%02d-3", tonumber(each.key))
+      Name    = format("final-prd-contestant-%03d-3", tonumber(each.key))
       Project = "final"
     }
   }
@@ -148,6 +148,6 @@ resource "aws_eip" "contestant-3" {
   instance = aws_instance.contestant-3[each.key].id
 
   tags = {
-    Name = format("final-prd-contestant-%02d-3", tonumber(each.key))
+    Name = format("final-prd-contestant-%03d-3", tonumber(each.key))
   }
 }

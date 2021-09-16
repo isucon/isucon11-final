@@ -23,7 +23,7 @@ resource "aws_subnet" "contestant" {
   map_public_ip_on_launch = false
 
   tags = {
-    Name = format("final-prd-contestant-%02d", tonumber(each.key))
+    Name = format("final-prd-contestant-%03d", tonumber(each.key))
   }
 }
 
