@@ -25,7 +25,14 @@
       </template>
       <div class="flex justify-center gap-2">
         <Button w-class="w-24" @click="close"> 閉じる </Button>
-        <Button w-class="w-24" color="primary" @click="submit"> 変更 </Button>
+        <Button
+          w-class="w-24"
+          color="primary"
+          :disable="params.status !== ''"
+          @click="submit"
+        >
+          変更
+        </Button>
       </div>
     </Card>
   </Modal>
@@ -42,9 +49,13 @@ import LabeledText from '~/components/common/LabeledText.vue'
 import InlineNotification from '~/components/common/InlineNotification.vue'
 import { CourseStatus, SetCourseStatusRequest } from '~/types/courses'
 
-type SubmitFormData = {
+type SetCourseStatusRequestWithDefault = {
+  status: SetCourseStatusRequest['status'] | ''
+}
+
+type Data = {
   failed: boolean
-  params: SetCourseStatusRequest
+  params: SetCourseStatusRequestWithDefault
 }
 
 const statusOptions = [
@@ -62,7 +73,7 @@ const statusOptions = [
   },
 ]
 
-const initParams: SetCourseStatusRequest = {
+const initParams: { status: CourseStatus | '' } = {
   status: 'registration',
 }
 
@@ -94,7 +105,7 @@ export default Vue.extend({
       required: true,
     },
   },
-  data(): SubmitFormData {
+  data(): Data {
     return {
       failed: false,
       params: Object.assign({}, initParams),
@@ -112,6 +123,8 @@ export default Vue.extend({
   },
   methods: {
     async submit() {
+      if (this.params.status === '') return
+
       try {
         await this.$axios.put(
           `/api/courses/${this.courseId}/status`,
