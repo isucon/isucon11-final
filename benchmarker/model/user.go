@@ -190,7 +190,7 @@ func (s *Student) waitExistUnreadAnnouncement() <-chan struct{} {
 	// MEMO: このgoroutineはWaitNewUnreadAnnouncementがctx.Done()で抜けた場合放置される
 	go func() {
 		s.addAnnouncementCond.L.Lock()
-		for !s.HasUnreadAnnouncement() {
+		for len(s.unreadAnnouncement) == 0 {
 			s.addAnnouncementCond.Wait()
 		}
 		s.addAnnouncementCond.L.Unlock()
