@@ -636,6 +636,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	errMissingNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空でないことが期待される場所で空でした"))
 	errUnnecessaryNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空であることが期待される場所で空ではありませんでした"))
 	errNotExistPrevOtherThanFirstPage := errors.New("お知らせリストの最初以外のページの link header に prev が存在しませんでした")
+	errUnnecessaryPrev := errors.New("お知らせリストの link header の prev が空であることが期待される場所で空ではありませんでした")
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
 	if err != nil {
@@ -654,6 +655,9 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	}
 	if path != "" && prev == "" {
 		return "", errNotExistPrevOtherThanFirstPage
+	}
+	if path == "" && prev != "" {
+		return "", errUnnecessaryPrev
 	}
 
 	// 次のページが存在しない
