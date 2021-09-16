@@ -904,10 +904,12 @@ func (s *Scenario) addCourseLoad(ctx context.Context, dayOfWeek, period int, ste
 				if !isExtendRequest {
 					step.AddError(err)
 				}
-				if fails.IsTimeout(err) {
+				if i != loginRetryCount && fails.IsTimeout(err) {
 					time.Sleep(1000 * time.Millisecond)
 					isExtendRequest = s.isNoRequestTime(ctx)
 					continue
+				} else {
+					return
 				}
 			}
 			teacher.IsLoggedIn = true
