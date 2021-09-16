@@ -690,12 +690,6 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 		return errWithUserCode(reasonNoCount, hres)
 	}
 
-	if expected == nil && actual.Announcements == nil {
-		return nil
-	} else if (expected == nil && actual.Announcements != nil) || (expected != nil && actual.Announcements == nil) {
-		return errWithUserCode(reasonNotMatch, hres)
-	}
-
 	// 順序の検証
 	for i := 0; i < len(actual.Announcements)-1; i++ {
 		if actual.Announcements[i].ID < actual.Announcements[i+1].ID {
