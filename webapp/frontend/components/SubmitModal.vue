@@ -45,7 +45,7 @@
           <template #message>課題の提出に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="px-4 py-3 flex justify-center">
+      <div class="py-3 flex justify-center">
         <button
           type="button"
           class="

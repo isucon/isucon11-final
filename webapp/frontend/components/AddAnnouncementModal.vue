@@ -28,7 +28,7 @@
           <template #message>お知らせの登録に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="px-4 py-3 flex justify-center gap-2">
+      <div class="py-3 flex justify-center gap-2">
         <Button @click="close"> 閉じる </Button>
         <Button color="primary" @click="submit"> 登録 </Button>
       </div>

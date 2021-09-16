@@ -1,15 +1,15 @@
 <template>
   <div>
-    <table class="table-auto border w-full mt-1">
+    <table class="table-auto w-full">
       <thead>
-        <tr class="text-center">
-          <th>科目コード</th>
-          <th>科目名</th>
-          <th>科目種別</th>
-          <th>時間</th>
-          <th>単位数</th>
-          <th>科目の状態</th>
-          <th></th>
+        <tr class="text-left">
+          <th class="px-1 py-0.5">科目コード</th>
+          <th class="px-1 py-0.5">科目名</th>
+          <th class="px-1 py-0.5">科目種別</th>
+          <th class="px-1 py-0.5">時間</th>
+          <th class="px-1 py-0.5">単位数</th>
+          <th class="px-1 py-0.5">科目の状態</th>
+          <th class="px-1 py-0.5"></th>
         </tr>
       </thead>
 
@@ -18,19 +18,21 @@
           <template v-for="(c, i) in courses">
             <tr
               :key="`course-tr-${i}`"
-              class="text-center bg-gray-200 odd:bg-white"
+              class="text-left bg-gray-200 odd:bg-white"
             >
-              <td>{{ c.code }}</td>
-              <td>{{ c.name }}</td>
-              <td>{{ formatType(c.type) }}</td>
-              <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
-              <td>{{ c.credit }}</td>
-              <td>{{ formatStatus(c.status) }}</td>
-              <td>
+              <td class="px-1 py-0.5">{{ c.code }}</td>
+              <td class="px-1 py-0.5">{{ c.name }}</td>
+              <td class="px-1 py-0.5">{{ formatType(c.type) }}</td>
+              <td class="px-1 py-0.5">
+                {{ formatPeriod(c.dayOfWeek, c.period) }}
+              </td>
+              <td class="px-1 py-0.5">{{ c.credit }}</td>
+              <td class="px-1 py-0.5">{{ formatStatus(c.status) }}</td>
+              <td class="px-1 py-0.5">
                 <div class="relative">
                   <fa-icon
                     icon="ellipsis-v"
-                    class="min-w-min px-2 cursor-pointer rounded"
+                    class="min-w-min px-2 cursor-pointer rounded float-right"
                     @click.stop="onClickCourseDropdown(i)"
                   />
                   <div

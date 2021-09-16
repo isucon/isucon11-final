@@ -1,13 +1,11 @@
 <template>
-  <div class="flex flex-col items-start">
-    <div class="flex-shrink-0 mr-2">
+  <div class="flex flex-col">
+    <div>
       <label class="text-gray-500 font-bold text-right"> {{ label }} </label>
     </div>
-    <div class="w-full">
-      <span class="px-4">
-        {{ value }}
-      </span>
-    </div>
+    <span class="mt-0.5 ml-3">
+      {{ value }}
+    </span>
   </div>
 </template>
 
