@@ -714,6 +714,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				return
 			}
 
+			isExtendRequest = false
 		downloadLoop:
 			if s.isNoRetryTime(ctx) {
 				return
