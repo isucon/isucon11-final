@@ -1,6 +1,6 @@
 <template>
   <Modal :is-shown="isShown" @close="$emit('close')">
-    <Card>
+    <Card class="p-8">
       <p class="text-2xl text-black font-bold justify-center mb-4">
         採点結果の登録
       </p>
@@ -12,73 +12,82 @@
           <LabeledText label="講義タイトル" :value="classTitle" />
         </div>
         <div>
-          <div class="flex flex-row space-x-2">
-            <div class="flex-1 w-full">
-              <label class="text-gray-500 font-bold text-right">
-                学内コード
-              </label>
-            </div>
-            <div class="flex-1 w-full">
-              <label class="text-gray-500 font-bold text-right">
-                採点結果
-              </label>
-            </div>
+          <div class="grid grid-cols-score gap-2">
+            <label class="text-gray-500 font-bold"> 学内コード </label>
+            <label class="text-gray-500 font-bold"> 採点結果 </label>
           </div>
           <template v-for="(param, index) in params">
             <div
               :key="`param-${index}`"
-              class="flex flex-row space-x-2 items-center"
+              class="grid grid-cols-score gap-2 items-center w-full mt-2"
             >
-              <div class="flex-1 mb-1">
-                <input
-                  :id="`params-usercode-${index}`"
-                  class="
-                    w-full
-                    bg-white
-                    appearance-none
-                    border-2 border-gray-200
-                    rounded
-                    py-2
-                    px-4
-                    text-gray-700
-                    leading-tight
-                    focus:outline-none focus:bg-white focus:border-purple-500
-                  "
-                  type="text"
-                  placeholder="学生の学内コードを入力"
-                  :value="param.userCode"
-                  @input="$set(param, 'userCode', $event.target.value)"
-                />
-              </div>
-              <div class="flex-1 mb-1">
-                <input
-                  :id="`params-score-${index}`"
-                  class="
-                    w-full
-                    bg-white
-                    appearance-none
-                    border-2 border-gray-200
-                    rounded
-                    py-2
-                    px-4
-                    text-gray-700
-                    leading-tight
-                    focus:outline-none focus:bg-white focus:border-purple-500
-                  "
-                  type="number"
-                  placeholder="採点結果を入力"
-                  :value="String(param.score)"
-                  @input="$set(param, 'score', Number($event.target.value))"
-                />
-              </div>
-              <div class="flex-2 mb-1 cursor-pointer">
-                <fa-icon icon="times" size="lg" @click="removeStudent(index)" />
+              <input
+                :id="`params-usercode-${index}`"
+                class="
+                  w-full
+                  bg-white
+                  appearance-none
+                  border-2 border-gray-200
+                  rounded
+                  py-2
+                  px-4
+                  text-gray-700
+                  leading-tight
+                  focus:outline-none focus:border-primary-500 focus:ring-0
+                "
+                type="text"
+                placeholder="学生の学内コードを入力"
+                :value="param.userCode"
+                @input="$set(param, 'userCode', $event.target.value)"
+              />
+              <input
+                :id="`params-score-${index}`"
+                class="
+                  w-full
+                  bg-white
+                  appearance-none
+                  border-2 border-gray-200
+                  rounded
+                  py-2
+                  px-4
+                  text-gray-700
+                  leading-tight
+                  focus:outline-none focus:border-primary-500 focus:ring-0
+                "
+                type="number"
+                placeholder="採点結果を入力"
+                :value="String(param.score)"
+                @input="$set(param, 'score', Number($event.target.value))"
+              />
+              <div
+                class="
+                  cursor-pointer
+                  w-6
+                  flex
+                  items-center
+                  justify-center
+                  text-red-400
+                "
+                @click="removeStudent(index)"
+              >
+                <fa-icon icon="times" size="lg" />
               </div>
             </div>
           </template>
-          <div class="grid">
-            <div class="mt-1 place-self-center cursor-pointer">
-              <fa-icon icon="plus" size="lg" @click="addStudent" />
+          <div class="mt-2 float-right">
+            <div
+              class="
+                cursor-pointer
+                w-6
+                pl-0.5
+                flex
+                items-center
+                justify-center
+                text-green-500
+              "
+              @click="addStudent"
+            >
+              <fa-icon icon="plus" size="lg" />
             </div>
           </div>
         </div>
@@ -89,9 +98,9 @@
           <template #message>採点結果の登録に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="px-4 py-3 flex justify-center">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 登録 </Button>
+      <div class="flex justify-center gap-2">
+        <Button w-class="w-24" @click="close"> 閉じる </Button>
+        <Button w-class="w-24" color="primary" @click="submit"> 登録 </Button>
       </div>
     </Card>
   </Modal>

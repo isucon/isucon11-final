@@ -134,6 +134,9 @@ export default Vue.extend({
       hasDownloadSubmissionsError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - 教員用科目詳細',
+  },
   computed: {
     classId(): string {
       return this.selectedClassIdx !== null

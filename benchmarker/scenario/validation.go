@@ -32,28 +32,32 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 	return nil
 }
 
+func errValidation(err error) error {
+	return fails.ErrorCritical(fmt.Errorf("整合性チェックに失敗しました: %w", err))
+}
+
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errTimeout := fails.ErrorCritical(fmt.Errorf("時間内にお知らせの検証が完了しませんでした"))
+	errTimeout := errValidation(fmt.Errorf("時間内にお知らせの検証が完了しませんでした"))
 	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("各ページの unread_count の値が一致しません"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("各ページの unread_count の値が一致しません"), hres))
 	}
 	errNotMatchUnreadCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("unread_count の値が不正です"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("unread_count の値が不正です"), hres))
 	}
 	errNotSorted := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres))
 	}
 	errNotMatch := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの内容が不正です"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせの内容が不正です"), hres))
 	}
 	errNotMatchOver := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて存在しないはずのお知らせが見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずのお知らせが見つかりました"), hres))
 	}
 	errNotMatchUnder := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて存在するはずのお知らせが見つかりませんでした"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("存在するはずのお知らせが見つかりませんでした"), hres))
 	}
 	errDuplicated := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて重複したIDのお知らせが見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
 	}
 
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
@@ -80,7 +84,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			for {
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
-					step.AddError(fails.ErrorCritical(err))
+					step.AddError(errValidation(err))
 					return
 				}
 
@@ -193,10 +197,10 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errNotMatchCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて登録されている Course の個数が一致しませんでした"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("登録されている Course の個数が一致しませんでした"), hres))
 	}
 	errNotMatch := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("最終検証にて存在しないはずの Course が見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずの Course が見つかりました"), hres))
 	}
 
 	students := s.ActiveStudents()
@@ -219,7 +223,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	for nextPathParam != "" {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
-			step.AddError(fails.ErrorCritical(err))
+			step.AddError(errValidation(err))
 			return
 		}
 		actuals = append(actuals, res...)
@@ -281,13 +285,13 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 
 			hres, res, err := GetGradeAction(ctx, user.Agent)
 			if err != nil {
-				step.AddError(fails.ErrorCritical(err))
+				step.AddError(errValidation(err))
 				return
 			}
 
 			err = AssertEqualGrade(&expected, &res, hres)
 			if err != nil {
-				step.AddError(fails.ErrorCritical(err))
+				step.AddError(errValidation(err))
 				return
 			}
 		})
@@ -305,6 +309,7 @@ func calculateGradeRes(student *model.Student, students map[string]*model.Studen
 	for _, course := range courses {
 		result := course.CalcCourseResultByStudentCode(student.Code)
 		if result == nil {
+			// course は student が履修しているコースなので、result が nil になることはないはず
 			panic("unreachable! userCode:" + student.Code)
 		}
 
@@ -319,11 +324,19 @@ func calculateGradeRes(student *model.Student, students map[string]*model.Studen
 func calculateSummary(students map[string]*model.Student, userCode string) model.Summary {
 	n := len(students)
 	if n == 0 {
-		panic("TODO: len (students) is 0")
+		// ここに来ることはない気がするが webapp 的には偏差値のみ 50 でそれ以外は 0
+		// summary の対象となる生徒がいないというのは、コースがまだ一つも終わっていないことに等しい
+		return model.Summary{
+			Credits:   0,
+			GPA:       0,
+			GpaTScore: 50,
+			GpaAvg:    0,
+			GpaMax:    0,
+			GpaMin:    0,
+		}
 	}
 
 	if _, ok := students[userCode]; !ok {
-		// ベンチのバグ用のloggerを作ったらそこに出すようにする
 		// 呼び出し元が1箇所しか無くて、そこではstudentsのrangeをとってそのkeyをuserCode
 		// に渡すので大丈夫なはず
 		panic("unreachable! userCode: " + userCode)

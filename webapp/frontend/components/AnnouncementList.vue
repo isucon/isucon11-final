@@ -1,5 +1,5 @@
 <template>
-  <div class="py-4">
+  <div v-if="announcements.length" class="py-4">
     <div class="flex flex-col gap-4">
       <AnnouncementCard
         v-for="announcement in announcements"
@@ -13,10 +13,13 @@
       <Pagination
         :prev-disabled="!Boolean(parsedLink.prev)"
         :next-disabled="!Boolean(parsedLink.next)"
-        @goPrev="$emit('movePage', parsedLink.prev.query)"
-        @goNext="$emit('movePage', parsedLink.next.query)"
+        @goPrev="$emit('movePage', parsedLink.prev.path, parsedLink.prev.query)"
+        @goNext="$emit('movePage', parsedLink.next.path, parsedLink.next.query)"
       />
     </div>
+  </div>
+  <div v-else class="py-4 min-h-28">
+    <div>お知らせは登録されていません</div>
   </div>
 </template>
 <script lang="ts">

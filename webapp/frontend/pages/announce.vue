@@ -91,10 +91,11 @@ export default Vue.extend({
   components: { InlineNotification, TextField, AnnouncementList },
   middleware: 'is_student',
   async asyncData(ctx: Context) {
-    const { $axios, query } = ctx
+    const { $axios, query, params } = ctx
 
     try {
-      const response = await $axios.get('/api/announcements', { params: query })
+      const apiPath = params.apipath ?? '/api/announcements'
+      const response = await $axios.get(apiPath, { params: query })
       const responseBody: GetAnnouncementResponse = response.data
       const link = response.headers.link
       const announcements: Announcement[] = Object.values(
@@ -137,6 +138,9 @@ export default Vue.extend({
       link: '',
       hasError: false,
     }
+  },
+  head: {
+    title: 'ISUCHOLAR - お知らせ',
   },
   watchQuery: true,
   created() {
@@ -191,10 +195,11 @@ export default Vue.extend({
       this.showUnreads = !this.showUnreads
       this.filterAnnouncements()
     },
-    paginate(query: URLSearchParams) {
+    paginate(apipath: string, query: URLSearchParams) {
       this.$router.push({
-        path: '/announce',
+        name: 'announce',
         query: urlSearchParamsToObject(query),
+        params: { apipath },
       })
     },
   },

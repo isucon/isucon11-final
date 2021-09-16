@@ -222,6 +222,9 @@ export default Vue.extend({
       hasError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - 成績照会',
+  },
   methods: {
     onClickClassDetail(index: number): void {
       if (this.openedIndex.includes(index)) {

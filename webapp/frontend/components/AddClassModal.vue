@@ -46,9 +46,9 @@
           <template #message>講義の登録に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="px-4 py-3 flex justify-center">
-        <Button @click="close"> 閉じる </Button>
-        <Button color="primary" @click="submit"> 登録 </Button>
+      <div class="flex justify-center gap-2">
+        <Button w-class="w-24" @click="close">閉じる</Button>
+        <Button color="primary" w-class="w-24" @click="submit">登録</Button>
       </div>
     </Card>
   </Modal>

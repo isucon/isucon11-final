@@ -3,10 +3,41 @@
     <div
       class="py-10 px-8 bg-white shadow-lg w-192 max-w-full mt-8 mb-8 rounded"
     >
-      <div class="flex-1 flex-col">
-        <h1 class="text-2xl mb-4 font-bold">
-          {{ course ? course.name : '講義名（仮）' }}
+      <template v-if="!course">
+        <div>now loading</div>
+      </template>
+      <div v-else class="flex flex-1 flex-col gap-4">
+        <h1 class="text-2xl font-bold">
+          {{ course.name }}
         </h1>
+        <div>
+          <h2 class="text-lg font-bold">講義の概要と目的</h2>
+          <div>
+            {{ course.description }}
+          </div>
+        </div>
+        <div class="grid grid-cols-course w-full gap-1 text-sm">
+          <h2 class="font-bold">科目コード</h2>
+          <div>
+            {{ course.code }}
+          </div>
+          <h2 class="font-bold">科目種別</h2>
+          <div>
+            {{ formatType(course.type) }}
+          </div>
+          <h2 class="font-bold">科目の状態</h2>
+          <div>
+            {{ formatStatus(course.status) }}
+          </div>
+          <h2 class="font-bold">教員</h2>
+          <div>
+            {{ course.teacher }}
+          </div>
+          <h2 class="font-bold">単位数</h2>
+          <div>
+            {{ course.credit }}
+          </div>
+        </div>
         <tabs
           :tabs="[
             { id: 'classworks', label: '講義情報' },
@@ -61,12 +92,14 @@ import {
   ClassInfo,
 } from '~/types/courses'
 import { notify } from '~/helpers/notification_helper'
+import { formatStatus, formatType } from '~/helpers/course_helper'
 import AnnouncementList from '~/components/AnnouncementList.vue'
 import ClassList from '~/components/ClassList.vue'
 import { urlSearchParamsToObject } from '~/helpers/urlsearchparams'
 import InlineNotification from '~/components/common/InlineNotification.vue'
 
 type CourseData = {
+  title: string
   course: Course | undefined
   announcements: Announcement[]
   classes: ClassInfo[]
@@ -88,10 +121,11 @@ export default Vue.extend({
     const { params, query, $axios } = ctx
 
     try {
+      const apiPath = params.apipath ?? `/api/announcements`
       const [course, classes, announcementResult] = await Promise.all([
         $axios.get<Course>(`/api/courses/${params.id}`),
         $axios.get<ClassInfo[]>(`/api/courses/${params.id}/classes`),
-        $axios.get<GetAnnouncementResponse>(`/api/announcements`, {
+        $axios.get<GetAnnouncementResponse>(apiPath, {
           params: { ...query, courseId: params.id },
         }),
       ])
@@ -109,6 +143,7 @@ export default Vue.extend({
         }
       })
       return {
+        title: `ISUCHOLAR - 講義情報:${course.data.name}`,
         course: course.data,
         announcements,
         classes: classes.data ?? [],
@@ -120,6 +155,7 @@ export default Vue.extend({
     }
 
     return {
+      title: '',
       course: undefined,
       announcements: [],
       classes: [],
@@ -129,11 +165,17 @@ export default Vue.extend({
   },
   data(): CourseData {
     return {
+      title: '',
       course: undefined,
       announcements: [],
       classes: [],
       link: '',
       hasError: false,
+    }
+  },
+  head(): any {
+    return {
+      title: this.title,
     }
   },
   watchQuery: true,
@@ -143,10 +185,10 @@ export default Vue.extend({
       announcement: Announcement
     ) {
       try {
-        const res = await this.$axios.get<Announcement>(
+        const res = await this.$axios.get(
           `/api/announcements/${announcement.id}`
         )
-        const announcementDetail = res.data
+        const announcementDetail: Announcement = res.data
         const target = this.announcements.find(
           (item) => item.id === announcement.id
         )
@@ -171,9 +213,15 @@ export default Vue.extend({
     closeAnnouncement(event: { done: () => undefined }) {
       event.done()
     },
-    paginate(query: URLSearchParams) {
-      this.$router.push({ query: urlSearchParamsToObject(query) })
+    paginate(apipath: string, query: URLSearchParams) {
+      // course_id はURLのパスから取得するのでAPIから返ってきたパラメータはページング先のURLに引き継がないように消す
+      this.$router.push({
+        query: urlSearchParamsToObject(query, ['course_id']),
+        params: { apipath },
+      })
     },
+    formatStatus,
+    formatType,
   },
 })
 </script>

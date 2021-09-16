@@ -1,10 +1,10 @@
 <template>
   <Modal :is-shown="isShown" @close="onClose">
-    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+    <div class="bg-white p-4 sm:p-8 rounded">
       <div class="flex flex-col flex-nowrap">
         <h3
           id="modal-title"
-          class="text-lg leading-6 font-medium text-gray-900"
+          class="text-2xl leading-6 font-medium text-gray-500 mb-4"
         >
           科目検索
         </h3>
@@ -13,15 +13,12 @@
             id="params-keywords"
             v-model="params.keywords"
             label="キーワード"
+            label-direction="vertical"
             type="text"
             placeholder="キーワードを入力してください"
           />
-          <div class="flex mt-4 space-x-2">
-            <label
-              class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
-              >科目</label
-            >
-            <div class="flex flex-auto gap-1">
+          <div class="flex mt-4">
+            <div class="flex gap-1">
               <TextField
                 id="params-teacher"
                 v-model="params.teacher"
@@ -53,11 +50,7 @@
               />
             </div>
           </div>
-          <div class="flex mt-4 space-x-2">
-            <label
-              class="whitespace-nowrap block text-gray-500 font-bold pr-4 w-1/6"
-              >開講</label
-            >
+          <div class="flex mt-4 space-x-2 flex-wrap">
             <div class="flex flex-auto gap-1">
               <Select
                 id="params-day-of-week"
@@ -109,54 +102,58 @@
           <hr class="my-6" />
           <div>
             <h3 class="text-xl font-bold">検索結果</h3>
-            <table class="table-auto border w-full mt-1">
-              <tr class="text-center">
-                <th>選択</th>
-                <th>科目コード</th>
-                <th>科目名</th>
-                <th>科目種別</th>
-                <th>時間</th>
-                <th>単位数</th>
-                <th>科目の状態</th>
-                <th>担当</th>
-                <th></th>
-              </tr>
-              <template v-for="(c, i) in courses">
-                <tr
-                  :key="`tr-${i}`"
-                  class="text-center bg-gray-200 odd:bg-white"
+            <div class="w-full max-h-60 overflow-y-scroll">
+              <table class="table-auto -mt-px">
+                <thead
+                  class="text-center -translate-x-px sticky top-0 z-10 bg-white"
                 >
-                  <td>
-                    <input
-                      type="checkbox"
-                      class="
-                        form-input
-                        text-primary-500
-                        focus:outline-none focus:ring-primary-200
-                        rounded
-                      "
-                      :checked="isChecked(c.id)"
-                      @change="onChangeCheckbox(c)"
-                    />
-                  </td>
-                  <td>{{ c.code }}</td>
-                  <td>{{ c.name }}</td>
-                  <td>{{ formatType(c.type) }}</td>
-                  <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
-                  <td>{{ c.credit }}</td>
-                  <td>{{ formatStatus(c.status) }}</td>
-                  <td>{{ c.teacher }}</td>
-                  <td>
-                    <a
-                      :href="`/syllabus/${c.id}`"
-                      target="_blank"
-                      class="text-primary-500"
-                      >詳細を見る
-                    </a>
-                  </td>
-                </tr>
-              </template>
-            </table>
+                  <th>選択</th>
+                  <th>科目コード</th>
+                  <th>科目名</th>
+                  <th>科目種別</th>
+                  <th>時間</th>
+                  <th>単位数</th>
+                  <th>科目の状態</th>
+                  <th>担当</th>
+                  <th></th>
+                </thead>
+                <template v-for="(c, i) in courses">
+                  <tr
+                    :key="`tr-${i}`"
+                    class="text-center bg-gray-200 odd:bg-white"
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        class="
+                          form-input
+                          text-primary-500
+                          focus:outline-none focus:ring-primary-200
+                          rounded
+                        "
+                        :checked="isChecked(c.id)"
+                        @change="onChangeCheckbox(c)"
+                      />
+                    </td>
+                    <td>{{ c.code }}</td>
+                    <td>{{ c.name }}</td>
+                    <td>{{ formatType(c.type) }}</td>
+                    <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
+                    <td>{{ c.credit }}</td>
+                    <td>{{ formatStatus(c.status) }}</td>
+                    <td>{{ c.teacher }}</td>
+                    <td>
+                      <a
+                        :href="`/syllabus/${c.id}`"
+                        target="_blank"
+                        class="text-primary-500"
+                        >詳細を見る
+                      </a>
+                    </td>
+                  </tr>
+                </template>
+              </table>
+            </div>
             <div class="flex justify-between mt-2">
               <Button
                 :disabled="checkedCourses.length === 0"
@@ -168,8 +165,8 @@
                 <Pagination
                   :prev-disabled="!Boolean(link.prev)"
                   :next-disabled="!Boolean(link.next)"
-                  @goPrev="onClickPagination(link.prev.query)"
-                  @goNext="onClickPagination(link.next.query)"
+                  @goPrev="onClickPagination(link.prev.path, link.prev.query)"
+                  @goNext="onClickPagination(link.next.path, link.next.query)"
                 />
               </div>
               <span class="opacity-0 w-28"></span>
@@ -288,11 +285,14 @@ export default Vue.extend({
     onClickReset(): void {
       this.reset()
     },
-    async onSubmitSearch(query?: Record<string, any>): Promise<void> {
+    async onSubmitSearch(
+      path = '/api/courses',
+      query?: Record<string, any>
+    ): Promise<void> {
       this.hasError = false
       const params = this.filterParams(this.params)
       try {
-        const res = await this.$axios.get<SyllabusCourse[]>('/api/courses', {
+        const res = await this.$axios.get<SyllabusCourse[]>(path, {
           params: { ...params, ...query },
         })
         if (res.status === 200) {
@@ -330,8 +330,8 @@ export default Vue.extend({
       this.reset()
       this.$emit('close')
     },
-    onClickPagination(query: URLSearchParams): void {
-      this.onSubmitSearch(urlSearchParamsToObject(query))
+    onClickPagination(path: string, query: URLSearchParams): void {
+      this.onSubmitSearch(path, urlSearchParamsToObject(query))
     },
     filterParams(params: SearchCourseRequest): SearchCourseRequest {
       return (Object.keys(params) as (keyof SearchCourseRequest)[])

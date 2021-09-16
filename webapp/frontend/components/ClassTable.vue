@@ -1,12 +1,12 @@
 <template>
   <div>
-    <table class="table-fixed border w-full mt-1">
+    <table class="table-fixed w-full">
       <thead>
-        <tr class="text-center">
-          <th class="w-2/12">講義回</th>
-          <th class="w-3/12">講義タイトル</th>
-          <th class="w-6/12">講義詳細</th>
-          <th class="w-1/12"></th>
+        <tr class="text-left">
+          <th class="px-1 py-1 w-1/8">講義回</th>
+          <th class="px-1 py-1 w-1/4">講義タイトル</th>
+          <th class="px-1 py-1 w-1/2">講義詳細</th>
+          <th class="px-1 py-1 w-1/8"></th>
         </tr>
       </thead>
 
@@ -15,26 +15,20 @@
           <template v-for="(c, i) in classes">
             <tr
               :key="`class-tr-${i}`"
-              class="text-center bg-gray-200 odd:bg-white"
+              class="text-left bg-gray-200 odd:bg-white"
             >
-              <td>{{ c.part }}</td>
-              <td>
+              <td class="px-1 py-0.5">{{ c.part }}</td>
+              <td class="px-1 py-0.5">
                 <p class="truncate">{{ c.title }}</p>
               </td>
-              <td>
+              <td class="px-1 py-0.5">
                 <p class="truncate">{{ c.description }}</p>
               </td>
-              <td>
+              <td class="px-1 py-0.5">
                 <div class="relative">
                   <fa-icon
                     icon="ellipsis-v"
-                    class="
-                      min-w-min
-                      px-2
-                      cursor-pointer
-                      rounded
-                      hover:bg-primary-300
-                    "
+                    class="min-w-min px-2 cursor-pointer rounded float-right"
                     @click.stop="onClickClassDropdown(i)"
                   />
                   <div

@@ -10,8 +10,8 @@
         </InlineNotification>
 
         <section class="mt-8">
-          <h1 class="text-2xl">科目</h1>
-          <div class="mt-4">
+          <div class="flex justify-between">
+            <div class="text-2xl">科目一覧</div>
             <Button color="primary" @click="showAddCourseModal"
               >新規登録</Button
             >
@@ -100,6 +100,9 @@ export default Vue.extend({
       hasError: false,
     }
   },
+  head: {
+    title: 'ISUCHOLAR - 教員用講義一覧',
+  },
   computed: {
     courseId(): string {
       return this.selectedCourseIdx !== null
@@ -121,7 +124,7 @@ export default Vue.extend({
     await this.loadCourses()
   },
   methods: {
-    async loadCourses(query?: Record<string, any>) {
+    async loadCourses(path = `/api/courses`, query?: Record<string, any>) {
       this.hasError = false
       if (!query) {
         this.courseLink = Object.assign({}, initLink)
@@ -129,10 +132,9 @@ export default Vue.extend({
       try {
         const resUser = await this.$axios.get<User>(`/api/users/me`)
         const user = resUser.data
-        const resCourses = await this.$axios.get<SyllabusCourse[]>(
-          `/api/courses`,
-          { params: { ...query, teacher: user.name } }
-        )
+        const resCourses = await this.$axios.get<SyllabusCourse[]>(path, {
+          params: { ...query, teacher: user.name },
+        })
         this.courses = resCourses.data ?? []
         this.courseLink = Object.assign(
           {},
@@ -144,8 +146,8 @@ export default Vue.extend({
         notify('科目一覧の取得に失敗しました')
       }
     },
-    async moveCoursePage(query: URLSearchParams) {
-      await this.loadCourses(urlSearchParamsToObject(query))
+    async moveCoursePage(path: string | undefined, query: URLSearchParams) {
+      await this.loadCourses(path, urlSearchParamsToObject(query))
     },
     showAddCourseModal() {
       this.visibleModal = 'AddCourse'
