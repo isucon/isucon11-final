@@ -90,7 +90,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			var hresSample *http.Response
 			var next string
 			couldSeeAll := false
-		L:
+		fetchLoop:
 			for {
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
@@ -118,7 +118,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				select {
 				case <-timer:
 					step.AddScore(score.ValidateTimeout)
-					break L
+					break fetchLoop
 				default:
 				}
 			}
@@ -220,7 +220,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	var hresSample *http.Response
 	nextPathParam := "/api/courses"
 
-L:
+fetchLoop:
 	for {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
@@ -244,7 +244,7 @@ L:
 		select {
 		case <-timer:
 			step.AddScore(score.ValidateTimeout)
-			break L
+			break fetchLoop
 		default:
 		}
 	}
