@@ -1478,6 +1478,7 @@ async function createSubmissionsZip(
   const output = createWriteStream(zipFilePath);
   return new Promise((resolve) => {
     const archive = archiver("zip");
+    // const archive = archiver("zip", { store: true });
     output.on("close", () => {
       console.log(archive.pointer() + " total bytes");
       resolve();
