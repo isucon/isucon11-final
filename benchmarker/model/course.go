@@ -392,7 +392,7 @@ func (p *SearchCourseParam) GetParamString() string {
 	}
 
 	if len(paramStrings) == 0 {
-		return "empty"
+		return "指定なし"
 	} else {
 		return strings.Join(paramStrings, ", ")
 	}

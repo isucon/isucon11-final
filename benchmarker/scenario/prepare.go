@@ -429,7 +429,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				expectedUnreadCount++
 			}
 		}
-		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, expectedUnreadCount)
+		_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, expectedUnreadCount, student.Code)
 		if err != nil {
 			step.AddError(err)
 			return
@@ -586,7 +586,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 					sort.Slice(expected, func(i, j int) bool {
 						return expected[i].Announcement.ID > expected[j].Announcement.ID
 					})
-					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected))
+					_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected), student.Code)
 					if err != nil {
 						step.AddError(err)
 						return
@@ -599,7 +599,7 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 						}
 					}
 
-					_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected))
+					_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected), student.Code)
 					if err != nil {
 						step.AddError(err)
 						return
@@ -620,15 +620,14 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 	return nil
 }
 
-func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int) (prev string, err error) {
-	errHttp := fails.ErrorCritical(fmt.Errorf("お知らせリストへのリクエストが失敗しました"))
+func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int, userCode string) (prev string, err error) {
 	errMissingNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空でないことが期待される場所で空でした"))
 	errUnnecessaryNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの link header の next が空であることが期待される場所で空ではありませんでした"))
 	errNotExistPrevOtherThanFirstPage := errors.New("お知らせリストの最初以外のページの link header に prev が存在しませんでした")
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
 	if err != nil {
-		return "", errHttp
+		return "", err
 	}
 	prev, next, err := parseLinkHeader(hres)
 	if err != nil {
@@ -647,31 +646,31 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 
 	// 次のページが存在しない
 	if next == "" {
-		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, hres)
+		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, userCode, hres)
 		if err != nil {
 			return "", err
 		}
 		return prev, nil
 	}
 
-	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, hres)
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, userCode, hres)
 	if err != nil {
 		return "", err
 	}
 
 	// この_prevはpathと同じところを指すはず
 	// _prevとpathが同じ文字列であるとは限らない（pathが"" で_prevが/api/announcements?page=1とか）
-	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, courseID, expected[AnnouncementCountPerPage:], expectedUnreadCount)
+	_prev, err := prepareCheckAnnouncementsList(ctx, a, next, courseID, expected[AnnouncementCountPerPage:], expectedUnreadCount, userCode)
 	if err != nil {
 		return "", err
 	}
 
 	hres, res, err = GetAnnouncementListAction(ctx, a, _prev, courseID)
 	if err != nil {
-		return "", errHttp
+		return "", err
 	}
 
-	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, hres)
+	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, userCode, hres)
 	if err != nil {
 		return "", err
 	}
@@ -679,45 +678,38 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	return prev, nil
 }
 
-func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, hres *http.Response) error {
-	errNotSorted := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres))
+func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actual api.GetAnnouncementsResponse, expectedUnreadCount int, userCode string, hres *http.Response) error {
+	errWithUserCode := func(err error, hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s)", err, userCode), hres))
 	}
-	errNotMatch := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの内容が不正です"), hres))
-	}
-	errNoCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの数が期待したものと一致しませんでした"), hres))
-	}
-	errNoMatchUnreadCount := func(hres *http.Response) error {
-		return fails.ErrorCritical(fails.ErrorInvalidResponse(errors.New("お知らせの unread_count が期待したものと一致しませんでした"), hres))
+	errWithUserCodeAndAnnouncementID := func(err error, announcementID string, hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s, お知らせID: %s)", err, userCode, announcementID), hres))
 	}
 
+	reasonNotSorted := errors.New("お知らせの順序が不正です")
+	reasonNotMatch := errors.New("お知らせの内容が不正です")
+	reasonNoCount := errors.New("お知らせの数が期待したものと一致しませんでした")
+	reasonNoMatchUnreadCount := errors.New("お知らせの unread_count が期待したものと一致しませんでした")
+
 	if actual.UnreadCount != expectedUnreadCount {
-		return errNoMatchUnreadCount(hres)
+		return errWithUserCode(reasonNoMatchUnreadCount, hres)
 	}
 
 	if len(expected) != len(actual.Announcements) {
-		return errNoCount(hres)
-	}
-
-	if expected == nil && actual.Announcements == nil {
-		return nil
-	} else if (expected == nil && actual.Announcements != nil) || (expected != nil && actual.Announcements == nil) {
-		return errNotMatch(hres)
+		return errWithUserCode(reasonNoCount, hres)
 	}
 
 	// 順序の検証
 	for i := 0; i < len(actual.Announcements)-1; i++ {
 		if actual.Announcements[i].ID < actual.Announcements[i+1].ID {
-			return errNotSorted(hres)
+			return errWithUserCode(reasonNotSorted, hres)
 		}
 	}
 
 	for i := 0; i < len(actual.Announcements); i++ {
 		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], hres, true); err != nil {
 			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.Announcements[i].CourseName, actual.Announcements[i].Title)
-			return errNotMatch(hres)
+			return errWithUserCodeAndAnnouncementID(reasonNotMatch, actual.Announcements[i].ID, hres)
 		}
 	}
 
@@ -822,10 +814,9 @@ func (s *Scenario) prepareSearchCourse(ctx context.Context) error {
 
 func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.SearchCourseParam, expected []*model.Course) error {
 	errWithParamInfo := func(err error, hres *http.Response) error {
-		return fails.ErrorInvalidResponse(fmt.Errorf("%w (param: %s)", err, param.GetParamString()), hres)
+		return fails.ErrorInvalidResponse(fmt.Errorf("%w (検索条件: %s)", err, param.GetParamString()), hres)
 	}
 
-	reasonHttp := errors.New("/api/courses へのリクエストが失敗しました")
 	reasonEmpty := errors.New("科目検索の最初以外のページで空の検索結果が返却されました")
 	reasonDuplicated := errors.New("科目検索結果に重複した id の科目が存在します")
 	reasonLack := errors.New("科目検索で条件にヒットするはずの科目が見つかりませんでした")
@@ -846,7 +837,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for {
 		hres, res, err := SearchCourseAction(ctx, a, param, path)
 		if err != nil {
-			return errWithParamInfo(reasonHttp, hres)
+			return errWithParamInfo(err, hres)
 		}
 
 		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
@@ -935,7 +926,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	for page := len(prevList) - 1; page >= 1; page-- {
 		hres, res, err := SearchCourseAction(ctx, a, param, prevList[page])
 		if err != nil {
-			return errWithParamInfo(reasonHttp, hres)
+			return errWithParamInfo(err, hres)
 		}
 
 		// prev でのアクセスなので1ページあたりの最大件数が取れるはず

@@ -4,7 +4,7 @@
       <div class="flex flex-col flex-nowrap">
         <h3
           id="modal-title"
-          class="text-2xl leading-6 font-medium text-gray-500 mb-4"
+          class="text-2xl leading-6 font-bold text-gray-800 mb-4"
         >
           科目検索
         </h3>
@@ -101,53 +101,68 @@
         <template v-if="isShowSearchResult">
           <hr class="my-6" />
           <div>
-            <h3 class="text-xl font-bold">検索結果</h3>
-            <div class="w-full max-h-60 overflow-y-scroll">
-              <table class="table-auto -mt-px">
+            <h3 class="text-xl text-gray-800 mb-2">検索結果</h3>
+            <div class="w-full max-h-60 overflow-y-scroll mb-4">
+              <table class="table-auto -mt-px h-full">
                 <thead
-                  class="text-center -translate-x-px sticky top-0 z-10 bg-white"
+                  class="
+                    text-left
+                    -translate-x-px
+                    sticky
+                    top-0
+                    z-10
+                    bg-white
+                    text-gray-800
+                  "
                 >
-                  <th>選択</th>
-                  <th>科目コード</th>
-                  <th>科目名</th>
-                  <th>科目種別</th>
-                  <th>時間</th>
-                  <th>単位数</th>
-                  <th>科目の状態</th>
-                  <th>担当</th>
-                  <th></th>
+                  <th class="px-1 py-0.5">選択</th>
+                  <th class="px-1 py-0.5">科目コード</th>
+                  <th class="px-1 py-0.5">科目名</th>
+                  <th class="px-1 py-0.5">科目種別</th>
+                  <th class="px-1 py-0.5">時間</th>
+                  <th class="px-1 py-0.5">単位数</th>
+                  <th class="px-1 py-0.5">科目の状態</th>
+                  <th class="px-1 py-0.5">担当</th>
+                  <th class="px-1 py-0.5"></th>
                 </thead>
                 <template v-for="(c, i) in courses">
                   <tr
                     :key="`tr-${i}`"
-                    class="text-center bg-gray-200 odd:bg-white"
+                    class="text-left bg-gray-200 odd:bg-white text-gray-800"
                   >
-                    <td>
+                    <td class="flex justify-center items-center h-full">
                       <input
                         type="checkbox"
                         class="
-                          form-input
-                          text-primary-500
-                          focus:outline-none focus:ring-primary-200
+                          appearance-none
                           rounded
+                          text-primary-500
+                          border-gray-200
+                          focus:outline-none
+                          focus:shadow-none
+                          focus:ring-0
+                          focus:ring-offset-0
+                          focus:ring-primary-200
                         "
                         :checked="isChecked(c.id)"
                         @change="onChangeCheckbox(c)"
                       />
                     </td>
-                    <td>{{ c.code }}</td>
-                    <td>{{ c.name }}</td>
-                    <td>{{ formatType(c.type) }}</td>
-                    <td>{{ formatPeriod(c.dayOfWeek, c.period) }}</td>
-                    <td>{{ c.credit }}</td>
-                    <td>{{ formatStatus(c.status) }}</td>
-                    <td>{{ c.teacher }}</td>
-                    <td>
+                    <td class="px-1 py-0.5">{{ c.code }}</td>
+                    <td class="px-1 py-0.5">{{ c.name }}</td>
+                    <td class="px-1 py-0.5">{{ formatType(c.type) }}</td>
+                    <td class="px-1 py-0.5">
+                      {{ formatPeriod(c.dayOfWeek, c.period) }}
+                    </td>
+                    <td class="px-1 py-0.5">{{ c.credit }}</td>
+                    <td class="px-1 py-0.5">{{ formatStatus(c.status) }}</td>
+                    <td class="px-1 py-0.5">{{ c.teacher }}</td>
+                    <td class="px-1 py-0.5">
                       <a
                         :href="`/syllabus/${c.id}`"
                         target="_blank"
                         class="text-primary-500"
-                        >詳細を見る
+                        >詳細
                       </a>
                     </td>
                   </tr>
@@ -157,7 +172,6 @@
             <div class="flex justify-between mt-2">
               <Button
                 :disabled="checkedCourses.length === 0"
-                class="w-28"
                 @click="onSubmitTemporaryRegistration"
                 >仮登録</Button
               >
@@ -254,6 +268,11 @@ export default Vue.extend({
       link: { prev: undefined, next: undefined },
       hasError: false,
     }
+  },
+  watch: {
+    value(newValue, _oldValue) {
+      this.checkedCourses = newValue
+    },
   },
   computed: {
     isShowSearchResult(): boolean {

@@ -3,6 +3,7 @@ package scenario
 import (
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/isucon/isucandar/failure"
@@ -30,6 +31,7 @@ type Scenario struct {
 	activeStudentsCount int64
 	language            string
 	loadRequestEndTime  time.Time
+	gradeTimeoutCount   int64
 	debugData           *DebugData
 
 	// initCourses は/initializeで追加されるコース
@@ -117,6 +119,14 @@ func (s *Scenario) ActiveStudentCount() int {
 	return len(s.activeStudents)
 }
 
+func (s *Scenario) AddGradeTimeoutCount() {
+	atomic.AddInt64(&s.gradeTimeoutCount, 1)
+}
+
+func (s *Scenario) ResetGradeTimeoutCount() int64 {
+	return atomic.SwapInt64(&s.gradeTimeoutCount, 0)
+}
+
 func (s *Scenario) Reset() {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
@@ -154,5 +164,6 @@ func (s *Scenario) Reset() {
 	s.debugData = NewDebugData(s.Config.IsDebug)
 	s.finishCoursePubSub = pubsub.NewPubSub()
 	s.finishCourseStudentsCount = 0
+	s.gradeTimeoutCount = 0
 	s.initCourses = initCourses
 }

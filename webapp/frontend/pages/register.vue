@@ -60,6 +60,25 @@
                           <span class="font-bold">{{ course.name }}</span>
                         </span>
                         <span class="text-sm">{{ course.teacher }}</span>
+
+                        <template
+                          v-if="
+                            course.code &&
+                            course.displayType === 'will_register'
+                          "
+                        >
+                          <button
+                            title="仮登録解除"
+                            class="ml-auto"
+                            @click="onClickCancelCourse($event, course.id)"
+                          >
+                            <fa-icon
+                              icon="times"
+                              size="lg"
+                              class="text-primary-500"
+                            />
+                          </button>
+                        </template>
                       </div>
                     </a>
                   </template>
@@ -276,6 +295,12 @@ export default Vue.extend({
         )}`
         notify('履修登録に失敗しました')
       }
+    },
+    onClickCancelCourse(e: Event, id: string): void {
+      e.preventDefault()
+      this.willRegisterCourses = this.willRegisterCourses.filter(
+        (c) => c.id !== id
+      )
     },
   },
 })
