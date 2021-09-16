@@ -595,8 +595,6 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 
 // コースに登録している生徒全員について、すべてのおしらせリストとコースで絞り込んだおしらせリストを検証する
 func prepareCheckCourseAnnouncementList(ctx context.Context, step *isucandar.BenchmarkStep, course *model.Course) {
-	errInvalidPrev := fails.ErrorCritical(fmt.Errorf("link header の next によってページングできる回数が不正です"))
-
 	courseStudents := course.Students()
 	p := parallel.NewParallel(ctx, int32(len(courseStudents)))
 	for _, student := range courseStudents {
@@ -608,14 +606,9 @@ func prepareCheckCourseAnnouncementList(ctx context.Context, step *isucandar.Ben
 			sort.Slice(expected, func(i, j int) bool {
 				return expected[i].Announcement.ID > expected[j].Announcement.ID
 			})
-			prev, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected))
+			_, err := prepareCheckAnnouncementsList(ctx, student.Agent, "", "", expected, len(expected))
 			if err != nil {
 				step.AddError(err)
-				return
-			}
-
-			if prev != "" {
-				step.AddError(errInvalidPrev)
 				return
 			}
 
@@ -626,14 +619,9 @@ func prepareCheckCourseAnnouncementList(ctx context.Context, step *isucandar.Ben
 				}
 			}
 
-			prev, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected))
+			_, err = prepareCheckAnnouncementsList(ctx, student.Agent, "", course.ID, courseAnnouncementStatus, len(expected))
 			if err != nil {
 				step.AddError(err)
-				return
-			}
-
-			if prev != "" {
-				step.AddError(errInvalidPrev)
 				return
 			}
 		})
