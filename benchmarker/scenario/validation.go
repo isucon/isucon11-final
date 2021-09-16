@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
-	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
 	"github.com/isucon/isucon11-final/benchmarker/util"
 )
@@ -45,6 +45,22 @@ func errValidation(err error) error {
 	return fails.ErrorCritical(fmt.Errorf("整合性チェックに失敗しました: %w", err))
 }
 
+func splitArr(students []*model.Student, n int) []*model.Student {
+	if len(students) < n {
+		return students
+	}
+
+	idxBase := float64(len(students)) / float64(n)
+	idx := 0.0
+	res := make([]*model.Student, n)
+	for i := 0; i < n; i++ {
+		res[i] = students[int(math.Floor(idx))]
+		idx += idxBase
+	}
+
+	return res
+}
+
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("各ページの unread_count の値が一致しません"), hres))
@@ -68,13 +84,11 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
 	}
 
-	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
-	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
-
+	sampleStudents := splitArr(s.ActiveStudents(), sampleStudentCount)
 	wg := sync.WaitGroup{}
-	wg.Add(len(sampleIndices))
-	for _, sampleIndex := range sampleIndices {
-		student := s.activeStudents[sampleIndex]
+	wg.Add(len(sampleStudents))
+	for _, student := range sampleStudents {
+		student := student
 		go func() {
 			defer wg.Done()
 
@@ -285,6 +299,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	// n回に1回validationする
 	n := 10
 	i := 0
+
 	for _, user := range users {
 		if i%n != 0 {
 			i++
