@@ -45,7 +45,7 @@ export default Vue.extend({
     wClass: {
       type: String as PropType<`w-${number}`>,
       default: 'w-auto',
-    }
+    },
   },
   computed: {
     colorType() {
