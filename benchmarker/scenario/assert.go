@@ -282,7 +282,7 @@ func AssertEqualCourse(expected *model.Course, actual *api.GetCourseDetailRespon
 	return nil
 }
 
-func AssertEqualClass(expected *model.Class, actual *api.GetClassResponse, hres *http.Response) error {
+func AssertEqualClass(expected *model.Class, actual *api.GetClassResponse, student *model.Student, hres *http.Response) error {
 	if !AssertEqual("class id", expected.ID, actual.ID) {
 		return fails.ErrorInvalidResponse(errors.New("講義IDが期待する値と一致しません"), hres)
 	}
@@ -299,8 +299,14 @@ func AssertEqualClass(expected *model.Class, actual *api.GetClassResponse, hres 
 		return fails.ErrorInvalidResponse(errors.New("講義の説明文が期待する値と一致しません"), hres)
 	}
 
-	// TODO: SubmissionClosedAtの検証
-	// TODO: Submittedの検証
+	if !AssertEqual("class submission_closed", expected.IsSubmissionClosed(), actual.SubmissionClosed) {
+		return fails.ErrorInvalidResponse(errors.New("講義の課題締め切り状況が期待する値と一致しません"), hres)
+	}
+
+	isSubmitted := expected.GetSubmissionByStudentCode(student.Code) != nil
+	if !AssertEqual("class submitted", isSubmitted, actual.Submitted) {
+		return fails.ErrorInvalidResponse(errors.New("講義の課題提出状況が期待する値と一致しません"), hres)
+	}
 
 	return nil
 }

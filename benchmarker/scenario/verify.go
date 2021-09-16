@@ -299,14 +299,16 @@ func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, r
 	return nil
 }
 
-func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, hres *http.Response) error {
+func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, student *model.Student, hres *http.Response) error {
 	if !AssertEqual("class_list length", len(expected), len(res)) {
 		return fails.ErrorInvalidResponse(errors.New("講義数が期待する数と一致しません"), hres)
 	}
 
-	if len(res) > 0 {
-		// 最後に追加された講義だけ中身を検証する
-		return AssertEqualClass(expected[len(expected)-1], res[len(res)-1], hres)
+	for i, expectedClass := range expected {
+		actualClass := res[i]
+		if err := AssertEqualClass(expectedClass, actualClass, student, hres); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -737,6 +737,8 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 				step.AddError(err)
 				continue
 			}
+			class.CloseSubmission()
+
 			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
 				step.AddError(err)
 			} else {
@@ -1011,7 +1013,7 @@ func (s *Scenario) submitAssignments(ctx context.Context, students map[string]*m
 				step.AddError(err)
 				return
 			}
-			if err := verifyClasses(course.Classes(), res, hres); err != nil {
+			if err := verifyClasses(course.Classes(), res, student, hres); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CourseGetClasses)
