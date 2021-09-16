@@ -48,9 +48,9 @@
           <template #message>講義の登録に失敗しました。</template>
         </InlineNotification>
       </template>
-      <div class="flex justify-center gap-2">
-        <Button w-class="w-24" @click="close">閉じる</Button>
-        <Button color="primary" w-class="w-24" @click="submit">登録</Button>
+      <div class="flex justify-center gap-2 mt-4">
+        <Button w-class="w-28" @click="close">閉じる</Button>
+        <Button color="primary" w-class="w-28" @click="submit">登録</Button>
       </div>
     </Card>
   </Modal>
