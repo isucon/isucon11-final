@@ -20,25 +20,21 @@ import (
 )
 
 const (
-	validationRequestTime = 30 * time.Second
-	validationTime        = 60 * time.Second
+	validationRequestTime = 10 * time.Second
 )
 
-func (s *Scenario) Validation(parent context.Context, step *isucandar.BenchmarkStep) error {
+func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
 	if s.NoLoad {
 		return nil
 	}
 	ContestantLogger.Printf("===> VALIDATION")
 
 	// これは 10 秒 + ベンチの計算分しかかからないので先にやる
-	s.validateGrades(parent, step)
-
-	ctx, cancel := context.WithTimeout(parent, validationTime)
-	defer cancel()
+	s.validateGrades(ctx, step)
 
 	// それぞれ 30 秒以上かかったらリクエストをやめて通す
-	s.validateAnnouncements(ctx, step, validationRequestTime)
-	s.validateCourses(ctx, step, validationRequestTime)
+	s.validateAnnouncements(ctx, step)
+	s.validateCourses(ctx, step)
 
 	return nil
 }
@@ -47,7 +43,7 @@ func errValidation(err error) error {
 	return fails.ErrorCritical(fmt.Errorf("整合性チェックに失敗しました: %w", err))
 }
 
-func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep, requestTime time.Duration) {
+func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("各ページの unread_count の値が一致しません"), hres))
 	}
@@ -70,11 +66,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
 	}
 
-	endTime := time.Now().Add(requestTime)
-	isNoRequestTime := func(ctx context.Context) bool {
-		return time.Now().After(endTime) || ctx.Err() != nil
-	}
-
 	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
 	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
 
@@ -93,14 +84,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			actualAnnouncements := make([]api.AnnouncementResponse, 0)
 			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
+			timer := time.After(validationRequestTime)
 			var hresSample *http.Response
 			var next string
 			couldSeeAll := false
+		L:
 			for {
-				if isNoRequestTime(ctx) {
-					break
-				}
-
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
 					step.AddError(errValidation(err))
@@ -124,6 +113,11 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					break
 				}
 
+				select {
+				case <-timer:
+					break L
+				default:
+				}
 			}
 
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
@@ -195,17 +189,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	wg.Wait()
 }
 
-func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep, requestTime time.Duration) {
+func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errNotMatchCount := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("登録されている Course の個数が一致しませんでした"), hres))
 	}
 	errNotMatch := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずの Course が見つかりました"), hres))
-	}
-
-	endTime := time.Now().Add(requestTime)
-	isNoRequestTime := func(ctx context.Context) bool {
-		return time.Now().After(endTime) || ctx.Err() != nil
 	}
 
 	students := s.ActiveStudents()
@@ -222,15 +211,14 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	student := students[0]
 
 	couldSeeAll := false
+	timer := time.After(validationRequestTime)
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
 	var hresSample *http.Response
 	nextPathParam := "/api/courses"
+
+L:
 	for {
-		if isNoRequestTime(ctx) {
-			couldSeeAll = false
-			break
-		}
 
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
@@ -249,6 +237,12 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		if nextPathParam == "" {
 			couldSeeAll = true
 			break
+		}
+
+		select {
+		case <-timer:
+			break L
+		default:
 		}
 	}
 
