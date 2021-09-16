@@ -229,7 +229,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 			}
 
 			// 学生は registerCourseLimitPerStudent ずつ科目を修了したら成績を確認する
-			// 前回判定した修了済み科目と現在の修了済み科目が20の倍率をまたいでいたら成績取得
+			// 前回判定した修了済み科目と現在の修了済み科目が20の倍数をまたいでいたら成績取得
 			finishCourseCount := student.FinishCourseCount()
 			if finishCourseCount/registerCourseLimitPerStudent > beforeFinishCourseCount/registerCourseLimitPerStudent {
 				// 成績取得
