@@ -835,6 +835,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			student, err := s.userPool.newStudent()
 			if err != nil {
+				step.AddScore(score.SkipAddStudentPoolEmpty)
 				return
 			}
 
