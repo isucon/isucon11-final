@@ -110,7 +110,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
 			timer := time.After(validationRequestTime)
-			var hresSample *http.Response
 			var hresFirst *http.Response
 			var next string
 			couldSeeAll := false
@@ -132,7 +131,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					actualAnnouncementsMap[a.ID] = a
 				}
 
-				hresSample = hres
 				_, next, err = parseLinkHeader(hres)
 				if err != nil {
 					step.AddError(fails.ErrorCritical(err))
@@ -162,7 +160,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 			for _, unreadCount := range responseUnreadCounts {
 				if responseUnreadCounts[0] != unreadCount {
-					step.AddError(errNotMatchUnreadCountAmongPages(hresSample))
+					step.AddError(errNotMatchUnreadCountAmongPages(hresFirst))
 					return
 				}
 			}
@@ -170,7 +168,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// 順序の検証
 			for i := 0; i < len(actualAnnouncements)-1; i++ {
 				if actualAnnouncements[i].ID < actualAnnouncements[i+1].ID {
-					step.AddError(errNotSorted(hresSample))
+					step.AddError(errNotSorted(hresFirst))
 					return
 				}
 			}
@@ -179,7 +177,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			existingID := make(map[string]struct{}, len(actualAnnouncements))
 			for _, a := range actualAnnouncements {
 				if _, ok := existingID[a.ID]; ok {
-					step.AddError(errDuplicated(hresSample))
+					step.AddError(errDuplicated(hresFirst))
 					return
 				}
 				existingID[a.ID] = struct{}{}
@@ -191,14 +189,14 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				expectStatus, ok := expectAnnouncementsMap[actual.ID]
 				if !ok {
 					AdminLogger.Printf("extra announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
-					step.AddError(errNotMatchOver(hresSample))
+					step.AddError(errNotMatchOver(hresFirst))
 					return
 				}
 
 				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresSample, !expectStatus.Dirty); err != nil {
-					step.AddError(errNotMatch(hresSample))
+				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresFirst, !expectStatus.Dirty); err != nil {
+					step.AddError(errNotMatch(hresFirst))
 					return
 				}
 			}
@@ -219,7 +217,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				if !AssertEqual("announcement len", len(expectAnnouncementsMap), len(actualAnnouncements)) {
 					// 上で actual が expect の部分集合であることを確認しているので、ここで数が合わない場合は expect の方が多い
 					AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
-					step.AddError(errNotMatchUnder(hresSample))
+					step.AddError(errNotMatchUnder(hresFirst))
 					return
 				}
 			}
@@ -259,7 +257,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	timer := time.After(validationRequestTime)
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
-	var hresSample *http.Response
+	var hresFirst *http.Response
 	nextPathParam := "/api/courses"
 	maxPage := (s.CourseManager.GetCourseCount()-1)/SearchCourseCountPerPage + 1
 fetchLoop:
@@ -269,10 +267,12 @@ fetchLoop:
 			step.AddError(errValidation(err))
 			return
 		}
+		if i == 1 {
+			hresFirst = hres
+		}
 
 		actuals = append(actuals, res...)
 
-		hresSample = hres
 		_, nextPathParam, err = parseLinkHeader(hres)
 		if err != nil {
 			step.AddError(fails.ErrorCritical(err))
@@ -304,7 +304,7 @@ fetchLoop:
 
 	if couldSeeAll {
 		if !AssertEqual("course count", len(expectCourses), len(actuals)) {
-			step.AddError(errNotMatchCount(hresSample))
+			step.AddError(errNotMatchCount(hresFirst))
 			return
 		}
 	}
@@ -312,13 +312,13 @@ fetchLoop:
 	for _, actual := range actuals {
 		expect, ok := expectCourses[actual.ID]
 		if !ok {
-			step.AddError(errNotMatch(hresSample))
+			step.AddError(errNotMatch(hresFirst))
 			return
 		}
 
-		if err := AssertEqualCourse(expect, actual, hresSample, true); err != nil {
+		if err := AssertEqualCourse(expect, actual, hresFirst, true); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
-			step.AddError(errNotMatch(hresSample))
+			step.AddError(errNotMatch(hresFirst))
 			return
 		}
 	}
