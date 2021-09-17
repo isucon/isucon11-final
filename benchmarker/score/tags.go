@@ -10,6 +10,7 @@ const (
 	// other (needs attention)
 	SkipRegisterNoCourseAvailable score.ScoreTag = "!1.SkipRegisterNoCourseAvailable"
 	SkipAddStudentPoolEmpty       score.ScoreTag = "!2.SkipAddStudentPoolEmpty"
+	ValidateTimeout               score.ScoreTag = "!3.ValidateTimeout"
 
 	// other
 	ActiveStudents           score.ScoreTag = "_O01.ActiveStudents"
@@ -59,6 +60,7 @@ var Tags = []score.ScoreTag{
 	// other (needs attention)
 	SkipRegisterNoCourseAvailable,
 	SkipAddStudentPoolEmpty,
+	ValidateTimeout,
 
 	// other
 	ActiveStudents,

@@ -45,12 +45,13 @@ type Scenario struct {
 }
 
 type Config struct {
-	BaseURL          *url.URL
-	UseTLS           bool
-	NoLoad           bool
-	NoPrepare        bool
-	NoVerifyResource bool
-	IsDebug          bool
+	BaseURL             *url.URL
+	UseTLS              bool
+	NoLoad              bool
+	NoPrepare           bool
+	NoVerifyResource    bool
+	IsDebug             bool
+	NoValidationTimeout bool
 }
 
 func NewScenario(config *Config) *Scenario {

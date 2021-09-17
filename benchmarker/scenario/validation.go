@@ -9,14 +9,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/isucon/isucon11-final/benchmarker/score"
+
 	"github.com/isucon/isucandar"
 	"github.com/isucon/isucandar/parallel"
 
 	"github.com/isucon/isucon11-final/benchmarker/api"
 	"github.com/isucon/isucon11-final/benchmarker/fails"
-	"github.com/isucon/isucon11-final/benchmarker/generate"
 	"github.com/isucon/isucon11-final/benchmarker/model"
 	"github.com/isucon/isucon11-final/benchmarker/util"
+)
+
+const (
+	validationRequestTime = 10 * time.Second
 )
 
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
@@ -25,9 +30,12 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 	}
 	ContestantLogger.Printf("===> VALIDATION")
 
+	// これは 10 秒 + ベンチの計算分しかかからないので先にやる
+	s.validateGrades(ctx, step)
+
+	// それぞれ 10 秒以上かかったらリクエストをやめて通す
 	s.validateAnnouncements(ctx, step)
 	s.validateCourses(ctx, step)
-	s.validateGrades(ctx, step)
 
 	return nil
 }
@@ -36,37 +44,57 @@ func errValidation(err error) error {
 	return fails.ErrorCritical(fmt.Errorf("整合性チェックに失敗しました: %w", err))
 }
 
+func splitArr(students []*model.Student, n int) []*model.Student {
+	if len(students) < n {
+		return students
+	}
+
+	res := make([]*model.Student, n)
+	for i := 0; i < n; i++ {
+		idx := int(float64(len(students)) * float64(i) / float64(n))
+		if idx < 0 {
+			idx = 0
+		}
+		if idx > len(students)-1 {
+			idx = len(students) - 1
+		}
+		res[i] = students[idx]
+	}
+
+	return res
+}
+
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errTimeout := errValidation(fmt.Errorf("時間内にお知らせの検証が完了しませんでした"))
 	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("各ページの unread_count の値が一致しません"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の各ページの unread_count の値が一致しません"), hres))
 	}
 	errNotMatchUnreadCount := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("unread_count の値が不正です"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の unread_count の値が実際に返却された未読お知らせの総数と一致しません"), hres))
 	}
 	errNotSorted := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres))
-	}
-	errNotMatch := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせの内容が不正です"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の順序が id の降順になっていません"), hres))
 	}
 	errNotMatchOver := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずのお知らせが見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧に存在しないはずのお知らせが見つかりました"), hres))
 	}
 	errNotMatchUnder := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("存在するはずのお知らせが見つかりませんでした"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧に存在するはずのお知らせが見つかりませんでした"), hres))
 	}
 	errDuplicated := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧に id が重複したお知らせが見つかりました"), hres))
+	}
+	errUnnecessaryNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の最後のページの link header に next が設定されていました"), hres))
+	}
+	errMissingNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の最後以外のページの link header に next が設定されていませんでした"), hres))
 	}
 
-	sampleCount := int64(float64(s.ActiveStudentCount()) * validateAnnouncementsRate)
-	sampleIndices := generate.ShuffledInts(s.ActiveStudentCount())[:sampleCount]
-
+	sampleStudents := splitArr(s.ActiveStudents(), validateAnnouncementSampleStudentCount)
 	wg := sync.WaitGroup{}
-	wg.Add(len(sampleIndices))
-	for _, sampleIndex := range sampleIndices {
-		student := s.activeStudents[sampleIndex]
+	wg.Add(len(sampleStudents))
+	for _, student := range sampleStudents {
+		student := student
 		go func() {
 			defer wg.Done()
 
@@ -76,46 +104,58 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// responseに含まれるunread_count
 			responseUnreadCounts := make([]int, 0)
 			actualAnnouncements := make([]api.AnnouncementResponse, 0)
-			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
-			timer := time.After(10 * time.Second)
-			var hresSample *http.Response
+			timer := time.After(validationRequestTime)
+			var hresFirst *http.Response
 			var next string
-			for {
+			couldSeeAll := false
+			maxPage := (student.AnnouncementCount()-1)/AnnouncementCountPerPage + 1
+		fetchLoop:
+			for i := 1; i <= maxPage; i++ {
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
 					step.AddError(errValidation(err))
 					return
 				}
+				if i == 1 {
+					hresFirst = hres
+				}
 
 				responseUnreadCounts = append(responseUnreadCounts, res.UnreadCount)
 				actualAnnouncements = append(actualAnnouncements, res.Announcements...)
-				for _, a := range res.Announcements {
-					actualAnnouncementsMap[a.ID] = a
-				}
 
-				hresSample = hres
 				_, next, err = parseLinkHeader(hres)
 				if err != nil {
 					step.AddError(fails.ErrorCritical(err))
 				}
 
-				if next == "" {
+				if i == maxPage && next != "" {
+					step.AddError(errUnnecessaryNext(hres))
+					return
+				}
+				if i != maxPage && next == "" {
+					step.AddError(errMissingNext(hres))
+					return
+				}
+				if i == maxPage {
+					couldSeeAll = true
 					break
 				}
 
-				select {
-				case <-timer:
-					step.AddError(errTimeout)
-					break
-				default:
+				if !s.NoValidationTimeout {
+					select {
+					case <-timer:
+						step.AddScore(score.ValidateTimeout)
+						break fetchLoop
+					default:
+					}
 				}
 			}
 
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 			for _, unreadCount := range responseUnreadCounts {
 				if responseUnreadCounts[0] != unreadCount {
-					step.AddError(errNotMatchUnreadCountAmongPages(hresSample))
+					step.AddError(errNotMatchUnreadCountAmongPages(hresFirst))
 					return
 				}
 			}
@@ -123,72 +163,58 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// 順序の検証
 			for i := 0; i < len(actualAnnouncements)-1; i++ {
 				if actualAnnouncements[i].ID < actualAnnouncements[i+1].ID {
-					step.AddError(errNotSorted(hresSample))
+					step.AddError(errNotSorted(hresFirst))
 					return
 				}
-			}
-
-			// レスポンスのunread_countの検証
-			var actualUnreadCount int
-			for _, a := range actualAnnouncements {
-				if a.Unread {
-					actualUnreadCount++
-				}
-			}
-			if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
-				step.AddError(errNotMatchUnreadCount(hresSample))
-				return
 			}
 
 			// actual の重複確認
 			existingID := make(map[string]struct{}, len(actualAnnouncements))
 			for _, a := range actualAnnouncements {
 				if _, ok := existingID[a.ID]; ok {
-					step.AddError(errDuplicated(hresSample))
+					step.AddError(errDuplicated(hresFirst))
 					return
 				}
 				existingID[a.ID] = struct{}{}
 			}
 
-			expectAnnouncements := student.Announcements()
-			for _, expectStatus := range expectAnnouncements {
-				expect := expectStatus.Announcement
-				actual, ok := actualAnnouncementsMap[expect.ID]
+			expectAnnouncementsMap := student.AnnouncementsMap()
 
+			for _, actual := range actualAnnouncements {
+				expectStatus, ok := expectAnnouncementsMap[actual.ID]
 				if !ok {
-					AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
-					step.AddError(errNotMatchUnder(hresSample))
+					AdminLogger.Printf("extra announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
+					step.AddError(errNotMatchOver(hresFirst))
 					return
-				}
-
-				// for debug
-				if !expectStatus.Dirty {
-					if !AssertEqual("announcement Unread", expectStatus.Unread, actual.Unread) {
-						AdminLogger.Printf("unread mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
-					}
-				}
-
-				// for debug
-				if !AssertEqual("announcement ID", expect.ID, actual.ID) ||
-					!AssertEqual("announcement Code", expect.CourseID, actual.CourseID) ||
-					!AssertEqual("announcement Title", expect.Title, actual.Title) ||
-					!AssertEqual("announcement CourseName", expect.CourseName, actual.CourseName) {
-					AdminLogger.Printf("announcement mismatch -> name: %v, title:  %v", actual.CourseName, actual.Title)
 				}
 
 				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresSample, !expectStatus.Dirty); err != nil {
-					step.AddError(errNotMatch(hresSample))
+				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresFirst, !expectStatus.Dirty); err != nil {
+					step.AddError(err)
 					return
 				}
 			}
 
-			if !AssertEqual("announcement len", len(expectAnnouncements), len(actualAnnouncements)) {
-				// 上で expect が actual の部分集合であることを確認しているので、ここで数が合わない場合は actual の方が多い
-				AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
-				step.AddError(errNotMatchOver(hresSample))
-				return
+			if couldSeeAll {
+				// レスポンスのunread_countの検証
+				var actualUnreadCount int
+				for _, a := range actualAnnouncements {
+					if a.Unread {
+						actualUnreadCount++
+					}
+				}
+				if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
+					step.AddError(errNotMatchUnreadCount(hresFirst))
+					return
+				}
+
+				if !AssertEqual("announcement len", len(expectAnnouncementsMap), len(actualAnnouncements)) {
+					// 上で actual が expect の部分集合であることを確認しているので、ここで数が合わない場合は expect の方が多い
+					AdminLogger.Printf("announcement len mismatch -> code: %v", student.Code)
+					step.AddError(errNotMatchUnder(hresFirst))
+					return
+				}
 			}
 		}()
 	}
@@ -196,11 +222,17 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errNotMatchCount := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("登録されている Course の個数が一致しませんでした"), hres))
+	errNotMatchUnder := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索で登録されているはずの科目が見つかりませんでした"), hres))
 	}
-	errNotMatch := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずの Course が見つかりました"), hres))
+	errNotMatchOver := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索で登録されてないはずの科目が見つかりました"), hres))
+	}
+	errUnnecessaryNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後のページの link header に next が設定されていました"), hres))
+	}
+	errMissingNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後以外のページの link header に next が設定されていませんでした"), hres))
 	}
 
 	students := s.ActiveStudents()
@@ -216,46 +248,81 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	// searchAPIを叩くユーザ
 	student := students[0]
 
+	couldSeeAll := false
+	timer := time.After(validationRequestTime)
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
-	var hresSample *http.Response
+	var hresFirst *http.Response
 	nextPathParam := "/api/courses"
-	for nextPathParam != "" {
+	maxPage := (s.CourseManager.GetCourseCount()-1)/SearchCourseCountPerPage + 1
+fetchLoop:
+	for i := 1; i <= maxPage; i++ {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
 			step.AddError(errValidation(err))
 			return
 		}
+		if i == 1 {
+			hresFirst = hres
+		}
+
 		actuals = append(actuals, res...)
 
-		hresSample = hres
 		_, nextPathParam, err = parseLinkHeader(hres)
 		if err != nil {
 			step.AddError(fails.ErrorCritical(err))
 			return
 		}
-	}
 
-	if !AssertEqual("course count", len(expectCourses), len(actuals)) {
-		step.AddError(errNotMatchCount(hresSample))
-		return
+		if i == maxPage && nextPathParam != "" {
+			step.AddError(errUnnecessaryNext(hres))
+			return
+		}
+
+		if i != maxPage && nextPathParam == "" {
+			step.AddError(errMissingNext(hres))
+			return
+		}
+
+		if i == maxPage {
+			couldSeeAll = true
+			break
+		}
+
+		if !s.NoValidationTimeout {
+			select {
+			case <-timer:
+				step.AddScore(score.ValidateTimeout)
+				break fetchLoop
+			default:
+			}
+		}
 	}
 
 	for _, actual := range actuals {
 		expect, ok := expectCourses[actual.ID]
 		if !ok {
-			step.AddError(errNotMatch(hresSample))
+			step.AddError(errNotMatchOver(hresFirst))
 			return
 		}
 
-		if err := AssertEqualCourse(expect, actual, hresSample, true); err != nil {
+		if err := AssertEqualCourse(expect, actual, hresFirst, true); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
-			step.AddError(errNotMatch(hresSample))
+			step.AddError(err)
+			return
+		}
+	}
+
+	if couldSeeAll {
+		// 上で actual が expect の部分集合であることを確認しているので、ここで数が合わない場合は expect の方が多い
+		if !AssertEqual("course count", len(expectCourses), len(actuals)) {
+			step.AddError(errNotMatchUnder(hresFirst))
 			return
 		}
 	}
 }
 
+// 10 秒 + ベンチの処理
 func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.BenchmarkStep) {
 	activeStudents := s.activeStudents
 	users := make(map[string]*model.Student, len(activeStudents))
@@ -269,6 +336,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 	// n回に1回validationする
 	n := 10
 	i := 0
+
 	for _, user := range users {
 		if i%n != 0 {
 			i++

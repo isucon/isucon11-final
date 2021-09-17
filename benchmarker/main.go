@@ -36,19 +36,20 @@ const (
 )
 
 var (
-	COMMIT           string
-	targetAddress    string
-	profileFile      string
-	memProfileDir    string
-	promOut          string
-	useTLS           bool
-	exitStatusOnFail bool
-	noLoad           bool
-	noPrepare        bool
-	noResource       bool
-	isDebug          bool
-	showVersion      bool
-	timeoutDuration  string
+	COMMIT              string
+	targetAddress       string
+	profileFile         string
+	memProfileDir       string
+	promOut             string
+	useTLS              bool
+	exitStatusOnFail    bool
+	noLoad              bool
+	noPrepare           bool
+	noResource          bool
+	noValidationTimeout bool
+	isDebug             bool
+	showVersion         bool
+	timeoutDuration     string
 
 	reporter benchrun.Reporter
 )
@@ -73,6 +74,7 @@ func init() {
 	flag.BoolVar(&noLoad, "no-load", false, "exit on finished prepare")
 	flag.BoolVar(&noPrepare, "no-prepare", false, "only load and validation step")
 	flag.BoolVar(&noResource, "no-resource", false, "do not verify page resource")
+	flag.BoolVar(&noValidationTimeout, "no-validation-timeout", false, "do not timeout in validation")
 	flag.BoolVar(&isDebug, "is-debug", false, "silence debug log")
 	flag.BoolVar(&showVersion, "version", false, "show version and exit 1")
 
@@ -250,12 +252,13 @@ func main() {
 	}
 
 	config := &scenario.Config{
-		BaseURL:          baseURL,
-		UseTLS:           useTLS,
-		NoLoad:           noLoad,
-		NoPrepare:        noPrepare,
-		NoVerifyResource: noResource,
-		IsDebug:          isDebug,
+		BaseURL:             baseURL,
+		UseTLS:              useTLS,
+		NoLoad:              noLoad,
+		NoPrepare:           noPrepare,
+		NoVerifyResource:    noResource,
+		IsDebug:             isDebug,
+		NoValidationTimeout: noValidationTimeout,
 	}
 
 	s := scenario.NewScenario(config)
