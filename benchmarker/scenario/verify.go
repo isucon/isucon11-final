@@ -60,7 +60,11 @@ func verifyInitialize(res api.InitializeResponse, hres *http.Response) error {
 }
 
 func verifyMe(expected *model.UserAccount, res *api.GetMeResponse, hres *http.Response) error {
-	return AssertEqualUserAccount(expected, res, hres)
+	if err := AssertEqualUserAccount(expected, res); err != nil {
+		return fails.ErrorInvalidResponse(err, hres)
+	}
+
+	return nil
 }
 
 // この返り値の map の value の interfaceは
@@ -99,9 +103,9 @@ func verifyGrades(expected map[string]interface{}, res *api.GetGradeResponse, hr
 				return err
 			}
 		case *model.CourseResult:
-			err := AssertEqualCourseResult(v, &resCourseResult, hres)
+			err := AssertEqualCourseResult(v, &resCourseResult)
 			if err != nil {
-				return err
+				return fails.ErrorInvalidResponse(err, hres)
 			}
 		default:
 			// 上の2種類の型しか来ないはず + 別のが来たら検証もできないしベンチがおかしいのでpanicで良い
@@ -133,9 +137,9 @@ func verifySimpleCourseResult(expected *model.SimpleCourseResult, res *api.Cours
 	// https://github.com/isucon/isucon11-final/pull/293#discussion_r690946334
 	for i := 0; i < len(expected.SimpleClassScores)-1; i++ {
 		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古い講義から見るようにしている
-		err := AssertEqualSimpleClassScore(expected.SimpleClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1], hres)
+		err := AssertEqualSimpleClassScore(expected.SimpleClassScores[i], &res.ClassScores[len(res.ClassScores)-i-1])
 		if err != nil {
-			return err
+			return fails.ErrorInvalidResponse(err, hres)
 		}
 	}
 
@@ -163,7 +167,7 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 			return fails.ErrorInvalidResponse(errors.New("科目の開講時限が不正です"), hres)
 		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
-			return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに時限の重複が存在します"), hres)
+			return fails.ErrorInvalidResponse(errors.New("履修済み科目一覧に時限と曜日が重複した科目が見つかりました"), hres)
 		}
 
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
@@ -176,11 +180,11 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 		for p := 0; p < 6; p++ {
 			if actualSchedule[d][p] != nil {
 				if expectedSchedule[d][p] != nil {
-					if err := AssertEqualRegisteredCourse(expectedSchedule[d][p], actualSchedule[d][p], hres); err != nil {
-						return err
+					if err := AssertEqualRegisteredCourse(expectedSchedule[d][p], actualSchedule[d][p]); err != nil {
+						return fails.ErrorInvalidResponse(err, hres)
 					}
 				} else {
-					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに期待しない科目が含まれています"), hres)
+					return fails.ErrorInvalidResponse(errors.New("履修済み科目一覧に期待しない科目が含まれています"), hres)
 				}
 			}
 		}
@@ -246,13 +250,21 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 
 func verifyCourseDetail(expected *model.Course, actual *api.GetCourseDetailResponse, hres *http.Response) error {
 	// load中ではstatusが並列で更新されるので検証を行わない
-	return AssertEqualCourse(expected, actual, hres, false)
+	if err := AssertEqualCourse(expected, actual, false); err != nil {
+		return fails.ErrorInvalidResponse(err, hres)
+	}
+
+	return nil
 }
 
 func verifyAnnouncementDetail(expected *model.AnnouncementStatus, res *api.GetAnnouncementDetailResponse, hres *http.Response) error {
 	// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 	// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-	return AssertEqualAnnouncementDetail(expected, res, hres, !expected.Dirty)
+	if err := AssertEqualAnnouncementDetail(expected, res, !expected.Dirty); err != nil {
+		return fails.ErrorInvalidResponse(err, hres)
+	}
+
+	return nil
 }
 
 // お知らせ一覧の中身の検証
@@ -275,8 +287,8 @@ func verifyAnnouncementsList(expectedMap map[string]*model.AnnouncementStatus, r
 
 		// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 		// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-		if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hres, verifyUnread && !expectStatus.Dirty); err != nil {
-			return err
+		if err := AssertEqualAnnouncementListContent(expectStatus, &actual, verifyUnread && !expectStatus.Dirty); err != nil {
+			return fails.ErrorInvalidResponse(err, hres)
 		}
 	}
 
@@ -292,8 +304,8 @@ func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, student
 
 	for i, expectedClass := range expected {
 		actualClass := res[i]
-		if err := AssertEqualClass(expectedClass, actualClass, student, hres); err != nil {
-			return err
+		if err := AssertEqualClass(expectedClass, actualClass, student); err != nil {
+			return fails.ErrorInvalidResponse(err, hres)
 		}
 	}
 
@@ -381,7 +393,7 @@ func verifyResource(resource *agent.Resource, expectPath string) error {
 		var nerr net.Error
 		if failure.As(resource.Error, &nerr) {
 			if nerr.Timeout() || nerr.Temporary() {
-				return nerr
+				return fails.ErrorHTTP(nerr)
 			}
 		}
 		return fails.ErrorStaticResource(fmt.Errorf("リソースの取得に失敗しました (%s) %w", expectPath, resource.Error))

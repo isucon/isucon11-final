@@ -190,8 +190,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
-				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresFirst, !expectStatus.Dirty); err != nil {
-					step.AddError(err)
+				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, !expectStatus.Dirty); err != nil {
+					step.AddError(errValidation(fails.ErrorInvalidResponse(err, hresFirst)))
 					return
 				}
 			}
@@ -306,9 +306,9 @@ fetchLoop:
 			return
 		}
 
-		if err := AssertEqualCourse(expect, actual, hresFirst, true); err != nil {
+		if err := AssertEqualCourse(expect, actual, true); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
-			step.AddError(err)
+			step.AddError(errValidation(fails.ErrorInvalidResponse(err, hresFirst)))
 			return
 		}
 	}
@@ -357,9 +357,9 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 				return
 			}
 
-			err = AssertEqualGrade(&expected, &res, hres)
+			err = AssertEqualGrade(&expected, &res)
 			if err != nil {
-				step.AddError(errValidation(err))
+				step.AddError(errValidation(fails.ErrorInvalidResponse(err, hres)))
 				return
 			}
 		})
