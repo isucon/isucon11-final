@@ -9,6 +9,11 @@ data "aws_security_group" "bastion" {
   name   = "bastion"
 }
 
+data "aws_security_group" "prometheus" {
+  vpc_id = data.aws_vpc.portal.id
+  name   = "prometheus"
+}
+
 resource "aws_security_group_rule" "bench-ingress-ssh" {
   security_group_id        = aws_security_group.bench.id
   type                     = "ingress"
@@ -16,6 +21,15 @@ resource "aws_security_group_rule" "bench-ingress-ssh" {
   from_port                = 22
   to_port                  = 22
   source_security_group_id = data.aws_security_group.bastion.id
+}
+
+resource "aws_security_group_rule" "bench-ingress-prometheus" {
+  security_group_id        = aws_security_group.bench.id
+  type                     = "ingress"
+  protocol                 = "tcp"
+  from_port                = 9100
+  to_port                  = 9100
+  source_security_group_id = data.aws_security_group.prometheus.id
 }
 
 resource "aws_security_group_rule" "bench-egress-all" {
