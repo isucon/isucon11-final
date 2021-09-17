@@ -1,7 +1,7 @@
 resource "aws_instance" "contestant-1" {
   for_each = toset(var.team_ids)
 
-  ami           = "ami-0a6d03a5126400384"
+  ami           = "ami-0513f581cefd37db4"
   instance_type = "c5.large"
 
   subnet_id         = aws_subnet.contestant[each.key].id
@@ -47,7 +47,7 @@ resource "aws_eip" "contestant-1" {
 resource "aws_instance" "contestant-2" {
   for_each = toset(var.team_ids)
 
-  ami           = "ami-0a6d03a5126400384"
+  ami           = "ami-0513f581cefd37db4"
   instance_type = "c5.large"
 
   subnet_id         = aws_subnet.contestant[each.key].id
@@ -93,7 +93,7 @@ resource "aws_eip" "contestant-2" {
 resource "aws_instance" "contestant-3" {
   for_each = toset(var.team_ids)
 
-  ami           = "ami-0a6d03a5126400384"
+  ami           = "ami-0513f581cefd37db4"
   instance_type = "c5.large"
 
   subnet_id         = aws_subnet.contestant[each.key].id
