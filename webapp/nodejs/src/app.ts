@@ -1,4 +1,4 @@
-import { exec as _exec } from "child_process";
+import { exec as _exec, spawn } from "child_process";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
@@ -1487,7 +1487,15 @@ async function createSubmissionsZip(
   }
 
   // -i 'tmpDir/*': 空zipを許す
-  await exec(`zip -j -r '${zipFilePath}' '${tmpDir}' -i '${tmpDir + "*"}'`);
+  await new Promise<void>((resolve, reject) => {
+    const p = spawn(
+      "zip",
+      ["-j", "-r", zipFilePath, tmpDir, "-i", tmpDir + "*"],
+      { stdio: "ignore" }
+    );
+    p.on("error", (err: Error) => reject(err));
+    p.on("close", () => resolve());
+  });
 }
 
 // ---------- Announcement API ----------
