@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	validationRequestTime = 10 * time.Second
+	validateAnnouncementSampleStudentCount = 10 * time.Second
 )
 
 func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep) error {
@@ -106,7 +106,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			actualAnnouncements := make([]api.AnnouncementResponse, 0)
 			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
-			timer := time.After(validationRequestTime)
+			timer := time.After(validateAnnouncementSampleStudentCount)
 			var hresSample *http.Response
 			var next string
 			couldSeeAll := false
@@ -243,7 +243,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	student := students[0]
 
 	couldSeeAll := false
-	timer := time.After(validationRequestTime)
+	timer := time.After(validateAnnouncementSampleStudentCount)
 	var actuals []*api.GetCourseDetailResponse
 	// 空検索パラメータで全部ページング → 科目をすべて集める
 	var hresSample *http.Response
