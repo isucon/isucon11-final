@@ -496,7 +496,7 @@ func prepareCheckRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*
 			return fails.ErrorInvalidResponse(errors.New("科目の開講時限が不正です"), hres)
 		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
-			return fails.ErrorInvalidResponse(errors.New("履修済み科目の一覧に時限の重複が存在します"), hres)
+			return fails.ErrorInvalidResponse(errors.New("履修済み科目一覧に時限と曜日が重複した科目が見つかりました"), hres)
 		}
 
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
