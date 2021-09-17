@@ -1668,10 +1668,10 @@ func (s *Scenario) prepareCheckGetCourseDetailAbnormal(ctx context.Context) erro
 
 func (s *Scenario) prepareCheckAddCourseAbnormal(ctx context.Context) error {
 	errAddInvalidTypeCourse := func(hres *http.Response) error {
-		return fails.ErrorInvalidResponse(errors.New("Type が不正な値の科目の追加が成功しました"), hres)
+		return fails.ErrorInvalidResponse(errors.New("type が不正な値の科目の追加が成功しました"), hres)
 	}
 	errAddInvalidDoWCourse := func(hres *http.Response) error {
-		return fails.ErrorInvalidResponse(errors.New("DayOfWeek が不正な科目の追加が成功しました"), hres)
+		return fails.ErrorInvalidResponse(errors.New("day_of_week が不正な科目の追加が成功しました"), hres)
 	}
 	errAddConflictedCourse := func(hres *http.Response) error {
 		return fails.ErrorInvalidResponse(errors.New("コードが重複した科目の追加が成功しました"), hres)
