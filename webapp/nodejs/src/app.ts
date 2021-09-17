@@ -1,8 +1,7 @@
-import { exec as _exec } from "child_process";
+import { spawn as _spawn } from "child_process";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
-import { promisify } from "util";
 import { URL } from "url";
 
 import bcrypt from "bcrypt";
@@ -37,7 +36,18 @@ const dbinfo: mysql.PoolOptions = {
   timezone: "+00:00",
   decimalNumbers: true,
 };
-const exec = promisify(_exec);
+const spawn = (command: string, ...args: string[]) =>
+  new Promise((resolve, reject) => {
+    const cmd = _spawn(command, args, { stdio: "ignore" });
+    cmd.on("error", (err) => reject(err));
+    cmd.on("close", (code) => {
+      if (code === 0) {
+        resolve(code);
+      } else {
+        reject(new Error(`Unexpected exit code: ${code} on ${command}`));
+      }
+    });
+  });
 const pool = mysql.createPool(dbinfo);
 const upload = multer();
 
@@ -87,8 +97,8 @@ app.post("/initialize", async (_, res) => {
   }
 
   try {
-    await exec(`rm -rf '${AssignmentsDirectory}'`);
-    await exec(`cp -r '${InitDataDirectory}' '${AssignmentsDirectory}'`);
+    await spawn("rm", "-rf", AssignmentsDirectory);
+    await spawn("cp", "-r", InitDataDirectory, AssignmentsDirectory);
   } catch (err) {
     console.error(err);
     return res.status(500).send();
@@ -1474,20 +1484,20 @@ async function createSubmissionsZip(
   submissions: Submission[]
 ) {
   const tmpDir = AssignmentsDirectory + classId + "/";
-  await exec(`rm -rf '${tmpDir}'`);
-  await exec(`mkdir '${tmpDir}'`);
+  await spawn("rm", "-rf", tmpDir);
+  await spawn("mkdir", tmpDir);
 
   // ファイル名を指定の形式に変更
   for (const submission of submissions) {
-    await exec(
-      `cp '${
-        AssignmentsDirectory + classId + "-" + submission.user_id + ".pdf"
-      }' '${tmpDir + submission.user_code + "-" + submission.file_name}'`
+    await spawn(
+      "cp",
+      AssignmentsDirectory + classId + "-" + submission.user_id + ".pdf",
+      tmpDir + submission.user_code + "-" + submission.file_name
     );
   }
 
   // -i 'tmpDir/*': 空zipを許す
-  await exec(`zip -j -r '${zipFilePath}' '${tmpDir}' -i '${tmpDir + "*"}'`);
+  await spawn("zip", "-j", "-r", zipFilePath, tmpDir, "-i", tmpDir + "*");
 }
 
 // ---------- Announcement API ----------
