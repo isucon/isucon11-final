@@ -393,7 +393,7 @@ func verifyResource(resource *agent.Resource, expectPath string) error {
 		var nerr net.Error
 		if failure.As(resource.Error, &nerr) {
 			if nerr.Timeout() || nerr.Temporary() {
-				return nerr
+				return fails.ErrorHTTP(nerr)
 			}
 		}
 		return fails.ErrorStaticResource(fmt.Errorf("リソースの取得に失敗しました (%s) %w", expectPath, resource.Error))
