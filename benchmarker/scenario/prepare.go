@@ -496,7 +496,7 @@ func prepareCheckRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*
 			return fails.ErrorInvalidResponse(errors.New("科目の開講時限が不正です"), hres)
 		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
-			return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに時限の重複が存在します"), hres)
+			return fails.ErrorInvalidResponse(errors.New("履修済み科目の一覧に時限の重複が存在します"), hres)
 		}
 
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
@@ -511,12 +511,12 @@ func prepareCheckRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*
 						return err
 					}
 				} else {
-					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに期待しない科目が含まれています"), hres)
+					return fails.ErrorInvalidResponse(errors.New("履修済み科目の一覧に期待しない科目が含まれています"), hres)
 				}
 			} else {
 				// レスポンス側で枠が埋まっていないなら、ベンチ側の同じ枠も埋まっていないことを期待する
 				if expectedSchedule[d][p] != nil {
-					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに履修しているはずの科目が含まれていません"), hres)
+					return fails.ErrorInvalidResponse(errors.New("履修済み科目の一覧に履修しているはずの科目が含まれていません"), hres)
 				}
 			}
 		}
