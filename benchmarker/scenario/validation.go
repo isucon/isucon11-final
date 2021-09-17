@@ -66,31 +66,28 @@ func splitArr(students []*model.Student, n int) []*model.Student {
 
 func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.BenchmarkStep) {
 	errNotMatchUnreadCountAmongPages := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("各ページの unread_count の値が一致しません"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の各ページの unread_count の値が一致しません"), hres))
 	}
 	errNotMatchUnreadCount := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("unread_count の値が不正です"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の unread_count の値が実際に返却された未読お知らせの総数と一致しません"), hres))
 	}
 	errNotSorted := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせの順序が不正です"), hres))
-	}
-	errNotMatch := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせの内容が不正です"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の順序が id の降順になっていません"), hres))
 	}
 	errNotMatchOver := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずのお知らせが見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧に存在しないはずのお知らせが見つかりました"), hres))
 	}
 	errNotMatchUnder := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("存在するはずのお知らせが見つかりませんでした"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧に存在するはずのお知らせが見つかりませんでした"), hres))
 	}
 	errDuplicated := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧にIDが重複したお知らせが見つかりました"), hres))
 	}
 	errUnnecessaryNext := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせリストの最後のページの link header に next が設定されていました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の最後のページの link header に next が設定されていました"), hres))
 	}
 	errMissingNext := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせリストの最後以外のページの link header に next が設定されていませんでした"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の最後以外のページの link header に next が設定されていませんでした"), hres))
 	}
 
 	sampleStudents := splitArr(s.ActiveStudents(), validateAnnouncementSampleStudentCount)
@@ -196,7 +193,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				// Dirtyフラグが立っていない場合のみ、Unreadの検証を行う
 				// 既読化RequestがTimeoutで中断された際、ベンチには既読が反映しないがwebapp側が既読化される可能性があるため。
 				if err := AssertEqualAnnouncementListContent(expectStatus, &actual, hresFirst, !expectStatus.Dirty); err != nil {
-					step.AddError(errNotMatch(hresFirst))
+					step.AddError(err)
 					return
 				}
 			}
@@ -227,11 +224,11 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 }
 
 func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.BenchmarkStep) {
-	errNotMatchCount := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("登録されている Course の個数が一致しませんでした"), hres))
+	errNotMatchUnder := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索で登録されているはずの科目が見つかりませんでした"), hres))
 	}
-	errNotMatch := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずの Course が見つかりました"), hres))
+	errNotMatchOver := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索で登録されてないはずの科目が見つかりました"), hres))
 	}
 	errUnnecessaryNext := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後のページの link header に next が設定されていました"), hres))
@@ -302,23 +299,24 @@ fetchLoop:
 		}
 	}
 
-	if couldSeeAll {
-		if !AssertEqual("course count", len(expectCourses), len(actuals)) {
-			step.AddError(errNotMatchCount(hresFirst))
-			return
-		}
-	}
-
 	for _, actual := range actuals {
 		expect, ok := expectCourses[actual.ID]
 		if !ok {
-			step.AddError(errNotMatch(hresFirst))
+			step.AddError(errNotMatchOver(hresFirst))
 			return
 		}
 
 		if err := AssertEqualCourse(expect, actual, hresFirst, true); err != nil {
 			AdminLogger.Printf("name: %v", expect.Name)
-			step.AddError(errNotMatch(hresFirst))
+			step.AddError(err)
+			return
+		}
+	}
+
+	if couldSeeAll {
+		// 上で actual が expect の部分集合であることを確認しているので、ここで数が合わない場合は expect の方が多い
+		if !AssertEqual("course count", len(expectCourses), len(actuals)) {
+			step.AddError(errNotMatchUnder(hresFirst))
 			return
 		}
 	}
