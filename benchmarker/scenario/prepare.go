@@ -342,6 +342,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			}
 			p.Wait()
 
+			if hasErrors() {
+				return
+			}
+
 			// 課題ダウンロード
 			hres, assignmentsData, err := DownloadSubmissionsAction(ctx, teacher.Agent, course.ID, class.ID)
 			if err != nil {
@@ -383,6 +387,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		w.Process(ctx)
 		w.Wait()
 
+		if hasErrors() {
+			return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
+		}
+
 		w, err = worker.NewWorker(func(ctx context.Context, i int) {
 			student := students[i]
 			expected := calculateGradeRes(student, studentByCode)
@@ -403,6 +411,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 		}
 		w.Process(ctx)
 		w.Wait()
+
+		if hasErrors() {
+			return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
+		}
 	}
 
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
@@ -420,6 +432,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	}
 	w.Process(ctx)
 	w.Wait()
+
+	if hasErrors() {
+		return fmt.Errorf("アプリケーション互換性チェックに失敗しました")
+	}
 
 	w, err = worker.NewWorker(func(ctx context.Context, i int) {
 		student := students[i]
