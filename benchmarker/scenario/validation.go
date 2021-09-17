@@ -86,8 +86,8 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errDuplicated := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
 	}
-	reasonEmpty := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせリストの最初以外のページで空の検索結果が返却されました"), hres))
+	reasonUnnecessaryNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせリストの最後のページの link header に next が設定されていました"), hres))
 	}
 
 	sampleStudents := splitArr(s.ActiveStudents(), validateAnnouncementSampleStudentCount)
@@ -120,7 +120,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 				// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
 				if next != "" && len(res.Announcements) == 0 {
-					step.AddError(reasonEmpty(hres))
+					step.AddError(reasonUnnecessaryNext(hres))
 					return
 				}
 
