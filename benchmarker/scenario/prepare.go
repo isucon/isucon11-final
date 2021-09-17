@@ -307,10 +307,10 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 						if expected == nil {
 							panic("unreachable! announcementID" + announcement.ID)
 						}
-						err = AssertEqualAnnouncementDetail(expected, &res, hres, true)
+						err = AssertEqualAnnouncementDetail(expected, &res, true)
 						if err != nil {
 							AdminLogger.Printf("extra announcements ->name: %v, title:  %v", res.CourseName, res.Title)
-							step.AddError(err)
+							step.AddError(fails.ErrorInvalidResponse(err, hres))
 							return
 						}
 						student.ReadAnnouncement(announcement.ID)
@@ -392,9 +392,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 				return
 			}
 
-			err = AssertEqualGrade(&expected, &res, hres)
+			err = AssertEqualGrade(&expected, &res)
 			if err != nil {
-				step.AddError(err)
+				step.AddError(fails.ErrorInvalidResponse(err, hres))
 				return
 			}
 		}, worker.WithLoopCount(prepareStudentCount))
@@ -430,9 +430,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			return
 		}
 
-		err = AssertEqualGrade(&expected, &res, hres)
+		err = AssertEqualGrade(&expected, &res)
 		if err != nil {
-			step.AddError(err)
+			step.AddError(fails.ErrorInvalidResponse(err, hres))
 			return
 		}
 	}, worker.WithLoopCount(prepareStudentCount))
@@ -512,8 +512,8 @@ func prepareCheckRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*
 			if actualSchedule[d][p] != nil {
 				// レスポンス側で枠が埋まっているなら、ベンチ側の同じ枠も同じ科目で埋まっていることを期待する
 				if expectedSchedule[d][p] != nil {
-					if err := AssertEqualRegisteredCourse(expectedSchedule[d][p], actualSchedule[d][p], hres); err != nil {
-						return err
+					if err := AssertEqualRegisteredCourse(expectedSchedule[d][p], actualSchedule[d][p]); err != nil {
+						return fails.ErrorInvalidResponse(err, hres)
 					}
 				} else {
 					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに期待しない科目が含まれています"), hres)
@@ -805,7 +805,7 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 	}
 
 	for i := 0; i < len(actual.Announcements); i++ {
-		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], hres, true); err != nil {
+		if err := AssertEqualAnnouncementListContent(expected[i], &actual.Announcements[i], true); err != nil {
 			AdminLogger.Printf("extra announcements ->name: %v, title:  %v", actual.Announcements[i].CourseName, actual.Announcements[i].Title)
 			return errWithUserCodeAndAnnouncementID(reasonNotMatch, actual.Announcements[i].ID, hres)
 		}
@@ -982,7 +982,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 			return errWithParamInfo(reasonLack, hresSample)
 		}
 		// 同じIDでも内容が違っていたら科目自体は見つかったが内容が不正という扱いにする
-		if err := AssertEqualCourse(expectCourse, actualCourse, hresSample, true); err != nil {
+		if err := AssertEqualCourse(expectCourse, actualCourse, true); err != nil {
 			return errWithParamInfo(reasonInvalidContent, hresSample)
 		}
 	}
@@ -1034,7 +1034,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 
 		// リストの内容の検証
 		for i, course := range res {
-			if err := AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, hres, true); err != nil {
+			if err := AssertEqualCourse(expected[SearchCourseCountPerPage*(page-1)+i], course, true); err != nil {
 				return errWithParamInfo(reasonInvalidPrev, hres)
 			}
 		}
@@ -1084,8 +1084,8 @@ func (s *Scenario) prepareCourseStatus(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := AssertEqualCourse(course, &detailRes, hres, true); err != nil {
-		return err
+	if err := AssertEqualCourse(course, &detailRes, true); err != nil {
+		return fails.ErrorInvalidResponse(err, hres)
 	}
 
 	// ステータス更新(in-progress)
@@ -1100,8 +1100,8 @@ func (s *Scenario) prepareCourseStatus(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := AssertEqualCourse(course, &detailRes, hres, true); err != nil {
-		return err
+	if err := AssertEqualCourse(course, &detailRes, true); err != nil {
+		return fails.ErrorInvalidResponse(err, hres)
 	}
 
 	// ステータス更新(close)
@@ -1116,8 +1116,8 @@ func (s *Scenario) prepareCourseStatus(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := AssertEqualCourse(course, &detailRes, hres, true); err != nil {
-		return err
+	if err := AssertEqualCourse(course, &detailRes, true); err != nil {
+		return fails.ErrorInvalidResponse(err, hres)
 	}
 
 	return nil
