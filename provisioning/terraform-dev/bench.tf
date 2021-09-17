@@ -19,10 +19,10 @@ data "aws_ssm_parameter" "bench_token" {
 }
 
 resource "aws_instance" "bench" {
-  count = 3
+  count = 5
 
   #ami           = data.aws_ami.bench.id
-  ami           = "ami-0b3cc9e66d2d1d9e2"
+  ami           = "ami-0d0b6cd6f9ac9dc11"
   instance_type = "c5.xlarge"
 
   availability_zone = var.availability_zones[0]
