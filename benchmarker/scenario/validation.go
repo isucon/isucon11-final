@@ -232,7 +232,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後のページの link header に next が設定されていました"), hres))
 	}
 	errMissingNext := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後のページ以外のページの link header に next が設定されていませんでした"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後以外のページの link header に next が設定されていませんでした"), hres))
 	}
 
 	students := s.ActiveStudents()
