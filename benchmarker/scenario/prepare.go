@@ -715,8 +715,8 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	}
 
 	errUnnecessaryNext := errors.New("お知らせの数が期待する値よりも多いか、余分な link header の next が設定されています")
-	errNotExistPrevOtherThanFirstPage := errors.New("お知らせリストの最初以外のページの link header に prev が設定されていませんでした")
-	errUnnecessaryPrev := errors.New("お知らせリストの最初のページの link header に prev が設定されていました")
+	errNotExistPrevOtherThanFirstPage := errors.New("お知らせ一覧の最初以外のページの link header に prev が設定されていませんでした")
+	errUnnecessaryPrev := errors.New("お知らせ一覧の最初のページの link header に prev が設定されていました")
 
 	hres, res, err := GetAnnouncementListAction(ctx, a, path, courseID)
 	if err != nil {
