@@ -710,8 +710,12 @@ func prepareCheckCourseAnnouncementList(ctx context.Context, step *isucandar.Ben
 }
 
 func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, courseID string, expected []*model.AnnouncementStatus, expectedUnreadCount int, userCode string) (prev string, err error) {
-	errMissingNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの最後以外のページの link header に next が設定されていませんでした"))
-	errUnnecessaryNext := fails.ErrorCritical(fmt.Errorf("お知らせリストの最後のページの link header に next が設定されていました"))
+	errWithUserCode := func(err error, hres *http.Response) error {
+		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s)", err, userCode), hres))
+	}
+
+	errMissingNext := fails.ErrorCritical(fmt.Errorf("お知らせの数が期待する値よりも少ないか、 link header の next が設定されていません"))
+	errUnnecessaryNext := fails.ErrorCritical(fmt.Errorf("お知らせの数が期待する値よりも多いか、余分な link header の next が設定されています"))
 	errNotExistPrevOtherThanFirstPage := errors.New("お知らせリストの最初以外のページの link header に prev が設定されていませんでした")
 	errUnnecessaryPrev := errors.New("お知らせリストの最初のページの link header に prev が設定されていました")
 
@@ -725,16 +729,18 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	}
 
 	if len(expected) <= AnnouncementCountPerPage && next != "" {
-		return "", errUnnecessaryNext
+		return "", errWithUserCode(errUnnecessaryNext, hres)
 	}
 	if len(expected) > AnnouncementCountPerPage && next == "" {
-		return "", errMissingNext
+		return "", errWithUserCode(errMissingNext, hres)
 	}
+	// next押した後にprevに戻るとpathは存在するがprevは存在しないことがある。
+	// prevへのアクセスはここ以降で行うのでここではtrueにならない
 	if path != "" && prev == "" {
-		return "", errNotExistPrevOtherThanFirstPage
+		return "", errWithUserCode(errNotExistPrevOtherThanFirstPage, hres)
 	}
 	if path == "" && prev != "" {
-		return "", errUnnecessaryPrev
+		return "", errWithUserCode(errUnnecessaryPrev, hres)
 	}
 
 	// 次のページが存在しない
@@ -922,7 +928,7 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	reasonInvalidPrev := errors.New("科目検索の link header の prev で前のページに正しく戻ることができませんでした")
 	// reasonMissingNext := errors.New(fmt.Errorf("科目検索の最後以外のページの link header に next が設定されていませんでした")
 	// 検索の取得ロジックではできない
-	reasonUnnecessaryNext := errors.New("科目検索の最後のページの link header に next が設定されていました")
+	reasonUnnecessaryNext := errors.New("科目検索で条件にヒットした科目の数が期待する値よりも多いか、余分な link header の next が設定されていました")
 
 	var hresSample *http.Response
 	var path string
