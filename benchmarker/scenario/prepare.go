@@ -779,7 +779,7 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s, お知らせID: %s)", err, userCode, announcementID), hres))
 	}
 
-	reasonNotSorted := errors.New("お知らせの順序が id の昇順になっていません")
+	reasonNotSorted := errors.New("お知らせの順序が id の降順になっていません")
 	// reasonNotMatch := errors.New("お知らせの内容が不正です") ここはassert.goのエラーを直接表示する
 	reasonNoCount := errors.New("お知らせの数が期待したものと一致しませんでした")
 	reasonNoMatchUnreadCount := errors.New("お知らせの unread_count が期待したものと一致しませんでした")
