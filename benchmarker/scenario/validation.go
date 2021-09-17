@@ -107,7 +107,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			// responseに含まれるunread_count
 			responseUnreadCounts := make([]int, 0)
 			actualAnnouncements := make([]api.AnnouncementResponse, 0)
-			actualAnnouncementsMap := make(map[string]api.AnnouncementResponse)
 
 			timer := time.After(validationRequestTime)
 			var hresFirst *http.Response
@@ -127,9 +126,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 				responseUnreadCounts = append(responseUnreadCounts, res.UnreadCount)
 				actualAnnouncements = append(actualAnnouncements, res.Announcements...)
-				for _, a := range res.Announcements {
-					actualAnnouncementsMap[a.ID] = a
-				}
 
 				_, next, err = parseLinkHeader(hres)
 				if err != nil {
