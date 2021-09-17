@@ -1,7 +1,7 @@
 rules:
   - expected: サーバー
     patterns:
-      - /サーバ[^ー]/g
+      - /サーバ(?!ー)/g
       - インスタンス
   - expected: （
     patterns:
@@ -11,4 +11,4 @@ rules:
       - )
   - expected: ユーザー
     patterns:
-      - /ユーザ[^ー]/g
+      - /ユーザ(?!ー)/g
