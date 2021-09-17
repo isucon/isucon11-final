@@ -113,7 +113,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			var hresSample *http.Response
 			var next string
 			couldSeeAll := false
-			maxPage := student.AnnouncementCount()/AnnouncementCountPerPage + 1
+			maxPage := (student.AnnouncementCount()-1)/AnnouncementCountPerPage + 1
 		fetchLoop:
 			for i := 1; i <= maxPage; i++ {
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
@@ -142,7 +142,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					step.AddError(errMissingNext(hres))
 					return
 				}
-				if next == "" {
+				if i == maxPage {
 					couldSeeAll = true
 					break
 				}
@@ -257,9 +257,9 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	// 空検索パラメータで全部ページング → 科目をすべて集める
 	var hresSample *http.Response
 	nextPathParam := "/api/courses"
-	maxPage := s.CourseManager.GetCourseCount() / SearchCourseCountPerPage
+	maxPage := (s.CourseManager.GetCourseCount()-1) / SearchCourseCountPerPage + 1
 fetchLoop:
-	for i := 0; i <= maxPage; i++ {
+	for i := 1; i <= maxPage; i++ {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
 			step.AddError(errValidation(err))
@@ -285,7 +285,7 @@ fetchLoop:
 			return
 		}
 
-		if nextPathParam == "" {
+		if i == maxPage {
 			couldSeeAll = true
 			break
 		}
