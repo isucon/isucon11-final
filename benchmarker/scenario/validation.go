@@ -86,8 +86,11 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errDuplicated := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
 	}
-	reasonUnnecessaryNext := func(hres *http.Response) error {
+	errUnnecessaryNext := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせリストの最後のページの link header に next が設定されていました"), hres))
+	}
+	errMissingNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせリストの最後以外のページの link header に next が設定されていませんでした"), hres))
 	}
 
 	sampleStudents := splitArr(s.ActiveStudents(), validateAnnouncementSampleStudentCount)
@@ -110,17 +113,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			var hresSample *http.Response
 			var next string
 			couldSeeAll := false
+			maxPage := student.AnnouncementCount()/AnnouncementCountPerPage + 1
 		fetchLoop:
-			for {
+			for i := 1; i <= maxPage; i++ {
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
 					step.AddError(errValidation(err))
-					return
-				}
-
-				// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
-				if next != "" && len(res.Announcements) == 0 {
-					step.AddError(reasonUnnecessaryNext(hres))
 					return
 				}
 
@@ -136,6 +134,14 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					step.AddError(fails.ErrorCritical(err))
 				}
 
+				if i == maxPage && next != "" {
+					step.AddError(errUnnecessaryNext(hres))
+					return
+				}
+				if i != maxPage && next == "" {
+					step.AddError(errMissingNext(hres))
+					return
+				}
 				if next == "" {
 					couldSeeAll = true
 					break
@@ -225,8 +231,11 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	errNotMatch := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずの Course が見つかりました"), hres))
 	}
-	reasonUnnecessaryNext := func(hres *http.Response) error {
+	errUnnecessaryNext := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後のページの link header に next が設定されていました"), hres))
+	}
+	errMissingNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後のページ以外のページの link header に next が設定されていませんでした"), hres))
 	}
 
 	students := s.ActiveStudents()
@@ -248,17 +257,12 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	// 空検索パラメータで全部ページング → 科目をすべて集める
 	var hresSample *http.Response
 	nextPathParam := "/api/courses"
-
+	maxPage := s.CourseManager.GetCourseCount() / SearchCourseCountPerPage
 fetchLoop:
-	for {
+	for i := 0; i <= maxPage; i++ {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
 			step.AddError(errValidation(err))
-			return
-		}
-		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
-		if nextPathParam != "" && len(res) == 0 {
-			step.AddError(reasonUnnecessaryNext(hres))
 			return
 		}
 
@@ -268,6 +272,16 @@ fetchLoop:
 		_, nextPathParam, err = parseLinkHeader(hres)
 		if err != nil {
 			step.AddError(fails.ErrorCritical(err))
+			return
+		}
+
+		if i == maxPage && nextPathParam != "" {
+			step.AddError(errUnnecessaryNext(hres))
+			return
+		}
+
+		if i != maxPage && nextPathParam == "" {
+			step.AddError(errMissingNext(hres))
 			return
 		}
 
