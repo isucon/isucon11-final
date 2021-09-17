@@ -253,7 +253,7 @@ sudo systemctl restart nginx.service
 競技終了後、以下の手順で追試を行い最終スコアを決定します。
 
 1. 全チームのサーバーを再起動し、10 分以上待ちます。
-    - 再起動は「主催者がサーバーに SSH 接続し `sudo systemctl poweroff` によるシャットダウンを行った後、AWS のサーバー起動 API（ec2:StartInstances）で起動する」という手順で行います。
+    - 再起動は「主催者がサーバーに SSH 接続し `sudo systemctl poweroff` によるシャットダウンを行った後、AWS のインスタンス起動 API（ec2:StartInstances）で起動する」という手順で行います。
     - 確実にシステムを再起動するため、再起動手順をこのように定義していますが、競技時間中に再起動をテストする場合は `sudo systemctl reboot` 等で実施してください。
     - すでにシャットダウンされているなどの理由により、`sudo systemctl poweroff`を実行できなかったサーバーが存在する場合は失格となります。
 2. 全チームに対してベンチマークを実行します。
