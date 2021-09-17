@@ -182,6 +182,13 @@ func AssertEqualCourseResult(expected *model.CourseResult, actual *api.CourseRes
 		return errMismatch("成績取得の科目の class_scores の数が期待する値と一致しません", len(expected.ClassScores), len(actual.ClassScores))
 	}
 
+	// class_scores の順序の検証
+	for i := 0; i < len(actual.ClassScores)-1; i++ {
+		if actual.ClassScores[i].Part < actual.ClassScores[i+1].Part {
+			return errors.New("成績取得の科目の class_scores の順序が part の降順になっていません")
+		}
+	}
+
 	for i := 0; i < len(expected.ClassScores); i++ {
 		// webapp 側は新しい(partが大きい)classから順番に帰ってくるので古い講義から見るようにしている
 		err := AssertEqualClassScore(expected.ClassScores[i], &actual.ClassScores[len(actual.ClassScores)-i-1])
