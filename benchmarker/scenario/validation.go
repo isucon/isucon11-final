@@ -81,7 +81,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧に存在するはずのお知らせが見つかりませんでした"), hres))
 	}
 	errDuplicated := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧にIDが重複したお知らせが見つかりました"), hres))
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧に id が重複したお知らせが見つかりました"), hres))
 	}
 	errUnnecessaryNext := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせ一覧の最後のページの link header に next が設定されていました"), hres))
