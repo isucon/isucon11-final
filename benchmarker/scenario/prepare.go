@@ -126,7 +126,7 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 	for i := 0; i < prepareStudentCount; i++ {
 		student, err := s.userPool.newStudent()
 		if err != nil {
-			return err
+			panic("unreachable! studentPool is empty")
 		}
 		students = append(students, student)
 	}
