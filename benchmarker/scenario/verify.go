@@ -167,7 +167,7 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 			return fails.ErrorInvalidResponse(errors.New("科目の開講時限が不正です"), hres)
 		}
 		if actualSchedule[dayOfWeekIndex][periodIndex] != nil {
-			return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに時限の重複が存在します"), hres)
+			return fails.ErrorInvalidResponse(errors.New("履修済み科目一覧に時限と曜日が重複した科目が見つかりました"), hres)
 		}
 
 		actualSchedule[dayOfWeekIndex][periodIndex] = resContent
@@ -184,7 +184,7 @@ func verifyRegisteredCourses(expectedSchedule [5][6]*model.Course, res []*api.Ge
 						return fails.ErrorInvalidResponse(err, hres)
 					}
 				} else {
-					return fails.ErrorInvalidResponse(errors.New("履修済み科目のリストに期待しない科目が含まれています"), hres)
+					return fails.ErrorInvalidResponse(errors.New("履修済み科目一覧に期待しない科目が含まれています"), hres)
 				}
 			}
 		}
