@@ -98,7 +98,7 @@ app.post("/initialize", async (_, res) => {
 
   try {
     await spawn("rm", "-rf", AssignmentsDirectory);
-    await spawn("cp", "-r", InitDataDirectory);
+    await spawn("cp", "-r", InitDataDirectory, AssignmentsDirectory);
   } catch (err) {
     console.error(err);
     return res.status(500).send();
