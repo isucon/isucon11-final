@@ -225,8 +225,8 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	errNotMatch := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずの Course が見つかりました"), hres))
 	}
-	reasonEmpty := func(hres *http.Response) error {
-		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最初以外のページで空の検索結果が返却されました"), hres))
+	reasonUnnecessaryNext := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最後のページの link header に next が設定されていました"), hres))
 	}
 
 	students := s.ActiveStudents()
@@ -258,7 +258,7 @@ fetchLoop:
 		}
 		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
 		if nextPathParam != "" && len(res) == 0 {
-			step.AddError(reasonEmpty(hres))
+			step.AddError(reasonUnnecessaryNext(hres))
 			return
 		}
 
