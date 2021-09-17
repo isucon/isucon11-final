@@ -714,8 +714,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s)", err, userCode), hres))
 	}
 
-	errMissingNext := fails.ErrorCritical(fmt.Errorf("お知らせの数が期待する値よりも少ないか、 link header の next が設定されていません"))
-	errUnnecessaryNext := fails.ErrorCritical(fmt.Errorf("お知らせの数が期待する値よりも多いか、余分な link header の next が設定されています"))
+	errUnnecessaryNext := errors.New("お知らせの数が期待する値よりも多いか、余分な link header の next が設定されています")
 	errNotExistPrevOtherThanFirstPage := errors.New("お知らせリストの最初以外のページの link header に prev が設定されていませんでした")
 	errUnnecessaryPrev := errors.New("お知らせリストの最初のページの link header に prev が設定されていました")
 
@@ -728,23 +727,9 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		return "", err
 	}
 
-	if len(expected) <= AnnouncementCountPerPage && next != "" {
-		return "", errWithUserCode(errUnnecessaryNext, hres)
-	}
-	if len(expected) > AnnouncementCountPerPage && next == "" {
-		return "", errWithUserCode(errMissingNext, hres)
-	}
-	// next押した後にprevに戻るとpathは存在するがprevは存在しないことがある。
-	// prevへのアクセスはここ以降で行うのでここではtrueにならない
-	if path != "" && prev == "" {
-		return "", errWithUserCode(errNotExistPrevOtherThanFirstPage, hres)
-	}
-	if path == "" && prev != "" {
-		return "", errWithUserCode(errUnnecessaryPrev, hres)
-	}
-
-	// 次のページが存在しない
+	// リスト内の中身を検証
 	if next == "" {
+		// expected > AnnouncementCountPerPage のときは以下の中で「お知らせの数が期待したものと一致しませんでした」という文言が表示される
 		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, userCode, hres)
 		if err != nil {
 			return "", err
@@ -755,6 +740,20 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, userCode, hres)
 	if err != nil {
 		return "", err
+	}
+
+	// prepareCheckAnnouncementContent で検証しているので len(expected) == AnnouncementCountPerPage という比較でよい
+	// 安全側に倒して不等号で比較している
+	if len(expected) <= AnnouncementCountPerPage && next != "" {
+		return "", errWithUserCode(errUnnecessaryNext, hres)
+	}
+	// next押した後にprevに戻るとpathは存在するがprevは存在しないことがある。
+	// prevへのアクセスはここ以降で行うのでここではtrueにならない
+	if path != "" && prev == "" {
+		return "", errWithUserCode(errNotExistPrevOtherThanFirstPage, hres)
+	}
+	if path == "" && prev != "" {
+		return "", errWithUserCode(errUnnecessaryPrev, hres)
 	}
 
 	// この_prevはpathと同じところを指すはず
@@ -786,7 +785,6 @@ func prepareCheckAnnouncementContent(expected []*model.AnnouncementStatus, actua
 	}
 
 	reasonNotSorted := errors.New("お知らせの順序が id の降順になっていません")
-	// reasonNotMatch := errors.New("お知らせの内容が不正です") ここはassert.goのエラーを直接表示する
 	reasonNoCount := errors.New("お知らせの数が期待したものと一致しませんでした")
 	reasonNoMatchUnreadCount := errors.New("お知らせの unread_count が期待したものと一致しませんでした")
 
@@ -920,14 +918,11 @@ func prepareCheckSearchCourse(ctx context.Context, a *agent.Agent, param *model.
 	reasonDuplicated := errors.New("科目検索結果に重複した id の科目が存在します")
 	reasonLack := errors.New("科目検索で条件にヒットするはずの科目が見つかりませんでした")
 	reasonExcess := errors.New("科目検索で条件にヒットしない科目が見つかりました")
-	// reasonInvalidContent := errors.New("科目検索結果に含まれる科目の内容が不正です") assert.goのerrをそのまま表示
 	reasonNotSorted := errors.New("科目検索結果の順序が code の昇順になっていません")
 	reasonNotMatchCountPerPage := errors.New("科目検索のページごとの件数が期待する値と一致しません")
 	reasonExistPrevFirstPage := errors.New("科目検索の最初のページの link header に prev が設定されていました")
 	reasonNotExistPrevOtherThanFirstPage := errors.New("科目検索の最初以外のページの link header に prev が設定されていませんでした")
 	reasonInvalidPrev := errors.New("科目検索の link header の prev で前のページに正しく戻ることができませんでした")
-	// reasonMissingNext := errors.New(fmt.Errorf("科目検索の最後以外のページの link header に next が設定されていませんでした")
-	// 検索の取得ロジックではできない
 	reasonUnnecessaryNext := errors.New("科目検索で条件にヒットした科目の数が期待する値よりも多いか、余分な link header の next が設定されていました")
 
 	var hresSample *http.Response
@@ -1796,7 +1791,7 @@ func (s *Scenario) prepareCheckAddClassAbnormal(ctx context.Context) error {
 		return fails.ErrorInvalidResponse(errors.New("存在しない科目への講義追加が成功しました"), hres)
 	}
 	errAddConflictedClass := func(hres *http.Response) error {
-		return fails.ErrorInvalidResponse(errors.New("科目IDと part が重複した講義の追加が成功しました"), hres)
+		return fails.ErrorInvalidResponse(errors.New("course_id と part が重複した講義の追加が成功しました"), hres)
 	}
 
 	// ======== 検証用データの準備 ========
