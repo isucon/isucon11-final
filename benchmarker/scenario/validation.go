@@ -145,11 +145,13 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					break
 				}
 
-				select {
-				case <-timer:
-					step.AddScore(score.ValidateTimeout)
-					break fetchLoop
-				default:
+				if !s.NoValidationTimeout {
+					select {
+					case <-timer:
+						step.AddScore(score.ValidateTimeout)
+						break fetchLoop
+					default:
+					}
 				}
 			}
 
@@ -290,11 +292,13 @@ fetchLoop:
 			break
 		}
 
-		select {
-		case <-timer:
-			step.AddScore(score.ValidateTimeout)
-			break fetchLoop
-		default:
+		if !s.NoValidationTimeout {
+			select {
+			case <-timer:
+				step.AddScore(score.ValidateTimeout)
+				break fetchLoop
+			default:
+			}
 		}
 	}
 
