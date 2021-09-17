@@ -38,7 +38,7 @@ const dbinfo: mysql.PoolOptions = {
 };
 const spawn = (command: string, ...args: string[]) =>
   new Promise((resolve, reject) => {
-    const cmd = _spawn(command, args, { shell: false });
+    const cmd = _spawn(command, args, { stdio: 'ignore' });
     cmd.on("error", (err) => reject(err));
     cmd.on("close", (code) => {
       if (code === 0) {
