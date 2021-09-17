@@ -86,6 +86,9 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	errDuplicated := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("重複したIDのお知らせが見つかりました"), hres))
 	}
+	reasonEmpty := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("お知らせリストの最初以外のページで空の検索結果が返却されました"), hres))
+	}
 
 	sampleStudents := splitArr(s.ActiveStudents(), sampleStudentCount)
 	wg := sync.WaitGroup{}
@@ -112,6 +115,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				hres, res, err := GetAnnouncementListAction(ctx, student.Agent, next, "")
 				if err != nil {
 					step.AddError(errValidation(err))
+					return
+				}
+
+				// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
+				if next != "" && len(res.Announcements) == 0 {
+					step.AddError(reasonEmpty(hres))
 					return
 				}
 
@@ -216,6 +225,9 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	errNotMatch := func(hres *http.Response) error {
 		return errValidation(fails.ErrorInvalidResponse(errors.New("存在しないはずの Course が見つかりました"), hres))
 	}
+	reasonEmpty := func(hres *http.Response) error {
+		return errValidation(fails.ErrorInvalidResponse(errors.New("科目検索の最初以外のページで空の検索結果が返却されました"), hres))
+	}
 
 	students := s.ActiveStudents()
 	expectCourses := s.CourseManager.ExposeCoursesForValidation()
@@ -242,6 +254,11 @@ fetchLoop:
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
 		if err != nil {
 			step.AddError(errValidation(err))
+			return
+		}
+		// 空リストを返され続けると無限ループするので最初のページ以外で空リストが返ってきたらエラーにする
+		if nextPathParam != "" && len(res) == 0 {
+			step.AddError(reasonEmpty(hres))
 			return
 		}
 
