@@ -36,17 +36,18 @@ const dbinfo: mysql.PoolOptions = {
   timezone: "+00:00",
   decimalNumbers: true,
 };
-const spawn = (command: string, ...args: string[]) => new Promise((resolve, reject) => {
-  const cmd = _spawn(command, args, { shell: false })
-  cmd.on('error', (err) => reject(err));
-  cmd.on('close', (code) => {
-    if (code === 0) {
-      resolve(code);
-    } else {
-      reject(new Error(`Unexpected exit code: ${code} on ${command}`));
-    }
+const spawn = (command: string, ...args: string[]) =>
+  new Promise((resolve, reject) => {
+    const cmd = _spawn(command, args, { shell: false });
+    cmd.on("error", (err) => reject(err));
+    cmd.on("close", (code) => {
+      if (code === 0) {
+        resolve(code);
+      } else {
+        reject(new Error(`Unexpected exit code: ${code} on ${command}`));
+      }
+    });
   });
-});
 const pool = mysql.createPool(dbinfo);
 const upload = multer();
 
@@ -96,8 +97,8 @@ app.post("/initialize", async (_, res) => {
   }
 
   try {
-    await spawn('rm', '-rf', AssignmentsDirectory);
-    await spawn('cp', '-r', InitDataDirectory)
+    await spawn("rm", "-rf", AssignmentsDirectory);
+    await spawn("cp", "-r", InitDataDirectory);
   } catch (err) {
     console.error(err);
     return res.status(500).send();
@@ -1483,20 +1484,20 @@ async function createSubmissionsZip(
   submissions: Submission[]
 ) {
   const tmpDir = AssignmentsDirectory + classId + "/";
-  await spawn('rm', '-rf', tmpDir);
-  await spawn('mkdir', tmpDir);
+  await spawn("rm", "-rf", tmpDir);
+  await spawn("mkdir", tmpDir);
 
   // ファイル名を指定の形式に変更
   for (const submission of submissions) {
     await spawn(
-      'cp',
+      "cp",
       AssignmentsDirectory + classId + "-" + submission.user_id + ".pdf",
       tmpDir + submission.user_code + "-" + submission.file_name
     );
   }
 
   // -i 'tmpDir/*': 空zipを許す
-  await spawn('zip', '-j', '-r', zipFilePath, tmpDir, '-i', tmpDir + "*");
+  await spawn("zip", "-j", "-r", zipFilePath, tmpDir, "-i", tmpDir + "*");
 }
 
 // ---------- Announcement API ----------
