@@ -111,6 +111,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 
 			timer := time.After(validationRequestTime)
 			var hresSample *http.Response
+			var hresFirst *http.Response
 			var next string
 			couldSeeAll := false
 			maxPage := (student.AnnouncementCount()-1)/AnnouncementCountPerPage + 1
@@ -120,6 +121,9 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				if err != nil {
 					step.AddError(errValidation(err))
 					return
+				}
+				if i == 1 {
+					hresFirst = hres
 				}
 
 				responseUnreadCounts = append(responseUnreadCounts, res.UnreadCount)
@@ -208,7 +212,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 					}
 				}
 				if !AssertEqual("response unread count", actualUnreadCount, responseUnreadCounts[0]) {
-					step.AddError(errNotMatchUnreadCount(hresSample))
+					step.AddError(errNotMatchUnreadCount(hresFirst))
 					return
 				}
 
@@ -257,7 +261,7 @@ func (s *Scenario) validateCourses(ctx context.Context, step *isucandar.Benchmar
 	// 空検索パラメータで全部ページング → 科目をすべて集める
 	var hresSample *http.Response
 	nextPathParam := "/api/courses"
-	maxPage := (s.CourseManager.GetCourseCount()-1) / SearchCourseCountPerPage + 1
+	maxPage := (s.CourseManager.GetCourseCount()-1)/SearchCourseCountPerPage + 1
 fetchLoop:
 	for i := 1; i <= maxPage; i++ {
 		hres, res, err := SearchCourseAction(ctx, student.Agent, nil, nextPathParam)
