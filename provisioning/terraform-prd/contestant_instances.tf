@@ -1,23 +1,7 @@
-data "aws_ami" "contestant" {
-  owners      = ["self"]
-  most_recent = true
-  name_regex  = "^isucon11f-amd64-contestant-\\d{8}-\\d{4}-[0-9a-f]{40}$"
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
 resource "aws_instance" "contestant-1" {
   for_each = toset(var.team_ids)
 
-  ami           = data.aws_ami.contestant.id
+  ami           = "ami-0a6d03a5126400384"
   instance_type = "c5.large"
 
   subnet_id         = aws_subnet.contestant[each.key].id
@@ -63,7 +47,7 @@ resource "aws_eip" "contestant-1" {
 resource "aws_instance" "contestant-2" {
   for_each = toset(var.team_ids)
 
-  ami           = data.aws_ami.contestant.id
+  ami           = "ami-0a6d03a5126400384"
   instance_type = "c5.large"
 
   subnet_id         = aws_subnet.contestant[each.key].id
@@ -109,7 +93,7 @@ resource "aws_eip" "contestant-2" {
 resource "aws_instance" "contestant-3" {
   for_each = toset(var.team_ids)
 
-  ami           = data.aws_ami.contestant.id
+  ami           = "ami-0a6d03a5126400384"
   instance_type = "c5.large"
 
   subnet_id         = aws_subnet.contestant[each.key].id

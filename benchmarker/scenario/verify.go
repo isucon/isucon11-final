@@ -236,10 +236,8 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 
 	// 取得されたものが検索条件にヒットするか
 	for _, course := range res {
-		if rand.Float64() < searchCourseVerifyRate {
-			if err := verifyMatchCourse(course, param, hres); err != nil {
-				return err
-			}
+		if err := verifyMatchCourse(course, param, hres); err != nil {
+			return err
 		}
 	}
 
@@ -247,34 +245,8 @@ func verifySearchCourseResults(res []*api.GetCourseDetailResponse, param *model.
 }
 
 func verifyCourseDetail(expected *model.Course, actual *api.GetCourseDetailResponse, hres *http.Response) error {
-	if !compareCourseStatus(expected.Status(), actual.Status) {
-		return fails.ErrorInvalidResponse(errors.New("科目のステータスが期待する値と一致しません"), hres)
-	}
-
+	// load中ではstatusが並列で更新されるので検証を行わない
 	return AssertEqualCourse(expected, actual, hres, false)
-}
-
-// lhs のほうが rhs よりも前段階かどうか判定する
-func compareCourseStatus(lhs api.CourseStatus, rhs api.CourseStatus) bool {
-	asInt := func(s api.CourseStatus) int {
-		switch s {
-		case api.StatusRegistration:
-			return 0
-		case api.StatusInProgress:
-			return 1
-		case api.StatusClosed:
-			return 2
-		default:
-			return -1
-		}
-	}
-
-	r := asInt(rhs)
-	if r < 0 {
-		return false
-	}
-
-	return asInt(lhs) <= r
 }
 
 func verifyAnnouncementDetail(expected *model.AnnouncementStatus, res *api.GetAnnouncementDetailResponse, hres *http.Response) error {
@@ -328,8 +300,8 @@ func verifyClasses(expected []*model.Class, res []*api.GetClassResponse, student
 	return nil
 }
 
-func verifyAssignments(assignmentsData []byte, class *model.Class, hres *http.Response) error {
-	if rand.Float64() < assignmentsVerifyRate {
+func verifyAssignments(assignmentsData []byte, class *model.Class, mustVerify bool, hres *http.Response) error {
+	if mustVerify || rand.Float64() < assignmentsVerifyRate {
 		r, err := zip.NewReader(bytes.NewReader(assignmentsData), int64(len(assignmentsData)))
 		if err != nil {
 			return fails.ErrorInvalidResponse(errors.New("課題zipの展開に失敗しました"), hres)

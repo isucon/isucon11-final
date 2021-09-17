@@ -752,7 +752,7 @@ func (s *Scenario) courseScenario(course *model.Course, step *isucandar.Benchmar
 			}
 			class.CloseSubmission()
 
-			if err := verifyAssignments(assignmentsData, class, hres); err != nil {
+			if err := verifyAssignments(assignmentsData, class, false, hres); err != nil {
 				step.AddError(err)
 			} else {
 				step.AddScore(score.CourseDownloadSubmissions)
@@ -835,6 +835,7 @@ func (s *Scenario) addActiveStudentLoads(ctx context.Context, step *isucandar.Be
 
 			student, err := s.userPool.newStudent()
 			if err != nil {
+				step.AddScore(score.SkipAddStudentPoolEmpty)
 				return
 			}
 

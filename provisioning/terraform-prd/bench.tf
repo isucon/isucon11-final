@@ -1,19 +1,3 @@
-data "aws_ami" "bench" {
-  owners      = ["self"]
-  most_recent = true
-  name_regex  = "^isucon11f-amd64-bench-\\d{8}-\\d{4}-[0-9a-f]{40}$"
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
 data "aws_ssm_parameter" "bench_token" {
   name = "/hako/isuxportal-prd/ISUXPORTAL_BENCH_TOKEN"
 }
@@ -21,7 +5,7 @@ data "aws_ssm_parameter" "bench_token" {
 resource "aws_instance" "bench" {
   for_each = toset(var.team_ids)
 
-  ami           = data.aws_ami.bench.id
+  ami           = "ami-0d0b6cd6f9ac9dc11"
   instance_type = "c5.xlarge"
 
   subnet_id         = aws_subnet.bench.id
