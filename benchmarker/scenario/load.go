@@ -373,7 +373,7 @@ func (s *Scenario) registrationScenario(student *model.Student, step *isucandar.
 					step.AddError(err)
 				}
 				if fails.IsTimeout(err) {
-					ContestantLogger.Printf("履修登録(POST /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
+					ContestantLogger.Printf("履修登録(PUT /api/me/courses)がタイムアウトしました。学生はリトライを試みます。")
 					time.Sleep(100 * time.Millisecond)
 					isExtendRequest = s.isNoRequestTime(ctx)
 					goto L
