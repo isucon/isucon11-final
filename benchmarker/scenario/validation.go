@@ -180,7 +180,7 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 			for _, actual := range actualAnnouncements {
 				expectStatus, ok := expectAnnouncementsMap[actual.ID]
 				if !ok {
-					AdminLogger.Printf("less announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
+					AdminLogger.Printf("extra announcements -> name: %v, title:  %v", actual.CourseName, actual.Title)
 					step.AddError(errNotMatchOver(hresSample))
 					return
 				}
