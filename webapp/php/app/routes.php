@@ -120,13 +120,20 @@ final class Handler
             }
         }
 
-        if (exec(sprintf('rm -rf %s', escapeshellarg(self::ASSIGNMENTS_DIRECTORY))) === false) {
+        $descriptorSpec = [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['file', '/dev/null', 'w'],
+            2 => ['file', '/dev/null', 'w'],
+        ];
+        $process = proc_open(['rm', '-rf', self::ASSIGNMENTS_DIRECTORY], $descriptorSpec, $pipes);
+        if ($process === false || proc_close($process) !== 0) {
             $this->logger->error('failed to remove directory: ' . self::ASSIGNMENTS_DIRECTORY);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
         }
 
-        if (exec(sprintf('cp -r %s %s', escapeshellarg(self::INIT_DATA_DIRECTORY), escapeshellarg(self::ASSIGNMENTS_DIRECTORY))) === false) {
+        $process = proc_open(['cp', '-r', self::INIT_DATA_DIRECTORY, self::ASSIGNMENTS_DIRECTORY], $descriptorSpec, $pipes);
+        if ($process === false || proc_close($process) !== 0) {
             $this->logger->error('failed to copy init directory: ' . self::INIT_DATA_DIRECTORY);
 
             return $response->withStatus(StatusCodeInterface::STATUS_INTERNAL_SERVER_ERROR);
@@ -1352,35 +1359,37 @@ final class Handler
     private function createSubmissionsZip(string $zipFilePath, string $classId, array $submissions): string
     {
         $tmpDir = self::ASSIGNMENTS_DIRECTORY . $classId . '/';
-        if (exec(sprintf('rm -rf %s', escapeshellarg($tmpDir))) === false) {
+        $descriptorSpec = [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['file', '/dev/null', 'w'],
+            2 => ['file', '/dev/null', 'w'],
+        ];
+        $process = proc_open(['rm', '-rf', $tmpDir], $descriptorSpec, $pipes);
+        if ($process === false || proc_close($process) !== 0) {
             return 'failed to remove directory: ' . $tmpDir;
         }
-        if (exec(sprintf('mkdir %s', escapeshellarg($tmpDir))) === false) {
+        $process = proc_open(['mkdir', $tmpDir], $descriptorSpec, $pipes);
+        if ($process === false || proc_close($process) !== 0) {
             return 'failed to make directory: ' . $tmpDir;
         }
 
         // ファイル名を指定の形式に変更
         foreach ($submissions as $submission) {
-            if (
-                exec(sprintf(
-                    'cp %s %s',
-                    escapeshellarg(self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf'),
-                    escapeshellarg($tmpDir . $submission->userCode . '-' . $submission->fileName),
-                )) === false
-            ) {
+            $process = proc_open([
+                'cp',
+                self::ASSIGNMENTS_DIRECTORY . $classId . '-' . $submission->userId . '.pdf',
+                $tmpDir . $submission->userCode . '-' . $submission->fileName
+            ], $descriptorSpec, $pipes);
+            if ($process === false || proc_close($process) !== 0) {
                 return 'failed to copy file: ' . $classId . '-' . $submission->userId . '.pdf';
             }
         }
 
         // -i 'tmpDir/*': 空zipを許す
-        if (
-            exec(sprintf(
-                'zip -j -r %s %s -i %s',
-                escapeshellarg($zipFilePath),
-                escapeshellarg($tmpDir),
-                escapeshellarg($tmpDir . '*'),
-            )) === false
-        ) {
+        $process = proc_open([
+            'zip', '-j', '-r', $zipFilePath, $tmpDir, '-i', $tmpDir . '*'
+        ], $descriptorSpec, $pipes);
+        if ($process === false || proc_close($process) !== 0) {
             return 'failed to zip';
         }
 
