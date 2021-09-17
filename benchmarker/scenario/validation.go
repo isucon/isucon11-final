@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -50,12 +49,16 @@ func splitArr(students []*model.Student, n int) []*model.Student {
 		return students
 	}
 
-	idxBase := float64(len(students)) / float64(n)
-	idx := 0.0
 	res := make([]*model.Student, n)
 	for i := 0; i < n; i++ {
-		res[i] = students[int(math.Floor(idx))]
-		idx += idxBase
+		idx := int(float64(len(students)) * float64(i) / float64(n))
+		if idx < 0 {
+			idx = 0
+		}
+		if idx > len(students)-1 {
+			idx = len(students) - 1
+		}
+		res[i] = students[idx]
 	}
 
 	return res
@@ -241,6 +244,7 @@ fetchLoop:
 			step.AddError(errValidation(err))
 			return
 		}
+
 		actuals = append(actuals, res...)
 
 		hresSample = hres
