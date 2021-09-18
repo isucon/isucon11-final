@@ -762,6 +762,9 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		if err != nil {
 			return "", err
 		}
+		if next != "" {
+			return "", errWithUserCode(errUnnecessaryNext, hres)
+		}
 		return prev, nil
 	}
 
@@ -775,11 +778,6 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		return "", errWithUserCode(errMissingNext, hres)
 	}
 
-	// prepareCheckAnnouncementContent で検証しているので len(expected) == AnnouncementCountPerPage という比較でよい
-	// 安全側に倒して不等号で比較している
-	if len(expected) <= AnnouncementCountPerPage && next != "" {
-		return "", errWithUserCode(errUnnecessaryNext, hres)
-	}
 	// next押した後にprevに戻るとpathは存在するがprevは存在しないことがある。
 	// prevへのアクセスはここ以降で行うのでここではtrueにならない
 	if path != "" && prev == "" {
