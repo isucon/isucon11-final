@@ -105,7 +105,11 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	for _, student := range sampleStudents {
 		student := student
 		go func() {
-			defer wg.Done()
+			defer func() {
+				AdminLogger.Printf("done announcement wg")
+				wg.Done()
+			}()
+
 
 			// 1〜5秒ランダムに待つ
 			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
