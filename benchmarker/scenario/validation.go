@@ -346,6 +346,10 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			users[activeStudent.Code] = activeStudent
 		}
 	}
+	if len(users) == 0 {
+		AdminLogger.Printf("HasFinishedCourse Student is 0")
+		return
+	}
 
 	p := parallel.NewParallel(ctx, int32(len(users)))
 	// n回に1回validationする
@@ -382,6 +386,7 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 			AdminLogger.Println("info: cannot start parallel: %w", err)
 		}
 	}
+
 
 	p.Wait()
 }
