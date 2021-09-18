@@ -289,6 +289,9 @@ func (s *Scenario) prepareNormal(ctx context.Context, step *isucandar.BenchmarkS
 			course.BroadCastAnnouncement(announcement)
 
 			courseStudents := course.Students()
+			if len(courseStudents) == 0 {
+				return
+			}
 
 			// 課題提出, ランダムでお知らせを読む
 			// 学生ごとのループ
@@ -694,6 +697,10 @@ func (s *Scenario) prepareAnnouncementsList(ctx context.Context, step *isucandar
 // 科目に登録している学生全員について、すべてのおしらせリストと科目で絞り込んだおしらせリストを検証する
 func prepareCheckCourseAnnouncementList(ctx context.Context, step *isucandar.BenchmarkStep, course *model.Course) {
 	courseStudents := course.Students()
+	if len(courseStudents) == 0 {
+		return
+	}
+
 	p := parallel.NewParallel(ctx, int32(len(courseStudents)))
 	for _, student := range courseStudents {
 		student := student
