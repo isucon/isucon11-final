@@ -39,6 +39,10 @@ func verifyStatusCode(hres *http.Response, allowedStatusCodes []int) error {
 }
 
 func verifyContentType(hres *http.Response, allowedMediaType string) error {
+	if hres.StatusCode == http.StatusNotModified {
+		return nil
+	}
+
 	mediaType, _, err := mime.ParseMediaType(hres.Header.Get("Content-Type"))
 	if err != nil {
 		return fails.ErrorInvalidContentType(fmt.Errorf("Content-Type の取得に失敗しました (%w)", err), hres)
