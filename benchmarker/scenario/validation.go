@@ -387,7 +387,6 @@ func (s *Scenario) validateGrades(ctx context.Context, step *isucandar.Benchmark
 		}
 	}
 
-
 	p.Wait()
 }
 
