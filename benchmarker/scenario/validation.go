@@ -30,12 +30,17 @@ func (s *Scenario) Validation(ctx context.Context, step *isucandar.BenchmarkStep
 	}
 	ContestantLogger.Printf("===> VALIDATION")
 
+	AdminLogger.Printf("no validation timeout flag: %v", s.NoValidationTimeout)
+
 	// これは 10 秒 + ベンチの計算分しかかからないので先にやる
 	s.validateGrades(ctx, step)
+	AdminLogger.Println("finished grade validation")
 
 	// それぞれ 10 秒以上かかったらリクエストをやめて通す
 	s.validateAnnouncements(ctx, step)
+	AdminLogger.Println("finished announcement validation")
 	s.validateCourses(ctx, step)
+	AdminLogger.Println("finished courses validation")
 
 	return nil
 }
@@ -93,10 +98,17 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 	sampleStudents := splitArr(s.ActiveStudents(), validateAnnouncementSampleStudentCount)
 	wg := sync.WaitGroup{}
 	wg.Add(len(sampleStudents))
+	for _ = range sampleStudents {
+		AdminLogger.Printf("add wait for check announcement")
+	}
+
 	for _, student := range sampleStudents {
 		student := student
 		go func() {
-			defer wg.Done()
+			defer func() {
+				AdminLogger.Printf("done announcement wg")
+				wg.Done()
+			}()
 
 			// 1〜5秒ランダムに待つ
 			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
@@ -148,9 +160,12 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 						step.AddScore(score.ValidateTimeout)
 						break fetchLoop
 					default:
+						AdminLogger.Printf("check next announcement page")
 					}
 				}
 			}
+
+			AdminLogger.Printf("finish correct announcements")
 
 			// UnreadCount は各ページのレスポンスですべて同じ値が返ってくることを検証
 			for _, unreadCount := range responseUnreadCounts {
