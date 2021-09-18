@@ -110,7 +110,6 @@ func (s *Scenario) validateAnnouncements(ctx context.Context, step *isucandar.Be
 				wg.Done()
 			}()
 
-
 			// 1〜5秒ランダムに待つ
 			time.Sleep(time.Duration(rand.Int63n(5)+1) * time.Second)
 
