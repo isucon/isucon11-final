@@ -742,6 +742,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		return fails.ErrorCritical(fails.ErrorInvalidResponse(fmt.Errorf("%w (検証対象学生の学内コード: %s)", err, userCode), hres))
 	}
 
+	errMissingNext := errors.New("お知らせ一覧の link header の next が設定されていません")
 	errUnnecessaryNext := errors.New("お知らせの数が期待する値よりも多いか、余分な link header の next が設定されています")
 	errNotExistPrevOtherThanFirstPage := errors.New("お知らせ一覧の最初以外のページの link header に prev が設定されていませんでした")
 	errUnnecessaryPrev := errors.New("お知らせ一覧の最初のページの link header に prev が設定されていました")
@@ -755,8 +756,7 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 		return "", err
 	}
 
-	// リスト内の中身を検証
-	if next == "" {
+	if len(expected) <= AnnouncementCountPerPage {
 		// expected > AnnouncementCountPerPage のときは以下の中で「お知らせの数が期待したものと一致しませんでした」という文言が表示される
 		err = prepareCheckAnnouncementContent(expected, res, expectedUnreadCount, userCode, hres)
 		if err != nil {
@@ -768,6 +768,11 @@ func prepareCheckAnnouncementsList(ctx context.Context, a *agent.Agent, path, co
 	err = prepareCheckAnnouncementContent(expected[:AnnouncementCountPerPage], res, expectedUnreadCount, userCode, hres)
 	if err != nil {
 		return "", err
+	}
+
+	// リスト内の中身を検証
+	if next == "" {
+		return "", errWithUserCode(errMissingNext, hres)
 	}
 
 	// prepareCheckAnnouncementContent で検証しているので len(expected) == AnnouncementCountPerPage という比較でよい
