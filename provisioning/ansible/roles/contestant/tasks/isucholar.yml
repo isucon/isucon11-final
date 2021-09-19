@@ -45,3 +45,4 @@
     mysql -uroot < 0_setup.sql
     mysql -uisucon -pisucon isucholar < 1_schema.sql
     mysql -uisucon -pisucon isucholar < 2_init.sql
+    mysql -uisucon -pisucon isucholar < 3_sample.sql
