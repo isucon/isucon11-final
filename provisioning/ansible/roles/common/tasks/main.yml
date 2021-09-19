@@ -17,45 +17,45 @@
     state: present
     system: no
 
-- name: "Create isucon-admin group"
-  group:
-    name: isucon-admin
-    gid: 1200
-    state: present
-    system: no
-
-- name: "Create isucon-admin user"
-  user:
-    name: isucon-admin
-    uid: 1200
-    group: isucon-admin
-    password: $1$SALTsalt$e7jg2tj3sKVpmYXXmivBb0
-    home: /home/isucon-admin
-    shell: /bin/bash
-    state: present
-    system: no
-
-- name: "Create /home/isucon-admin/.ssh directory"
-  file:
-    path: /home/isucon-admin/.ssh
-    state: directory
-    owner: isucon-admin
-    group: isucon-admin
-    mode: 0700
-
-- name: "Add isucon-admin authorized_keys"
-  copy:
-    content: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKq/L7EBVcP00sWi1Z4uAo4K9ToLiI59CbknMDtmXj2o isucon-admin@isucon11-final\n"
-    dest: /home/isucon-admin/.ssh/authorized_keys
-    owner: isucon-admin
-    group: isucon-admin
-    mode: 0600
+#- name: "Create isucon-admin group"
+#  group:
+#    name: isucon-admin
+#    gid: 1200
+#    state: present
+#    system: no
+#
+#- name: "Create isucon-admin user"
+#  user:
+#    name: isucon-admin
+#    uid: 1200
+#    group: isucon-admin
+#    password: $1$SALTsalt$e7jg2tj3sKVpmYXXmivBb0
+#    home: /home/isucon-admin
+#    shell: /bin/bash
+#    state: present
+#    system: no
+#
+#- name: "Create /home/isucon-admin/.ssh directory"
+#  file:
+#    path: /home/isucon-admin/.ssh
+#    state: directory
+#    owner: isucon-admin
+#    group: isucon-admin
+#    mode: 0700
+#
+#- name: "Add isucon-admin authorized_keys"
+#  copy:
+#    content: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKq/L7EBVcP00sWi1Z4uAo4K9ToLiI59CbknMDtmXj2o isucon-admin@isucon11-final\n"
+#    dest: /home/isucon-admin/.ssh/authorized_keys
+#    owner: isucon-admin
+#    group: isucon-admin
+#    mode: 0600
 
 - name: "Add sudoers"
   copy:
     content: |
       isucon        ALL=(ALL) NOPASSWD:ALL
-      isucon-admin  ALL=(ALL) NOPASSWD:ALL
+#      isucon-admin  ALL=(ALL) NOPASSWD:ALL
     dest: /etc/sudoers.d/99-isucon-user
     owner: root
     group: root
