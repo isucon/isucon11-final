@@ -51,6 +51,7 @@
                   >
                     <a
                       :href="`/syllabus/${c.id}`"
+                      target="_blank"
                       class="
                         block
                         px-4
@@ -61,8 +62,8 @@
                       @click.stop="closeDropdown()"
                       >科目の詳細を確認
                     </a>
-                    <a
-                      :href="`/teacher/courses/${c.id}`"
+                    <NuxtLink
+                      :to="`/teacher/courses/${c.id}`"
                       class="
                         block
                         px-4
@@ -72,7 +73,7 @@
                       "
                       @click.stop="closeDropdown()"
                       >講義一覧を確認
-                    </a>
+                    </NuxtLink>
                     <a
                       href="#"
                       class="

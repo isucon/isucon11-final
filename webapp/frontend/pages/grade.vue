@@ -91,13 +91,13 @@
                   :key="`course${i}-totalScoreMin${r.totalScoreMax}`"
                   class="px-4 py-2 border break-words"
                 >
-                  {{ r.totalScoreMin }}
+                  {{ r.totalScoreMax }}
                 </div>
                 <div
                   :key="`course${i}-totalScoreMax${r.totalScoreMin}`"
                   class="px-4 py-2 border break-words"
                 >
-                  {{ r.totalScoreMax }}
+                  {{ r.totalScoreMin }}
                 </div>
                 <div
                   :key="`button${i}`"
