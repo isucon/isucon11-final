@@ -51,6 +51,7 @@
                   >
                     <a
                       :href="`/syllabus/${c.id}`"
+                      target="_blank"
                       class="
                         block
                         px-4
