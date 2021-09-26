@@ -54,7 +54,7 @@ func PDF(text string, img *Image) []byte {
 			resources: "4 0 R",
 			contents:  "6 0 R",
 		},
-		&procset{
+		&resources{
 			fonts: map[string]string{"F1": "5 0 R"},
 		},
 		&font{
@@ -73,7 +73,7 @@ func PDF(text string, img *Image) []byte {
 			resources: "8 0 R",
 			contents:  "10 0 R",
 		},
-		&procset{
+		&resources{
 			xObjects: map[string]string{"I1": "9 0 R"},
 		},
 		img,
@@ -255,27 +255,27 @@ func (p *page) write(w io.Writer, _ int) error {
 	return nil
 }
 
-// -- procedure set
+// -- resources
 
-type procset struct {
+type resources struct {
 	fonts    map[string]string
 	xObjects map[string]string
 }
 
-func (ps *procset) write(w io.Writer, _ int) error {
+func (r *resources) write(w io.Writer, _ int) error {
 	var content strings.Builder
 
 	content.WriteString("<<\n")
 	//content.WriteString("\t/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]\n")
 
 	content.WriteString("\t/Font <<\n")
-	for name, ref := range ps.fonts {
+	for name, ref := range r.fonts {
 		content.WriteString(fmt.Sprintf("\t\t/%s %s\n", name, ref))
 	}
 	content.WriteString("\t>>\n")
 
 	content.WriteString("\t/XObject <<\n")
-	for name, ref := range ps.xObjects {
+	for name, ref := range r.xObjects {
 		content.WriteString(fmt.Sprintf("\t\t/%s %s\n", name, ref))
 	}
 	content.WriteString("\t>>\n")
