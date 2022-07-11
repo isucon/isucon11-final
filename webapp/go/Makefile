@@ -1,5 +1,5 @@
 DEST=$(PWD)/isucholar
-COMPILER=go
+COMPILER=GOOS=linux GOARCH=amd64 go
 GO_FILES=$(wildcard ./*.go ./**/*.go)
 
 .PHONY: all
