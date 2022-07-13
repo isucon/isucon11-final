@@ -877,7 +877,7 @@ module Isucholar
           end
         end
       rescue AnnouncementConflict
-        announcement = db.xquery("SELECT * FROM `announcements` WHERE `id` = ?", json_params[:id])
+        announcement = db.xquery("SELECT * FROM `announcements` WHERE `id` = ?", json_params[:id]).first
         raise unless announcement
         if %i(course_id title message).any? { |k| announcement[k] != json_params[k] }
           halt 409, "An announcement with the same id already exists."
