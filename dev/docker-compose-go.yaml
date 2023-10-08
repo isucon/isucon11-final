@@ -19,6 +19,7 @@ services:
     environment:
       MYSQL_HOSTNAME: mysql
       DEBUG: "true"
+      NEWRELIC_KEY: "${NEWRELIC_KEY}"
     entrypoint: dockerize -timeout 60s -wait tcp://mysql:3306
     command: /bin/isucholar
     ports:

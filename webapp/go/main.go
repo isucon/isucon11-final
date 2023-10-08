@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +20,8 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/newrelic/go-agent/v3/integrations/nrecho-v4"
+	"github.com/newrelic/go-agent/v3/newrelic"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -43,6 +46,17 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("trapnomura"))))
+
+	// newRelic
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName("isucon"),
+		newrelic.ConfigLicense(GetEnv("NEWRELIC_KEY", "")),
+		newrelic.ConfigAppLogForwardingEnabled(true),
+	)
+	if err != nil {
+		log.Println("newrelic.NewApplication error", err)
+	}
+	e.Use(nrecho.Middleware(app))
 
 	db, _ := GetDB(false)
 	db.SetMaxOpenConns(10)
