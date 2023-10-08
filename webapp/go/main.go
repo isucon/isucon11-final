@@ -23,6 +23,8 @@ import (
 	"github.com/newrelic/go-agent/v3/integrations/nrecho-v4"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"golang.org/x/crypto/bcrypt"
+
+	_ "net/http/pprof"
 )
 
 const (
