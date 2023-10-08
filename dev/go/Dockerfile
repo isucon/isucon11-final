@@ -1,4 +1,4 @@
-FROM golang:1.17.1-alpine AS build
+FROM golang:1.19.12-alpine AS build
 WORKDIR /go/src/github.com/isucon/isucon11-final/webapp/go
 COPY ./go.* ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
