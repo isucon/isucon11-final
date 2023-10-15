@@ -8,6 +8,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/labstack/echo-contrib v0.11.0
 	github.com/labstack/echo/v4 v4.9.0
+	github.com/newrelic/go-agent/v3 v3.26.0
 	github.com/newrelic/go-agent/v3/integrations/nrecho-v4 v1.0.4
 	github.com/oklog/ulid/v2 v2.0.2
 	golang.org/x/crypto v0.7.0
@@ -23,7 +24,6 @@ require (
 	github.com/labstack/gommon v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/newrelic/go-agent/v3 v3.26.0 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.49.0 // indirect
