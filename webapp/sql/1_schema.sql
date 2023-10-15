@@ -33,6 +33,8 @@ CREATE TABLE `courses`
     CONSTRAINT FK_courses_teacher_id FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`)
 );
 
+CREATE INDEX `courses_01` on courses(`teacher_id`);
+
 CREATE TABLE `registrations`
 (
     `course_id` CHAR(26),
@@ -41,6 +43,9 @@ CREATE TABLE `registrations`
     CONSTRAINT FK_registrations_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`),
     CONSTRAINT FK_registrations_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 );
+
+CREATE INDEX `registrations_01` on registrations(`course_id`);
+CREATE INDEX `registrations_02` on registrations(`user_id`);
 
 CREATE TABLE `classes`
 (
@@ -54,6 +59,8 @@ CREATE TABLE `classes`
     CONSTRAINT FK_classes_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 );
 
+CREATE INDEX `classes_01` on classes(`course_id`);
+
 CREATE TABLE `submissions`
 (
     `user_id`   CHAR(26)     NOT NULL,
@@ -65,6 +72,9 @@ CREATE TABLE `submissions`
     CONSTRAINT FK_submissions_class_id FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 );
 
+CREATE INDEX `submissions_01` on classes(`user_id`);
+CREATE INDEX `submissions_02` on classes(`class_id`);
+
 CREATE TABLE `announcements`
 (
     `id`         CHAR(26) PRIMARY KEY,
@@ -73,6 +83,8 @@ CREATE TABLE `announcements`
     `message`    TEXT         NOT NULL,
     CONSTRAINT FK_announcements_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 );
+
+CREATE INDEX `announcements_01` on classes(`course_id`);
 
 CREATE TABLE `unread_announcements`
 (
@@ -83,3 +95,6 @@ CREATE TABLE `unread_announcements`
     CONSTRAINT FK_unread_announcements_announcement_id FOREIGN KEY (`announcement_id`) REFERENCES `announcements` (`id`),
     CONSTRAINT FK_unread_announcements_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 );
+
+CREATE INDEX `unread_announcements_01` on classes(`announcement_id`);
+CREATE INDEX `unread_announcements_02` on classes(`course_id`);
