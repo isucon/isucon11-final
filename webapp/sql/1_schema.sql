@@ -72,8 +72,8 @@ CREATE TABLE `submissions`
     CONSTRAINT FK_submissions_class_id FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`)
 );
 
-CREATE INDEX `submissions_01` on classes(`user_id`);
-CREATE INDEX `submissions_02` on classes(`class_id`);
+CREATE INDEX `submissions_01` on submissions(`user_id`);
+CREATE INDEX `submissions_02` on submissions(`class_id`);
 
 CREATE TABLE `announcements`
 (
@@ -84,7 +84,7 @@ CREATE TABLE `announcements`
     CONSTRAINT FK_announcements_course_id FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)
 );
 
-CREATE INDEX `announcements_01` on classes(`course_id`);
+CREATE INDEX `announcements_01` on announcements(`course_id`);
 
 CREATE TABLE `unread_announcements`
 (
@@ -96,5 +96,5 @@ CREATE TABLE `unread_announcements`
     CONSTRAINT FK_unread_announcements_user_id FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 );
 
-CREATE INDEX `unread_announcements_01` on classes(`announcement_id`);
-CREATE INDEX `unread_announcements_02` on classes(`course_id`);
+CREATE INDEX `unread_announcements_01` on unread_announcements(`announcement_id`);
+CREATE INDEX `unread_announcements_02` on unread_announcements(`course_id`);
