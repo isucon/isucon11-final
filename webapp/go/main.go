@@ -19,6 +19,7 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -28,6 +29,14 @@ const (
 	InitDataDirectory         = "../data/"
 	SessionName               = "isucholar_go"
 	mysqlErrNumDuplicateEntry = 1062
+)
+
+var (
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
 )
 
 type handlers struct {
@@ -1288,7 +1297,12 @@ func createSubmissionsZip(zipFilePath string, classID string, submissions []Subm
 }
 
 // ---------- Announcement API ----------
-
+type AnnouncementWithoutUnread struct {
+	ID         string `json:"id" db:"id"`
+	CourseID   string `json:"course_id" db:"course_id"`
+	CourseName string `json:"course_name" db:"course_name"`
+	Title      string `json:"title" db:"title"`
+}
 type AnnouncementWithoutDetail struct {
 	ID         string `json:"id" db:"id"`
 	CourseID   string `json:"course_id" db:"course_id"`
@@ -1317,25 +1331,35 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var announcements []AnnouncementWithoutDetail
+	var announcements []AnnouncementWithoutUnread
+	// var announcements []AnnouncementWithoutDetail
 	var args []interface{}
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
 		" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
-		" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
 		" WHERE 1=1"
+
+	// query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
+	// 	" FROM `announcements`" +
+	// 	" JOIN `courses` ON `announcements`.`course_id` = `courses`.`id`" +
+	// 	" JOIN `registrations` ON `courses`.`id` = `registrations`.`course_id`" +
+	// 	" JOIN `unread_announcements` ON `announcements`.`id` = `unread_announcements`.`announcement_id`" +
+	// 	" WHERE 1=1"
 
 	if courseID := c.QueryParam("course_id"); courseID != "" {
 		query += " AND `announcements`.`course_id` = ?"
 		args = append(args, courseID)
 	}
 
-	query += " AND `unread_announcements`.`user_id` = ?" +
-		" AND `registrations`.`user_id` = ?" +
+	query += " AND `registrations`.`user_id` = ?" +
 		" ORDER BY `announcements`.`id` DESC" +
 		" LIMIT ? OFFSET ?"
-	args = append(args, userID, userID)
+	// query += " AND `unread_announcements`.`user_id` = ?" +
+	// 	" AND `registrations`.`user_id` = ?" +
+	// 	" ORDER BY `announcements`.`id` DESC" +
+	// 	" LIMIT ? OFFSET ?"
+	args = append(args, userID)
 
 	var page int
 	if c.QueryParam("page") == "" {
@@ -1357,10 +1381,21 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	var unreadCount int
-	if err := tx.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`", userID); err != nil {
+	cmd := redisClient.HVals(c.Request().Context(), userID)
+	results, err := cmd.Result()
+	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	for _, result := range results {
+		if result == "false" {
+			unreadCount++
+		}
+	}
+	// if err := tx.Get(&unreadCount, "SELECT COUNT(*) FROM `unread_announcements` WHERE `user_id` = ? AND NOT `is_deleted`", userID); err != nil {
+	// 	c.Logger().Error(err)
+	// 	return c.NoContent(http.StatusInternalServerError)
+	// }
 
 	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
@@ -1394,7 +1429,23 @@ func (h *handlers) GetAnnouncementList(c echo.Context) error {
 	}
 
 	// 対象になっているお知らせが0件の時は空配列を返却
-	announcementsRes := append(make([]AnnouncementWithoutDetail, 0, len(announcements)), announcements...)
+	announcementsRes := make([]AnnouncementWithoutDetail, 0, len(announcements))
+	for _, announcement := range announcements {
+		cmd := redisClient.HGet(c.Request().Context(), userID, announcement.ID)
+		result, err := cmd.Result()
+		if err != nil {
+			c.Logger().Error(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		announcementsRes = append(announcementsRes, AnnouncementWithoutDetail{
+			ID:         announcement.ID,
+			CourseID:   announcement.CourseID,
+			CourseName: announcement.CourseName,
+			Title:      announcement.Title,
+			Unread:     result == "false",
+		})
+	}
+	// announcementsRes := append(make([]AnnouncementWithoutDetail, 0, len(announcements)), announcements...)
 
 	return c.JSON(http.StatusOK, GetAnnouncementsResponse{
 		UnreadCount:   unreadCount,
@@ -1467,10 +1518,15 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	for _, user := range targets {
-		if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", req.ID, user.ID); err != nil {
+		cmd := redisClient.HSet(c.Request().Context(), user.ID, req.ID, "false")
+		if err := cmd.Err(); err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
+		// if _, err := tx.Exec("INSERT INTO `unread_announcements` (`announcement_id`, `user_id`) VALUES (?, ?)", req.ID, user.ID); err != nil {
+		// 	c.Logger().Error(err)
+		// 	return c.NoContent(http.StatusInternalServerError)
+		// }
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -1479,6 +1535,14 @@ func (h *handlers) AddAnnouncement(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+type AnnouncementDetailWithoutUnread struct {
+	ID         string `json:"id" db:"id"`
+	CourseID   string `json:"course_id" db:"course_id"`
+	CourseName string `json:"course_name" db:"course_name"`
+	Title      string `json:"title" db:"title"`
+	Message    string `json:"message" db:"message"`
 }
 
 type AnnouncementDetail struct {
@@ -1507,19 +1571,37 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	var announcement AnnouncementDetail
-	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
+	var announcement AnnouncementDetailWithoutUnread
+	query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`" +
 		" FROM `announcements`" +
 		" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
-		" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
-		" WHERE `announcements`.`id` = ?" +
-		" AND `unread_announcements`.`user_id` = ?"
-	if err := tx.Get(&announcement, query, announcementID, userID); err != nil && err != sql.ErrNoRows {
+		" WHERE `announcements`.`id` = ?"
+	// query := "SELECT `announcements`.`id`, `courses`.`id` AS `course_id`, `courses`.`name` AS `course_name`, `announcements`.`title`, `announcements`.`message`, NOT `unread_announcements`.`is_deleted` AS `unread`" +
+	// 	" FROM `announcements`" +
+	// 	" JOIN `courses` ON `courses`.`id` = `announcements`.`course_id`" +
+	// 	" JOIN `unread_announcements` ON `unread_announcements`.`announcement_id` = `announcements`.`id`" +
+	// 	" WHERE `announcements`.`id` = ?" +
+	// 	" AND `unread_announcements`.`user_id` = ?"
+	if err := tx.Get(&announcement, query, announcementID); err != nil && err != sql.ErrNoRows {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	} else if err == sql.ErrNoRows {
 		return c.String(http.StatusNotFound, "No such announcement.")
 	}
+	var unread bool
+	cmd := redisClient.HGet(c.Request().Context(), userID, announcementID)
+	result, err := cmd.Result()
+	if err != nil {
+		if err == redis.Nil {
+			return c.String(http.StatusNotFound, "No such announcement.")
+		}
+		c.Logger().Error(err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	unread = result == "false"
+	// if result == "true" {
+	// 	return c.String(http.StatusNotFound, "No such announcement.")
+	// }
 
 	var registrationCount int
 	if err := tx.Get(&registrationCount, "SELECT COUNT(*) FROM `registrations` WHERE `course_id` = ? AND `user_id` = ?", announcement.CourseID, userID); err != nil {
@@ -1530,15 +1612,27 @@ func (h *handlers) GetAnnouncementDetail(c echo.Context) error {
 		return c.String(http.StatusNotFound, "No such announcement.")
 	}
 
-	if _, err := tx.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+	cmd2 := redisClient.HSet(c.Request().Context(), userID, announcementID, "true")
+	if err := cmd2.Err(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	// if _, err := tx.Exec("UPDATE `unread_announcements` SET `is_deleted` = true WHERE `announcement_id` = ? AND `user_id` = ?", announcementID, userID); err != nil {
+	// 	c.Logger().Error(err)
+	// 	return c.NoContent(http.StatusInternalServerError)
+	// }
 
 	if err := tx.Commit(); err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	return c.JSON(http.StatusOK, announcement)
+	return c.JSON(http.StatusOK, AnnouncementDetail{
+		ID:         announcement.ID,
+		CourseID:   announcement.CourseID,
+		CourseName: announcement.CourseName,
+		Title:      announcement.Title,
+		Message:    announcement.Message,
+		Unread:     unread,
+	})
 }
